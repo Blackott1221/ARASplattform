@@ -1,0 +1,314 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  .font-inter {
+    font-family: 'Inter', sans-serif;
+  }
+  
+  .font-orbitron {
+    font-family: 'Orbitron', monospace;
+  }
+}
+
+:root {
+  --background: hsl(0, 0%, 11%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(0, 0%, 15%);
+  --muted-foreground: hsl(0, 0%, 65%);
+  --popover: hsl(0, 0%, 11%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(0, 0%, 16%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(0, 0%, 20%);
+  --input: hsl(0, 0%, 20%);
+  --primary: hsl(20, 100%, 53%);
+  --primary-foreground: hsl(0, 0%, 98%);
+  --secondary: hsl(0, 0%, 15%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(0, 0%, 15%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 84%, 60%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(20, 100%, 53%);
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: hsl(0, 0%, 11%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(0, 0%, 15%);
+  --muted-foreground: hsl(0, 0%, 65%);
+  --popover: hsl(0, 0%, 11%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(0, 0%, 16%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(0, 0%, 20%);
+  --input: hsl(0, 0%, 20%);
+  --primary: hsl(20, 100%, 53%);
+  --primary-foreground: hsl(0, 0%, 98%);
+  --secondary: hsl(0, 0%, 15%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(0, 0%, 15%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 84%, 60%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(20, 100%, 53%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-inter antialiased text-foreground;
+    background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 50%, #000000 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  
+  /* Desktop stability fixes */
+  @media (min-width: 1024px) {
+    body {
+      background-attachment: scroll;
+    }
+    
+    * {
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
+    }
+  }
+}
+
+
+
+/* Rounded glowing border animation for chat bubbles */
+@keyframes glowing-border {
+  0% {
+    background-image: linear-gradient(transparent, transparent), linear-gradient(0deg, #ff6a00, #ff8533, #ffaa66, #ff8533, #ff6a00);
+    box-shadow: 0 0 8px rgba(255, 106, 0, 0.4), 0 0 16px rgba(255, 106, 0, 0.3);
+  }
+  25% {
+    background-image: linear-gradient(transparent, transparent), linear-gradient(90deg, #ff8533, #ffaa66, #ff6a00, #ff8533, #ffaa66);
+    box-shadow: 0 0 10px rgba(255, 106, 0, 0.5), 0 0 20px rgba(255, 106, 0, 0.35);
+  }
+  50% {
+    background-image: linear-gradient(transparent, transparent), linear-gradient(180deg, #ffaa66, #ff6a00, #ff8533, #ffaa66, #ff6a00);
+    box-shadow: 0 0 12px rgba(255, 106, 0, 0.6), 0 0 24px rgba(255, 106, 0, 0.4);
+  }
+  75% {
+    background-image: linear-gradient(transparent, transparent), linear-gradient(270deg, #ff6a00, #ff8533, #ffaa66, #ff6a00, #ff8533);
+    box-shadow: 0 0 10px rgba(255, 106, 0, 0.5), 0 0 20px rgba(255, 106, 0, 0.35);
+  }
+  100% {
+    background-image: linear-gradient(transparent, transparent), linear-gradient(360deg, #ff8533, #ffaa66, #ff6a00, #ff8533, #ff6a00);
+    box-shadow: 0 0 8px rgba(255, 106, 0, 0.4), 0 0 16px rgba(255, 106, 0, 0.3);
+  }
+}
+
+/* Rounded border utility class */
+.rounded-border-gradient {
+  background: linear-gradient(#000, #000) padding-box, linear-gradient(45deg, #ff6a00, #ff8533, #ffaa66) border-box;
+  border: 2px solid transparent;
+  border-radius: 12px;
+}
+
+@layer utilities {
+  .gradient-text {
+    background: linear-gradient(135deg, #ff6a00 0%, #ff8533 50%, #ffaa66 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .glow-orange {
+    box-shadow: 0 0 20px rgba(255, 106, 0, 0.3);
+  }
+  
+  .glow-orange:hover {
+    box-shadow: 0 0 30px rgba(255, 106, 0, 0.5);
+  }
+  
+  .animate-pulse-glow {
+    animation: pulseGlow 2s infinite;
+  }
+  
+  @keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 20px rgba(255, 106, 0, 0.3); }
+    50% { box-shadow: 0 0 30px rgba(255, 106, 0, 0.6); }
+  }
+
+  .flowing-border {
+    position: relative;
+    background: transparent;
+  }
+
+  .flowing-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 2px;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      transparent 60deg,
+      rgba(255,106,0,0.3) 120deg,
+      rgba(255,138,0,0.8) 180deg,
+      rgba(255,106,0,0.3) 240deg,
+      transparent 300deg,
+      transparent 360deg
+    );
+    border-radius: inherit;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: xor;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    animation: rotateBorder 4s linear infinite;
+  }
+
+  @keyframes rotateBorder {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  /* Futuristic background patterns */
+  .space-pattern {
+    background-image: 
+      radial-gradient(circle at 1px 1px, rgba(255,106,0,0.15) 1px, transparent 0);
+    background-size: 50px 50px;
+    animation: movePattern 20s linear infinite;
+  }
+
+  .circuit-pattern {
+    background-image: 
+      linear-gradient(90deg, transparent 50%, rgba(255,106,0,0.03) 50%),
+      linear-gradient(0deg, transparent 50%, rgba(255,106,0,0.03) 50%);
+    background-size: 100px 100px, 100px 100px;
+    animation: circuitFlow 15s linear infinite;
+  }
+
+  @keyframes movePattern {
+    0% { background-position: 0 0; }
+    100% { background-position: 50px 50px; }
+  }
+
+  @keyframes circuitFlow {
+    0% { background-position: 0 0, 0 0; }
+    100% { background-position: 100px 0, 0 100px; }
+  }
+
+  /* Enhanced gradients for futuristic feel */
+  .bg-space {
+    background: 
+      radial-gradient(ellipse at top, rgba(255,106,0,0.1) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom, rgba(255,106,0,0.05) 0%, transparent 50%),
+      linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0d0d0d 100%);
+  }
+  
+  .typing-indicator {
+    animation: typing 1.5s infinite;
+  }
+  
+  @keyframes typing {
+    0%, 60%, 100% { opacity: 1; }
+    30% { opacity: 0.7; }
+  }
+  
+  .slide-in-left {
+    animation: slideInLeft 0.5s ease-out;
+  }
+  
+  @keyframes slideInLeft {
+    0% { transform: translateX(-100px); opacity: 0; }
+    100% { transform: translateX(0); opacity: 1; }
+  }
+  
+  .fade-in {
+    animation: fadeIn 0.6s ease-out;
+  }
+  
+  @keyframes fadeIn {
+    0% { opacity: 0; transform: translateY(20px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Chat Bubble Styles - Animated borders */
+  .ai-bubble {
+    border: 0.5px solid #ff6a00;
+    animation: ai-border-pulse 2.5s ease-in-out infinite;
+  }
+  
+  .user-bubble {
+    border: 0.5px solid #0ea5e9;
+    animation: user-border-pulse 2.5s ease-in-out infinite;
+  }
+  
+  @keyframes ai-border-pulse {
+    0% {
+      border-color: #ff6a00;
+      box-shadow: 0 0 2px rgba(255, 106, 0, 0.5), inset 0 0 2px rgba(255, 106, 0, 0.1);
+    }
+    50% {
+      border-color: #ff8533;
+      box-shadow: 0 0 4px rgba(255, 133, 51, 0.7), inset 0 0 4px rgba(255, 133, 51, 0.2);
+    }
+    100% {
+      border-color: #ff6a00;
+      box-shadow: 0 0 2px rgba(255, 106, 0, 0.5), inset 0 0 2px rgba(255, 106, 0, 0.1);
+    }
+  }
+  
+  @keyframes user-border-pulse {
+    0% {
+      border-color: #0ea5e9;
+      box-shadow: 0 0 2px rgba(14, 165, 233, 0.5), inset 0 0 2px rgba(14, 165, 233, 0.1);
+    }
+    50% {
+      border-color: #38bdf8;
+      box-shadow: 0 0 4px rgba(56, 189, 248, 0.7), inset 0 0 4px rgba(56, 189, 248, 0.2);
+    }
+    100% {
+      border-color: #0ea5e9;
+      box-shadow: 0 0 2px rgba(14, 165, 233, 0.5), inset 0 0 2px rgba(14, 165, 233, 0.1);
+    }
+  }
+
+  /* Message bubble responsive styles */
+  .message-container {
+    max-width: 60% !important;
+  }
+  
+  @media (max-width: 768px) {
+    .message-container {
+      max-width: 75% !important;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .message-container {
+      max-width: 85% !important;
+    }
+  }
+  
+  /* Force text wrapping in message bubbles */
+  .ai-bubble, .user-bubble {
+    word-wrap: break-word !important;
+    overflow-wrap: anywhere !important;
+    white-space: pre-wrap !important;
+    max-width: 100% !important;
+    hyphens: auto !important;
+  }
+  
+  .ai-bubble *, .user-bubble * {
+    word-wrap: break-word !important;
+    overflow-wrap: anywhere !important;
+    max-width: 100% !important;
+  }
+}
