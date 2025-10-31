@@ -1,5 +1,5 @@
 // Production-ready performance monitoring and optimization utilities
-import { pool } from './db';
+import { client as pool } from './db';
 import { logger } from './logger';
 import type { Request, Response, NextFunction } from 'express';
 
