@@ -142,6 +142,7 @@ router.post("/chat/messages", async (req: Request, res: Response) => {
 
     await db.insert(chatMessages).values({
       sessionId: currentSessionId,
+      userId: userId,
       role: "user",
       content: message,
     });
