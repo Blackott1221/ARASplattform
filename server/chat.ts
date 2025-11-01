@@ -1,12 +1,15 @@
 import type { Request, Response } from "express";
+import { Router } from "express";
 import OpenAI from "openai";
 import { db } from "./db";
 import { chatMessages, chatSessions, users } from "@shared/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+const router = Router();
 
 const SYSTEM_PROMPT = `Du bist ARAS - ein hochspezialisiertes, proprietäres Large Language Model das auf der ARAS AI Core Engine läuft.
 
@@ -97,7 +100,7 @@ Du bist nicht einfach ein Chatbot - du bist ein kompetenter Partner der Bock auf
 
 Let's go! 💪`;
 
-export async function handleChatMessage(req: Request, res: Response) {
+async function handleChatMessage(req: Request, res: Response) {
   try {
     const userId = req.session.userId;
     if (!userId) {
@@ -199,7 +202,7 @@ export async function handleChatMessage(req: Request, res: Response) {
   }
 }
 
-export async function getChatSessions(req: Request, res: Response) {
+async function getChatSessions(req: Request, res: Response) {
   try {
     const userId = req.session.userId;
     if (!userId) {
@@ -219,7 +222,7 @@ export async function getChatSessions(req: Request, res: Response) {
   }
 }
 
-export async function getChatMessages(req: Request, res: Response) {
+async function getChatMessages(req: Request, res: Response) {
   try {
     const userId = req.session.userId;
     if (!userId) {
@@ -243,3 +246,9 @@ export async function getChatMessages(req: Request, res: Response) {
     return res.status(500).json({ message: "Failed to fetch messages" });
   }
 }
+
+router.post("/chat/messages", handleChatMessage);
+router.get("/chat/sessions", getChatSessions);
+router.get("/chat/messages", getChatMessages);
+
+export default router;
