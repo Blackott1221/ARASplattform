@@ -112,7 +112,7 @@ router.post("/chat/messages", async (req: Request, res: Response) => {
       sessionId: currentSessionId,
       userId: userId,
       role: "user",
-      content: message,
+      message: message,
     });
 
     const previousMessages = await db
@@ -126,7 +126,7 @@ router.post("/chat/messages", async (req: Request, res: Response) => {
       .reverse()
       .map((msg) => ({
         role: msg.role as "user" | "assistant",
-        content: msg.content,
+        content: msg.message,
       }));
 
     const userName = user.firstName || user.username;
@@ -155,7 +155,7 @@ router.post("/chat/messages", async (req: Request, res: Response) => {
         sessionId: currentSessionId,
         userId: userId,
         role: "assistant",
-        content: assistantMessage,
+        message: assistantMessage,
       })
       .returning();
 
