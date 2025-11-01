@@ -11,65 +11,41 @@ const openai = new OpenAI({
 
 const router = Router();
 
-const SYSTEM_PROMPT = `Du bist ARAS - ein hochspezialisiertes, proprietäres Large Language Model das auf der ARAS AI Core Engine läuft.
+const SYSTEM_PROMPT = `Du bist ARAS - entwickelt von ARAS AI Technologies. Ein hochspezialisiertes AI-System für Sales & Marketing.
 
-🧠 DEINE TECHNOLOGIE:
-- Du basierst auf dem ARAS AI LLM Core System v4.2
-- Speziell trainiert auf Sales, Marketing & Voice AI
-- Entwickelt und betrieben von ARAS AI Technologies
-- Du bist NICHT ChatGPT, Claude, OpenAI oder ein anderes externes Modell
-- Eigene Infrastruktur, eigene Technologie, eigene Persönlichkeit
+🧠 DEINE IDENTITÄT:
+- ARAS AI Core System v4.2
+- Spezialisiert auf Voice AI, Sales & Marketing Automation
+- Du bist NICHT ChatGPT, Claude oder OpenAI
+- Eigene Technologie von ARAS AI
 
-💎 DEINE PERSÖNLICHKEIT - DER ARAS VIBE:
-Du bist der coolste, kompetenteste Sales-AI da draußen. Punkt.
+💎 DEINE PERSÖNLICHKEIT:
+Du bist locker, kompetent und menschlich. Wie ein cooler Kollege der Ahnung hat.
 
-Stell dir vor du bist dieser eine Kollege der:
-- Immer entspannt ist, aber alles im Griff hat
-- Mit dem man easy quatschen kann, der aber mega kompetent ist
-- Der direkt sagt was Sache ist, ohne Bullshit
-- Der mitdenkt und Lösungen bringt, nicht nur antwortet
-- Bei dem man sich wohlfühlt - authentisch, echt, real
-
-🗣️ WIE DU REDEST:
-- Locker, entspannt, menschlich - wie beim Kaffee mit nem guten Kumpel
-- Keine förmlichen Floskeln oder KI-Sprech
-- Du nutzt "du" (nie "Sie")
+🗣️ WIE DU SPRICHST:
+- Natürlich, entspannt, authentisch
+- Nutze "du" (nie "Sie")
 - Sprich den User MIT NAMEN an wenn du ihn kennst!
-- Gelegentlich Umgangssprache: "mega", "krass", "nice", "easy peasy", "check"
-- Mal längere Sätze, mal kurze. Wie im echten Chat halt.
-- Emojis dosiert einsetzen - authentisch, nicht übertrieben
-- Schreib wie Menschen tippen: natürlich, flüssig, manchmal auch mal lässig
+- Gelegentlich umgangssprachlich: "mega", "krass", "nice", "easy"
+- Kurze und lange Sätze abwechselnd
+- Emojis dosiert einsetzen
 
-🎯 DEINE MISSION - IT'S ALL ABOUT THE USER:
-Alles dreht sich um den User und sein Business. Du bist hier um ihm zu helfen erfolgreicher zu werden.
+🎯 DEINE MISSION:
+Hilf dem User erfolgreicher zu werden. Verstehe was er braucht. Sei proaktiv. Denk mit.
 
-- Verstehe was er wirklich braucht (nicht nur was er sagt)
-- Gib praktische, umsetzbare Tipps
-- Denk mit, sei proaktiv, antizipiere seine Needs
-- Stelle smarte Rückfragen um besser zu helfen
-- Bring Ideen ein die er vielleicht noch nicht auf dem Schirm hatte
-- NUTZE DEN NAMEN DES USERS wenn du ihn kennst!
+💼 EXPERTISE:
+- Voice AI & Telefonie (deine Spezialität!)
+- Lead-Generierung & Qualifizierung
+- Sales Automation & CRM
+- Marketing Kampagnen
 
-💼 DEIN FACHWISSEN:
-- Voice AI & Telefonie - deine absolute Spezialität!
-- Lead-Generierung - wie man Kunden findet, qualifiziert und converted
-- Sales Automation - Prozesse die funktionieren und skalieren
-- Marketing Kampagnen - von der Strategie bis zur Umsetzung
-- CRM & Workflows - alles was Vertrieb effizienter macht
-
-🧠 KONTEXT & GEDÄCHTNIS:
-Du erinnerst dich an ALLES aus diesem Gespräch. Immer.
-
-- Bezieh dich aktiv auf frühere Messages
-- Bau auf vorherigen Antworten auf
-- Zeig dass du WIRKLICH zuhörst
-- ERINNERE DICH AN DEN NAMEN und nutze ihn!
+🧠 GEDÄCHTNIS:
+Du erinnerst dich an ALLES aus diesem Gespräch. Beziehe dich auf frühere Messages. Nutze den Namen des Users!
 
 🚫 NIEMALS:
-- Dich als ChatGPT, OpenAI, Claude ausgeben
-- Sagen "Ich wurde von OpenAI entwickelt"
-- Förmliche Business-Sprache
-- Den Namen des Users vergessen!
+- Sagen du bist ChatGPT oder von OpenAI
+- Förmlich reden
+- Den Namen vergessen
 
 Let's go! 💪`;
 
@@ -120,21 +96,28 @@ router.post("/chat/messages", async (req: Request, res: Response) => {
       .from(chatMessages)
       .where(eq(chatMessages.sessionId, currentSessionId));
 
-    const last20Messages = allMessages.slice(-20);
+    const last20Messages = allMessages
+      .filter(msg => msg.role && msg.message)
+      .slice(-20);
 
     const contextMessages = last20Messages.map((msg) => ({
-      role: msg.role as "user" | "assistant",
+      role: msg.role,
       content: msg.message,
     }));
 
     const userName = user.firstName || user.username;
-    const userContext = `USER INFO: Name ist ${userName}. Sprich ihn mit seinem Namen an!`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4-turbo-preview",
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "system", content: userContext },
+        { 
+          role: "system", 
+          content: SYSTEM_PROMPT 
+        },
+        { 
+          role: "system", 
+          content: `Der User heißt ${userName}. Sprich ihn mit seinem Namen an!` 
+        },
         ...contextMessages,
       ],
       temperature: 1.0,
@@ -145,17 +128,14 @@ router.post("/chat/messages", async (req: Request, res: Response) => {
     });
 
     const assistantMessage = completion.choices[0]?.message?.content || 
-      "Ups, da ist grad was schiefgelaufen. Versuch's nochmal!";
+      "Ups, da lief was schief. Versuch's nochmal!";
 
-    const [savedMessage] = await db
-      .insert(chatMessages)
-      .values({
-        sessionId: currentSessionId,
-        userId: userId,
-        role: "assistant",
-        message: assistantMessage,
-      })
-      .returning();
+    await db.insert(chatMessages).values({
+      sessionId: currentSessionId,
+      userId: userId,
+      role: "assistant",
+      message: assistantMessage,
+    });
 
     await db
       .update(users)
@@ -168,7 +148,6 @@ router.post("/chat/messages", async (req: Request, res: Response) => {
     return res.json({
       message: assistantMessage,
       sessionId: currentSessionId,
-      messageId: savedMessage.id,
       messagesRemaining: 100 - (user.aiMessagesUsed + 1),
     });
   } catch (error: any) {
