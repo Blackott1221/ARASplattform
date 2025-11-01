@@ -3,7 +3,7 @@ import { Router } from "express";
 import OpenAI from "openai";
 import { db } from "./db";
 import { chatMessages, chatSessions, users } from "@shared/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, asc } from "drizzle-orm";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -115,15 +115,15 @@ router.post("/chat/messages", async (req: Request, res: Response) => {
       message: message,
     });
 
-    const previousMessages = await db
+    const allMessages = await db
       .select()
       .from(chatMessages)
       .where(eq(chatMessages.sessionId, currentSessionId))
-      .orderBy(desc(chatMessages.createdAt))
+      .orderBy(chatMessages.createdAt)
       .limit(20);
 
-    const contextMessages = previousMessages
-      .reverse()
+    const contextMessages = allMessages
+      .slice(-20)
       .map((msg) => ({
         role: msg.role as "user" | "assistant",
         content: msg.message,
@@ -192,9 +192,9 @@ router.get("/chat/sessions", async (req: Request, res: Response) => {
       .select()
       .from(chatSessions)
       .where(eq(chatSessions.userId, userId))
-      .orderBy(desc(chatSessions.updatedAt));
+      .orderBy(chatSessions.updatedAt);
 
-    return res.json(sessions);
+    return res.json(sessions.reverse());
   } catch (error) {
     console.error("[GET-SESSIONS-ERROR]", error);
     return res.status(500).json({ message: "Failed to fetch sessions" });
