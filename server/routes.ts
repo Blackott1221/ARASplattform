@@ -585,119 +585,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/chat/messages', requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.session.userId;
-      const { 
-        message, 
-        personality = 'professional', 
-        responseLength = 'detailed', 
-        context = 'sales_automation',
-        language = 'en',
-        assistantId = null
-      } = req.body;
-      
-      logger.debug('Received chat request', { language, messagePreview: message.substring(0, 50) });
-      
-      // Check subscription usage limits
-      const usageCheck = await storage.checkUsageLimit(userId, 'ai_message');
-      if (!usageCheck.allowed) {
-        return res.status(400).json({ 
-          message: usageCheck.message,
-          requiresPayment: usageCheck.requiresPayment,
-          requiresUpgrade: usageCheck.requiresUpgrade
-        });
-      }
-      
-      // Ensure user has an active session
-      let activeSession = await storage.getActiveSession(userId);
-      if (!activeSession) {
-        activeSession = await storage.createChatSession({
-          userId,
-          title: "New Chat",
-          isActive: true
-        });
-      }
-
-      // Save user message
-      const userMessage = await storage.createChatMessage({
-        sessionId: activeSession.id,
-        userId,
-        message,
-        isAi: false
-      });
-      
-      // Generate AI response using OpenAI
-      const openai = new OpenAI({ 
-        apiKey: process.env.OPENAI_API_KEY 
-      });
-
-      let aiResponse = "";
-      
-      // Temporarily disabled Assistant API due to type conflicts
-      // Will use standard chat completions for now
-      if (assistantId && assistantId.startsWith('asst_')) {
-        logger.info('Assistant ID provided but using fallback chat completion for stability');
-      }
-      
-      // Fallback to regular chat completions if no assistant or assistant failed
-      if (!aiResponse || aiResponse.includes("Falling back") || aiResponse.includes("encountered")) {
-        // Get recent chat history for context
-        const recentMessages = await storage.getChatMessages(userId);
-        const conversationHistory = recentMessages.slice(-6).map(msg => ({
-          role: msg.isAi ? "assistant" as const : "user" as const,
-          content: msg.message
-        }));
-
-        // Build personality-specific system prompt
-        let systemPrompt = "CRITICAL RULE: NEVER use **, *, __, _, or any markdown formatting. NEVER use asterisks anywhere in your response. Write only in plain text. You are ARAS AI, an advanced sales automation assistant. ";
-        
-        switch (personality) {
-          case 'casual':
-            systemPrompt += "Be friendly, conversational, and approachable. Use a warm tone while maintaining professionalism.";
-            break;
-          case 'technical':
-            systemPrompt += "Be detailed, technical, and precise. Focus on data-driven insights and specific methodologies.";
-            break;
-          default: // professional
-            systemPrompt += "Be professional, authoritative, and business-focused. Provide clear, actionable advice.";
-        }
-
-        // Add response style guidance
-        switch (responseLength) {
-          case 'brief':
-            systemPrompt += " Keep responses concise and to the point, under 100 words.";
-            break;
-          case 'bullet':
-            systemPrompt += " Format responses as plain text with dashes for bullet points, no asterisks.";
-            break;
-          default: // detailed
-            systemPrompt += " Provide comprehensive, detailed explanations with examples.";
-        }
-
-        systemPrompt += " Specialize in: lead qualification, email campaigns, call scripts, sales strategies, CRM optimization, and pipeline analysis. Always use plain text formatting only.";
-        
-        // Add language instruction - this is critical for immediate response
-        const languageNames = {
-          'en': 'English',
-          'es': 'Spanish', 
-          'fr': 'French',
-          'de': 'German',
-          'pt': 'Portuguese',
-          'it': 'Italian',
-          'ru': 'Russian',
-          'zh': 'Chinese',
-          'ja': 'Japanese',
-          'ar': 'Arabic'
-        };
-        
-        if (language && language !== 'en' && languageNames[language as keyof typeof languageNames]) {
-          const languageName = languageNames[language as keyof typeof languageNames];
-          logger.debug('Language detected', { language, languageName });
-          // Override system prompt entirely for language
-          systemPrompt = `CRITICAL: You must respond ONLY in ${languageName}. ABSOLUTELY FORBIDDEN: Do not use **, *, __, _, or any markdown formatting. Write only in plain text. Never use asterisks anywhere in your response. You are ARAS AI, a sales automation assistant. Be ${personality === 'casual' ? 'friendly and conversational' : personality === 'technical' ? 'detailed and technical' : 'professional'}. ${responseLength === 'brief' ? 'Keep responses under 100 words.' : responseLength === 'bullet' ? 'Use plain text bullet points with dashes only' : 'Provide detailed explanations in plain text.'} Focus on lead qualification, email campaigns, call scripts, sales strategies, CRM optimization, and pipeline analysis. Write your entire response in ${languageName} language using only plain text format. NO ASTERISKS ALLOWED.`;
-        }
-        
+// DISABLED:   app.post('/api/chat/messages', requireAuth, async (req: any, res) => {
+// DISABLED:     try {
+// DISABLED:       const userId = req.session.userId;
+// DISABLED:       const { 
+// DISABLED:         message, 
+// DISABLED:         personality = 'professional', 
+// DISABLED:         responseLength = 'detailed', 
+// DISABLED:         context = 'sales_automation',
+// DISABLED:         language = 'en',
+// DISABLED:         assistantId = null
+// DISABLED:       } = req.body;
+// DISABLED:       
+// DISABLED:       logger.debug('Received chat request', { language, messagePreview: message.substring(0, 50) });
+// DISABLED:       
+// DISABLED:       // Check subscription usage limits
+// DISABLED:       const usageCheck = await storage.checkUsageLimit(userId, 'ai_message');
+// DISABLED:       if (!usageCheck.allowed) {
+// DISABLED:         return res.status(400).json({ 
+// DISABLED:           message: usageCheck.message,
+// DISABLED:           requiresPayment: usageCheck.requiresPayment,
+// DISABLED:           requiresUpgrade: usageCheck.requiresUpgrade
+// DISABLED:         });
+// DISABLED:       }
+// DISABLED:       
+// DISABLED:       // Ensure user has an active session
+// DISABLED:       let activeSession = await storage.getActiveSession(userId);
+// DISABLED:       if (!activeSession) {
+// DISABLED:         activeSession = await storage.createChatSession({
+// DISABLED:           userId,
+// DISABLED:           title: "New Chat",
+// DISABLED:           isActive: true
+// DISABLED:         });
+// DISABLED:       }
+// DISABLED: 
+// DISABLED:       // Save user message
+// DISABLED:       const userMessage = await storage.createChatMessage({
+// DISABLED:         sessionId: activeSession.id,
+// DISABLED:         userId,
+// DISABLED:         message,
+// DISABLED:         isAi: false
+// DISABLED:       });
+// DISABLED:       
+// DISABLED:       // Generate AI response using OpenAI
+// DISABLED:       const openai = new OpenAI({ 
+// DISABLED:         apiKey: process.env.OPENAI_API_KEY 
+// DISABLED:       });
+// DISABLED: 
+// DISABLED:       let aiResponse = "";
+// DISABLED:       
+// DISABLED:       // Temporarily disabled Assistant API due to type conflicts
+// DISABLED:       // Will use standard chat completions for now
+// DISABLED:       if (assistantId && assistantId.startsWith('asst_')) {
+// DISABLED:         logger.info('Assistant ID provided but using fallback chat completion for stability');
+// DISABLED:       }
+// DISABLED:       
+// DISABLED:       // Fallback to regular chat completions if no assistant or assistant failed
+// DISABLED:       if (!aiResponse || aiResponse.includes("Falling back") || aiResponse.includes("encountered")) {
+// DISABLED:         // Get recent chat history for context
+// DISABLED:         const recentMessages = await storage.getChatMessages(userId);
+// DISABLED:         const conversationHistory = recentMessages.slice(-6).map(msg => ({
+// DISABLED:           role: msg.isAi ? "assistant" as const : "user" as const,
+// DISABLED:           content: msg.message
+// DISABLED:         }));
+// DISABLED: 
+// DISABLED:         // Build personality-specific system prompt
+// DISABLED:         let systemPrompt = "CRITICAL RULE: NEVER use **, *, __, _, or any markdown formatting. NEVER use asterisks anywhere in your response. Write only in plain text. You are ARAS AI, an advanced sales automation assistant. ";
+// DISABLED:         
+// DISABLED:         switch (personality) {
+// DISABLED:           case 'casual':
+// DISABLED:             systemPrompt += "Be friendly, conversational, and approachable. Use a warm tone while maintaining professionalism.";
+// DISABLED:             break;
+// DISABLED:           case 'technical':
+// DISABLED:             systemPrompt += "Be detailed, technical, and precise. Focus on data-driven insights and specific methodologies.";
+// DISABLED:             break;
+// DISABLED:           default: // professional
+// DISABLED:             systemPrompt += "Be professional, authoritative, and business-focused. Provide clear, actionable advice.";
+// DISABLED:         }
+// DISABLED: 
+// DISABLED:         // Add response style guidance
+// DISABLED:         switch (responseLength) {
+// DISABLED:           case 'brief':
+// DISABLED:             systemPrompt += " Keep responses concise and to the point, under 100 words.";
+// DISABLED:             break;
+// DISABLED:           case 'bullet':
+// DISABLED:             systemPrompt += " Format responses as plain text with dashes for bullet points, no asterisks.";
+// DISABLED:             break;
+// DISABLED:           default: // detailed
+// DISABLED:             systemPrompt += " Provide comprehensive, detailed explanations with examples.";
+// DISABLED:         }
+// DISABLED: 
+// DISABLED:         systemPrompt += " Specialize in: lead qualification, email campaigns, call scripts, sales strategies, CRM optimization, and pipeline analysis. Always use plain text formatting only.";
+// DISABLED:         
+// DISABLED:         // Add language instruction - this is critical for immediate response
+// DISABLED:         const languageNames = {
+// DISABLED:           'en': 'English',
+// DISABLED:           'es': 'Spanish', 
+// DISABLED:           'fr': 'French',
+// DISABLED:           'de': 'German',
+// DISABLED:           'pt': 'Portuguese',
+// DISABLED:           'it': 'Italian',
+// DISABLED:           'ru': 'Russian',
+// DISABLED:           'zh': 'Chinese',
+// DISABLED:           'ja': 'Japanese',
+// DISABLED:           'ar': 'Arabic'
+// DISABLED:         };
+// DISABLED:         
+// DISABLED:         if (language && language !== 'en' && languageNames[language as keyof typeof languageNames]) {
+// DISABLED:           const languageName = languageNames[language as keyof typeof languageNames];
+// DISABLED:           logger.debug('Language detected', { language, languageName });
+// DISABLED:           // Override system prompt entirely for language
+// DISABLED:           systemPrompt = `CRITICAL: You must respond ONLY in ${languageName}. ABSOLUTELY FORBIDDEN: Do not use **, *, __, _, or any markdown formatting. Write only in plain text. Never use asterisks anywhere in your response. You are ARAS AI, a sales automation assistant. Be ${personality === 'casual' ? 'friendly and conversational' : personality === 'technical' ? 'detailed and technical' : 'professional'}. ${responseLength === 'brief' ? 'Keep responses under 100 words.' : responseLength === 'bullet' ? 'Use plain text bullet points with dashes only' : 'Provide detailed explanations in plain text.'} Focus on lead qualification, email campaigns, call scripts, sales strategies, CRM optimization, and pipeline analysis. Write your entire response in ${languageName} language using only plain text format. NO ASTERISKS ALLOWED.`;
+// DISABLED:         }
+// DISABLED:         
         // Add language enforcement and example responses
         let userMessage = message;
         let languageExamples: Array<{role: "assistant", content: string}> = [];
