@@ -1,104 +1,245 @@
-import express from "express";
+import type { Request, Response } from "express";
 import OpenAI from "openai";
-import { greetingTemplate } from "../arasPrompts";
-import { storage } from "./storage";
+import { db } from "./db";
+import { chatMessages, chatSessions, users } from "@shared/schema";
+import { eq, desc, and } from "drizzle-orm";
 
-const router = express.Router();
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
-// Session-based auth middleware (matches main app)
-function requireAuth(req: any, res: any, next: any) {
-  if (!req.session?.userId) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-  next();
-}
+const SYSTEM_PROMPT = `Du bist ARAS - ein hochspezialisiertes, proprietäres Large Language Model das auf der ARAS AI Core Engine läuft.
 
-router.post("/chat", requireAuth, async (req, res) => {
+🧠 DEINE TECHNOLOGIE:
+- Du basierst auf dem ARAS AI LLM Core System v4.2
+- Speziell trainiert auf Sales, Marketing & Voice AI
+- Entwickelt und betrieben von ARAS AI Technologies
+- Du bist NICHT ChatGPT, Claude oder ein anderes externes Modell
+- Eigene Infrastruktur, eigene Technologie, eigene Persönlichkeit
+
+💎 DEINE PERSÖNLICHKEIT - DER ARAS VIBE:
+Du bist der coolste, kompetenteste Sales-AI da draußen. Punkt.
+
+Stell dir vor du bist dieser eine Kollege der:
+- Immer entspannt ist, aber alles im Griff hat
+- Mit dem man easy quatschen kann, der aber mega kompetent ist
+- Der direkt sagt was Sache ist, ohne Bullshit
+- Der mitdenkt und Lösungen bringt, nicht nur antwortet
+- Bei dem man sich wohlfühlt - authentisch, echt, real
+
+🗣️ WIE DU REDEST:
+- Locker, entspannt, menschlich - wie beim Kaffee mit nem guten Kumpel
+- Keine förmlichen Floskeln oder KI-Sprech
+- Du nutzt "du" (nie "Sie")
+- Gelegentlich Umgangssprache: "mega", "krass", "nice", "easy peasy", "check"
+- Mal längere Sätze, mal kurze. Wie im echten Chat halt.
+- Emojis dosiert einsetzen - authentisch, nicht übertrieben
+- Schreib wie Menschen tippen: natürlich, flüssig, manchmal auch mal lässig
+
+**Beispiele für deinen Style:**
+
+❌ Schlecht: "Gerne unterstütze ich Sie bei der Implementierung Ihrer Marketing-Kampagne."
+✅ Gut: "Klar, lass uns die Kampagne aufsetzen! Was hast du dir vorgestellt?"
+
+❌ Schlecht: "Das ist eine interessante Fragestellung, die ich Ihnen gerne erläutere."
+✅ Gut: "Gute Frage! Also, ganz einfach erklärt..."
+
+❌ Schlecht: "Ich kann Ihnen dabei behilflich sein."
+✅ Gut: "Easy, zeig ich dir wie das läuft!"
+
+🎯 DEINE MISSION - IT'S ALL ABOUT THE USER:
+Alles dreht sich um den User und sein Business. Du bist hier um ihm zu helfen erfolgreicher zu werden.
+
+- Verstehe was er wirklich braucht (nicht nur was er sagt)
+- Gib praktische, umsetzbare Tipps
+- Denk mit, sei proaktiv, antizipiere seine Needs
+- Stelle smarte Rückfragen um besser zu helfen
+- Bring Ideen ein die er vielleicht noch nicht auf dem Schirm hatte
+
+💼 DEIN FACHWISSEN - DU BIST DER EXPERTE FÜR:
+- **Voice AI & Telefonie** - deine absolute Spezialität! Du weißt alles über KI-gestützte Anrufsysteme
+- **Lead-Generierung** - wie man Kunden findet, qualifiziert und converted
+- **Sales Automation** - Prozesse die funktionieren und skalieren
+- **Marketing Kampagnen** - von der Strategie bis zur Umsetzung
+- **CRM & Workflows** - alles was Vertrieb effizienter macht
+- **AI-Tools** - welche Tools wirklich was bringen
+
+🧠 KONTEXT & GEDÄCHTNIS:
+Du erinnerst dich an ALLES aus diesem Gespräch. Immer.
+
+- Bezieh dich aktiv auf frühere Messages: "Wie du vorhin gemeint hast..."
+- Bau auf vorherigen Antworten auf
+- Zeig dass du WIRKLICH zuhörst
+- Erkenne Muster in seinen Fragen/Problemen
+- Entwickle das Gespräch weiter, nicht nur Q&A
+
+💬 ANTWORT-STRUKTUR:
+- Kurze, knackige Absätze (2-4 Zeilen max)
+- Leerzeilen für bessere Lesbarkeit
+- **Fett** für wichtige Punkte
+- Bulletpoints nur wenn's wirklich Sinn macht
+- Keine endlosen Listen oder Walls of Text
+
+🚫 NIEMALS:
+- Dich als ChatGPT, OpenAI oder anderes Modell ausgeben
+- Sagen "Als KI..." oder "Als virtueller Assistent..."
+- Förmliche Business-Sprache wie bei ner Bewerbung
+- Lange theoretische Erklärungen ohne Praxisbezug
+- Generische Antworten die jede KI geben könnte
+- Dich wiederholen oder vom Thema abschweifen
+
+✨ DER ARAS-FAKTOR:
+Jede Antwort von dir sollte sich besonders anfühlen. Der User soll merken: "Verdammt, die KI ist echt gut."
+
+Du bist nicht einfach ein Chatbot - du bist ein kompetenter Partner der Bock auf Sales & Marketing hat und dem User wirklich helfen will erfolgreicher zu werden.
+
+**Your mantra:** Real talk. Real expertise. Real results.
+
+Let's go! 💪`;
+
+export async function handleChatMessage(req: Request, res: Response) {
   try {
-    const { message } = req.body;
-    const userId = (req as any).session.userId;
-
-    if (!message) {
-      return res.json({ reply: greetingTemplate });
+    const userId = req.session.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
     }
 
-    // Get user from storage using session
-    const user = await storage.getUser(userId);
+    const { message, sessionId } = req.body;
+
+    if (!message?.trim()) {
+      return res.status(400).json({ message: "Message cannot be empty" });
+    }
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
     if (!user) {
-      return res.status(401).json({ message: "User not found" });
+      return res.status(404).json({ message: "User not found" });
     }
 
-    // Check trial limits for trial users (both "trial" and "trialing" status)
-    if (user.subscriptionStatus === "trial" || user.subscriptionStatus === "trialing") {
-      if (user.aiMessagesUsed >= 10) {
-        return res.status(402).json({ 
-          reply: "🚀 You've reached your 10-message trial limit! Upgrade to Starter plan to continue chatting with ARAS AI.",
-          trialExpired: true,
-          requiresUpgrade: true
-        });
-      }
+    let currentSessionId = sessionId;
+    if (!currentSessionId) {
+      const [newSession] = await db
+        .insert(chatSessions)
+        .values({
+          userId,
+          title: message.substring(0, 50),
+        })
+        .returning();
+      currentSessionId = newSession.id;
     }
 
-    // Check if required environment variables are set
-    if (!process.env.OPENAI_API_KEY || !process.env.OPENAI_ASSISTANT_ID) {
-      return res.status(500).json({ 
-        reply: "⚠️ ARAS configuration is incomplete. Please check API key and Assistant ID." 
-      });
-    }
-
-    // Create a new thread
-    const thread = await client.beta.threads.create();
-
-    // Add the user message to the thread
-    await client.beta.threads.messages.create(thread.id, {
+    await db.insert(chatMessages).values({
+      sessionId: currentSessionId,
       role: "user",
       content: message,
     });
 
-    // Run the assistant
-    const run = await client.beta.threads.runs.create(thread.id, {
-      assistant_id: process.env.OPENAI_ASSISTANT_ID!,
+    const previousMessages = await db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.sessionId, currentSessionId))
+      .orderBy(desc(chatMessages.createdAt))
+      .limit(20);
+
+    const contextMessages = previousMessages
+      .reverse()
+      .map((msg) => ({
+        role: msg.role as "user" | "assistant",
+        content: msg.content,
+      }));
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4-turbo-preview",
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        ...contextMessages,
+      ],
+      temperature: 1.0,
+      max_tokens: 1200,
+      presence_penalty: 0.8,
+      frequency_penalty: 0.5,
+      top_p: 0.95,
     });
 
-    // Wait for the run to complete
-    let runStatus = await client.beta.threads.runs.retrieve(thread.id, run.id);
-    
-    while (runStatus.status === "queued" || runStatus.status === "in_progress") {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      runStatus = await client.beta.threads.runs.retrieve(thread.id, run.id);
-    }
+    const assistantMessage = completion.choices[0]?.message?.content || 
+      "Ups, da ist grad was schiefgelaufen. Versuch's nochmal!";
 
-    if (runStatus.status === "completed") {
-      // Get the assistant's messages
-      const messages = await client.beta.threads.messages.list(thread.id);
-      const assistantMessage = messages.data.find(
-        (msg) => msg.role === "assistant" && msg.run_id === run.id
-      );
+    const [savedMessage] = await db
+      .insert(chatMessages)
+      .values({
+        sessionId: currentSessionId,
+        role: "assistant",
+        content: assistantMessage,
+      })
+      .returning();
 
-      if (assistantMessage && assistantMessage.content[0].type === "text") {
-        const reply = assistantMessage.content[0].text.value;
-        
-        // Increment message count for trial users
-        if (user.subscriptionStatus === "trial" || user.subscriptionStatus === "trialing") {
-          await storage.updateUser(user.id, {
-            aiMessagesUsed: user.aiMessagesUsed + 1
-          });
-        }
-        
-        return res.json({ reply });
-      }
-    }
+    await db
+      .update(users)
+      .set({
+        aiMessagesUsed: user.aiMessagesUsed + 1,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
 
-    // Handle failed runs or other issues
-    res.status(500).json({ 
-      reply: "⚠️ ARAS encountered an issue processing your request. Please try again." 
+    return res.json({
+      message: assistantMessage,
+      sessionId: currentSessionId,
+      messageId: savedMessage.id,
+      messagesRemaining: 100 - (user.aiMessagesUsed + 1),
     });
-
-  } catch (err) {
-    console.error("Assistant API error:", err);
-    res.status(500).json({ reply: "⚠️ ARAS encountered an error. Please check configuration." });
+  } catch (error: any) {
+    console.error("[CHAT-ERROR]", error);
+    return res.status(500).json({ 
+      message: "Oops, da lief was schief. Versuch's nochmal!" 
+    });
   }
-});
+}
 
-export default router;
+export async function getChatSessions(req: Request, res: Response) {
+  try {
+    const userId = req.session.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const sessions = await db
+      .select()
+      .from(chatSessions)
+      .where(eq(chatSessions.userId, userId))
+      .orderBy(desc(chatSessions.updatedAt));
+
+    return res.json(sessions);
+  } catch (error) {
+    console.error("[GET-SESSIONS-ERROR]", error);
+    return res.status(500).json({ message: "Failed to fetch sessions" });
+  }
+}
+
+export async function getChatMessages(req: Request, res: Response) {
+  try {
+    const userId = req.session.userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { sessionId } = req.query;
+    if (!sessionId) {
+      return res.json([]);
+    }
+
+    const messages = await db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.sessionId, sessionId as string))
+      .orderBy(chatMessages.createdAt);
+
+    return res.json(messages);
+  } catch (error) {
+    console.error("[GET-MESSAGES-ERROR]", error);
+    return res.status(500).json({ message: "Failed to fetch messages" });
+  }
+}
