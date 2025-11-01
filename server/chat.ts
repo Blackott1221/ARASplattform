@@ -3,7 +3,7 @@ import { Router } from "express";
 import OpenAI from "openai";
 import { db } from "./db";
 import { chatMessages, chatSessions, users } from "@shared/schema";
-import { eq, desc, asc } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -118,16 +118,14 @@ router.post("/chat/messages", async (req: Request, res: Response) => {
     const allMessages = await db
       .select()
       .from(chatMessages)
-      .where(eq(chatMessages.sessionId, currentSessionId))
-      .orderBy(chatMessages.createdAt)
-      .limit(20);
+      .where(eq(chatMessages.sessionId, currentSessionId));
 
-    const contextMessages = allMessages
-      .slice(-20)
-      .map((msg) => ({
-        role: msg.role as "user" | "assistant",
-        content: msg.message,
-      }));
+    const last20Messages = allMessages.slice(-20);
+
+    const contextMessages = last20Messages.map((msg) => ({
+      role: msg.role as "user" | "assistant",
+      content: msg.message,
+    }));
 
     const userName = user.firstName || user.username;
     const userContext = `USER INFO: Name ist ${userName}. Sprich ihn mit seinem Namen an!`;
@@ -191,8 +189,7 @@ router.get("/chat/sessions", async (req: Request, res: Response) => {
     const sessions = await db
       .select()
       .from(chatSessions)
-      .where(eq(chatSessions.userId, userId))
-      .orderBy(chatSessions.updatedAt);
+      .where(eq(chatSessions.userId, userId));
 
     return res.json(sessions.reverse());
   } catch (error) {
@@ -216,8 +213,7 @@ router.get("/chat/messages", async (req: Request, res: Response) => {
     const messages = await db
       .select()
       .from(chatMessages)
-      .where(eq(chatMessages.sessionId, sessionId as string))
-      .orderBy(chatMessages.createdAt);
+      .where(eq(chatMessages.sessionId, sessionId as string));
 
     return res.json(messages);
   } catch (error) {
