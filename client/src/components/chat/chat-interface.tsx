@@ -39,6 +39,7 @@ export function ChatInterface() {
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [displayText, setDisplayText] = useState("");
   const [isTyping, setIsTyping] = useState(true);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -100,7 +101,10 @@ export function ChatInterface() {
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (data.sessionId) {
+        setCurrentSessionId(data.sessionId);
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/chat/sessions"] });
       setUploadedFiles([]);
@@ -115,16 +119,24 @@ export function ChatInterface() {
     mutationFn: async (message: string) => {
       const messageData: any = { message };
       
+      // Add sessionId if exists
+      if (currentSessionId) {
+        messageData.sessionId = currentSessionId;
+      }
+      
       // Add file context if files are uploaded
       if (uploadedFiles.length > 0) {
         messageData.files = uploadedFiles;
-        messageData.message = `${message}\n\n[Analysiere die hochgeladenen Dateien: ${uploadedFiles.map(f => f.name).join(', ')}]`;
+        messageData.message = `${message}\n\n[Analysiere die hochgeladenen Dateien: ${uploadedFiles.map(f => f.name).join(", ")}]`;
       }
       
       const response = await apiRequest("POST", "/api/chat/messages", messageData);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (data.sessionId) {
+        setCurrentSessionId(data.sessionId);
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/subscription"] });
       setUploadedFiles([]);
