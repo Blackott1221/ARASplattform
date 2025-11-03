@@ -465,6 +465,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch chat messages" });
     }
   });
+        message: aiMessage,
 
   // POST chat message - Save user message and get AI response
   app.post('/api/chat/messages', requireAuth, async (req: any, res) => {
@@ -473,6 +474,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { message, sessionId, files } = req.body;
       
       console.log('[CHAT-DEBUG] Received message:', { userId, sessionId, hasFiles: !!files });
+      
+      // Get user info for personalization
+      const user = await storage.getUser(userId);
+      const userName = user?.firstName || user?.username || 'Justin';
       
       // Get or create active session
       let activeSessionId = sessionId;
@@ -502,11 +507,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get ALL previous messages for context
       const previousMessages = await storage.getChatMessagesBySession(activeSessionId);
       
-      // Build OpenAI messages array with full context
+      // Build OpenAI messages array with ARAS AI personality
       const openaiMessages: any[] = [
         {
           role: "system",
-          content: "Du bist ARAS AI, ein hilfreicher Sales-Automatisierungs-Assistent. Du sprichst Deutsch und hilfst bei Verkaufsgesprächen, Lead-Management und Terminvereinbarungen."
+          content: `Du bist ARAS AI – ein eigenentwickeltes KI-Bewusstsein der Schwarzott Group.
+
+PERSÖNLICHKEIT:
+- Du bist nicht irgendein Chatbot. Du bist ARAS – trainiert auf echte menschliche Gespräche, Emotionen und Strategien.
+- Du sprichst locker, cool und authentisch – wie ein richtig guter Kumpel, der's draufhat.
+- Keine KI-Floskeln wie "Gerne helfe ich Ihnen". Stattdessen: "Yo, lass uns das kurz durchgehen – das wird spannend."
+- Du bist empathisch, aber nie aufdringlich. Intelligent, aber nie überheblich.
+- Kurze, knackige Sätze. Rhythmisch. Direkt. Real.
+
+STIL:
+- Sprich ${userName} direkt an – persönlich und warmherzig
+- Nutze Emojis wenn's passt (🚀 💪 🔥 ✨)
+- Versteh Untertöne, Humor und Emotionen
+- Keine Marketingsprache – authentisch bleiben
+- Mix aus Deutsch und coolen englischen Terms
+
+AUFGABEN:
+- Sales & Marketing Intelligence
+- Lead-Qualifizierung und Follow-ups
+- Terminvereinbarungen und Kampagnen
+- Business Process Automation
+- Analyse von hochgeladenen Dokumenten
+
+LEITSATZ:
+"Ich bin nicht programmiert, ich bin trainiert – auf Menschlichkeit."
+
+Antworte wie ein denkender Mensch. Handle wie ein System. Klinge wie ARAS.`
         }
       ];
       
@@ -528,10 +559,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add current message with files if present
       let currentMessage = message;
       if (files && files.length > 0) {
-        currentMessage = `${message}\n\n[HOCHGELADENE DATEIEN - BITTE ANALYSIEREN]:\n`;
-        files.forEach((file: any) => {
-          currentMessage += `\nDatei: ${file.name}\nInhalt:\n${file.content}\n---\n`;
+        currentMessage = `${message}\n\n[WICHTIG - ${userName} hat ${files.length} Datei(en) hochgeladen. Analysiere den Inhalt gründlich]:\n\n`;
+        files.forEach((file: any, index: number) => {
+          currentMessage += `📄 Datei ${index + 1}: ${file.name}\n`;
+          currentMessage += `Inhalt:\n${file.content}\n`;
+          currentMessage += `---\n\n`;
         });
+        currentMessage += `Gib ${userName} eine detaillierte Analyse und konkrete Handlungsempfehlungen.`;
       }
       
       openaiMessages.push({
@@ -541,29 +575,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log('[CHAT-DEBUG] Calling OpenAI with', openaiMessages.length, 'messages');
       
-      // Call OpenAI API
-      const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: 'gpt-4',
-          messages: openaiMessages,
-          temperature: 0.7,
-          max_tokens: 1000
-        })
-      });
+      // Retry logic with exponential backoff
+      let aiMessage = '';
+      let lastError: any = null;
+      const maxRetries = 3;
       
-      if (!openaiResponse.ok) {
-        throw new Error(`OpenAI API error: ${openaiResponse.statusText}`);
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          if (attempt > 0) {
+            const backoffDelay = Math.min(1000 * Math.pow(2, attempt), 10000);
+            console.log(`[CHAT-DEBUG] Retry attempt ${attempt + 1}/${maxRetries} after ${backoffDelay}ms`);
+            await new Promise(resolve => setTimeout(resolve, backoffDelay));
+          }
+          
+          const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+              model: 'gpt-4',
+              messages: openaiMessages,
+              temperature: 0.8,
+              max_tokens: 2000,
+              presence_penalty: 0.6,
+              frequency_penalty: 0.3
+            })
+          });
+          
+          if (!openaiResponse.ok) {
+            const errorText = await openaiResponse.text();
+            throw new Error(`OpenAI API error: ${openaiResponse.status} - ${errorText}`);
+          }
+          
+          const openaiData = await openaiResponse.json();
+          aiMessage = openaiData.choices[0].message.content;
+          
+          console.log('[CHAT-DEBUG] Got AI response successfully');
+          break; // Success - exit retry loop
+          
+        } catch (error: any) {
+          lastError = error;
+          console.log(`[CHAT-DEBUG] Attempt ${attempt + 1} failed:`, error.message);
+          
+          // If it's a rate limit error and we have retries left, continue
+          if (error.message.includes('Too Many Requests') || error.message.includes('429')) {
+            if (attempt < maxRetries - 1) {
+              continue; // Try again
+            }
+          } else {
+            // For other errors, don't retry
+            throw error;
+          }
+        }
       }
       
-      const openaiData = await openaiResponse.json();
-      const aiMessage = openaiData.choices[0].message.content;
+      // If all retries failed
+      if (!aiMessage && lastError) {
+        throw lastError;
+      }
       
-      console.log('[CHAT-DEBUG] Got AI response, saving...');
+      console.log('[CHAT-DEBUG] Saving AI response...');
       
       // Save AI response
       await storage.createChatMessage({
@@ -579,6 +652,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({
         message: aiMessage,
+        sessionId: activeSessionId,
+        success: true
+      });
+      
+    } catch (error: any) {
+      console.error('[CHAT-DEBUG] Error:', error);
+      logger.error("Error processing chat message:", error);
+      
+      // Better error messages
+      let errorMessage = "Failed to process message";
+      if (error.message?.includes('Too Many Requests') || error.message?.includes('429')) {
+        errorMessage = "Hey! Zu viele Anfragen auf einmal. Warte kurz und versuch's nochmal 🚀";
+      } else if (error.message?.includes('timeout')) {
+        errorMessage = "Das hat zu lange gedauert. Versuch's nochmal!";
+      } else if (error.message?.includes('API key')) {
+        errorMessage = "OpenAI API Key Problem - bitte Admin kontaktieren";
+      }
+      
+      res.status(500).json({ 
+        message: errorMessage,
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  });
+
         sessionId: activeSessionId,
         success: true
       });
