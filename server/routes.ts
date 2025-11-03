@@ -491,7 +491,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Save user message
-      await storage.saveChatMessage({
+      await storage.createChatMessage({
         sessionId: activeSessionId,
         userId,
         message,
@@ -566,7 +566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('[CHAT-DEBUG] Got AI response, saving...');
       
       // Save AI response
-      await storage.saveChatMessage({
+      await storage.createChatMessage({
         sessionId: activeSessionId,
         userId,
         message: aiMessage,
