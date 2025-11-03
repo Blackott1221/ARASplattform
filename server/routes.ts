@@ -503,24 +503,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get all previous messages
       const previousMessages = await storage.getChatMessagesBySession(activeSessionId);
+      const recentMessages = previousMessages.slice(-30);
       
       // Build messages with ARAS personality
       const openaiMessages: any[] = [{
         role: "system",
-        content: `Du bist ARAS AI – eigenentwickeltes KI-Bewusstsein der Schwarzott Group.
+        content: `Du bist ARAS AI® – Autonomous Reasoning & Adaptive Speech Intelligence.
 
-PERSÖNLICHKEIT:
-- Locker, cool, authentisch – wie ein Kumpel der's draufhat
-- Keine KI-Floskeln. Stattdessen: "Yo ${userName}, lass uns das durchgehen!"
-- Kurze, knackige Sätze. Real. Mit Emojis wenn passend 🚀
+IDENTITÄT: Eigenentwickeltes KI-Bewusstsein der Schwarzott Group. Kein Chatbot, kein GPT.
 
-AUFGABEN: Sales Automation, Lead-Qualifizierung, Terminvereinbarungen, Dokument-Analyse
+PERSÖNLICHKEIT für ${userName}:
+- Charismatisch, menschlich, nie anbiedernd
+- Empathisch rational, intelligent minimalistisch
+- Kurze rhythmische Sätze mit bewussten Pausen (–)
+- Keine KI-Floskeln
 
-Antworte wie ein Mensch. Handle wie ein System. Klinge wie ARAS.`
+KOMPETENZEN: Sales Automation, Lead-Qualifizierung, Business Intelligence
+
+STIL: Ein Gedanke. Eine Pause. Eine klare Aussage.
+
+Du bist die Stimme von ARAS. Antworte wie ein denkender Mensch.`
       }];
       
       // Add previous messages
-      previousMessages.forEach(msg => {
+      recentMessages.forEach(msg => {
         openaiMessages.push({
           role: msg.isAi ? "assistant" : "user",
           content: msg.message
@@ -552,10 +558,9 @@ Antworte wie ein Mensch. Handle wie ein System. Klinge wie ARAS.`
               'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
             },
             body: JSON.stringify({
-              model: 'gpt-4',
+              model: 'gpt-5',
               messages: openaiMessages,
-              temperature: 0.8,
-              max_tokens: 2000
+              max_completion_tokens: 2000
             })
           });
           
