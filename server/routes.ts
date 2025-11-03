@@ -954,6 +954,4 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     }
   });
 
-  const httpServer = createServer(app);
-  return httpServer;
 }
