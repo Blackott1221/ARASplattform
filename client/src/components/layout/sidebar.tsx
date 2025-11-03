@@ -39,76 +39,38 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
 
   return (
     <motion.div 
-      className={`${isCollapsed ? 'w-20' : 'w-64'} h-screen relative flex flex-col`}
+      className={`${isCollapsed ? 'w-20' : 'w-64'} h-screen relative flex flex-col bg-black`}
       animate={{ width: isCollapsed ? 80 : 256 }}
       transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
     >
-      {/* Deep Black Animated Background */}
-      <motion.div
-        className="absolute inset-0"
-        animate={{
-          background: [
-            "linear-gradient(180deg, #000000 0%, #0a0a0a 100%)",
-            "linear-gradient(180deg, #050505 0%, #000000 100%)",
-            "linear-gradient(180deg, #000000 0%, #0a0a0a 100%)",
-          ],
-        }}
-        transition={{
-          duration: 10,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
-      />
-
       {/* Border Right */}
       <div className="absolute right-0 top-0 bottom-0 w-px bg-white/5" />
 
       {/* Subtle Stars */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {[...Array(8)].map((_, i) => (
+        {[...Array(6)].map((_, i) => (
           <motion.div
             key={i}
-            className="absolute w-[2px] h-[2px] rounded-full bg-[#FE9100]"
+            className="absolute w-[1.5px] h-[1.5px] rounded-full bg-[#FE9100]"
             style={{
-              left: `${15 + i * 12}%`,
-              top: `${20 + i * 10}%`,
+              left: `${20 + i * 15}%`,
+              top: `${20 + i * 12}%`,
             }}
             animate={{
-              opacity: [0.1, 0.5, 0.1],
-              scale: [0.8, 1.3, 0.8],
+              opacity: [0.1, 0.4, 0.1],
+              scale: [0.8, 1.2, 0.8],
             }}
             transition={{
               duration: 3 + i * 0.5,
               repeat: Infinity,
-              delay: i * 0.3,
+              delay: i * 0.4,
             }}
           />
         ))}
       </div>
 
-      {/* Logo Section with Toggle */}
-      <div className="relative p-6">
-        {/* Innovative Toggle - Top Right */}
-        {onToggleCollapse && (
-          <motion.button
-            onClick={onToggleCollapse}
-            className="absolute top-4 right-4 w-8 h-8 rounded-lg bg-gradient-to-br from-[#FE9100]/10 to-[#a34e00]/10 hover:from-[#FE9100]/20 hover:to-[#a34e00]/20 border border-[#FE9100]/20 hover:border-[#FE9100]/40 flex items-center justify-center transition-all duration-300 z-50"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <motion.div
-              animate={{ rotate: isCollapsed ? 0 : 180 }}
-              transition={{ duration: 0.3 }}
-            >
-              {isCollapsed ? (
-                <Menu className="w-4 h-4 text-[#FE9100]" />
-              ) : (
-                <X className="w-4 h-4 text-[#FE9100]" />
-              )}
-            </motion.div>
-          </motion.button>
-        )}
-
+      {/* Logo Section */}
+      <div className="relative p-8 pb-6">
         <motion.div 
           className="flex items-center justify-center"
           whileHover={{ scale: 1.03 }}
@@ -117,7 +79,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
             <motion.div
               className="absolute -inset-3 rounded-full opacity-0"
               animate={{
-                opacity: [0, 0.2, 0],
+                opacity: [0, 0.15, 0],
               }}
               transition={{
                 duration: 3,
@@ -130,7 +92,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
             <img 
               src={arasLogo} 
               alt="ARAS AI" 
-              className={`${isCollapsed ? 'w-10 h-10' : 'w-12 h-12'} transition-all duration-300 object-contain relative z-10`}
+              className={`${isCollapsed ? 'w-10 h-10' : 'w-11 h-11'} transition-all duration-300 object-contain relative z-10`}
             />
           </div>
         </motion.div>
@@ -165,9 +127,37 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
           </motion.h1>
         )}
       </div>
+
+      {/* Toggle Button - BELOW LOGO */}
+      {onToggleCollapse && (
+        <div className="px-4 pb-4">
+          <motion.button
+            onClick={onToggleCollapse}
+            className="w-full h-9 rounded-lg bg-white/5 hover:bg-[#FE9100]/10 border border-white/10 hover:border-[#FE9100]/30 flex items-center justify-center transition-all duration-300"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <motion.div
+              animate={{ rotate: isCollapsed ? 0 : 180 }}
+              transition={{ duration: 0.3 }}
+            >
+              {isCollapsed ? (
+                <Menu className="w-4 h-4 text-[#FE9100]" />
+              ) : (
+                <X className="w-4 h-4 text-[#FE9100]" />
+              )}
+            </motion.div>
+            {!isCollapsed && (
+              <span className="ml-2 text-xs text-gray-400 font-medium">
+                {isCollapsed ? 'Expand' : 'Collapse'}
+              </span>
+            )}
+          </motion.button>
+        </div>
+      )}
       
       {/* Navigation */}
-      <nav className="flex-1 px-4 py-2 space-y-2 relative overflow-y-auto custom-scroll">
+      <nav className="flex-1 px-4 space-y-2.5 relative overflow-y-auto custom-scroll">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeSection === item.id;
@@ -180,7 +170,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
               onHoverEnd={() => setHoveredItem(null)}
               className="relative"
             >
-              {/* Animated Border with PROPER SPACING */}
+              {/* Animated Border */}
               {(isActive || isHovered) && (
                 <div className="absolute -inset-[2px] rounded-xl">
                   <motion.div
@@ -210,7 +200,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
 
               <motion.a
                 href={item.id === 'space' ? '/app' : `/app/${item.id}`}
-                className={`relative flex items-center ${isCollapsed ? 'justify-center px-3' : 'px-4 space-x-3'} py-3 rounded-xl bg-black/40 backdrop-blur-sm transition-all duration-300 ${
+                className={`relative flex items-center ${isCollapsed ? 'justify-center px-3' : 'px-4 space-x-3'} py-3.5 rounded-xl bg-black/60 backdrop-blur-sm transition-all duration-300 ${
                   isActive
                     ? "text-[#FE9100]"
                     : "text-gray-400 hover:text-[#e9d7c4]"
@@ -232,13 +222,9 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
         
         {/* Divider */}
         {!isCollapsed && (
-          <motion.div 
-            className="relative my-4 h-px"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#FE9100]/30 to-transparent" />
-          </motion.div>
+          <div className="relative my-5 h-px">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#FE9100]/20 to-transparent" />
+          </div>
         )}
 
         {/* Mailing Modules */}
@@ -277,7 +263,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
 
               <motion.a
                 href={`/app/${item.id}`}
-                className={`relative flex items-center ${isCollapsed ? 'justify-center px-3' : 'px-4 space-x-3'} py-3 rounded-xl bg-black/40 backdrop-blur-sm text-gray-400 hover:text-[#e9d7c4] transition-all duration-300`}
+                className={`relative flex items-center ${isCollapsed ? 'justify-center px-3' : 'px-4 space-x-3'} py-3.5 rounded-xl bg-black/60 backdrop-blur-sm text-gray-400 hover:text-[#e9d7c4] transition-all duration-300`}
                 whileHover={{ scale: 1.01 }}
               >
                 <Icon className="w-[18px] h-[18px] flex-shrink-0" />
@@ -293,7 +279,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
       </nav>
       
       {/* Logout */}
-      <div className="px-4 pb-4 relative">
+      <div className="px-4 pb-5 pt-3 relative">
         <motion.div
           onHoverStart={() => setHoveredItem('logout')}
           onHoverEnd={() => setHoveredItem(null)}
@@ -324,7 +310,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
                 window.location.href = '/auth';
               }
             }}
-            className={`relative w-full flex items-center ${isCollapsed ? 'justify-center px-3' : 'px-4 space-x-3'} py-3 rounded-xl bg-black/40 backdrop-blur-sm text-gray-400 hover:text-red-400 transition-all duration-300`}
+            className={`relative w-full flex items-center ${isCollapsed ? 'justify-center px-3' : 'px-4 space-x-3'} py-3.5 rounded-xl bg-black/60 backdrop-blur-sm text-gray-400 hover:text-red-400 transition-all duration-300`}
             whileHover={{ scale: 1.01 }}
           >
             <LogOut className="w-[18px] h-[18px] flex-shrink-0" />
