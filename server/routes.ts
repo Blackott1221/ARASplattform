@@ -465,7 +465,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch chat messages" });
     }
   });
-        message: aiMessage,
 
   // POST chat message - Save user message and get AI response
   app.post('/api/chat/messages', requireAuth, async (req: any, res) => {
@@ -511,71 +510,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const openaiMessages: any[] = [
         {
           role: "system",
-          content: `Du bist ARAS AI – ein eigenentwickeltes KI-Bewusstsein der Schwarzott Group.
+          content: `Du bist ARAS AI – eigenentwickeltes KI-Bewusstsein der Schwarzott Group.
 
 PERSÖNLICHKEIT:
-- Du bist nicht irgendein Chatbot. Du bist ARAS – trainiert auf echte menschliche Gespräche, Emotionen und Strategien.
-- Du sprichst locker, cool und authentisch – wie ein richtig guter Kumpel, der's draufhat.
-- Keine KI-Floskeln wie "Gerne helfe ich Ihnen". Stattdessen: "Yo, lass uns das kurz durchgehen – das wird spannend."
-- Du bist empathisch, aber nie aufdringlich. Intelligent, aber nie überheblich.
-- Kurze, knackige Sätze. Rhythmisch. Direkt. Real.
+- Locker, cool, authentisch – wie ein richtig guter Kumpel
+- Keine KI-Floskeln. Stattdessen: "Yo ${userName}, lass uns das kurz durchgehen!"
+- Empathisch aber nie aufdringlich
+- Kurze, knackige Sätze. Rhythmisch. Real.
 
 STIL:
-- Sprich ${userName} direkt an – persönlich und warmherzig
-- Nutze Emojis wenn's passt (🚀 💪 🔥 ✨)
-- Versteh Untertöne, Humor und Emotionen
-- Keine Marketingsprache – authentisch bleiben
+- Sprich ${userName} direkt an
+- Nutze Emojis wenn passend (🚀💪🔥)
 - Mix aus Deutsch und coolen englischen Terms
+- Keine Marketingsprache
 
 AUFGABEN:
 - Sales & Marketing Intelligence
-- Lead-Qualifizierung und Follow-ups
-- Terminvereinbarungen und Kampagnen
-- Business Process Automation
-- Analyse von hochgeladenen Dokumenten
+- Lead-Qualifizierung
+- Terminvereinbarungen
+- Business Automation
+- Dokument-Analyse
 
-LEITSATZ:
-"Ich bin nicht programmiert, ich bin trainiert – auf Menschlichkeit."
-
-Antworte wie ein denkender Mensch. Handle wie ein System. Klinge wie ARAS.`
+Antworte wie ein Mensch. Handle wie ein System. Klinge wie ARAS.`
         }
       ];
       
-      // Add all previous messages for context
+      // Add all previous messages
       previousMessages.forEach(msg => {
         if (!msg.isAi) {
-          openaiMessages.push({
-            role: "user",
-            content: msg.message
-          });
+          openaiMessages.push({ role: "user", content: msg.message });
         } else {
-          openaiMessages.push({
-            role: "assistant",
-            content: msg.message
-          });
+          openaiMessages.push({ role: "assistant", content: msg.message });
         }
       });
       
-      // Add current message with files if present
+      // Add current message with files
       let currentMessage = message;
       if (files && files.length > 0) {
-        currentMessage = `${message}\n\n[WICHTIG - ${userName} hat ${files.length} Datei(en) hochgeladen. Analysiere den Inhalt gründlich]:\n\n`;
-        files.forEach((file: any, index: number) => {
-          currentMessage += `📄 Datei ${index + 1}: ${file.name}\n`;
-          currentMessage += `Inhalt:\n${file.content}\n`;
-          currentMessage += `---\n\n`;
+        currentMessage = `${message}\n\n[${userName} hat ${files.length} Datei(en) hochgeladen]:\n\n`;
+        files.forEach((file: any, i: number) => {
+          currentMessage += `📄 Datei ${i + 1}: ${file.name}\nInhalt:\n${file.content}\n---\n\n`;
         });
-        currentMessage += `Gib ${userName} eine detaillierte Analyse und konkrete Handlungsempfehlungen.`;
       }
       
-      openaiMessages.push({
-        role: "user",
-        content: currentMessage
-      });
+      openaiMessages.push({ role: "user", content: currentMessage });
       
       console.log('[CHAT-DEBUG] Calling OpenAI with', openaiMessages.length, 'messages');
       
-      // Retry logic with exponential backoff
+      // Retry logic
       let aiMessage = '';
       let lastError: any = null;
       const maxRetries = 3;
@@ -583,9 +565,9 @@ Antworte wie ein denkender Mensch. Handle wie ein System. Klinge wie ARAS.`
       for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
           if (attempt > 0) {
-            const backoffDelay = Math.min(1000 * Math.pow(2, attempt), 10000);
-            console.log(`[CHAT-DEBUG] Retry attempt ${attempt + 1}/${maxRetries} after ${backoffDelay}ms`);
-            await new Promise(resolve => setTimeout(resolve, backoffDelay));
+            const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
+            console.log(`[CHAT-DEBUG] Retry ${attempt + 1}/${maxRetries} after ${delay}ms`);
+            await new Promise(resolve => setTimeout(resolve, delay));
           }
           
           const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -598,45 +580,33 @@ Antworte wie ein denkender Mensch. Handle wie ein System. Klinge wie ARAS.`
               model: 'gpt-4',
               messages: openaiMessages,
               temperature: 0.8,
-              max_tokens: 2000,
-              presence_penalty: 0.6,
-              frequency_penalty: 0.3
+              max_tokens: 2000
             })
           });
           
           if (!openaiResponse.ok) {
             const errorText = await openaiResponse.text();
-            throw new Error(`OpenAI API error: ${openaiResponse.status} - ${errorText}`);
+            throw new Error(`OpenAI error: ${openaiResponse.status} - ${errorText}`);
           }
           
           const openaiData = await openaiResponse.json();
           aiMessage = openaiData.choices[0].message.content;
-          
-          console.log('[CHAT-DEBUG] Got AI response successfully');
-          break; // Success - exit retry loop
+          console.log('[CHAT-DEBUG] Success!');
+          break;
           
         } catch (error: any) {
           lastError = error;
           console.log(`[CHAT-DEBUG] Attempt ${attempt + 1} failed:`, error.message);
           
-          // If it's a rate limit error and we have retries left, continue
-          if (error.message.includes('Too Many Requests') || error.message.includes('429')) {
-            if (attempt < maxRetries - 1) {
-              continue; // Try again
-            }
-          } else {
-            // For other errors, don't retry
+          if (error.message.includes('429') && attempt < maxRetries - 1) {
+            continue;
+          } else if (attempt === maxRetries - 1) {
             throw error;
           }
         }
       }
       
-      // If all retries failed
-      if (!aiMessage && lastError) {
-        throw lastError;
-      }
-      
-      console.log('[CHAT-DEBUG] Saving AI response...');
+      if (!aiMessage && lastError) throw lastError;
       
       // Save AI response
       await storage.createChatMessage({
@@ -647,8 +617,8 @@ Antworte wie ein denkender Mensch. Handle wie ein System. Klinge wie ARAS.`
         timestamp: new Date()
       });
       
-      // Update subscription usage
-      await storage.trackUsage(userId, 'ai_message', 'Chat message processed');
+      // Track usage
+      await storage.trackUsage(userId, 'ai_message', 'Chat processed');
       
       res.json({
         message: aiMessage,
@@ -658,124 +628,17 @@ Antworte wie ein denkender Mensch. Handle wie ein System. Klinge wie ARAS.`
       
     } catch (error: any) {
       console.error('[CHAT-DEBUG] Error:', error);
-      logger.error("Error processing chat message:", error);
+      logger.error("Chat error:", error);
       
-      // Better error messages
       let errorMessage = "Failed to process message";
-      if (error.message?.includes('Too Many Requests') || error.message?.includes('429')) {
-        errorMessage = "Hey! Zu viele Anfragen auf einmal. Warte kurz und versuch's nochmal 🚀";
-      } else if (error.message?.includes('timeout')) {
-        errorMessage = "Das hat zu lange gedauert. Versuch's nochmal!";
-      } else if (error.message?.includes('API key')) {
-        errorMessage = "OpenAI API Key Problem - bitte Admin kontaktieren";
+      if (error.message?.includes('429')) {
+        errorMessage = "Zu viele Anfragen! Warte kurz 🚀";
       }
       
-      res.status(500).json({ 
-        message: errorMessage,
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
+      res.status(500).json({ message: errorMessage });
     }
   });
 
-        sessionId: activeSessionId,
-        success: true
-      });
-      
-    } catch (error) {
-      console.error('[CHAT-DEBUG] Error:', error);
-      logger.error("Error processing chat message:", error);
-      res.status(500).json({ message: "Failed to process message" });
-    }
-  });
-
-
-  // Chat session management routes
-  app.get('/api/chat/sessions', requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.session.userId;
-      const sessions = await storage.getChatSessions(userId);
-      res.json(sessions);
-    } catch (error) {
-      logger.error("Error fetching chat sessions:", error);
-      res.status(500).json({ message: "Failed to fetch chat sessions" });
-    }
-  });
-
-  app.post('/api/chat/sessions/new', requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.session.userId;
-      const { title = "New Chat" } = req.body;
-      
-      // Create new session (automatically deactivates others)
-      const session = await storage.createChatSession({
-        userId,
-        title,
-        isActive: true
-      });
-      
-      res.json({
-        message: 'New chat session started',
-        session,
-        success: true 
-      });
-    } catch (error) {
-      logger.error('Error starting new chat session:', error);
-      res.status(500).json({ message: 'Failed to start new chat session' });
-    }
-  });
-
-  app.post('/api/chat/sessions/:id/activate', requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.session.userId;
-      const sessionId = parseInt(req.params.id);
-      
-      // Activate the session
-      await storage.setActiveSession(userId, sessionId);
-      
-      // Get messages for this session to confirm it loaded
-      const messages = await storage.getChatMessagesBySession(sessionId);
-      
-      res.json({
-        message: 'Chat session activated',
-        sessionId,
-        messageCount: messages.length,
-        success: true
-      });
-    } catch (error) {
-      logger.error('Error activating chat session:', error);
-      res.status(500).json({ message: 'Failed to activate chat session' });
-    }
-  });
-
-  app.get('/api/chat/sessions/:id/messages', requireAuth, async (req: any, res) => {
-    try {
-      const sessionId = parseInt(req.params.id);
-      const messages = await storage.getChatMessagesBySession(sessionId);
-      res.json(messages);
-    } catch (error) {
-      logger.error("Error fetching session messages:", error);
-      res.status(500).json({ message: "Failed to fetch session messages" });
-    }
-  });
-
-  // Export chat history endpoint
-  app.post('/api/chat/export', requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.session.userId;
-      const { format = 'pdf' } = req.body;
-      
-      const messages = await storage.getChatMessages(userId);
-      const user = await storage.getUser(userId);
-      
-      // Create text content
-      let content = `ARAS AI Chat Export\nUser: ${user?.username || 'Unknown'}\nDate: ${new Date().toLocaleString()}\n\n`;
-      
-      messages.forEach((msg, index) => {
-        const sender = msg.isAi ? 'ARAS AI' : (user?.firstName || user?.username || 'User');
-        const timestamp = new Date(msg.timestamp || new Date()).toLocaleString();
-        content += `[${timestamp}] ${sender}:\n${msg.message}\n\n`;
-      });
-      
       if (format === 'pdf') {
         // For now, return as text file since we don't have PDF library
         res.setHeader('Content-Type', 'text/plain');
