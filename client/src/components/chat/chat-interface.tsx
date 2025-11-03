@@ -39,7 +39,7 @@ export function ChatInterface() {
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [displayText, setDisplayText] = useState("");
   const [isTyping, setIsTyping] = useState(true);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -94,6 +94,16 @@ export function ChatInterface() {
     retry: false,
   });
 
+  // Set currentSessionId from active session
+  useEffect(() => {
+    if (chatSessions.length > 0) {
+      const activeSession = chatSessions.find(s => s.isActive);
+      if (activeSession) {
+        setCurrentSessionId(activeSession.id);
+      }
+    }
+  }, [chatSessions]);
+
   const startNewChatMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("POST", "/api/chat/sessions/new", {
@@ -102,9 +112,7 @@ export function ChatInterface() {
       return response.json();
     },
     onSuccess: (data) => {
-      if (data.sessionId) {
-        setCurrentSessionId(data.sessionId);
-      }
+      setCurrentSessionId(data.id);
       queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/chat/sessions"] });
       setUploadedFiles([]);
@@ -117,18 +125,22 @@ export function ChatInterface() {
 
   const sendMessage = useMutation({
     mutationFn: async (message: string) => {
-      const messageData: any = { message };
-      
-      // Add sessionId if exists
-      if (currentSessionId) {
-        messageData.sessionId = currentSessionId;
-      }
+      const messageData: any = { 
+        message,
+        sessionId: currentSessionId 
+      };
       
       // Add file context if files are uploaded
       if (uploadedFiles.length > 0) {
-        messageData.files = uploadedFiles;
-        messageData.message = `${message}\n\n[Analysiere die hochgeladenen Dateien: ${uploadedFiles.map(f => f.name).join(", ")}]`;
+        messageData.files = uploadedFiles.map(f => ({
+          name: f.name,
+          content: f.content,
+          type: f.type
+        }));
+        messageData.message = `${message}\n\n[WICHTIG: Analysiere die hochgeladenen Dateien: ${uploadedFiles.map(f => f.name).join(', ')}]`;
       }
+      
+      console.log('Sending message with data:', messageData);
       
       const response = await apiRequest("POST", "/api/chat/messages", messageData);
       return response.json();
@@ -142,9 +154,10 @@ export function ChatInterface() {
       setUploadedFiles([]);
     },
     onError: (error: any) => {
+      console.error('Send message error:', error);
       toast({
-        title: "Error",
-        description: "Failed to send message",
+        title: "Fehler",
+        description: "Nachricht konnte nicht gesendet werden",
         variant: "destructive",
       });
     },
@@ -153,6 +166,7 @@ export function ChatInterface() {
   const loadChatSession = async (sessionId: string) => {
     try {
       await apiRequest("POST", `/api/chat/sessions/${sessionId}/activate`, {});
+      setCurrentSessionId(parseInt(sessionId));
       await queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/chat/sessions"] });
       setShowHistory(false);
@@ -203,7 +217,18 @@ export function ChatInterface() {
     }
 
     try {
-      const content = await file.text();
+      // Read file as text or base64 depending on type
+      let content = '';
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        content = await new Promise((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      } else {
+        content = await file.text();
+      }
       
       setUploadedFiles([...uploadedFiles, {
         name: file.name,
@@ -253,7 +278,7 @@ export function ChatInterface() {
     try {
       await sendMessage.mutateAsync(userMessage);
     } catch (error) {
-      // Error handled in mutation
+      console.error('Error sending message:', error);
     }
   };
 
@@ -512,7 +537,6 @@ export function ChatInterface() {
       {messages.length === 0 ? (
         /* WELCOME SCREEN */
         <div className="flex-1 flex flex-col items-center justify-center px-6">
-          {/* Logo */}
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -522,7 +546,6 @@ export function ChatInterface() {
             <img src={arasLogo} alt="ARAS AI" className="w-16 h-16 object-contain" />
           </motion.div>
 
-          {/* Animated Headline */}
           <motion.div
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -548,7 +571,6 @@ export function ChatInterface() {
             </div>
           </motion.div>
 
-          {/* Uploaded Files Preview */}
           {uploadedFiles.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -579,7 +601,6 @@ export function ChatInterface() {
             </motion.div>
           )}
 
-          {/* Main Input */}
           <motion.div
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -587,7 +608,6 @@ export function ChatInterface() {
             className="w-full max-w-2xl"
           >
             <div className="relative">
-              {/* Animated Border */}
               <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-orange-500 via-purple-500 to-orange-500 opacity-75 blur-sm animate-gradient-xy"></div>
               
               <Input
@@ -646,7 +666,6 @@ export function ChatInterface() {
       ) : (
         /* CHAT VIEW */
         <>
-          {/* Header */}
           <div className="px-4 py-2 border-b border-white/10 flex justify-between items-center backdrop-blur-sm bg-black/50">
             <div className="flex items-center space-x-2">
               <Button
@@ -684,7 +703,6 @@ export function ChatInterface() {
             </div>
           </div>
 
-          {/* Messages */}
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
             <AnimatePresence>
               {messages.map((msg) => (
@@ -727,7 +745,7 @@ export function ChatInterface() {
                           />
                         ))}
                       </div>
-                      <span className="text-xs text-gray-400">denkt nach...</span>
+                      <span className="text-xs text-gray-400">analysiert...</span>
                     </div>
                   </div>
                 </div>
@@ -737,7 +755,6 @@ export function ChatInterface() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Uploaded Files Preview in Chat */}
           {uploadedFiles.length > 0 && (
             <div className="px-4 pb-2">
               <div className="max-w-3xl mx-auto">
@@ -763,11 +780,9 @@ export function ChatInterface() {
             </div>
           )}
 
-          {/* Input */}
           <div className="px-4 py-3 border-t border-white/10 backdrop-blur-sm bg-black/50">
             <div className="max-w-3xl mx-auto">
               <div className="relative">
-                {/* Animated Border */}
                 <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-orange-500 via-purple-500 to-orange-500 opacity-60 blur-sm animate-gradient-xy"></div>
                 
                 <Input
@@ -820,10 +835,8 @@ export function ChatInterface() {
         </>
       )}
 
-      {/* Orbitron Font Import */}
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       
-      {/* Custom Styles */}
       <style>{`
         @keyframes gradient-xy {
           0%, 100% {
