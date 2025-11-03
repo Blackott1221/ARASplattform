@@ -749,3 +749,112 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   const httpServer = createServer(app);
   return httpServer;
 }
+
+  // ============================================
+  // TWILIO VOICE AI - ARAS TELEFONIE
+  // ============================================
+
+  app.post('/api/voice/incoming', async (req, res) => {
+    try {
+      logger.info('Incoming call received');
+      
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Vicki" language="de-DE">
+    Hallo. Hier ist ARAS AI – dein intelligenter Assistent der Schwarzott Group.
+    Wie kann ich dir heute helfen?
+  </Say>
+  <Gather input="speech" action="https://arasai.onrender.com/api/voice/process" method="POST" language="de-DE" speechTimeout="3" enhanced="true">
+    <Say voice="Polly.Vicki" language="de-DE">Bitte sprich jetzt.</Say>
+  </Gather>
+  <Say voice="Polly.Vicki" language="de-DE">
+    Ich habe nichts verstanden. Auf Wiedersehen.
+  </Say>
+  <Hangup/>
+</Response>`;
+      
+      res.type('text/xml');
+      res.send(twiml);
+    } catch (error) {
+      logger.error('Voice incoming error:', error);
+      res.status(500).send('Error');
+    }
+  });
+
+  app.post('/api/voice/process', async (req, res) => {
+    try {
+      const { SpeechResult, CallSid } = req.body;
+      
+      logger.info('Speech received:', { SpeechResult, CallSid });
+      
+      if (!SpeechResult) {
+        const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Vicki" language="de-DE">Ich habe dich nicht verstanden. Bitte wiederhole deine Frage.</Say>
+  <Gather input="speech" action="https://arasai.onrender.com/api/voice/process" method="POST" language="de-DE" speechTimeout="3">
+    <Say voice="Polly.Vicki" language="de-DE">Bitte sprich jetzt.</Say>
+  </Gather>
+  <Hangup/>
+</Response>`;
+        res.type('text/xml');
+        return res.send(twiml);
+      }
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-5',
+          messages: [{
+            role: "system",
+            content: "Du bist ARAS AI - die Stimme der Schwarzott Group. Antworte extrem kurz und präzise. Maximum 2-3 Sätze. Natürlich und menschlich."
+          }, {
+            role: "user",
+            content: SpeechResult
+          }],
+          max_completion_tokens: 200
+        })
+      });
+
+      const data = await response.json();
+      const aiResponse = data.choices[0].message.content;
+      
+      logger.info('AI Response:', aiResponse);
+
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Vicki" language="de-DE">${aiResponse}</Say>
+  <Gather input="speech" action="https://arasai.onrender.com/api/voice/process" method="POST" language="de-DE" speechTimeout="3">
+    <Say voice="Polly.Vicki" language="de-DE">Hast du noch eine Frage?</Say>
+  </Gather>
+  <Say voice="Polly.Vicki" language="de-DE">Danke für deinen Anruf. Auf Wiedersehen.</Say>
+  <Hangup/>
+</Response>`;
+      
+      res.type('text/xml');
+      res.send(twiml);
+    } catch (error) {
+      logger.error('Voice process error:', error);
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Vicki" language="de-DE">Es tut mir leid, es gab einen technischen Fehler. Bitte versuche es später erneut.</Say>
+  <Hangup/>
+</Response>`;
+      res.type('text/xml');
+      res.send(twiml);
+    }
+  });
+
+  app.post('/api/voice/fallback', (req, res) => {
+    logger.error('Fallback handler called');
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Vicki" language="de-DE">Der Service ist momentan nicht verfügbar. Bitte versuche es später erneut.</Say>
+  <Hangup/>
+</Response>`;
+    res.type('text/xml');
+    res.send(twiml);
+  });
