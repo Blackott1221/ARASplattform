@@ -858,3 +858,127 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     res.type('text/xml');
     res.send(twiml);
   });
+
+  // ============================================
+  // ARAS AI OUTBOUND CALLS
+  // ============================================
+
+  app.post('/api/voice/outbound/start', requireAuth, async (req: any, res) => {
+    try {
+      const { phoneNumber, campaignMessage } = req.body;
+      
+      if (!phoneNumber) {
+        return res.status(400).json({ message: 'Phone number required' });
+      }
+
+      const accountSid = process.env.TWILIO_ACCOUNT_SID;
+      const authToken = process.env.TWILIO_AUTH_TOKEN;
+      const twilioNumber = process.env.TWILIO_PHONE_NUMBER;
+
+      const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64')
+        },
+        body: new URLSearchParams({
+          To: phoneNumber,
+          From: twilioNumber,
+          Url: `https://arasai.onrender.com/api/voice/outbound/twiml?message=${encodeURIComponent(campaignMessage || '')}`
+        })
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        logger.info('Outbound call initiated:', { phoneNumber, callSid: data.sid });
+        res.json({ success: true, callSid: data.sid, status: data.status });
+      } else {
+        logger.error('Twilio error:', data);
+        res.status(400).json({ message: data.message });
+      }
+    } catch (error: any) {
+      logger.error('Outbound call error:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get('/api/voice/outbound/twiml', async (req, res) => {
+    const { message } = req.query;
+    
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Vicki" language="de-DE">
+    Hallo. Hier ist ARAS AI von der Schwarzott Group. 
+    ${message || 'Ich rufe dich an.'}
+  </Say>
+  <Gather input="speech" action="https://arasai.onrender.com/api/voice/outbound/response" method="POST" language="de-DE" speechTimeout="3">
+    <Say voice="Polly.Vicki" language="de-DE">Wie kann ich dir helfen?</Say>
+  </Gather>
+  <Say voice="Polly.Vicki" language="de-DE">Danke. Auf Wiedersehen.</Say>
+  <Hangup/>
+</Response>`;
+    
+    res.type('text/xml');
+    res.send(twiml);
+  });
+
+  app.post('/api/voice/outbound/response', async (req, res) => {
+    try {
+      const { SpeechResult } = req.body;
+      
+      if (!SpeechResult) {
+        const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Vicki" language="de-DE">Ich habe nichts verstanden.</Say>
+  <Hangup/>
+</Response>`;
+        res.type('text/xml');
+        return res.send(twiml);
+      }
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-5',
+          messages: [{
+            role: "system",
+            content: "Du bist ARAS AI - Sales Agent. Kurz und präzise. Maximum 2 Sätze."
+          }, {
+            role: "user",
+            content: SpeechResult
+          }],
+          max_completion_tokens: 150
+        })
+      });
+
+      const data = await response.json();
+      const aiResponse = data.choices[0].message.content;
+
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Vicki" language="de-DE">${aiResponse}</Say>
+  <Gather input="speech" action="https://arasai.onrender.com/api/voice/outbound/response" method="POST" language="de-DE" speechTimeout="3">
+    <Say voice="Polly.Vicki" language="de-DE">Noch Fragen?</Say>
+  </Gather>
+  <Say voice="Polly.Vicki" language="de-DE">Danke. Auf Wiedersehen.</Say>
+  <Hangup/>
+</Response>`;
+      
+      res.type('text/xml');
+      res.send(twiml);
+    } catch (error) {
+      logger.error('Outbound response error:', error);
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Vicki" language="de-DE">Fehler. Auf Wiedersehen.</Say>
+  <Hangup/>
+</Response>`;
+      res.type('text/xml');
+      res.send(twiml);
+    }
+  });
