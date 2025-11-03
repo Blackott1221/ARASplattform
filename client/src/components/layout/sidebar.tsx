@@ -9,6 +9,7 @@ import {
   Bot,
   Mail,
   LogOut,
+  Menu,
   X
 } from "lucide-react";
 import arasLogo from "@/assets/aras_logo_1755067745303.png";
@@ -127,7 +128,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
         )}
       </div>
 
-      {/* Toggle Button - Only X Icon */}
+      {/* Toggle Button - BELOW LOGO */}
       {onToggleCollapse && (
         <div className="px-4 pb-4">
           <motion.button
@@ -136,7 +137,21 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-            <X className="w-4 h-4 text-[#FE9100]" />
+            <motion.div
+              animate={{ rotate: isCollapsed ? 0 : 180 }}
+              transition={{ duration: 0.3 }}
+            >
+              {isCollapsed ? (
+                <Menu className="w-4 h-4 text-[#FE9100]" />
+              ) : (
+                <X className="w-4 h-4 text-[#FE9100]" />
+              )}
+            </motion.div>
+            {!isCollapsed && (
+              <span className="ml-2 text-xs text-gray-400 font-medium">
+                {isCollapsed ? 'Expand' : 'Collapse'}
+              </span>
+            )}
           </motion.button>
         </div>
       )}
@@ -155,21 +170,21 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
               onHoverEnd={() => setHoveredItem(null)}
               className="relative"
             >
-              {/* ANIMATED GRADIENT BORDER */}
+              {/* Animated Border */}
               {(isActive || isHovered) && (
                 <div className="absolute -inset-[2px] rounded-xl">
                   <motion.div
                     className="w-full h-full rounded-xl"
                     animate={{
                       background: [
-                        "linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)",
-                        "linear-gradient(90deg, #FE9100 0%, #a34e00 25%, #e9d7c4 50%, #FE9100 75%, #a34e00 100%)",
-                        "linear-gradient(90deg, #a34e00 0%, #e9d7c4 25%, #FE9100 50%, #a34e00 75%, #e9d7c4 100%)",
-                        "linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)",
+                        "linear-gradient(90deg, #e9d7c4 0%, #FE9100 33%, #a34e00 66%, #e9d7c4 100%)",
+                        "linear-gradient(90deg, #FE9100 0%, #a34e00 33%, #e9d7c4 66%, #FE9100 100%)",
+                        "linear-gradient(90deg, #a34e00 0%, #e9d7c4 33%, #FE9100 66%, #a34e00 100%)",
+                        "linear-gradient(90deg, #e9d7c4 0%, #FE9100 33%, #a34e00 66%, #e9d7c4 100%)",
                       ],
                     }}
                     transition={{
-                      duration: 3.5,
+                      duration: 4,
                       repeat: Infinity,
                       ease: "linear",
                     }}
@@ -185,7 +200,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
 
               <motion.a
                 href={item.id === 'space' ? '/app' : `/app/${item.id}`}
-                className={`relative flex items-center ${isCollapsed ? 'justify-center px-3' : 'px-4 space-x-3'} py-4 rounded-xl bg-black/60 backdrop-blur-sm transition-all duration-300 ${
+                className={`relative flex items-center ${isCollapsed ? 'justify-center px-3' : 'px-4 space-x-3'} py-3.5 rounded-xl bg-black/60 backdrop-blur-sm transition-all duration-300 ${
                   isActive
                     ? "text-[#FE9100]"
                     : "text-gray-400 hover:text-[#e9d7c4]"
@@ -230,12 +245,12 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
                     className="w-full h-full rounded-xl"
                     animate={{
                       background: [
-                        "linear-gradient(90deg, #e9d7c4 0%, #FE9100 50%, #a34e00 100%)",
-                        "linear-gradient(90deg, #FE9100 0%, #a34e00 50%, #e9d7c4 100%)",
-                        "linear-gradient(90deg, #e9d7c4 0%, #FE9100 50%, #a34e00 100%)",
+                        "linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)",
+                        "linear-gradient(90deg, #FE9100, #a34e00, #e9d7c4)",
+                        "linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)",
                       ],
                     }}
-                    transition={{ duration: 3.5, repeat: Infinity, ease: "linear" }}
+                    transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
                     style={{
                       padding: "2px",
                       WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
@@ -248,7 +263,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
 
               <motion.a
                 href={`/app/${item.id}`}
-                className={`relative flex items-center ${isCollapsed ? 'justify-center px-3' : 'px-4 space-x-3'} py-4 rounded-xl bg-black/60 backdrop-blur-sm text-gray-400 hover:text-[#e9d7c4] transition-all duration-300`}
+                className={`relative flex items-center ${isCollapsed ? 'justify-center px-3' : 'px-4 space-x-3'} py-3.5 rounded-xl bg-black/60 backdrop-blur-sm text-gray-400 hover:text-[#e9d7c4] transition-all duration-300`}
                 whileHover={{ scale: 1.01 }}
               >
                 <Icon className="w-[18px] h-[18px] flex-shrink-0" />
@@ -295,7 +310,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
                 window.location.href = '/auth';
               }
             }}
-            className={`relative w-full flex items-center ${isCollapsed ? 'justify-center px-3' : 'px-4 space-x-3'} py-4 rounded-xl bg-black/60 backdrop-blur-sm text-gray-400 hover:text-red-400 transition-all duration-300`}
+            className={`relative w-full flex items-center ${isCollapsed ? 'justify-center px-3' : 'px-4 space-x-3'} py-3.5 rounded-xl bg-black/60 backdrop-blur-sm text-gray-400 hover:text-red-400 transition-all duration-300`}
             whileHover={{ scale: 1.01 }}
           >
             <LogOut className="w-[18px] h-[18px] flex-shrink-0" />
