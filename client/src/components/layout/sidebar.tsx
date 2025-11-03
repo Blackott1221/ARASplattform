@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useState } from "react";
 import { 
   MessageCircle, 
@@ -38,78 +38,79 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
 
   return (
     <motion.div 
-      className={`${isCollapsed ? 'w-20' : 'w-72'} h-screen bg-[#0f0f0f] border-r border-[#FE9100]/10 flex flex-col relative overflow-hidden transition-all duration-500`}
-      animate={{ width: isCollapsed ? 80 : 288 }}
+      className={`${isCollapsed ? 'w-20' : 'w-64'} h-screen bg-transparent backdrop-blur-xl border-r border-white/5 flex flex-col relative`}
+      animate={{ width: isCollapsed ? 80 : 256 }}
+      transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
     >
-      {/* Animated Stars Background */}
+      {/* Ultra Subtle Stars */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {[...Array(12)].map((_, i) => (
+        {[...Array(8)].map((_, i) => (
           <motion.div
             key={i}
-            className="absolute w-1 h-1 bg-[#FE9100] rounded-full"
+            className="absolute w-px h-px rounded-full"
             style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
+              left: `${15 + i * 12}%`,
+              top: `${10 + i * 11}%`,
+              background: "radial-gradient(circle, #FE9100 0%, transparent 70%)",
             }}
             animate={{
-              opacity: [0.2, 0.8, 0.2],
-              scale: [1, 1.5, 1],
+              opacity: [0, 0.4, 0],
+              scale: [0.5, 1, 0.5],
             }}
             transition={{
-              duration: 2 + Math.random() * 2,
+              duration: 4 + i * 0.5,
               repeat: Infinity,
-              delay: Math.random() * 2,
+              delay: i * 0.3,
             }}
           />
         ))}
       </div>
 
       {/* Logo Section */}
-      <div className="relative p-6 border-b border-[#FE9100]/10">
+      <div className="relative p-6">
         <motion.div 
-          className="flex items-center justify-center relative"
-          whileHover={{ scale: 1.05 }}
+          className="flex items-center justify-center"
+          whileHover={{ scale: 1.02 }}
         >
-          {/* Logo Glow */}
-          <motion.div
-            className="absolute inset-0 blur-2xl opacity-30"
-            animate={{
-              background: [
-                "radial-gradient(circle, #FE9100 0%, transparent 70%)",
-                "radial-gradient(circle, #e9d7c4 0%, transparent 70%)",
-                "radial-gradient(circle, #FE9100 0%, transparent 70%)",
-              ],
-            }}
-            transition={{ duration: 4, repeat: Infinity }}
-          />
-          
-          <img 
-            src={arasLogo} 
-            alt="ARAS AI" 
-            className={`${isCollapsed ? 'w-12 h-12' : 'w-16 h-16'} transition-all duration-500 object-contain relative z-10`}
-          />
+          <div className="relative">
+            {/* Logo Glow Ring */}
+            <motion.div
+              className="absolute -inset-2 rounded-full opacity-0"
+              animate={{
+                opacity: [0, 0.2, 0],
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+              }}
+              style={{
+                background: "radial-gradient(circle, #FE9100, transparent 70%)",
+              }}
+            />
+            <img 
+              src={arasLogo} 
+              alt="ARAS AI" 
+              className={`${isCollapsed ? 'w-10 h-10' : 'w-11 h-11'} transition-all duration-300 object-contain relative z-10`}
+            />
+          </div>
         </motion.div>
 
         {!isCollapsed && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mt-4"
+          <motion.h1
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center mt-3 text-lg font-bold tracking-wide"
+            style={{ fontFamily: "'Orbitron', sans-serif" }}
           >
-            <h1 
-              className="text-2xl font-bold relative"
-              style={{ fontFamily: "'Orbitron', sans-serif" }}
-            >
-              <span className="bg-gradient-to-r from-[#e9d7c4] via-[#FE9100] to-[#a34e00] bg-clip-text text-transparent animate-gradient bg-[length:200%_auto]">
-                ARAS AI
-              </span>
-            </h1>
-          </motion.div>
+            <span className="bg-gradient-to-r from-[#e9d7c4] via-[#FE9100] to-[#e9d7c4] bg-clip-text text-transparent">
+              ARAS AI
+            </span>
+          </motion.h1>
         )}
       </div>
       
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2 relative z-10 overflow-y-auto custom-scrollbar">
+      <nav className="flex-1 px-3 py-2 space-y-1.5 relative overflow-y-auto custom-scroll">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeSection === item.id;
@@ -122,77 +123,69 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
               onHoverEnd={() => setHoveredItem(null)}
               className="relative"
             >
-              {/* Animated Border on Hover/Active */}
-              <AnimatePresence>
-                {(isActive || isHovered) && (
+              {/* Animated Gradient Border */}
+              {(isActive || isHovered) && (
+                <motion.div
+                  className="absolute inset-0 rounded-xl p-[1px]"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
                   <motion.div
-                    className="absolute -inset-[1px] rounded-xl opacity-60 blur-sm"
-                    initial={{ opacity: 0 }}
-                    animate={{ 
-                      opacity: isActive ? 0.8 : 0.4,
+                    className="absolute inset-0 rounded-xl"
+                    animate={{
                       background: [
-                        "linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #e9d7c4)",
-                        "linear-gradient(90deg, #FE9100, #a34e00, #e9d7c4, #FE9100)",
-                        "linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #e9d7c4)",
+                        "linear-gradient(90deg, #e9d7c4 0%, #FE9100 50%, #a34e00 100%)",
+                        "linear-gradient(90deg, #FE9100 0%, #a34e00 50%, #e9d7c4 100%)",
+                        "linear-gradient(90deg, #e9d7c4 0%, #FE9100 50%, #a34e00 100%)",
                       ],
                     }}
-                    exit={{ opacity: 0 }}
-                    transition={{ 
+                    transition={{
                       duration: 3,
                       repeat: Infinity,
-                      ease: "linear"
+                      ease: "linear",
                     }}
-                    style={{ backgroundSize: "300% 100%" }}
+                    style={{
+                      WebkitMaskImage: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                      WebkitMaskComposite: "xor",
+                      maskComposite: "exclude",
+                      padding: "1px",
+                    }}
                   />
-                )}
-              </AnimatePresence>
+                </motion.div>
+              )}
 
               <motion.a
                 href={item.id === 'space' ? '/app' : `/app/${item.id}`}
-                className={`relative flex items-center ${isCollapsed ? 'justify-center px-4' : 'space-x-4 px-4'} py-4 rounded-xl backdrop-blur-sm transition-all duration-300 ${
+                className={`relative flex items-center ${isCollapsed ? 'justify-center px-3' : 'px-4 space-x-3'} py-3 rounded-xl transition-all duration-300 ${
                   isActive
-                    ? "bg-[#FE9100]/10 text-[#FE9100]"
-                    : "text-[#e9d7c4]/70 hover:text-[#FE9100] hover:bg-white/5"
+                    ? "bg-gradient-to-r from-[#FE9100]/5 to-[#a34e00]/5 text-[#FE9100]"
+                    : "text-gray-400 hover:text-[#e9d7c4]"
                 }`}
-                whileHover={{ x: isCollapsed ? 0 : 4 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: 1.02 }}
+                transition={{ duration: 0.2 }}
               >
-                <Icon className="w-5 h-5 flex-shrink-0" />
+                <Icon className="w-[18px] h-[18px]" />
                 
                 {!isCollapsed && (
-                  <motion.span 
-                    className="font-medium text-sm tracking-wide"
-                    style={{ fontFamily: "'Orbitron', sans-serif" }}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                  >
+                  <span className="font-medium text-[13px] tracking-wide">
                     {item.label}
-                  </motion.span>
-                )}
-
-                {isActive && !isCollapsed && (
-                  <motion.div
-                    className="absolute right-4 w-2 h-2 rounded-full bg-[#FE9100]"
-                    animate={{
-                      scale: [1, 1.2, 1],
-                      opacity: [0.5, 1, 0.5],
-                    }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  />
+                  </span>
                 )}
               </motion.a>
             </motion.div>
           );
         })}
         
-        {/* Divider */}
+        {/* Elegant Divider */}
         {!isCollapsed && (
           <motion.div 
-            className="my-4 h-px bg-gradient-to-r from-transparent via-[#FE9100]/30 to-transparent"
-            initial={{ scaleX: 0 }}
-            animate={{ scaleX: 1 }}
-            transition={{ delay: 0.5 }}
-          />
+            className="relative my-4 h-px"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#FE9100]/20 to-transparent" />
+          </motion.div>
         )}
 
         {/* Mailing Modules */}
@@ -209,27 +202,40 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
             >
               {isHovered && (
                 <motion.div
-                  className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-[#e9d7c4] via-[#FE9100] to-[#a34e00] opacity-40 blur-sm"
+                  className="absolute inset-0 rounded-xl p-[1px]"
                   initial={{ opacity: 0 }}
-                  animate={{ opacity: 0.4 }}
-                  exit={{ opacity: 0 }}
-                />
+                  animate={{ opacity: 1 }}
+                >
+                  <motion.div
+                    className="absolute inset-0 rounded-xl"
+                    animate={{
+                      background: [
+                        "linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)",
+                        "linear-gradient(90deg, #FE9100, #a34e00, #e9d7c4)",
+                        "linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)",
+                      ],
+                    }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                    style={{
+                      WebkitMaskImage: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                      WebkitMaskComposite: "xor",
+                      maskComposite: "exclude",
+                      padding: "1px",
+                    }}
+                  />
+                </motion.div>
               )}
 
               <motion.a
                 href={`/app/${item.id}`}
-                className={`relative flex items-center ${isCollapsed ? 'justify-center px-4' : 'space-x-4 px-4'} py-4 rounded-xl text-[#e9d7c4]/70 hover:text-[#FE9100] hover:bg-white/5 backdrop-blur-sm transition-all duration-300`}
-                whileHover={{ x: isCollapsed ? 0 : 4 }}
-                whileTap={{ scale: 0.98 }}
+                className={`relative flex items-center ${isCollapsed ? 'justify-center px-3' : 'px-4 space-x-3'} py-3 rounded-xl text-gray-400 hover:text-[#e9d7c4] transition-all duration-300`}
+                whileHover={{ scale: 1.02 }}
               >
-                <Icon className="w-5 h-5 flex-shrink-0" />
+                <Icon className="w-[18px] h-[18px]" />
                 {!isCollapsed && (
-                  <motion.span 
-                    className="font-medium text-sm tracking-wide"
-                    style={{ fontFamily: "'Orbitron', sans-serif" }}
-                  >
+                  <span className="font-medium text-[13px] tracking-wide">
                     {item.label}
-                  </motion.span>
+                  </span>
                 )}
               </motion.a>
             </motion.div>
@@ -237,90 +243,77 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
         })}
       </nav>
       
-      {/* Logout Section */}
-      <div className="p-4 border-t border-[#FE9100]/10 relative z-10">
-        <motion.button
-          onClick={async () => {
-            try {
-              await fetch('/api/logout', { method: 'POST', credentials: 'include' });
-              window.location.href = '/auth';
-            } catch (error) {
-              console.error('Logout failed:', error);
-              window.location.href = '/auth';
-            }
-          }}
+      {/* Logout */}
+      <div className="px-3 pb-4 relative">
+        <motion.div
           onHoverStart={() => setHoveredItem('logout')}
           onHoverEnd={() => setHoveredItem(null)}
-          className={`relative w-full flex items-center ${isCollapsed ? 'justify-center px-4' : 'space-x-4 px-4'} py-4 rounded-xl text-[#e9d7c4]/70 hover:text-red-400 transition-all duration-300 overflow-hidden group`}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          className="relative"
         >
-          {/* Hover Background */}
-          <motion.div
-            className="absolute inset-0 bg-gradient-to-r from-red-500/10 to-red-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-          />
-          
           {hoveredItem === 'logout' && (
             <motion.div
-              className="absolute -inset-[1px] rounded-xl bg-gradient-to-r from-red-500 to-red-600 opacity-30 blur-sm"
+              className="absolute inset-0 rounded-xl p-[1px]"
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.3 }}
-              exit={{ opacity: 0 }}
-            />
+              animate={{ opacity: 1 }}
+            >
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-red-500/50 to-red-600/50" 
+                style={{
+                  WebkitMaskImage: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                  WebkitMaskComposite: "xor",
+                  maskComposite: "exclude",
+                  padding: "1px",
+                }}
+              />
+            </motion.div>
           )}
 
-          <LogOut className="w-5 h-5 relative z-10 flex-shrink-0" />
-          {!isCollapsed && (
-            <span 
-              className="relative z-10 font-medium text-sm tracking-wide"
-              style={{ fontFamily: "'Orbitron', sans-serif" }}
-            >
-              Logout
-            </span>
-          )}
-        </motion.button>
+          <motion.button
+            onClick={async () => {
+              try {
+                await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+                window.location.href = '/auth';
+              } catch (error) {
+                console.error('Logout failed:', error);
+                window.location.href = '/auth';
+              }
+            }}
+            className={`relative w-full flex items-center ${isCollapsed ? 'justify-center px-3' : 'px-4 space-x-3'} py-3 rounded-xl text-gray-400 hover:text-red-400 transition-all duration-300`}
+            whileHover={{ scale: 1.02 }}
+          >
+            <LogOut className="w-[18px] h-[18px]" />
+            {!isCollapsed && <span className="font-medium text-[13px]">Logout</span>}
+          </motion.button>
+        </motion.div>
       </div>
 
       {/* Collapse Toggle */}
       {onToggleCollapse && (
-        <motion.button
+        <button
           onClick={onToggleCollapse}
-          className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-12 bg-[#0f0f0f] border border-[#FE9100]/20 rounded-r-lg flex items-center justify-center hover:bg-[#FE9100]/10 transition-all z-50"
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+          className="absolute -right-3 top-16 w-6 h-6 bg-black/50 backdrop-blur-sm border border-[#FE9100]/20 rounded-full flex items-center justify-center hover:bg-[#FE9100]/10 hover:border-[#FE9100]/40 transition-all"
         >
           <motion.div
             animate={{ rotate: isCollapsed ? 0 : 180 }}
             transition={{ duration: 0.3 }}
           >
-            <ChevronRight className="w-4 h-4 text-[#FE9100]" />
+            <ChevronRight className="w-3 h-3 text-[#FE9100]" />
           </motion.div>
-        </motion.button>
+        </button>
       )}
 
-      {/* Custom Scrollbar Styles */}
       <style>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 4px;
+        .custom-scroll::-webkit-scrollbar {
+          width: 2px;
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
+        .custom-scroll::-webkit-scrollbar-track {
           background: transparent;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: linear-gradient(180deg, #FE9100, #a34e00);
-          border-radius: 4px;
+        .custom-scroll::-webkit-scrollbar-thumb {
+          background: rgba(254, 145, 0, 0.2);
+          border-radius: 2px;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(180deg, #e9d7c4, #FE9100);
-        }
-        
-        @keyframes gradient {
-          0% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-          100% { background-position: 0% 50%; }
-        }
-        .animate-gradient {
-          animation: gradient 6s ease infinite;
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+          background: rgba(254, 145, 0, 0.4);
         }
       `}</style>
     </motion.div>
