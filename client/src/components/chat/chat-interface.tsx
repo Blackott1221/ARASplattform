@@ -13,7 +13,15 @@ import type { ChatMessage } from "@shared/schema";
 import arasAiImage from "@assets/ChatGPT Image 9. Apr. 2025_ 21_38_23_1754515368187.png";
 import arasLogo from "@/assets/aras_logo_1755067745303.png";
 
-
+const ANIMATED_TEXTS = [
+  "Anrufe",
+  "Termine vereinbaren",
+  "Termine verschieben", 
+  "Leads anrufen",
+  "Kunden anrufen",
+  "Verkaufsgespräche führen",
+  "Follow-ups automatisieren"
+];
 
 export function ChatInterface() {
   const [message, setMessage] = useState("");
@@ -23,12 +31,15 @@ export function ChatInterface() {
   const [isMultiline, setIsMultiline] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSettings, setShowSettings] = useState(false);
-  const [aiPersonality, setAiPersonality] = useState("professional"); // professional, casual, technical
-  const [responseLength, setResponseLength] = useState("detailed"); // brief, detailed, bullet
+  const [aiPersonality, setAiPersonality] = useState("professional");
+  const [responseLength, setResponseLength] = useState("detailed");
   const [showTypingIndicator, setShowTypingIndicator] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [showChatHistory, setShowChatHistory] = useState(false);
+  const [currentTextIndex, setCurrentTextIndex] = useState(0);
+  const [displayText, setDisplayText] = useState("");
+  const [isTyping, setIsTyping] = useState(true);
   const [selectedLanguage, setSelectedLanguage] = useState(() => {
     return localStorage.getItem("aras-language") || "en";
   });
@@ -41,21 +52,42 @@ export function ChatInterface() {
   const { user, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
 
-  // Fetch chat messages from database
+  // Typewriter animation effect
+  useEffect(() => {
+    const currentText = ANIMATED_TEXTS[currentTextIndex];
+    let charIndex = 0;
+    
+    if (isTyping) {
+      const typeInterval = setInterval(() => {
+        if (charIndex <= currentText.length) {
+          setDisplayText(currentText.substring(0, charIndex));
+          charIndex++;
+        } else {
+          setIsTyping(false);
+          setTimeout(() => {
+            setIsTyping(true);
+            setCurrentTextIndex((prev) => (prev + 1) % ANIMATED_TEXTS.length);
+          }, 2000);
+          clearInterval(typeInterval);
+        }
+      }, 100);
+      
+      return () => clearInterval(typeInterval);
+    }
+  }, [currentTextIndex, isTyping]);
+
   const { data: messages = [], isLoading: messagesLoading } = useQuery<ChatMessage[]>({
     queryKey: ["/api/chat/messages"],
     enabled: !!user && !authLoading,
     retry: false,
   });
 
-  // Fetch chat sessions for history
   const { data: chatSessions = [], isLoading: sessionsLoading } = useQuery<any[]>({
     queryKey: ["/api/chat/sessions"],
     enabled: !!user && !authLoading,
     retry: false,
   });
 
-  // New chat session mutation
   const startNewChatMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("POST", "/api/chat/sessions/new", {
@@ -64,10 +96,7 @@ export function ChatInterface() {
       return response.json();
     },
     onSuccess: (data) => {
-      // Stop all ongoing audio playback
       stopAllAudio();
-      
-      // Clear current messages and refresh both messages and sessions
       queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/chat/sessions"] });
       toast({
@@ -84,19 +113,16 @@ export function ChatInterface() {
     },
   });
 
-  // Fetch user subscription data
   const { data: subscriptionData } = useQuery<import("@shared/schema").SubscriptionResponse>({
     queryKey: ["/api/user/subscription"],
     enabled: !!user && !authLoading,
     retry: false,
   });
 
-  // Send message mutation with enhanced AI response
   const sendMessage = useMutation({
     mutationFn: async (message: string) => {
       setShowTypingIndicator(true);
       
-      // Get user's assistant configuration
       let assistantId = null;
       try {
         const assistantConfig = await fetch("/api/assistant/config", {
@@ -122,22 +148,18 @@ export function ChatInterface() {
     },
     onSuccess: (data) => {
       setShowTypingIndicator(false);
-      // Update messages list with new AI response
       queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/subscription"] });
     },
     onError: (error: any) => {
       setShowTypingIndicator(false);
       
-      // Parse error response to check for trial/upgrade requirements
       let errorData = null;
       try {
         if (error.message) {
-          // Try to parse as JSON if it's a structured error
           try {
             errorData = JSON.parse(error.message);
           } catch {
-            // If not JSON, use the message directly
             errorData = { message: error.message };
           }
         }
@@ -145,7 +167,6 @@ export function ChatInterface() {
         errorData = { message: "Failed to send message" };
       }
 
-      // Handle trial limit reached
       if (errorData?.requiresPayment) {
         toast({
           title: "Trial Limit Reached",
@@ -156,7 +177,6 @@ export function ChatInterface() {
               variant="outline" 
               size="sm"
               onClick={() => {
-                // Navigate to billing page
                 window.location.href = '/billing';
               }}
             >
@@ -167,7 +187,6 @@ export function ChatInterface() {
         return;
       }
 
-      // Handle subscription limit reached
       if (errorData?.requiresUpgrade) {
         toast({
           title: "Plan Limit Reached",
@@ -178,7 +197,6 @@ export function ChatInterface() {
               variant="outline" 
               size="sm"
               onClick={() => {
-                // Navigate to billing page
                 window.location.href = '/billing';
               }}
             >
@@ -189,7 +207,6 @@ export function ChatInterface() {
         return;
       }
 
-      // Default error handling
       toast({
         title: "Error",
         description: errorData?.message || "Failed to send message",
@@ -197,8 +214,6 @@ export function ChatInterface() {
       });
     },
   });
-
-  // Start new chat function - uses the mutation defined earlier
 
   const startNewChat = () => {
     if (messages.length > 0) {
@@ -219,10 +234,7 @@ export function ChatInterface() {
     }
   };
 
-
-
   const handleSearchMessages = (query: string) => {
-    // Filter messages based on search query
     return messages.filter(msg => 
       msg.message.toLowerCase().includes(query.toLowerCase())
     );
@@ -241,7 +253,6 @@ export function ChatInterface() {
         } 
       });
       
-      // Check what formats are supported
       const supportedTypes = [
         'audio/webm;codecs=opus',
         'audio/webm;codecs=vp9',
@@ -257,8 +268,6 @@ export function ChatInterface() {
           break;
         }
       }
-      
-      console.log('Using audio format:', selectedType);
       
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: selectedType,
@@ -279,8 +288,7 @@ export function ChatInterface() {
         setAudioURL(audioUrl);
         stream.getTracks().forEach(track => track.stop());
         
-        // Check audio quality before transcribing
-        if (audioBlob.size < 1000) { // Less than 1KB indicates poor quality
+        if (audioBlob.size < 1000) {
           toast({
             title: "Recording Too Short",
             description: "Please speak for at least 1-2 seconds for better recognition.",
@@ -289,14 +297,6 @@ export function ChatInterface() {
           return;
         }
         
-        // Log audio details for debugging
-        console.log('Audio blob details:', {
-          size: audioBlob.size,
-          type: audioBlob.type,
-          duration: 'unknown'
-        });
-        
-        // Convert speech to text using OpenAI Whisper
         await transcribeAudio(audioBlob);
       };
       
@@ -311,7 +311,7 @@ export function ChatInterface() {
         });
       };
       
-      mediaRecorder.start(250); // Collect data every 250ms for better quality
+      mediaRecorder.start(250);
       setIsRecording(true);
       
       toast({
@@ -319,7 +319,6 @@ export function ChatInterface() {
         description: "Speak clearly into your microphone. Click again to stop.",
       });
       
-      // Auto-stop after 30 seconds for better processing
       setTimeout(() => {
         if (mediaRecorderRef.current?.state === "recording") {
           stopRecording();
@@ -364,33 +363,23 @@ export function ChatInterface() {
     setIsRecording(false);
   };
 
-  // Speech-to-Text using OpenAI Whisper
   const transcribeAudio = async (audioBlob: Blob) => {
     setIsTranscribing(true);
     try {
       const formData = new FormData();
-      // Use the correct extension based on the blob type
       const extension = audioBlob.type.includes('mp4') ? 'mp4' : 
                       audioBlob.type.includes('ogg') ? 'ogg' : 'webm';
       formData.append('audio', audioBlob, `recording.${extension}`);
 
-      console.log('Sending transcription request:', {
-        blobSize: audioBlob.size,
-        blobType: audioBlob.type,
-        filename: `recording.${extension}`
-      });
-
       const response = await fetch("/api/speech/transcribe", {
         method: "POST",
         body: formData,
-        credentials: "include", // Include session cookies
+        credentials: "include",
       });
       
       const data = await response.json();
-      console.log('Transcription response:', data);
       
       if (data.text && data.text.trim() && data.text.trim() !== '. . .' && data.text.trim() !== '...') {
-        // Clean up the transcribed text
         const cleanedText = data.text.trim().replace(/\s+/g, ' ');
         setMessage(cleanedText);
         toast({
@@ -400,7 +389,7 @@ export function ChatInterface() {
       } else {
         toast({
           title: "No Speech Detected",
-          description: `Audio processed (${Math.round(audioBlob.size/1024)}KB, ${data.duration ? Math.round(data.duration) + 's' : 'unknown duration'}) but no clear speech found. Please speak louder and clearer.`,
+          description: `Audio processed but no clear speech found. Please speak louder and clearer.`,
           variant: "destructive",
         });
       }
@@ -416,30 +405,24 @@ export function ChatInterface() {
     }
   };
 
-  // Helper function to stop all audio and cleanup memory
   const stopAllAudio = () => {
-    // Stop TTS audio and cleanup
     if (ttsAudioRef.current) {
       ttsAudioRef.current.pause();
       ttsAudioRef.current.currentTime = 0;
-      // Cleanup URL to prevent memory leaks
       if (ttsAudioRef.current.src) {
         URL.revokeObjectURL(ttsAudioRef.current.src);
       }
       ttsAudioRef.current = null;
     }
     
-    // Stop recording playback audio and cleanup
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
-      // Cleanup URL to prevent memory leaks
       if (audioRef.current.src) {
         URL.revokeObjectURL(audioRef.current.src);
       }
     }
     
-    // Cleanup audioURL
     if (audioURL) {
       URL.revokeObjectURL(audioURL);
       setAudioURL(null);
@@ -449,16 +432,14 @@ export function ChatInterface() {
     setIsPlayingAudio(false);
   };
 
-  // Text-to-Speech for AI responses
   const speakText = async (text: string) => {
-    // Stop any existing audio first
     stopAllAudio();
     
     setIsSpeaking(true);
     try {
       const response = await apiRequest("POST", "/api/speech/synthesize", { 
         text,
-        voice: "nova", // OpenAI voice options: alloy, echo, fable, nova, onyx, shimmer
+        voice: "nova",
         speed: 1.0
       });
       
@@ -466,7 +447,7 @@ export function ChatInterface() {
       const audioUrl = URL.createObjectURL(audioBlob);
       
       const audio = new Audio(audioUrl);
-      ttsAudioRef.current = audio; // Store reference for stopping
+      ttsAudioRef.current = audio;
       
       audio.onplay = () => setIsSpeaking(true);
       audio.onended = () => {
@@ -521,10 +502,7 @@ export function ChatInterface() {
     }
   };
 
-
-
   const handleNewChat = async () => {
-    // Force refresh the messages to show welcome screen
     queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
     try {
       await startNewChatMutation.mutateAsync();
@@ -541,7 +519,6 @@ export function ChatInterface() {
     scrollToBottom();
   }, [messages, sendMessage.isPending]);
 
-  // Load settings from localStorage
   useEffect(() => {
     const savedPersonality = localStorage.getItem("aras-ai-personality");
     const savedResponseLength = localStorage.getItem("aras-response-length");
@@ -554,20 +531,16 @@ export function ChatInterface() {
     }
   }, []);
 
-  // Cleanup function to prevent memory leaks
   useEffect(() => {
     return () => {
       stopAllAudio();
       
-      // Cleanup media recorder if still recording
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
         mediaRecorderRef.current.stream?.getTracks().forEach(track => track.stop());
       }
     };
   }, []);
-
-
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey && !isMultiline) {
@@ -580,362 +553,127 @@ export function ChatInterface() {
 
   if (authLoading || messagesLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+      <div className="flex-1 flex items-center justify-center bg-black">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-12 h-12"
+        >
+          <img src={arasLogo} alt="Loading" className="w-full h-full object-contain" />
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-gradient-to-b from-background to-background/50 relative overflow-hidden">
-      {/* Simple Header */}
-      <div className="p-2 border-b border-border/20 flex justify-between items-center">
-        <Button size="sm" variant="ghost" onClick={() => setShowChatHistory(!showChatHistory)}>
-          <MessageSquare className="w-4 h-4" />
-        </Button>
-        
-        <div className="flex items-center space-x-2">
-          {/* Trial Status Indicator - Shows remaining messages for trial users */}
-          {subscriptionData?.status === 'trial' && (
-            <div className="flex items-center space-x-1 bg-orange-500/10 border border-orange-500/20 rounded-lg px-2 py-1">
-              <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
-              <span className={`text-xs font-medium ${
-                (subscriptionData.trialMessagesRemaining || 0) <= 2 
-                  ? 'text-orange-400' 
-                  : 'text-orange-300'
-              }`}>
-                {subscriptionData.trialMessagesRemaining || 0} left
-              </span>
-            </div>
-          )}
-          
-          {/* Language Selector */}
-          <select
-            value={selectedLanguage}
-            onChange={async (e) => {
-              const newLanguage = e.target.value;
-              const currentLanguage = selectedLanguage;
-              
-              setSelectedLanguage(newLanguage);
-              localStorage.setItem("aras-language", newLanguage);
-              
-              // Translate existing messages if language changed and there are messages
-              if (newLanguage !== currentLanguage && messages.length > 0) {
-                try {
-                  toast({
-                    title: "Translating Messages",
-                    description: "Converting existing conversation to selected language...",
-                  });
-                  
-                  const response = await apiRequest("POST", "/api/chat/translate", {
-                    messages: messages,
-                    targetLanguage: newLanguage
-                  });
-                  
-                  const data = await response.json();
-                  
-                  if (data.translatedMessages) {
-                    // Update messages in the cache
-                    queryClient.setQueryData(["/api/chat/messages"], data.translatedMessages);
-                    
-                    toast({
-                      title: "Translation Complete",
-                      description: "Conversation translated successfully!"
-                    });
-                  }
-                } catch (error: any) {
-                  toast({
-                    title: "Translation Failed",
-                    description: "Could not translate existing messages",
-                    variant: "destructive"
-                  });
-                  console.error("Translation error:", error);
-                }
-              }
-            }}
-            className="text-xs bg-background border border-border/30 rounded px-2 py-1 text-foreground focus:text-foreground focus:border-primary/50 outline-none"
-          >
-            <option value="en">🇺🇸 EN</option>
-            <option value="es">🇪🇸 ES</option>
-            <option value="fr">🇫🇷 FR</option>
-            <option value="de">🇩🇪 DE</option>
-            <option value="pt">🇵🇹 PT</option>
-            <option value="it">🇮🇹 IT</option>
-            <option value="ru">🇷🇺 RU</option>
-            <option value="zh">🇨🇳 ZH</option>
-            <option value="ja">🇯🇵 JA</option>
-            <option value="ar">🇸🇦 AR</option>
-          </select>
-          
-          {/* Settings Button */}
-          <Button 
-            size="sm" 
-            variant="ghost" 
-            onClick={() => setShowSettings(!showSettings)}
-            title="Settings"
-          >
-            <Settings className="w-4 h-4" />
-          </Button>
-          
-          <Button size="sm" variant="ghost" onClick={handleNewChat}>
-            <Plus className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4 relative z-10">
-        {messages.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <h2 className="text-2xl font-semibold text-primary mb-2">
-                {selectedLanguage === "es" ? "¿Cómo puedo ayudarte hoy?" :
-                 selectedLanguage === "fr" ? "Comment puis-je vous aider aujourd'hui ?" :
-                 selectedLanguage === "de" ? "Wie kann ich Ihnen heute helfen?" :
-                 selectedLanguage === "pt" ? "Como posso ajudá-lo hoje?" :
-                 selectedLanguage === "it" ? "Come posso aiutarti oggi?" :
-                 selectedLanguage === "ru" ? "Как я могу помочь вам сегодня?" :
-                 selectedLanguage === "zh" ? "今天我能为您做些什么？" :
-                 selectedLanguage === "ja" ? "今日はどのようなお手伝いができますか？" :
-                 selectedLanguage === "ar" ? "كيف يمكنني مساعدتك اليوم؟" :
-                 "How can I help you today?"}
-              </h2>
-              <p className="text-muted-foreground text-sm">
-                {selectedLanguage === "es" ? "Pregúntame sobre automatización de ventas, llamadas en frío o gestión de leads." :
-                 selectedLanguage === "fr" ? "Demandez-moi des questions sur l'automatisation des ventes, les appels à froid ou la gestion des prospects." :
-                 selectedLanguage === "de" ? "Fragen Sie mich über Vertriebsautomatisierung, Kaltakquise oder Lead-Management." :
-                 selectedLanguage === "pt" ? "Pergunte-me sobre automação de vendas, cold calling ou gestão de leads." :
-                 selectedLanguage === "it" ? "Chiedimi di automazione delle vendite, chiamate a freddo o gestione dei lead." :
-                 selectedLanguage === "ru" ? "Спросите меня об автоматизации продаж, холодных звонках или управлении лидами." :
-                 selectedLanguage === "zh" ? "询问我有关销售自动化、陌拜或潜在客户管理的问题。" :
-                 selectedLanguage === "ja" ? "営業自動化、コールドコール、リード管理についてお聞きください。" :
-                 selectedLanguage === "ar" ? "اسألني عن أتمتة المبيعات أو المكالمات الباردة أو إدارة العملاء المحتملين." :
-                 "Ask me about sales automation, cold calling, or lead management."}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <AnimatePresence>
-            {(searchQuery ? handleSearchMessages(searchQuery) : messages).map((msg) => (
-              <MessageBubble
-                key={msg.id}
-                message={msg.message}
-                isAi={msg.isAi || false}
-                timestamp={msg.timestamp ? new Date(msg.timestamp) : new Date()}
-                confidence={msg.isAi ? 0.95 : undefined}
-                messageId={msg.id.toString()}
-                onReaction={(messageId, reaction) => {
-                  toast({
-                    title: "Feedback Recorded",
-                    description: `Thanks for the ${reaction} feedback!`,
-                  });
-                }}
-                onSpeak={speakText}
-                isSpeaking={isSpeaking}
-              />
-            ))}
-          </AnimatePresence>
-        )}
-
-        {/* Enhanced typing indicator with AI thinking status */}
-        {(sendMessage.isPending || showTypingIndicator) && (
+    <div className="flex-1 flex flex-col h-full bg-black relative overflow-hidden">
+      {/* Ambient Background Effect */}
+      <div className="absolute inset-0 bg-gradient-radial from-orange-500/5 via-transparent to-transparent opacity-50 blur-3xl pointer-events-none" />
+      
+      {messages.length === 0 ? (
+        /* GROK-STYLE WELCOME SCREEN */
+        <div className="flex-1 flex flex-col items-center justify-center px-6">
+          {/* Animated Logo */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex justify-start mb-4"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            className="mb-8"
           >
-            <div className="flex items-start space-x-3 max-w-[60%] message-container">
-              {/* ARAS AI Avatar */}
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-transparent">
-                <img 
-                  src={arasAiImage} 
-                  alt="ARAS AI" 
-                  className="w-8 h-8 rounded-full object-contain"
+            <img src={arasLogo} alt="ARAS AI" className="w-20 h-20 object-contain" />
+          </motion.div>
+
+          {/* Animated Headline */}
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="text-center mb-12"
+          >
+            <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">
+              ARAS AI
+            </h1>
+            <div className="flex items-center justify-center space-x-3 text-2xl md:text-3xl text-gray-400">
+              <span>erledigt:</span>
+              <motion.span 
+                key={currentTextIndex}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="text-orange-500 font-semibold min-w-[300px] text-left"
+              >
+                {displayText}
+                <motion.span
+                  animate={{ opacity: [1, 0, 1] }}
+                  transition={{ duration: 0.8, repeat: Infinity }}
+                  className="inline-block w-[3px] h-[28px] bg-orange-500 ml-1"
                 />
-              </div>
-              
-              <div className="flex flex-col">
-                {/* Enhanced typing indicator with status */}
-                <div className="bg-transparent border border-orange-500/30 rounded-lg px-4 py-3">
-                  <div className="flex items-center space-x-3">
-                    <div className="flex space-x-1">
-                      <motion.div 
-                        className="w-2 h-2 bg-orange-400 rounded-full"
-                        animate={{ scale: [1, 1.5, 1] }}
-                        transition={{ duration: 1, repeat: Infinity, delay: 0 }}
-                      />
-                      <motion.div 
-                        className="w-2 h-2 bg-orange-400 rounded-full"
-                        animate={{ scale: [1, 1.5, 1] }}
-                        transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}
-                      />
-                      <motion.div 
-                        className="w-2 h-2 bg-orange-400 rounded-full"
-                        animate={{ scale: [1, 1.5, 1] }}
-                        transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}
-                      />
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      ARAS AI is thinking...
-                    </span>
-                  </div>
-                </div>
-              </div>
+              </motion.span>
             </div>
           </motion.div>
-        )}
-        
-        <div ref={messagesEndRef} />
-      </div>
-      
 
-
-      {/* Input Area */}
-      <div className="p-6 border-t border-border/50 relative z-10">
-
-
-        {/* Chat History Panel */}
-        {showChatHistory && (
-          <div className="mb-4 bg-card/50 backdrop-blur-sm border border-border/30 rounded-xl p-4 max-w-2xl mx-auto">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium">Chat History</h3>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setShowChatHistory(false)}
-                className="h-6 w-6 p-0"
+          {/* Quick Action Buttons */}
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-12 max-w-2xl w-full"
+          >
+            {[
+              "DeepSearch",
+              "Aktuelle Nachrichten", 
+              "Stimme"
+            ].map((label, idx) => (
+              <motion.button
+                key={label}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white text-sm font-medium transition-all duration-200"
+                onClick={() => setMessage(label)}
               >
-                ×
-              </Button>
-            </div>
-            {chatSessions.length > 0 ? (
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {chatSessions.map((session) => (
-                  <div
-                    key={session.id}
-                    className={`p-2 rounded-lg border transition-colors cursor-pointer ${
-                      session.isActive
-                        ? "bg-primary/10 border-primary/30"
-                        : "bg-card/30 border-border/30 hover:bg-card/50"
-                    }`}
-                    onClick={async () => {
-                      try {
-                        const response = await apiRequest("POST", `/api/chat/sessions/${session.id}/activate`, {});
-                        const data = await response.json();
-                        
-                        // Force refresh messages to load the selected session's messages
-                        await queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
-                        await queryClient.invalidateQueries({ queryKey: ["/api/chat/sessions"] });
-                        
-                        // Wait a moment for the backend to update then refetch
-                        setTimeout(() => {
-                          queryClient.refetchQueries({ queryKey: ["/api/chat/messages"] });
-                          queryClient.refetchQueries({ queryKey: ["/api/chat/sessions"] });
-                        }, 100);
-                        
-                        toast({
-                          title: "Chat Session Loaded",
-                          description: `Switched to "${session.title}" (${data.messageCount} messages)`,
-                        });
-                        
-                        setShowChatHistory(false);
-                      } catch (error: any) {
-                        toast({
-                          title: "Error",
-                          description: "Failed to load chat session",
-                          variant: "destructive",
-                        });
-                      }
-                    }}
-                  >
-                    <div className="text-sm font-medium">{session.title}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {new Date(session.updatedAt).toLocaleDateString()}
-                      {session.isActive && " (Current)"}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-sm text-muted-foreground">No chat history yet</div>
-            )}
-          </div>
-        )}
+                {label}
+              </motion.button>
+            ))}
+          </motion.div>
 
-        {/* Settings Panel */}
-        {showSettings && (
-          <div className="mb-4 p-4 bg-card/30 border border-border/30 rounded-xl">
-            <h3 className="text-sm font-medium mb-3 flex items-center">
-              <Settings className="w-4 h-4 mr-2" />
-              AI Settings
-            </h3>
-            <div className="space-y-4">
-              {/* AI Personality Setting */}
-              <div>
-                <label className="text-xs text-muted-foreground block mb-2">AI Personality</label>
-                <select
-                  value={aiPersonality}
-                  onChange={(e) => {
-                    setAiPersonality(e.target.value);
-                    localStorage.setItem("aras-ai-personality", e.target.value);
-                  }}
-                  className="w-full text-xs bg-transparent border border-border/30 rounded px-3 py-2 text-foreground focus:border-primary/50 outline-none"
-                >
-                  <option value="professional">Professional</option>
-                  <option value="casual">Casual</option>
-                  <option value="technical">Technical</option>
-                </select>
-              </div>
-
-              {/* Response Length Setting */}
-              <div>
-                <label className="text-xs text-muted-foreground block mb-2">Response Length</label>
-                <select
-                  value={responseLength}
-                  onChange={(e) => {
-                    setResponseLength(e.target.value);
-                    localStorage.setItem("aras-response-length", e.target.value);
-                  }}
-                  className="w-full text-xs bg-transparent border border-border/30 rounded px-3 py-2 text-foreground focus:border-primary/50 outline-none"
-                >
-                  <option value="brief">Brief</option>
-                  <option value="detailed">Detailed</option>
-                  <option value="bullet">Bullet Points</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        )}
-        
-        <div className="relative flex items-end space-x-3 max-w-4xl mx-auto">
-          <div className="flex-1">
-            {isMultiline ? (
-              <Textarea
+          {/* Main Input - Grok Style */}
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.6 }}
+            className="w-full max-w-3xl"
+          >
+            <div className="relative">
+              <Input
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                onKeyDown={handleKeyPress}
-                placeholder="Message ARAS AI"
-                className="min-h-[42px] max-h-32 bg-transparent text-foreground placeholder:text-muted-foreground border border-border/30 rounded-xl focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all duration-200 resize-none pr-16"
+                onKeyPress={handleKeyPress}
+                placeholder="Was möchtest du wissen?"
+                className="w-full h-14 bg-white/5 backdrop-blur-sm text-white placeholder:text-gray-500 border border-white/10 rounded-2xl px-6 pr-32 text-base focus:border-orange-500/50 focus:ring-2 focus:ring-orange-500/20 transition-all duration-200"
                 disabled={sendMessage.isPending}
-                rows={Math.min(4, message.split('\n').length)}
               />
-            ) : (
-              <div className="relative">
-                <Input
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Message ARAS AI"
-                  className="h-[42px] bg-transparent text-foreground placeholder:text-muted-foreground border border-border/30 rounded-xl focus:border-primary/50 focus:ring-1 focus:ring-primary/20 transition-all duration-200 pr-16"
-                  disabled={sendMessage.isPending}
-                />
+              
+              {/* Language Selector in Input */}
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-2">
+                <select
+                  value={selectedLanguage}
+                  onChange={(e) => {
+                    setSelectedLanguage(e.target.value);
+                    localStorage.setItem("aras-language", e.target.value);
+                  }}
+                  className="text-xs bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-2 py-1 text-white focus:border-orange-500/50 outline-none cursor-pointer"
+                >
+                  <option value="en" className="bg-gray-900">🇺🇸 EN</option>
+                  <option value="de" className="bg-gray-900">🇩🇪 DE</option>
+                  <option value="es" className="bg-gray-900">🇪🇸 ES</option>
+                  <option value="fr" className="bg-gray-900">🇫🇷 FR</option>
+                </select>
                 
-                {/* Microphone Button - Positioned in the circle as requested */}
-                <Button
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
                   onClick={isRecording ? stopRecording : startRecording}
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-orange-600/20 hover:bg-orange-600/40 border border-orange-500/40 p-0 flex items-center justify-center transition-all duration-200"
+                  className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center transition-all duration-200"
                   disabled={sendMessage.isPending}
                 >
                   {isRecording ? (
@@ -950,62 +688,178 @@ export function ChatInterface() {
                       animate={{ rotate: 360 }}
                       transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                     >
-                      <img 
-                        src={arasLogo} 
-                        alt="ARAS AI" 
-                        className="w-4 h-4 object-contain opacity-80"
-                      />
+                      <Sparkles className="w-4 h-4 text-orange-400" />
                     </motion.div>
                   ) : (
-                    <Mic className="w-4 h-4 text-orange-400" />
+                    <Mic className="w-4 h-4 text-gray-400" />
                   )}
-                </Button>
+                </motion.button>
+              </div>
+            </div>
+            
+            {/* Subscription Status */}
+            {subscriptionData && (
+              <div className="text-center mt-3 text-xs text-gray-500">
+                {subscriptionData.aiMessagesUsed} / {subscriptionData.aiMessagesLimit || '∞'} messages used this month
               </div>
             )}
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Button
-              onClick={() => setIsMultiline(!isMultiline)}
-              variant="outline"
-              size="sm"
-              className="h-[42px] px-3 border-border/30 hover:border-primary/50"
-            >
-              <FileText className="w-4 h-4" />
-            </Button>
-            <Button 
-              onClick={handleSendMessage} 
-              size="sm"
-              disabled={!message.trim() || sendMessage.isPending}
-              className="h-[42px] px-4 bg-primary hover:bg-primary/90 text-primary-foreground border-0 rounded-xl transition-all duration-200"
-            >
-              <Send className="w-4 h-4" />
-            </Button>
-          </div>
+          </motion.div>
         </div>
-        
-        <div className="text-center mt-3">
-          <p className="text-xs text-muted-foreground">
-            {subscriptionData ? (
-              <>
-                {subscriptionData.aiMessagesUsed} / {subscriptionData.aiMessagesLimit || '∞'} messages used this month
-              </>
-            ) : (
-              'Loading subscription status...'
-            )}
-          </p>
-        </div>
-        
-        {/* Recording Status */}
-        {isRecording && (
-          <div className="flex justify-center mt-2">
-            <div className="flex items-center space-x-2 text-red-500">
-              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium">Recording...</span>
+      ) : (
+        /* CHAT MESSAGES VIEW */
+        <>
+          {/* Compact Header */}
+          <div className="px-6 py-3 border-b border-white/10 flex justify-between items-center backdrop-blur-sm bg-black/50">
+            <div className="flex items-center space-x-3">
+              <img src={arasLogo} alt="ARAS" className="w-8 h-8 object-contain" />
+              <span className="text-white font-semibold">ARAS AI</span>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              {subscriptionData?.status === 'trial' && (
+                <div className="flex items-center space-x-1 bg-orange-500/10 border border-orange-500/20 rounded-lg px-2 py-1">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+                  <span className="text-xs font-medium text-orange-300">
+                    {subscriptionData.trialMessagesRemaining || 0} left
+                  </span>
+                </div>
+              )}
+              
+              <select
+                value={selectedLanguage}
+                onChange={(e) => {
+                  setSelectedLanguage(e.target.value);
+                  localStorage.setItem("aras-language", e.target.value);
+                }}
+                className="text-xs bg-white/5 border border-white/10 rounded px-2 py-1 text-white focus:border-orange-500/50 outline-none"
+              >
+                <option value="en" className="bg-gray-900">🇺🇸 EN</option>
+                <option value="de" className="bg-gray-900">🇩🇪 DE</option>
+                <option value="es" className="bg-gray-900">🇪🇸 ES</option>
+                <option value="fr" className="bg-gray-900">🇫🇷 FR</option>
+              </select>
+              
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                onClick={handleNewChat}
+                className="text-gray-400 hover:text-white"
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
             </div>
           </div>
-        )}
-      </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+            <AnimatePresence>
+              {(searchQuery ? handleSearchMessages(searchQuery) : messages).map((msg) => (
+                <MessageBubble
+                  key={msg.id}
+                  message={msg.message}
+                  isAi={msg.isAi || false}
+                  timestamp={msg.timestamp ? new Date(msg.timestamp) : new Date()}
+                  confidence={msg.isAi ? 0.95 : undefined}
+                  messageId={msg.id.toString()}
+                  onReaction={(messageId, reaction) => {
+                    toast({
+                      title: "Feedback Recorded",
+                      description: `Thanks for the ${reaction} feedback!`,
+                    });
+                  }}
+                  onSpeak={speakText}
+                  isSpeaking={isSpeaking}
+                />
+              ))}
+            </AnimatePresence>
+
+            {(sendMessage.isPending || showTypingIndicator) && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex justify-start"
+              >
+                <div className="flex items-start space-x-3">
+                  <img 
+                    src={arasAiImage} 
+                    alt="ARAS AI" 
+                    className="w-8 h-8 rounded-full object-contain"
+                  />
+                  
+                  <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3">
+                    <div className="flex items-center space-x-3">
+                      <div className="flex space-x-1">
+                        <motion.div 
+                          className="w-2 h-2 bg-orange-400 rounded-full"
+                          animate={{ scale: [1, 1.5, 1] }}
+                          transition={{ duration: 1, repeat: Infinity, delay: 0 }}
+                        />
+                        <motion.div 
+                          className="w-2 h-2 bg-orange-400 rounded-full"
+                          animate={{ scale: [1, 1.5, 1] }}
+                          transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}
+                        />
+                        <motion.div 
+                          className="w-2 h-2 bg-orange-400 rounded-full"
+                          animate={{ scale: [1, 1.5, 1] }}
+                          transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}
+                        />
+                      </div>
+                      <span className="text-xs text-gray-400">
+                        ARAS AI denkt nach...
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+            
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Chat Input */}
+          <div className="px-6 py-4 border-t border-white/10 backdrop-blur-sm bg-black/50">
+            <div className="max-w-4xl mx-auto">
+              <div className="relative">
+                <Input
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Nachricht an ARAS AI"
+                  className="w-full h-14 bg-white/5 backdrop-blur-sm text-white placeholder:text-gray-500 border border-white/10 rounded-2xl px-6 pr-32 text-base focus:border-orange-500/50 focus:ring-2 focus:ring-orange-500/20 transition-all duration-200"
+                  disabled={sendMessage.isPending}
+                />
+                
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-2">
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={isRecording ? stopRecording : startRecording}
+                    className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 flex items-center justify-center transition-all duration-200"
+                    disabled={sendMessage.isPending}
+                  >
+                    {isRecording ? (
+                      <MicOff className="w-4 h-4 text-red-400" />
+                    ) : (
+                      <Mic className="w-4 h-4 text-gray-400" />
+                    )}
+                  </motion.button>
+                  
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleSendMessage}
+                    disabled={!message.trim() || sendMessage.isPending}
+                    className="px-4 py-2 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-700 disabled:cursor-not-allowed rounded-xl text-white font-medium transition-all duration-200"
+                  >
+                    <Send className="w-4 h-4" />
+                  </motion.button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
