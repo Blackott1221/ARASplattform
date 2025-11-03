@@ -575,7 +575,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Update subscription usage
-      await storage.incrementAiMessageUsage(userId);
+      await storage.trackUsage(userId, 'ai_message', 'Chat message processed');
       
       res.json({
         message: aiMessage,
