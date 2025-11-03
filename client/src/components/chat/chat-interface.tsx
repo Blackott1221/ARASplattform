@@ -401,7 +401,7 @@ export function ChatInterface() {
 
   return (
     <div 
-      className="flex-1 flex flex-col h-full bg-black relative overflow-hidden"
+      className="flex-1 flex flex-col min-h-screen bg-black relative overflow-hidden"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
