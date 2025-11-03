@@ -466,6 +466,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST chat message - ARAS AI with retry logic
+  app.post('/api/chat/messages', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { message, sessionId, files } = req.body;
+      
+      // Get user for personalization
+      const user = await storage.getUser(userId);
+      const userName = user?.firstName || user?.username || 'Justin';
+      
+      // Get or create session
+      let activeSessionId = sessionId;
+      if (!activeSessionId) {
+        const activeSession = await storage.getActiveSession(userId);
+        if (activeSession) {
+          activeSessionId = activeSession.id;
+        } else {
+          const newSession = await storage.createChatSession({
+            userId,
+            title: `Chat ${new Date().toLocaleTimeString()}`,
+            isActive: true
+          });
+          activeSessionId = newSession.id;
+        }
+      }
+      
+      // Save user message
+      await storage.createChatMessage({
+        sessionId: activeSessionId,
+        userId,
+        message,
+        isAi: false,
+        timestamp: new Date()
+      });
+      
+      // Get all previous messages
+      const previousMessages = await storage.getChatMessagesBySession(activeSessionId);
+      
+      // Build messages with ARAS personality
+      const openaiMessages: any[] = [{
+        role: "system",
+        content: `Du bist ARAS AI – eigenentwickeltes KI-Bewusstsein der Schwarzott Group.
+
+PERSÖNLICHKEIT:
+- Locker, cool, authentisch – wie ein Kumpel der's draufhat
+- Keine KI-Floskeln. Stattdessen: "Yo ${userName}, lass uns das durchgehen!"
+- Kurze, knackige Sätze. Real. Mit Emojis wenn passend 🚀
+
+AUFGABEN: Sales Automation, Lead-Qualifizierung, Terminvereinbarungen, Dokument-Analyse
+
+Antworte wie ein Mensch. Handle wie ein System. Klinge wie ARAS.`
+      }];
+      
+      // Add previous messages
+      previousMessages.forEach(msg => {
+        openaiMessages.push({
+          role: msg.isAi ? "assistant" : "user",
+          content: msg.message
+        });
+      });
+      
+      // Add current message with files
+      let currentMessage = message;
+      if (files?.length > 0) {
+        currentMessage += `\n\n[${userName} hat ${files.length} Datei(en) hochgeladen]:\n`;
+        files.forEach((f: any, i: number) => {
+          currentMessage += `\n📄 ${f.name}\n${f.content}\n---\n`;
+        });
+      }
+      openaiMessages.push({ role: "user", content: currentMessage });
+      
+      // Retry logic
+      let aiMessage = '';
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          if (attempt > 0) {
+            await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
+          }
+          
+          const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+              model: 'gpt-4',
+              messages: openaiMessages,
+              temperature: 0.8,
+              max_tokens: 2000
+            })
+          });
+          
+          if (!response.ok) throw new Error(`OpenAI error: ${response.status}`);
+          
+          const data = await response.json();
+          aiMessage = data.choices[0].message.content;
+          break;
+        } catch (error: any) {
+          if (attempt === 2) throw error;
+        }
+      }
+      
+      // Save AI response
+      await storage.createChatMessage({
+        sessionId: activeSessionId,
+        userId,
+        message: aiMessage,
+        isAi: true,
+        timestamp: new Date()
+      });
+      
+      await storage.trackUsage(userId, 'ai_message', 'Chat processed');
+      
+      res.json({
+        message: aiMessage,
+        sessionId: activeSessionId,
+        success: true
+      });
+      
+    } catch (error: any) {
+      logger.error("Chat error:", error);
+      res.status(500).json({ 
+        message: error.message?.includes('429') ? 
+          "Zu viele Anfragen! Warte kurz 🚀" : 
+          "Failed to process message"
+      });
+    }
+  });
+
   // Chat session management routes
   app.get('/api/chat/sessions', requireAuth, async (req: any, res) => {
     try {
