@@ -466,6 +466,131 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST chat message - Save user message and get AI response
+  app.post('/api/chat/messages', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { message, sessionId, files } = req.body;
+      
+      console.log('[CHAT-DEBUG] Received message:', { userId, sessionId, hasFiles: !!files });
+      
+      // Get or create active session
+      let activeSessionId = sessionId;
+      if (!activeSessionId) {
+        const activeSession = await storage.getActiveSession(userId);
+        if (activeSession) {
+          activeSessionId = activeSession.id;
+        } else {
+          const newSession = await storage.createChatSession({
+            userId,
+            title: `Chat ${new Date().toLocaleTimeString()}`,
+            isActive: true
+          });
+          activeSessionId = newSession.id;
+        }
+      }
+      
+      // Save user message
+      await storage.saveChatMessage({
+        sessionId: activeSessionId,
+        userId,
+        message,
+        isAi: false,
+        timestamp: new Date()
+      });
+      
+      // Get ALL previous messages for context
+      const previousMessages = await storage.getChatMessagesBySession(activeSessionId);
+      
+      // Build OpenAI messages array with full context
+      const openaiMessages: any[] = [
+        {
+          role: "system",
+          content: "Du bist ARAS AI, ein hilfreicher Sales-Automatisierungs-Assistent. Du sprichst Deutsch und hilfst bei Verkaufsgesprächen, Lead-Management und Terminvereinbarungen."
+        }
+      ];
+      
+      // Add all previous messages for context
+      previousMessages.forEach(msg => {
+        if (!msg.isAi) {
+          openaiMessages.push({
+            role: "user",
+            content: msg.message
+          });
+        } else {
+          openaiMessages.push({
+            role: "assistant",
+            content: msg.message
+          });
+        }
+      });
+      
+      // Add current message with files if present
+      let currentMessage = message;
+      if (files && files.length > 0) {
+        currentMessage = `${message}\n\n[HOCHGELADENE DATEIEN - BITTE ANALYSIEREN]:\n`;
+        files.forEach((file: any) => {
+          currentMessage += `\nDatei: ${file.name}\nInhalt:\n${file.content}\n---\n`;
+        });
+      }
+      
+      openaiMessages.push({
+        role: "user",
+        content: currentMessage
+      });
+      
+      console.log('[CHAT-DEBUG] Calling OpenAI with', openaiMessages.length, 'messages');
+      
+      // Call OpenAI API
+      const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4',
+          messages: openaiMessages,
+          temperature: 0.7,
+          max_tokens: 1000
+        })
+      });
+      
+      if (!openaiResponse.ok) {
+        throw new Error(`OpenAI API error: ${openaiResponse.statusText}`);
+      }
+      
+      const openaiData = await openaiResponse.json();
+      const aiMessage = openaiData.choices[0].message.content;
+      
+      console.log('[CHAT-DEBUG] Got AI response, saving...');
+      
+      // Save AI response
+      await storage.saveChatMessage({
+        sessionId: activeSessionId,
+        userId,
+        message: aiMessage,
+        isAi: true,
+        timestamp: new Date()
+      });
+      
+      // Update subscription usage
+      await storage.incrementAiMessageUsage(userId);
+      
+      res.json({
+        message: aiMessage,
+        sessionId: activeSessionId,
+        success: true
+      });
+      
+    } catch (error) {
+      console.error('[CHAT-DEBUG] Error:', error);
+      logger.error("Error processing chat message:", error);
+      res.status(500).json({ message: "Failed to process message" });
+    }
+  });
+
+
   // Chat session management routes
   app.get('/api/chat/sessions', requireAuth, async (req: any, res) => {
     try {
