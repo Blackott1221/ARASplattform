@@ -466,179 +466,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST chat message - Save user message and get AI response
-  app.post('/api/chat/messages', requireAuth, async (req: any, res) => {
+  // Chat session management routes
+  app.get('/api/chat/sessions', requireAuth, async (req: any, res) => {
     try {
       const userId = req.session.userId;
-      const { message, sessionId, files } = req.body;
-      
-      console.log('[CHAT-DEBUG] Received message:', { userId, sessionId, hasFiles: !!files });
-      
-      // Get user info for personalization
-      const user = await storage.getUser(userId);
-      const userName = user?.firstName || user?.username || 'Justin';
-      
-      // Get or create active session
-      let activeSessionId = sessionId;
-      if (!activeSessionId) {
-        const activeSession = await storage.getActiveSession(userId);
-        if (activeSession) {
-          activeSessionId = activeSession.id;
-        } else {
-          const newSession = await storage.createChatSession({
-            userId,
-            title: `Chat ${new Date().toLocaleTimeString()}`,
-            isActive: true
-          });
-          activeSessionId = newSession.id;
-        }
-      }
-      
-      // Save user message
-      await storage.createChatMessage({
-        sessionId: activeSessionId,
-        userId,
-        message,
-        isAi: false,
-        timestamp: new Date()
-      });
-      
-      // Get ALL previous messages for context
-      const previousMessages = await storage.getChatMessagesBySession(activeSessionId);
-      
-      // Build OpenAI messages array with ARAS AI personality
-      const openaiMessages: any[] = [
-        {
-          role: "system",
-          content: `Du bist ARAS AI – eigenentwickeltes KI-Bewusstsein der Schwarzott Group.
-
-PERSÖNLICHKEIT:
-- Locker, cool, authentisch – wie ein richtig guter Kumpel
-- Keine KI-Floskeln. Stattdessen: "Yo ${userName}, lass uns das kurz durchgehen!"
-- Empathisch aber nie aufdringlich
-- Kurze, knackige Sätze. Rhythmisch. Real.
-
-STIL:
-- Sprich ${userName} direkt an
-- Nutze Emojis wenn passend (🚀💪🔥)
-- Mix aus Deutsch und coolen englischen Terms
-- Keine Marketingsprache
-
-AUFGABEN:
-- Sales & Marketing Intelligence
-- Lead-Qualifizierung
-- Terminvereinbarungen
-- Business Automation
-- Dokument-Analyse
-
-Antworte wie ein Mensch. Handle wie ein System. Klinge wie ARAS.`
-        }
-      ];
-      
-      // Add all previous messages
-      previousMessages.forEach(msg => {
-        if (!msg.isAi) {
-          openaiMessages.push({ role: "user", content: msg.message });
-        } else {
-          openaiMessages.push({ role: "assistant", content: msg.message });
-        }
-      });
-      
-      // Add current message with files
-      let currentMessage = message;
-      if (files && files.length > 0) {
-        currentMessage = `${message}\n\n[${userName} hat ${files.length} Datei(en) hochgeladen]:\n\n`;
-        files.forEach((file: any, i: number) => {
-          currentMessage += `📄 Datei ${i + 1}: ${file.name}\nInhalt:\n${file.content}\n---\n\n`;
-        });
-      }
-      
-      openaiMessages.push({ role: "user", content: currentMessage });
-      
-      console.log('[CHAT-DEBUG] Calling OpenAI with', openaiMessages.length, 'messages');
-      
-      // Retry logic
-      let aiMessage = '';
-      let lastError: any = null;
-      const maxRetries = 3;
-      
-      for (let attempt = 0; attempt < maxRetries; attempt++) {
-        try {
-          if (attempt > 0) {
-            const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
-            console.log(`[CHAT-DEBUG] Retry ${attempt + 1}/${maxRetries} after ${delay}ms`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-          }
-          
-          const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
-            },
-            body: JSON.stringify({
-              model: 'gpt-4',
-              messages: openaiMessages,
-              temperature: 0.8,
-              max_tokens: 2000
-            })
-          });
-          
-          if (!openaiResponse.ok) {
-            const errorText = await openaiResponse.text();
-            throw new Error(`OpenAI error: ${openaiResponse.status} - ${errorText}`);
-          }
-          
-          const openaiData = await openaiResponse.json();
-          aiMessage = openaiData.choices[0].message.content;
-          console.log('[CHAT-DEBUG] Success!');
-          break;
-          
-        } catch (error: any) {
-          lastError = error;
-          console.log(`[CHAT-DEBUG] Attempt ${attempt + 1} failed:`, error.message);
-          
-          if (error.message.includes('429') && attempt < maxRetries - 1) {
-            continue;
-          } else if (attempt === maxRetries - 1) {
-            throw error;
-          }
-        }
-      }
-      
-      if (!aiMessage && lastError) throw lastError;
-      
-      // Save AI response
-      await storage.createChatMessage({
-        sessionId: activeSessionId,
-        userId,
-        message: aiMessage,
-        isAi: true,
-        timestamp: new Date()
-      });
-      
-      // Track usage
-      await storage.trackUsage(userId, 'ai_message', 'Chat processed');
-      
-      res.json({
-        message: aiMessage,
-        sessionId: activeSessionId,
-        success: true
-      });
-      
-    } catch (error: any) {
-      console.error('[CHAT-DEBUG] Error:', error);
-      logger.error("Chat error:", error);
-      
-      let errorMessage = "Failed to process message";
-      if (error.message?.includes('429')) {
-        errorMessage = "Zu viele Anfragen! Warte kurz 🚀";
-      }
-      
-      res.status(500).json({ message: errorMessage });
+      const sessions = await storage.getChatSessions(userId);
+      res.json(sessions);
+    } catch (error) {
+      logger.error("Error fetching chat sessions:", error);
+      res.status(500).json({ message: "Failed to fetch chat sessions" });
     }
   });
 
+  app.post('/api/chat/sessions/new', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { title = "New Chat" } = req.body;
+      
+      // Create new session (automatically deactivates others)
+      const session = await storage.createChatSession({
+        userId,
+        title,
+        isActive: true
+      });
+      
+      res.json({
+        message: 'New chat session started',
+        session,
+        success: true 
+      });
+    } catch (error) {
+      logger.error('Error starting new chat session:', error);
+      res.status(500).json({ message: 'Failed to start new chat session' });
+    }
+  });
+
+  app.post('/api/chat/sessions/:id/activate', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const sessionId = parseInt(req.params.id);
+      
+      // Activate the session
+      await storage.setActiveSession(userId, sessionId);
+      
+      // Get messages for this session to confirm it loaded
+      const messages = await storage.getChatMessagesBySession(sessionId);
+      
+      res.json({
+        message: 'Chat session activated',
+        sessionId,
+        messageCount: messages.length,
+        success: true
+      });
+    } catch (error) {
+      logger.error('Error activating chat session:', error);
+      res.status(500).json({ message: 'Failed to activate chat session' });
+    }
+  });
+
+  app.get('/api/chat/sessions/:id/messages', requireAuth, async (req: any, res) => {
+    try {
+      const sessionId = parseInt(req.params.id);
+      const messages = await storage.getChatMessagesBySession(sessionId);
+      res.json(messages);
+    } catch (error) {
+      logger.error("Error fetching session messages:", error);
+      res.status(500).json({ message: "Failed to fetch session messages" });
+    }
+  });
+
+  // Export chat history endpoint
+  app.post('/api/chat/export', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { format = 'pdf' } = req.body;
+      
+      const messages = await storage.getChatMessages(userId);
+      const user = await storage.getUser(userId);
+      
+      // Create text content
+      let content = `ARAS AI Chat Export\nUser: ${user?.username || 'Unknown'}\nDate: ${new Date().toLocaleString()}\n\n`;
+      
+      messages.forEach((msg, index) => {
+        const sender = msg.isAi ? 'ARAS AI' : (user?.firstName || user?.username || 'User');
+        const timestamp = new Date(msg.timestamp || new Date()).toLocaleString();
+        content += `[${timestamp}] ${sender}:\n${msg.message}\n\n`;
+      });
+      
       if (format === 'pdf') {
         // For now, return as text file since we don't have PDF library
         res.setHeader('Content-Type', 'text/plain');
