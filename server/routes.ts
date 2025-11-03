@@ -756,7 +756,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   app.post('/api/voice/incoming', async (req, res) => {
     try {
       logger.info('Incoming call received');
-      const twiml = \`<?xml version="1.0" encoding="UTF-8"?>
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Vicki" language="de-DE">Hallo. Hier ist ARAS AI von der Schwarzott Group. Wie kann ich dir helfen?</Say>
   <Gather input="speech" action="https://arasai.onrender.com/api/voice/process" method="POST" language="de-DE" speechTimeout="3">
@@ -764,7 +764,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   </Gather>
   <Say voice="Polly.Vicki" language="de-DE">Ich habe nichts verstanden. Auf Wiedersehen.</Say>
   <Hangup/>
-</Response>\`;
+</Response>`;
       res.type('text/xml');
       res.send(twiml);
     } catch (error) {
@@ -779,11 +779,11 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       logger.info('Speech received:', { SpeechResult });
       
       if (!SpeechResult) {
-        const twiml = \`<?xml version="1.0" encoding="UTF-8"?>
+        const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Vicki" language="de-DE">Ich habe dich nicht verstanden.</Say>
   <Hangup/>
-</Response>\`;
+</Response>`;
         res.type('text/xml');
         return res.send(twiml);
       }
@@ -792,7 +792,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': \`Bearer \${process.env.OPENAI_API_KEY}\`
+          'Authorization': `Bearer \${process.env.OPENAI_API_KEY}`
         },
         body: JSON.stringify({
           model: 'gpt-5',
@@ -810,7 +810,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       const data = await response.json();
       const aiResponse = data.choices[0].message.content;
 
-      const twiml = \`<?xml version="1.0" encoding="UTF-8"?>
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Vicki" language="de-DE">\${aiResponse}</Say>
   <Gather input="speech" action="https://arasai.onrender.com/api/voice/process" method="POST" language="de-DE" speechTimeout="3">
@@ -818,17 +818,17 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   </Gather>
   <Say voice="Polly.Vicki" language="de-DE">Danke. Auf Wiedersehen.</Say>
   <Hangup/>
-</Response>\`;
+</Response>`;
       
       res.type('text/xml');
       res.send(twiml);
     } catch (error) {
       logger.error('Voice process error:', error);
-      const twiml = \`<?xml version="1.0" encoding="UTF-8"?>
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Vicki" language="de-DE">Es gab einen Fehler. Auf Wiedersehen.</Say>
   <Hangup/>
-</Response>\`;
+</Response>`;
       res.type('text/xml');
       res.send(twiml);
     }
@@ -836,11 +836,11 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
 
   app.post('/api/voice/fallback', (req, res) => {
     logger.error('Fallback handler called');
-    const twiml = \`<?xml version="1.0" encoding="UTF-8"?>
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Vicki" language="de-DE">Service nicht verfügbar. Bitte später erneut versuchen.</Say>
   <Hangup/>
-</Response>\`;
+</Response>`;
     res.type('text/xml');
     res.send(twiml);
   });
@@ -854,16 +854,16 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       const authToken = process.env.TWILIO_AUTH_TOKEN;
       const twilioNumber = process.env.TWILIO_PHONE_NUMBER;
 
-      const response = await fetch(\`https://api.twilio.com/2010-04-01/Accounts/\${accountSid}/Calls.json\`, {
+      const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/\${accountSid}/Calls.json`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': 'Basic ' + Buffer.from(\`\${accountSid}:\${authToken}\`).toString('base64')
+          'Authorization': 'Basic ' + Buffer.from(`\${accountSid}:\${authToken}`).toString('base64')
         },
         body: new URLSearchParams({
           To: phoneNumber,
           From: twilioNumber,
-          Url: \`https://arasai.onrender.com/api/voice/outbound/twiml?message=\${encodeURIComponent(campaignMessage || '')}\`
+          Url: `https://arasai.onrender.com/api/voice/outbound/twiml?message=\${encodeURIComponent(campaignMessage || '')}`
         })
       });
 
@@ -883,7 +883,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
 
   app.get('/api/voice/outbound/twiml', async (req, res) => {
     const { message } = req.query;
-    const twiml = \`<?xml version="1.0" encoding="UTF-8"?>
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Vicki" language="de-DE">Hallo. Hier ist ARAS AI. \${message || 'Ich rufe dich an.'}</Say>
   <Gather input="speech" action="https://arasai.onrender.com/api/voice/outbound/response" method="POST" language="de-DE" speechTimeout="3">
@@ -891,7 +891,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   </Gather>
   <Say voice="Polly.Vicki" language="de-DE">Danke. Auf Wiedersehen.</Say>
   <Hangup/>
-</Response>\`;
+</Response>`;
     res.type('text/xml');
     res.send(twiml);
   });
@@ -900,11 +900,11 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     try {
       const { SpeechResult } = req.body;
       if (!SpeechResult) {
-        const twiml = \`<?xml version="1.0" encoding="UTF-8"?>
+        const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Vicki" language="de-DE">Nichts verstanden.</Say>
   <Hangup/>
-</Response>\`;
+</Response>`;
         res.type('text/xml');
         return res.send(twiml);
       }
@@ -913,7 +913,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': \`Bearer \${process.env.OPENAI_API_KEY}\`
+          'Authorization': `Bearer \${process.env.OPENAI_API_KEY}`
         },
         body: JSON.stringify({
           model: 'gpt-5',
@@ -931,7 +931,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       const data = await response.json();
       const aiResponse = data.choices[0].message.content;
 
-      const twiml = \`<?xml version="1.0" encoding="UTF-8"?>
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Vicki" language="de-DE">\${aiResponse}</Say>
   <Gather input="speech" action="https://arasai.onrender.com/api/voice/outbound/response" method="POST" language="de-DE" speechTimeout="3">
@@ -939,16 +939,16 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   </Gather>
   <Say voice="Polly.Vicki" language="de-DE">Danke. Auf Wiedersehen.</Say>
   <Hangup/>
-</Response>\`;
+</Response>`;
       res.type('text/xml');
       res.send(twiml);
     } catch (error) {
       logger.error('Outbound response error:', error);
-      const twiml = \`<?xml version="1.0" encoding="UTF-8"?>
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Vicki" language="de-DE">Fehler. Auf Wiedersehen.</Say>
   <Hangup/>
-</Response>\`;
+</Response>`;
       res.type('text/xml');
       res.send(twiml);
     }
