@@ -641,7 +641,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       const { title = "New Chat" } = req.body;
       
       // Create new session (automatically deactivates others)
-      const session = await storage.createChatSession({
+      const newChatSession = await storage.createChatSession({
         userId,
         title,
         isActive: true
