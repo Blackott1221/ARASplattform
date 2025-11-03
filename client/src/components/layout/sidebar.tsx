@@ -91,7 +91,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
             <img 
               src={arasLogo} 
               alt="ARAS AI" 
-              className={`${isCollapsed ? 'w-10 h-10' : 'w-11 h-11'} transition-all duration-300 object-contain relative z-10`}
+              className={`${isCollapsed ? 'w-12 h-12' : 'w-16 h-16'} transition-all duration-300 object-contain relative z-10`}
             />
           </div>
         </motion.div>
@@ -142,7 +142,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
       )}
       
       {/* Navigation */}
-      <nav className="flex-1 px-4 space-y-2.5 relative overflow-y-auto custom-scroll">
+      <nav className="flex-1 px-4 pt-16 space-y-2.5 relative overflow-y-auto custom-scroll">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeSection === item.id;
