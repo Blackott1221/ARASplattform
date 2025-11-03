@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MessageBubble } from "./message-bubble";
-import { Send, Mic, MicOff, Plus, Trash2, MessageSquare, X, Menu } from "lucide-react";
+import { Send, Mic, MicOff, Plus, Trash2, MessageSquare, X, Menu, Paperclip, File, Image as ImageIcon, FileText, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,6 +22,13 @@ const ANIMATED_TEXTS = [
   "Follow-ups"
 ];
 
+interface UploadedFile {
+  name: string;
+  type: string;
+  size: number;
+  content: string;
+}
+
 export function ChatInterface() {
   const [message, setMessage] = useState("");
   const [isRecording, setIsRecording] = useState(false);
@@ -32,11 +39,14 @@ export function ChatInterface() {
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [displayText, setDisplayText] = useState("");
   const [isTyping, setIsTyping] = useState(true);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
@@ -93,6 +103,7 @@ export function ChatInterface() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/chat/sessions"] });
+      setUploadedFiles([]);
       toast({
         title: "Neuer Chat gestartet",
         description: "Vorherige Konversation wurde gespeichert",
@@ -102,14 +113,21 @@ export function ChatInterface() {
 
   const sendMessage = useMutation({
     mutationFn: async (message: string) => {
-      const response = await apiRequest("POST", "/api/chat/messages", { 
-        message,
-      });
+      const messageData: any = { message };
+      
+      // Add file context if files are uploaded
+      if (uploadedFiles.length > 0) {
+        messageData.files = uploadedFiles;
+        messageData.message = `${message}\n\n[Analysiere die hochgeladenen Dateien: ${uploadedFiles.map(f => f.name).join(', ')}]`;
+      }
+      
+      const response = await apiRequest("POST", "/api/chat/messages", messageData);
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/subscription"] });
+      setUploadedFiles([]);
     },
     onError: (error: any) => {
       toast({
@@ -139,10 +157,85 @@ export function ChatInterface() {
     }
   };
 
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+
+    if (file.size > maxSize) {
+      toast({
+        title: "Datei zu groß",
+        description: "Maximum 10MB erlaubt",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const allowedTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain',
+      'image/jpeg',
+      'image/png',
+      'image/webp'
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: "Dateityp nicht unterstützt",
+        description: "Nur PDF, DOCX, TXT und Bilder erlaubt",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const content = await file.text();
+      
+      setUploadedFiles([...uploadedFiles, {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        content: content
+      }]);
+
+      toast({
+        title: "Datei hochgeladen",
+        description: `${file.name} wurde hinzugefügt`,
+      });
+    } catch (error) {
+      toast({
+        title: "Upload-Fehler",
+        description: "Datei konnte nicht gelesen werden",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    handleFileUpload(e.dataTransfer.files);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const removeFile = (index: number) => {
+    setUploadedFiles(uploadedFiles.filter((_, i) => i !== index));
+  };
+
   const handleSendMessage = async () => {
-    if (!message.trim() || sendMessage.isPending) return;
+    if ((!message.trim() && uploadedFiles.length === 0) || sendMessage.isPending) return;
     
-    const userMessage = message;
+    const userMessage = message || "Analysiere die hochgeladenen Dateien";
     setMessage("");
     
     try {
@@ -249,6 +342,12 @@ export function ChatInterface() {
     scrollToBottom();
   }, [messages]);
 
+  const getFileIcon = (type: string) => {
+    if (type.includes('image')) return <ImageIcon className="w-4 h-4" />;
+    if (type.includes('pdf')) return <FileText className="w-4 h-4" />;
+    return <File className="w-4 h-4" />;
+  };
+
   if (authLoading) {
     return (
       <div className="flex-1 flex items-center justify-center bg-black">
@@ -264,7 +363,26 @@ export function ChatInterface() {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-black relative overflow-hidden">
+    <div 
+      className="flex-1 flex flex-col h-full bg-black relative overflow-hidden"
+      onDrop={handleDrop}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+    >
+      {/* Drag & Drop Overlay */}
+      {isDragging && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="absolute inset-0 z-50 bg-orange-500/20 backdrop-blur-sm flex items-center justify-center border-4 border-dashed border-orange-500"
+        >
+          <div className="text-center">
+            <Paperclip className="w-16 h-16 text-orange-500 mx-auto mb-4" />
+            <p className="text-white text-xl font-semibold">Datei hier ablegen</p>
+          </div>
+        </motion.div>
+      )}
+
       {/* Ambient Background */}
       <div className="absolute inset-0 bg-gradient-radial from-orange-500/5 via-transparent to-transparent opacity-40 blur-3xl pointer-events-none" />
       
@@ -284,10 +402,13 @@ export function ChatInterface() {
               animate={{ x: 0 }}
               exit={{ x: -300 }}
               transition={{ type: "spring", damping: 20 }}
-              className="fixed left-0 top-0 bottom-0 w-80 bg-gray-900 border-r border-white/10 z-50 flex flex-col"
+              className="fixed left-0 top-0 bottom-0 w-80 bg-gradient-to-b from-gray-900 to-black border-r border-white/10 z-50 flex flex-col shadow-2xl"
             >
-              <div className="p-4 border-b border-white/10 flex justify-between items-center">
-                <h3 className="text-white font-semibold">Chat-Historie</h3>
+              <div className="p-4 border-b border-white/10 flex justify-between items-center bg-gradient-to-r from-orange-500/10 to-purple-500/10">
+                <div className="flex items-center space-x-2">
+                  <MessageSquare className="w-5 h-5 text-orange-500" />
+                  <h3 className="text-white font-semibold">Chat-Historie</h3>
+                </div>
                 <Button
                   size="sm"
                   variant="ghost"
@@ -298,41 +419,65 @@ export function ChatInterface() {
                 </Button>
               </div>
               
-              <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
                 {chatSessions.length > 0 ? (
                   chatSessions.map((session) => (
                     <motion.div
                       key={session.id}
-                      whileHover={{ scale: 1.02 }}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      whileHover={{ scale: 1.02, x: 4 }}
                       onClick={() => loadChatSession(session.id)}
-                      className={`p-3 rounded-lg cursor-pointer transition-all ${
+                      className={`group p-3 rounded-xl cursor-pointer transition-all duration-200 ${
                         session.isActive
-                          ? "bg-orange-500/20 border border-orange-500/50"
-                          : "bg-white/5 hover:bg-white/10 border border-white/10"
+                          ? "bg-gradient-to-r from-orange-500/20 to-purple-500/20 border border-orange-500/50 shadow-lg"
+                          : "bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20"
                       }`}
                     >
-                      <div className="text-sm font-medium text-white truncate">
-                        {session.title}
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center space-x-2 flex-1">
+                          <MessageSquare className={`w-4 h-4 ${session.isActive ? 'text-orange-500' : 'text-gray-400'}`} />
+                          <div className="text-sm font-medium text-white truncate">
+                            {session.title}
+                          </div>
+                        </div>
+                        {session.isActive && (
+                          <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+                        )}
                       </div>
-                      <div className="text-xs text-gray-400 mt-1">
-                        {new Date(session.updatedAt).toLocaleDateString('de-DE')}
+                      <div className="flex items-center justify-between text-xs text-gray-400">
+                        <div className="flex items-center space-x-1">
+                          <Clock className="w-3 h-3" />
+                          <span>{new Date(session.updatedAt).toLocaleDateString('de-DE', { 
+                            day: '2-digit', 
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}</span>
+                        </div>
+                        {!session.isActive && (
+                          <span className="opacity-0 group-hover:opacity-100 transition-opacity text-orange-500">
+                            Laden →
+                          </span>
+                        )}
                       </div>
                     </motion.div>
                   ))
                 ) : (
-                  <div className="text-sm text-gray-500 text-center py-8">
-                    Keine Chat-Historie
+                  <div className="text-sm text-gray-500 text-center py-12">
+                    <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                    <p>Keine Chat-Historie</p>
                   </div>
                 )}
               </div>
               
-              <div className="p-3 border-t border-white/10">
+              <div className="p-3 border-t border-white/10 bg-gradient-to-r from-orange-500/5 to-purple-500/5">
                 <Button
                   onClick={() => {
                     startNewChatMutation.mutate();
                     setShowHistory(false);
                   }}
-                  className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+                  className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg"
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Neuer Chat
@@ -342,6 +487,15 @@ export function ChatInterface() {
           </>
         )}
       </AnimatePresence>
+
+      {/* Hidden File Input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.webp"
+        onChange={(e) => handleFileUpload(e.target.files)}
+      />
 
       {messages.length === 0 ? (
         /* WELCOME SCREEN */
@@ -382,6 +536,37 @@ export function ChatInterface() {
             </div>
           </motion.div>
 
+          {/* Uploaded Files Preview */}
+          {uploadedFiles.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="w-full max-w-2xl mb-4"
+            >
+              <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-3 space-y-2">
+                {uploadedFiles.map((file, index) => (
+                  <div key={index} className="flex items-center justify-between bg-white/5 rounded-lg p-2">
+                    <div className="flex items-center space-x-2">
+                      {getFileIcon(file.type)}
+                      <span className="text-sm text-white truncate max-w-[200px]">{file.name}</span>
+                      <span className="text-xs text-gray-500">
+                        ({(file.size / 1024).toFixed(1)} KB)
+                      </span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => removeFile(index)}
+                      className="text-red-400 hover:text-red-300"
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
           {/* Main Input */}
           <motion.div
             initial={{ y: 20, opacity: 0 }}
@@ -398,11 +583,21 @@ export function ChatInterface() {
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Was möchtest du wissen?"
-                className="relative w-full h-12 bg-gray-900 text-white placeholder:text-gray-500 border-0 rounded-2xl px-5 pr-28 text-sm focus:ring-2 focus:ring-orange-500/50 transition-all"
+                className="relative w-full h-12 bg-gray-900 text-white placeholder:text-gray-500 border-0 rounded-2xl px-5 pr-36 text-sm focus:ring-2 focus:ring-orange-500/50 transition-all"
                 disabled={sendMessage.isPending}
               />
               
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"
+                  disabled={sendMessage.isPending}
+                >
+                  <Paperclip className="w-3.5 h-3.5 text-gray-400" />
+                </motion.button>
+                
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
@@ -421,7 +616,7 @@ export function ChatInterface() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={handleSendMessage}
-                  disabled={!message.trim() || sendMessage.isPending}
+                  disabled={(!message.trim() && uploadedFiles.length === 0) || sendMessage.isPending}
                   className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-700 rounded-xl text-white text-sm font-medium transition-all"
                 >
                   <Send className="w-3.5 h-3.5" />
@@ -530,6 +725,32 @@ export function ChatInterface() {
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Uploaded Files Preview in Chat */}
+          {uploadedFiles.length > 0 && (
+            <div className="px-4 pb-2">
+              <div className="max-w-3xl mx-auto">
+                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-2 space-y-1">
+                  {uploadedFiles.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between bg-white/5 rounded-lg p-2">
+                      <div className="flex items-center space-x-2">
+                        {getFileIcon(file.type)}
+                        <span className="text-xs text-white truncate max-w-[200px]">{file.name}</span>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => removeFile(index)}
+                        className="text-red-400 hover:text-red-300 h-6 w-6 p-0"
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Input */}
           <div className="px-4 py-3 border-t border-white/10 backdrop-blur-sm bg-black/50">
             <div className="max-w-3xl mx-auto">
@@ -542,11 +763,21 @@ export function ChatInterface() {
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
                   placeholder="Nachricht an ARAS AI"
-                  className="relative w-full h-12 bg-gray-900 text-white placeholder:text-gray-500 border-0 rounded-2xl px-5 pr-28 text-sm focus:ring-2 focus:ring-orange-500/50 transition-all"
+                  className="relative w-full h-12 bg-gray-900 text-white placeholder:text-gray-500 border-0 rounded-2xl px-5 pr-36 text-sm focus:ring-2 focus:ring-orange-500/50 transition-all"
                   disabled={sendMessage.isPending}
                 />
                 
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"
+                    disabled={sendMessage.isPending}
+                  >
+                    <Paperclip className="w-3.5 h-3.5 text-gray-400" />
+                  </motion.button>
+                  
                   <motion.button
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
@@ -565,7 +796,7 @@ export function ChatInterface() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={handleSendMessage}
-                    disabled={!message.trim() || sendMessage.isPending}
+                    disabled={(!message.trim() && uploadedFiles.length === 0) || sendMessage.isPending}
                     className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-700 rounded-xl text-white text-sm font-medium transition-all"
                   >
                     <Send className="w-3.5 h-3.5" />
@@ -580,7 +811,7 @@ export function ChatInterface() {
       {/* Orbitron Font Import */}
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       
-      {/* Gradient Animation CSS */}
+      {/* Custom Styles */}
       <style>{`
         @keyframes gradient-xy {
           0%, 100% {
@@ -593,6 +824,20 @@ export function ChatInterface() {
         .animate-gradient-xy {
           background-size: 400% 400%;
           animation: gradient-xy 3s ease infinite;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(249, 115, 22, 0.5);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(249, 115, 22, 0.7);
         }
       `}</style>
     </div>
