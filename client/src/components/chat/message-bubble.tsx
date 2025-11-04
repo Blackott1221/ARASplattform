@@ -48,7 +48,6 @@ export function MessageBubble({
   const [displayedText, setDisplayedText] = useState(isAi && isNew ? "" : cleanMessage);
   const [isTyping, setIsTyping] = useState(isAi && isNew);
 
-  // TYPEWRITER EFFECT for new AI messages
   useEffect(() => {
     if (isAi && isNew && cleanMessage) {
       let currentIndex = 0;
@@ -63,7 +62,7 @@ export function MessageBubble({
           setIsTyping(false);
           clearInterval(interval);
         }
-      }, 15); // 15ms per character
+      }, 15);
 
       return () => clearInterval(interval);
     }
@@ -76,18 +75,10 @@ export function MessageBubble({
       transition={{ duration: 0.3 }}
       className={`flex ${isAi ? 'justify-start' : 'justify-end'} mb-6`}
     >
-      <div className={`flex items-start ${isAi ? 'space-x-3' : 'space-x-3 flex-row-reverse'} max-w-[75%]`}>
-        {/* Avatar */}
-        <motion.div 
-          className="flex-shrink-0"
-          whileHover={{ scale: 1.05 }}
-        >
+      <div className={`flex items-start ${isAi ? 'space-x-4' : 'space-x-4 flex-row-reverse'} max-w-[75%]`}>
+        <motion.div className="flex-shrink-0" whileHover={{ scale: 1.05 }}>
           {isAi ? (
-            <img 
-              src={arasAiImage} 
-              alt="ARAS AI" 
-              className="w-9 h-9 rounded-full object-cover ring-2 ring-[#FE9100]/20"
-            />
+            <img src={arasAiImage} alt="ARAS AI" className="w-9 h-9 rounded-full object-cover ring-2 ring-[#FE9100]/20" />
           ) : (
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#FE9100] to-[#a34e00] flex items-center justify-center ring-2 ring-[#FE9100]/20">
               <User className="w-4 h-4 text-white" />
@@ -96,11 +87,9 @@ export function MessageBubble({
         </motion.div>
         
         <div className="flex flex-col max-w-full">
-          {/* Message Content */}
           <div className="relative">
-            {/* ANIMATED BORDER for USER messages only */}
             {!isAi && (
-              <div className="absolute -inset-[2px] rounded-xl">
+              <div className="absolute -inset-[3px] rounded-xl">
                 <motion.div
                   className="w-full h-full rounded-xl"
                   animate={{
@@ -117,7 +106,7 @@ export function MessageBubble({
                     ease: "linear",
                   }}
                   style={{
-                    padding: "2px",
+                    padding: "3px",
                     WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
                     WebkitMaskComposite: "xor",
                     maskComposite: "exclude",
@@ -127,11 +116,7 @@ export function MessageBubble({
             )}
 
             <motion.div 
-              className={`relative px-5 py-3.5 rounded-xl ${
-                isAi 
-                  ? 'bg-transparent text-gray-100' 
-                  : 'bg-transparent text-white'
-              }`}
+              className={`relative px-5 py-3.5 rounded-xl ${isAi ? 'bg-transparent text-gray-100' : 'bg-transparent text-white'}`}
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               transition={{ duration: 0.2 }}
@@ -149,24 +134,11 @@ export function MessageBubble({
             </motion.div>
           </div>
           
-          {/* Timestamp & Actions */}
           <div className={`flex items-center mt-1.5 px-2 space-x-2 ${isAi ? '' : 'flex-row-reverse space-x-reverse'}`}>
-            <p className="text-xs text-gray-500">
-              {format(timestamp, 'HH:mm')}
-            </p>
+            <p className="text-xs text-gray-500">{format(timestamp, 'HH:mm')}</p>
             {isAi && onSpeak && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => onSpeak(cleanMessage)}
-                className="h-6 w-6 p-0 hover:bg-white/10 rounded-lg"
-                disabled={isSpeaking}
-              >
-                {isSpeaking ? (
-                  <VolumeX className="w-3.5 h-3.5 text-[#FE9100]" />
-                ) : (
-                  <Volume2 className="w-3.5 h-3.5 text-gray-400 hover:text-[#FE9100]" />
-                )}
+              <Button size="sm" variant="ghost" onClick={() => onSpeak(cleanMessage)} className="h-6 w-6 p-0 hover:bg-white/10 rounded-lg" disabled={isSpeaking}>
+                {isSpeaking ? <VolumeX className="w-3.5 h-3.5 text-[#FE9100]" /> : <Volume2 className="w-3.5 h-3.5 text-gray-400 hover:text-[#FE9100]" />}
               </Button>
             )}
           </div>
