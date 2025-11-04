@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MessageBubble } from "./message-bubble";
-import { Send, Mic, MicOff, Plus, MessageSquare, X, Menu, Paperclip, File, Image as ImageIcon, FileText, Clock } from "lucide-react";
+import { Send, Mic, MicOff, Plus, MessageSquare, X, Menu, Paperclip, File, Image as ImageIcon, FileText, Clock, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -319,7 +319,7 @@ export function ChatInterface() {
       <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.webp" onChange={(e) => handleFileUpload(e.target.files)} />
 
       {allMessages.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center px-6">
+        <div className="flex-1 flex flex-col items-center justify-center px-6 pb-32">
           <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.5 }} className="mb-8">
             <img src={arasLogo} alt="ARAS AI" className="w-20 h-20 object-contain" />
           </motion.div>
@@ -353,7 +353,6 @@ export function ChatInterface() {
           )}
           <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, delay: 0.4 }} className="w-full max-w-3xl">
             <div className="relative">
-              {/* ANIMATED BORDER für Welcome Input */}
               <div className="absolute -inset-[2px] rounded-2xl">
                 <motion.div
                   className="w-full h-full rounded-2xl"
@@ -410,7 +409,7 @@ export function ChatInterface() {
             </Button>
           </div>
 
-          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-6 premium-scroll" style={{ height: "100%", maxHeight: "100%" }}>
+          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-6 premium-scroll" style={{ paddingBottom: "200px" }}>
             <div className="max-w-3xl mx-auto">
               <AnimatePresence>
                 {allMessages.map((msg, index) => {
@@ -433,7 +432,7 @@ export function ChatInterface() {
               </AnimatePresence>
               {sendMessage.isPending && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-start mb-6">
-                  <div className="flex items-center space-x-5">
+                  <div className="flex items-center gap-6">
                     <img src={arasAiImage} alt="ARAS AI" className="w-9 h-9 rounded-full object-cover ring-2 ring-[#FE9100]/20" />
                     <div className="bg-transparent px-5 py-3.5 rounded-xl">
                       <div className="flex items-center space-x-2">
@@ -452,6 +451,7 @@ export function ChatInterface() {
             </div>
           </div>
 
+          {/* INPUT AREA - WEITER OBEN */}
           <div className="flex-shrink-0 border-t border-white/10 bg-black/90 backdrop-blur-xl">
             {uploadedFiles.length > 0 && (
               <div className="px-6 pt-3">
@@ -472,10 +472,9 @@ export function ChatInterface() {
                 </div>
               </div>
             )}
-            <div className="px-6 py-4">
+            <div className="px-6 pt-3 pb-2">
               <div className="max-w-3xl mx-auto">
                 <div className="relative">
-                  {/* ANIMATED BORDER für Chat Input */}
                   <div className="absolute -inset-[2px] rounded-2xl">
                     <motion.div
                       className="w-full h-full rounded-2xl"
@@ -508,6 +507,16 @@ export function ChatInterface() {
                       <Send className="w-4 h-4" />
                     </motion.button>
                   </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* DISCLAIMER */}
+            <div className="px-6 pb-3">
+              <div className="max-w-3xl mx-auto">
+                <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  <p>ARAS AI kann Fehler machen. Bitte überprüfe wichtige Informationen.</p>
                 </div>
               </div>
             </div>
