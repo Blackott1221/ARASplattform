@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MessageBubble } from "./message-bubble";
-import { Send, Mic, MicOff, Plus, Trash2, MessageSquare, X, Menu, Paperclip, File, Image as ImageIcon, FileText, Clock } from "lucide-react";
+import { Send, Mic, MicOff, Plus, MessageSquare, X, Menu, Paperclip, File, Image as ImageIcon, FileText, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -29,12 +29,17 @@ interface UploadedFile {
   content: string;
 }
 
+interface OptimisticMessage {
+  id: string;
+  message: string;
+  isAi: boolean;
+  timestamp: Date;
+  isOptimistic: true;
+}
+
 export function ChatInterface() {
   const [message, setMessage] = useState("");
   const [isRecording, setIsRecording] = useState(false);
-  const [audioURL, setAudioURL] = useState<string | null>(null);
-  const [isTranscribing, setIsTranscribing] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [displayText, setDisplayText] = useState("");
@@ -42,17 +47,17 @@ export function ChatInterface() {
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [optimisticMessages, setOptimisticMessages] = useState<OptimisticMessage[]>([]);
+  const [newMessageId, setNewMessageId] = useState<number | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { user, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
 
-  // Typewriter animation
+  // Typewriter animation for welcome text
   useEffect(() => {
     const currentText = ANIMATED_TEXTS[currentTextIndex];
     let charIndex = 0;
@@ -94,7 +99,6 @@ export function ChatInterface() {
     retry: false,
   });
 
-  // Set currentSessionId from active session
   useEffect(() => {
     if (chatSessions.length > 0) {
       const activeSession = chatSessions.find(s => s.isActive);
@@ -116,6 +120,7 @@ export function ChatInterface() {
       queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/chat/sessions"] });
       setUploadedFiles([]);
+      setOptimisticMessages([]);
       toast({
         title: "Neuer Chat gestartet",
         description: "Vorherige Konversation wurde gespeichert",
@@ -130,7 +135,6 @@ export function ChatInterface() {
         sessionId: currentSessionId 
       };
       
-      // Add file context if files are uploaded
       if (uploadedFiles.length > 0) {
         messageData.files = uploadedFiles.map(f => ({
           name: f.name,
@@ -140,21 +144,36 @@ export function ChatInterface() {
         messageData.message = `${message}\n\n[WICHTIG: Analysiere die hochgeladenen Dateien: ${uploadedFiles.map(f => f.name).join(', ')}]`;
       }
       
-      console.log('Sending message with data:', messageData);
-      
       const response = await apiRequest("POST", "/api/chat/messages", messageData);
       return response.json();
     },
+    onMutate: async (newMessage) => {
+      // Optimistic update - show user message immediately
+      const optimisticMsg: OptimisticMessage = {
+        id: `optimistic-${Date.now()}`,
+        message: newMessage,
+        isAi: false,
+        timestamp: new Date(),
+        isOptimistic: true
+      };
+      setOptimisticMessages(prev => [...prev, optimisticMsg]);
+      scrollToBottom();
+    },
     onSuccess: (data) => {
+      setOptimisticMessages([]);
       if (data.sessionId) {
         setCurrentSessionId(data.sessionId);
+      }
+      if (data.aiMessage && data.aiMessage.id) {
+        setNewMessageId(data.aiMessage.id);
       }
       queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/subscription"] });
       setUploadedFiles([]);
+      setTimeout(() => setNewMessageId(null), 100);
     },
-    onError: (error: any) => {
-      console.error('Send message error:', error);
+    onError: () => {
+      setOptimisticMessages([]);
       toast({
         title: "Fehler",
         description: "Nachricht konnte nicht gesendet werden",
@@ -170,6 +189,7 @@ export function ChatInterface() {
       await queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
       await queryClient.invalidateQueries({ queryKey: ["/api/chat/sessions"] });
       setShowHistory(false);
+      setOptimisticMessages([]);
       toast({
         title: "Chat geladen",
         description: "Konversation wiederhergestellt",
@@ -185,9 +205,8 @@ export function ChatInterface() {
 
   const handleFileUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
-
     const file = files[0];
-    const maxSize = 10 * 1024 * 1024; // 10MB
+    const maxSize = 10 * 1024 * 1024;
 
     if (file.size > maxSize) {
       toast({
@@ -217,7 +236,6 @@ export function ChatInterface() {
     }
 
     try {
-      // Read file as text or base64 depending on type
       let content = '';
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
@@ -271,10 +289,8 @@ export function ChatInterface() {
 
   const handleSendMessage = async () => {
     if ((!message.trim() && uploadedFiles.length === 0) || sendMessage.isPending) return;
-    
     const userMessage = message || "Analysiere die hochgeladenen Dateien";
     setMessage("");
-    
     try {
       await sendMessage.mutateAsync(userMessage);
     } catch (error) {
@@ -285,11 +301,7 @@ export function ChatInterface() {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: { 
-          echoCancellation: true, 
-          noiseSuppression: true,
-          autoGainControl: true,
-        } 
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
       });
       
       const mediaRecorder = new MediaRecorder(stream);
@@ -297,15 +309,11 @@ export function ChatInterface() {
       
       const audioChunks: Blob[] = [];
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunks.push(event.data);
-        }
+        if (event.data.size > 0) audioChunks.push(event.data);
       };
       
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        const audioUrl = URL.createObjectURL(audioBlob);
-        setAudioURL(audioUrl);
         stream.getTracks().forEach(track => track.stop());
         await transcribeAudio(audioBlob);
       };
@@ -314,9 +322,7 @@ export function ChatInterface() {
       setIsRecording(true);
       
       setTimeout(() => {
-        if (mediaRecorderRef.current?.state === "recording") {
-          stopRecording();
-        }
+        if (mediaRecorderRef.current?.state === "recording") stopRecording();
       }, 30000);
       
     } catch (error) {
@@ -336,22 +342,17 @@ export function ChatInterface() {
   };
 
   const transcribeAudio = async (audioBlob: Blob) => {
-    setIsTranscribing(true);
     try {
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.webm');
-
       const response = await fetch("/api/speech/transcribe", {
         method: "POST",
         body: formData,
         credentials: "include",
       });
-      
       const data = await response.json();
-      
       if (data.text && data.text.trim()) {
-        const cleanedText = data.text.trim().replace(/\s+/g, ' ');
-        setMessage(cleanedText);
+        setMessage(data.text.trim().replace(/\s+/g, ' '));
       }
     } catch (error) {
       toast({
@@ -359,8 +360,6 @@ export function ChatInterface() {
         description: "Sprache konnte nicht erkannt werden",
         variant: "destructive",
       });
-    } finally {
-      setIsTranscribing(false);
     }
   };
 
@@ -372,12 +371,14 @@ export function ChatInterface() {
   };
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 50);
   };
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, optimisticMessages]);
 
   const getFileIcon = (type: string) => {
     if (type.includes('image')) return <ImageIcon className="w-4 h-4" />;
@@ -385,15 +386,16 @@ export function ChatInterface() {
     return <File className="w-4 h-4" />;
   };
 
+  const allMessages = [...messages, ...optimisticMessages];
+
   if (authLoading) {
     return (
       <div className="flex-1 flex items-center justify-center bg-black">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-10 h-10"
         >
-          <img src={arasLogo} alt="Loading" className="w-full h-full object-contain" />
+          <img src={arasLogo} alt="Loading" className="w-12 h-12 object-contain" />
         </motion.div>
       </div>
     );
@@ -401,7 +403,7 @@ export function ChatInterface() {
 
   return (
     <div 
-      className="flex-1 flex flex-col min-h-screen bg-black relative overflow-hidden"
+      className="flex-1 flex flex-col h-screen bg-black relative overflow-hidden"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -411,18 +413,15 @@ export function ChatInterface() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="absolute inset-0 z-50 bg-orange-500/20 backdrop-blur-sm flex items-center justify-center border-4 border-dashed border-orange-500"
+          className="absolute inset-0 z-50 bg-[#FE9100]/20 backdrop-blur-sm flex items-center justify-center border-4 border-dashed border-[#FE9100]"
         >
           <div className="text-center">
-            <Paperclip className="w-16 h-16 text-orange-500 mx-auto mb-4" />
+            <Paperclip className="w-16 h-16 text-[#FE9100] mx-auto mb-4" />
             <p className="text-white text-xl font-semibold">Datei hier ablegen</p>
           </div>
         </motion.div>
       )}
 
-      {/* Ambient Background */}
-      <div className="absolute inset-0 bg-gradient-radial from-orange-500/5 via-transparent to-transparent opacity-40 blur-3xl pointer-events-none" />
-      
       {/* Chat History Sidebar */}
       <AnimatePresence>
         {showHistory && (
@@ -431,55 +430,55 @@ export function ChatInterface() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40"
               onClick={() => setShowHistory(false)}
             />
             <motion.div
-              initial={{ x: -300 }}
+              initial={{ x: -320 }}
               animate={{ x: 0 }}
-              exit={{ x: -300 }}
-              transition={{ type: "spring", damping: 20 }}
-              className="fixed left-0 top-0 bottom-0 w-80 bg-gradient-to-b from-gray-900 to-black border-r border-white/10 z-50 flex flex-col shadow-2xl"
+              exit={{ x: -320 }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed left-0 top-0 bottom-0 w-80 bg-black/95 backdrop-blur-xl border-r border-white/10 z-50 flex flex-col"
             >
-              <div className="p-4 border-b border-white/10 flex justify-between items-center bg-gradient-to-r from-orange-500/10 to-purple-500/10">
+              <div className="p-4 border-b border-white/10 flex justify-between items-center">
                 <div className="flex items-center space-x-2">
-                  <MessageSquare className="w-5 h-5 text-orange-500" />
+                  <MessageSquare className="w-5 h-5 text-[#FE9100]" />
                   <h3 className="text-white font-semibold">Chat-Historie</h3>
                 </div>
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => setShowHistory(false)}
-                  className="text-gray-400 hover:text-white"
+                  className="text-gray-400 hover:text-white h-8 w-8 p-0"
                 >
                   <X className="w-4 h-4" />
                 </Button>
               </div>
               
-              <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto p-3 space-y-2 premium-scroll">
                 {chatSessions.length > 0 ? (
                   chatSessions.map((session) => (
                     <motion.div
                       key={session.id}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      whileHover={{ scale: 1.02, x: 4 }}
+                      whileHover={{ x: 4 }}
                       onClick={() => loadChatSession(session.id)}
-                      className={`group p-3 rounded-xl cursor-pointer transition-all duration-200 ${
+                      className={`group p-3 rounded-xl cursor-pointer transition-all ${
                         session.isActive
-                          ? "bg-gradient-to-r from-orange-500/20 to-purple-500/20 border border-orange-500/50 shadow-lg"
-                          : "bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20"
+                          ? "bg-[#FE9100]/10 border border-[#FE9100]/30"
+                          : "bg-white/5 hover:bg-white/10 border border-white/10"
                       }`}
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center space-x-2 flex-1">
-                          <MessageSquare className={`w-4 h-4 ${session.isActive ? 'text-orange-500' : 'text-gray-400'}`} />
+                          <MessageSquare className={`w-4 h-4 ${session.isActive ? 'text-[#FE9100]' : 'text-gray-400'}`} />
                           <div className="text-sm font-medium text-white truncate">
                             {session.title}
                           </div>
                         </div>
                         {session.isActive && (
-                          <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+                          <div className="w-2 h-2 bg-[#FE9100] rounded-full animate-pulse" />
                         )}
                       </div>
                       <div className="flex items-center justify-between text-xs text-gray-400">
@@ -492,11 +491,6 @@ export function ChatInterface() {
                             minute: '2-digit'
                           })}</span>
                         </div>
-                        {!session.isActive && (
-                          <span className="opacity-0 group-hover:opacity-100 transition-opacity text-orange-500">
-                            Laden →
-                          </span>
-                        )}
                       </div>
                     </motion.div>
                   ))
@@ -508,13 +502,13 @@ export function ChatInterface() {
                 )}
               </div>
               
-              <div className="p-3 border-t border-white/10 bg-gradient-to-r from-orange-500/5 to-purple-500/5">
+              <div className="p-3 border-t border-white/10">
                 <Button
                   onClick={() => {
                     startNewChatMutation.mutate();
                     setShowHistory(false);
                   }}
-                  className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg"
+                  className="w-full bg-gradient-to-r from-[#FE9100] to-[#a34e00] hover:from-[#ff9d1a] hover:to-[#b55a00] text-white"
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Neuer Chat
@@ -525,7 +519,6 @@ export function ChatInterface() {
         )}
       </AnimatePresence>
 
-      {/* Hidden File Input */}
       <input
         ref={fileInputRef}
         type="file"
@@ -534,38 +527,35 @@ export function ChatInterface() {
         onChange={(e) => handleFileUpload(e.target.files)}
       />
 
-      {messages.length === 0 ? (
+      {allMessages.length === 0 ? (
         /* WELCOME SCREEN */
         <div className="flex-1 flex flex-col items-center justify-center px-6">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.5 }}
-            className="mb-6"
+            className="mb-8"
           >
-            <img src={arasLogo} alt="ARAS AI" className="w-16 h-16 object-contain" />
+            <img src={arasLogo} alt="ARAS AI" className="w-20 h-20 object-contain" />
           </motion.div>
 
           <motion.div
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-center mb-10"
+            className="text-center mb-12"
           >
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-3" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+            <h1 className="text-5xl font-bold text-white mb-4" style={{ fontFamily: 'Orbitron, sans-serif' }}>
               ARAS AI
             </h1>
-            <div className="flex items-center justify-center space-x-2 text-xl md:text-2xl text-gray-400">
+            <div className="flex items-center justify-center space-x-3 text-2xl text-gray-400">
               <span>erledigt:</span>
-              <motion.span 
-                key={currentTextIndex}
-                className="text-orange-500 font-semibold min-w-[220px] text-left"
-              >
+              <motion.span className="text-[#FE9100] font-semibold min-w-[240px] text-left">
                 {displayText}
                 <motion.span
                   animate={{ opacity: [1, 0, 1] }}
                   transition={{ duration: 0.8, repeat: Infinity }}
-                  className="inline-block w-[2px] h-[24px] bg-orange-500 ml-1"
+                  className="inline-block w-[3px] h-[28px] bg-[#FE9100] ml-1"
                 />
               </motion.span>
             </div>
@@ -575,7 +565,7 @@ export function ChatInterface() {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="w-full max-w-2xl mb-4"
+              className="w-full max-w-2xl mb-6"
             >
               <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-3 space-y-2">
                 {uploadedFiles.map((file, index) => (
@@ -583,15 +573,13 @@ export function ChatInterface() {
                     <div className="flex items-center space-x-2">
                       {getFileIcon(file.type)}
                       <span className="text-sm text-white truncate max-w-[200px]">{file.name}</span>
-                      <span className="text-xs text-gray-500">
-                        ({(file.size / 1024).toFixed(1)} KB)
-                      </span>
+                      <span className="text-xs text-gray-500">({(file.size / 1024).toFixed(1)} KB)</span>
                     </div>
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() => removeFile(index)}
-                      className="text-red-400 hover:text-red-300"
+                      className="text-red-400 hover:text-red-300 h-6 w-6 p-0"
                     >
                       <X className="w-3 h-3" />
                     </Button>
@@ -605,42 +593,40 @@ export function ChatInterface() {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.4 }}
-            className="w-full max-w-2xl"
+            className="w-full max-w-3xl"
           >
             <div className="relative">
-              <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-orange-500 via-purple-500 to-orange-500 opacity-75 blur-sm animate-gradient-xy"></div>
-              
               <Input
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Was möchtest du wissen?"
-                className="relative w-full h-12 bg-gray-900 text-white placeholder:text-gray-500 border-0 rounded-2xl px-5 pr-36 text-sm focus:ring-2 focus:ring-orange-500/50 transition-all"
+                className="w-full h-14 bg-white/5 backdrop-blur-sm text-white placeholder:text-gray-500 border border-white/10 rounded-2xl px-6 pr-40 text-base focus:border-[#FE9100]/50 transition-all"
                 disabled={sendMessage.isPending}
               />
               
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-2">
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"
+                  className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"
                   disabled={sendMessage.isPending}
                 >
-                  <Paperclip className="w-3.5 h-3.5 text-gray-400" />
+                  <Paperclip className="w-4 h-4 text-gray-400" />
                 </motion.button>
                 
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={isRecording ? stopRecording : startRecording}
-                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"
+                  className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"
                   disabled={sendMessage.isPending}
                 >
                   {isRecording ? (
-                    <MicOff className="w-3.5 h-3.5 text-red-400" />
+                    <MicOff className="w-4 h-4 text-red-400" />
                   ) : (
-                    <Mic className="w-3.5 h-3.5 text-gray-400" />
+                    <Mic className="w-4 h-4 text-gray-400" />
                   )}
                 </motion.button>
                 
@@ -649,220 +635,202 @@ export function ChatInterface() {
                   whileTap={{ scale: 0.95 }}
                   onClick={handleSendMessage}
                   disabled={(!message.trim() && uploadedFiles.length === 0) || sendMessage.isPending}
-                  className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-700 rounded-xl text-white text-sm font-medium transition-all"
+                  className="px-4 py-2 bg-gradient-to-r from-[#FE9100] to-[#a34e00] hover:from-[#ff9d1a] hover:to-[#b55a00] disabled:from-gray-700 disabled:to-gray-800 rounded-xl text-white font-medium transition-all"
                 >
-                  <Send className="w-3.5 h-3.5" />
+                  <Send className="w-4 h-4" />
                 </motion.button>
               </div>
             </div>
             
             {subscriptionData && (
-              <div className="text-center mt-2 text-xs text-gray-600">
+              <div className="text-center mt-3 text-xs text-gray-600">
                 {subscriptionData.aiMessagesUsed} / {subscriptionData.aiMessagesLimit || '∞'} Nachrichten
               </div>
             )}
           </motion.div>
         </div>
       ) : (
-        /* CHAT VIEW */
-        <>
-          <div className="px-4 py-2 border-b border-white/10 flex justify-between items-center backdrop-blur-sm bg-black/50">
-            <div className="flex items-center space-x-2">
+        /* CHAT VIEW - GROK STYLE CENTERED */
+        <div className="flex-1 flex flex-col">
+          {/* Top Bar */}
+          <div className="px-6 py-3 border-b border-white/10 flex justify-between items-center backdrop-blur-sm bg-black/50">
+            <div className="flex items-center space-x-3">
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => setShowHistory(true)}
-                className="text-gray-400 hover:text-white"
+                className="text-gray-400 hover:text-white h-9 w-9 p-0"
               >
                 <Menu className="w-4 h-4" />
               </Button>
-              <img src={arasLogo} alt="ARAS" className="w-6 h-6 object-contain" />
+              <img src={arasLogo} alt="ARAS" className="w-7 h-7 object-contain" />
               <span className="text-white font-semibold text-sm" style={{ fontFamily: 'Orbitron, sans-serif' }}>
                 ARAS AI
               </span>
             </div>
             
-            <div className="flex items-center space-x-2">
-              {subscriptionData?.status === 'trial' && (
-                <div className="flex items-center space-x-1 bg-orange-500/10 rounded-lg px-2 py-1">
-                  <div className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse"></div>
-                  <span className="text-xs font-medium text-orange-300">
-                    {subscriptionData.trialMessagesRemaining || 0}
-                  </span>
-                </div>
-              )}
-              
-              <Button 
-                size="sm" 
-                variant="ghost" 
-                onClick={() => startNewChatMutation.mutate()}
-                className="text-gray-400 hover:text-white"
-              >
-                <Plus className="w-4 h-4" />
-              </Button>
-            </div>
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              onClick={() => startNewChatMutation.mutate()}
+              className="text-gray-400 hover:text-white h-9 px-3"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Neuer Chat
+            </Button>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-            <AnimatePresence>
-              {messages.map((msg) => (
-                <MessageBubble
-                  key={msg.id}
-                  message={msg.message}
-                  isAi={msg.isAi || false}
-                  timestamp={msg.timestamp ? new Date(msg.timestamp) : new Date()}
-                  confidence={msg.isAi ? 0.95 : undefined}
-                  messageId={msg.id.toString()}
-                  onReaction={() => {}}
-                  onSpeak={() => {}}
-                  isSpeaking={false}
-                />
-              ))}
-            </AnimatePresence>
-
-            {sendMessage.isPending && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex justify-start"
-              >
-                <div className="flex items-start space-x-2">
-                  <img 
-                    src={arasAiImage} 
-                    alt="ARAS AI" 
-                    className="w-7 h-7 rounded-full object-contain"
-                  />
+          {/* Messages Container - CENTERED WITH MAX-WIDTH */}
+          <div className="flex-1 overflow-y-auto px-6 py-6 premium-scroll">
+            <div className="max-w-4xl mx-auto">
+              <AnimatePresence>
+                {allMessages.map((msg, index) => {
+                  const isOptimistic = 'isOptimistic' in msg && msg.isOptimistic;
+                  const isNewAiMessage = !isOptimistic && msg.isAi && msg.id === newMessageId;
                   
-                  <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl px-3 py-2">
-                    <div className="flex items-center space-x-2">
-                      <div className="flex space-x-1">
-                        {[0, 0.2, 0.4].map((delay, i) => (
-                          <motion.div
-                            key={i}
-                            className="w-1.5 h-1.5 bg-orange-400 rounded-full"
-                            animate={{ scale: [1, 1.5, 1] }}
-                            transition={{ duration: 1, repeat: Infinity, delay }}
-                          />
-                        ))}
+                  return (
+                    <MessageBubble
+                      key={isOptimistic ? msg.id : `msg-${msg.id}`}
+                      message={msg.message}
+                      isAi={msg.isAi || false}
+                      timestamp={msg.timestamp ? new Date(msg.timestamp) : new Date()}
+                      messageId={msg.id.toString()}
+                      onReaction={() => {}}
+                      onSpeak={() => {}}
+                      isSpeaking={false}
+                      isNew={isNewAiMessage}
+                    />
+                  );
+                })}
+              </AnimatePresence>
+
+              {sendMessage.isPending && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex justify-start mb-6"
+                >
+                  <div className="flex items-center space-x-3">
+                    <img src={arasAiImage} alt="ARAS AI" className="w-9 h-9 rounded-full object-cover ring-2 ring-[#FE9100]/20" />
+                    <div className="bg-white/[0.03] backdrop-blur-sm border border-white/10 rounded-2xl px-5 py-3.5">
+                      <div className="flex items-center space-x-2">
+                        <div className="flex space-x-1">
+                          {[0, 0.2, 0.4].map((delay, i) => (
+                            <motion.div
+                              key={i}
+                              className="w-2 h-2 bg-[#FE9100] rounded-full"
+                              animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
+                              transition={{ duration: 1, repeat: Infinity, delay }}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-sm text-gray-400">denkt nach...</span>
                       </div>
-                      <span className="text-xs text-gray-400">analysiert...</span>
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            )}
-            
-            <div ref={messagesEndRef} />
+                </motion.div>
+              )}
+              
+              <div ref={messagesEndRef} />
+            </div>
           </div>
 
-          {uploadedFiles.length > 0 && (
-            <div className="px-4 pb-2">
-              <div className="max-w-3xl mx-auto">
-                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-2 space-y-1">
-                  {uploadedFiles.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between bg-white/5 rounded-lg p-2">
-                      <div className="flex items-center space-x-2">
-                        {getFileIcon(file.type)}
-                        <span className="text-xs text-white truncate max-w-[200px]">{file.name}</span>
+          {/* Input Area - CENTERED WITH MAX-WIDTH */}
+          <div className="border-t border-white/10 bg-black/80 backdrop-blur-xl">
+            {uploadedFiles.length > 0 && (
+              <div className="px-6 pt-3">
+                <div className="max-w-4xl mx-auto">
+                  <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-2 space-y-1">
+                    {uploadedFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between bg-white/5 rounded-lg p-2">
+                        <div className="flex items-center space-x-2">
+                          {getFileIcon(file.type)}
+                          <span className="text-xs text-white truncate max-w-[300px]">{file.name}</span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removeFile(index)}
+                          className="text-red-400 hover:text-red-300 h-6 w-6 p-0"
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => removeFile(index)}
-                        className="text-red-400 hover:text-red-300 h-6 w-6 p-0"
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          <div className="px-4 py-3 border-t border-white/10 backdrop-blur-sm bg-black/50">
-            <div className="max-w-3xl mx-auto">
-              <div className="relative">
-                <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-orange-500 via-purple-500 to-orange-500 opacity-60 blur-sm animate-gradient-xy"></div>
-                
-                <Input
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Nachricht an ARAS AI"
-                  className="relative w-full h-12 bg-gray-900 text-white placeholder:text-gray-500 border-0 rounded-2xl px-5 pr-36 text-sm focus:ring-2 focus:ring-orange-500/50 transition-all"
-                  disabled={sendMessage.isPending}
-                />
-                
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"
+            <div className="px-6 py-4">
+              <div className="max-w-4xl mx-auto">
+                <div className="relative">
+                  <Input
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Nachricht an ARAS AI..."
+                    className="w-full h-14 bg-white/5 backdrop-blur-sm text-white placeholder:text-gray-500 border border-white/10 rounded-2xl px-6 pr-40 text-base focus:border-[#FE9100]/50 transition-all"
                     disabled={sendMessage.isPending}
-                  >
-                    <Paperclip className="w-3.5 h-3.5 text-gray-400" />
-                  </motion.button>
+                  />
                   
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={isRecording ? stopRecording : startRecording}
-                    className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"
-                    disabled={sendMessage.isPending}
-                  >
-                    {isRecording ? (
-                      <MicOff className="w-3.5 h-3.5 text-red-400" />
-                    ) : (
-                      <Mic className="w-3.5 h-3.5 text-gray-400" />
-                    )}
-                  </motion.button>
-                  
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleSendMessage}
-                    disabled={(!message.trim() && uploadedFiles.length === 0) || sendMessage.isPending}
-                    className="px-3 py-1.5 bg-orange-500 hover:bg-orange-600 disabled:bg-gray-700 rounded-xl text-white text-sm font-medium transition-all"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                  </motion.button>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-2">
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"
+                      disabled={sendMessage.isPending}
+                    >
+                      <Paperclip className="w-4 h-4 text-gray-400" />
+                    </motion.button>
+                    
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={isRecording ? stopRecording : startRecording}
+                      className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"
+                      disabled={sendMessage.isPending}
+                    >
+                      {isRecording ? (
+                        <MicOff className="w-4 h-4 text-red-400" />
+                      ) : (
+                        <Mic className="w-4 h-4 text-gray-400" />
+                      )}
+                    </motion.button>
+                    
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={handleSendMessage}
+                      disabled={(!message.trim() && uploadedFiles.length === 0) || sendMessage.isPending}
+                      className="px-4 py-2 bg-gradient-to-r from-[#FE9100] to-[#a34e00] hover:from-[#ff9d1a] hover:to-[#b55a00] disabled:from-gray-700 disabled:to-gray-800 rounded-xl text-white font-medium transition-all"
+                    >
+                      <Send className="w-4 h-4" />
+                    </motion.button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </>
+        </div>
       )}
 
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       
       <style>{`
-        @keyframes gradient-xy {
-          0%, 100% {
-            background-position: 0% 50%;
-          }
-          50% {
-            background-position: 100% 50%;
-          }
-        }
-        .animate-gradient-xy {
-          background-size: 400% 400%;
-          animation: gradient-xy 3s ease infinite;
-        }
-        .custom-scrollbar::-webkit-scrollbar {
+        .premium-scroll::-webkit-scrollbar {
           width: 6px;
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.05);
+        .premium-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .premium-scroll::-webkit-scrollbar-thumb {
+          background: rgba(254, 145, 0, 0.2);
           border-radius: 10px;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(249, 115, 22, 0.5);
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(249, 115, 22, 0.7);
+        .premium-scroll::-webkit-scrollbar-thumb:hover {
+          background: rgba(254, 145, 0, 0.4);
         }
       `}</style>
     </div>
