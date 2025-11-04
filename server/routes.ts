@@ -887,6 +887,50 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     }
   });
 
+  // Bulk Outbound Calls
+  app.post('/api/voice/outbound/bulk', requireAuth, async (req: any, res) => {
+    try {
+      const { phoneNumbers, campaignMessage } = req.body;
+      if (!phoneNumbers || !Array.isArray(phoneNumbers)) {
+        return res.status(400).json({ message: 'Phone numbers array required' });
+      }
+
+      const accountSid = process.env.TWILIO_ACCOUNT_SID;
+      const authToken = process.env.TWILIO_AUTH_TOKEN;
+      const twilioNumber = process.env.TWILIO_PHONE_NUMBER;
+      const results = [];
+
+      for (const phoneNumber of phoneNumbers) {
+        try {
+          const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Authorization': 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64')
+            },
+            body: new URLSearchParams({
+              To: phoneNumber,
+              From: twilioNumber,
+              Url: `https://arasai.onrender.com/api/voice/outbound/twiml?message=${encodeURIComponent(campaignMessage || '')}` 
+            })
+          });
+
+          const data = await response.json();
+          results.push({ phoneNumber, success: response.ok, callSid: data.sid, status: data.status });
+          await new Promise(r => setTimeout(r, 1000));
+        } catch (error: any) {
+          results.push({ phoneNumber, success: false, error: error.message });
+        }
+      }
+
+      res.json({ success: true, results, total: phoneNumbers.length, successful: results.filter(r => r.success).length });
+    } catch (error: any) {
+      logger.error('Bulk outbound error:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+
   app.get('/api/voice/outbound/twiml', async (req, res) => {
     const { message } = req.query;
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
