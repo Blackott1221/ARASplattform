@@ -12,15 +12,7 @@ import type { ChatMessage } from "@shared/schema";
 import arasAiImage from "@assets/ChatGPT Image 9. Apr. 2025_ 21_38_23_1754515368187.png";
 import arasLogo from "@/assets/aras_logo_1755067745303.png";
 
-const ANIMATED_TEXTS = [
-  "Anrufe",
-  "Termine vereinbaren",
-  "Termine verschieben", 
-  "Leads qualifizieren",
-  "Kunden anrufen",
-  "Verkaufsgespräche",
-  "Follow-ups"
-];
+const ANIMATED_TEXTS = ["Anrufe", "Termine vereinbaren", "Termine verschieben", "Leads qualifizieren", "Kunden anrufen", "Verkaufsgespräche", "Follow-ups"];
 
 interface UploadedFile {
   name: string;
@@ -61,7 +53,6 @@ export function ChatInterface() {
   useEffect(() => {
     const currentText = ANIMATED_TEXTS[currentTextIndex];
     let charIndex = 0;
-    
     if (isTyping) {
       const typeInterval = setInterval(() => {
         if (charIndex <= currentText.length) {
@@ -76,43 +67,24 @@ export function ChatInterface() {
           clearInterval(typeInterval);
         }
       }, 80);
-      
       return () => clearInterval(typeInterval);
     }
   }, [currentTextIndex, isTyping]);
 
-  const { data: messages = [] } = useQuery<ChatMessage[]>({
-    queryKey: ["/api/chat/messages"],
-    enabled: !!user && !authLoading,
-    retry: false,
-  });
-
-  const { data: chatSessions = [] } = useQuery<any[]>({
-    queryKey: ["/api/chat/sessions"],
-    enabled: !!user && !authLoading,
-    retry: false,
-  });
-
-  const { data: subscriptionData } = useQuery<import("@shared/schema").SubscriptionResponse>({
-    queryKey: ["/api/user/subscription"],
-    enabled: !!user && !authLoading,
-    retry: false,
-  });
+  const { data: messages = [] } = useQuery<ChatMessage[]>({ queryKey: ["/api/chat/messages"], enabled: !!user && !authLoading, retry: false });
+  const { data: chatSessions = [] } = useQuery<any[]>({ queryKey: ["/api/chat/sessions"], enabled: !!user && !authLoading, retry: false });
+  const { data: subscriptionData } = useQuery<import("@shared/schema").SubscriptionResponse>({ queryKey: ["/api/user/subscription"], enabled: !!user && !authLoading, retry: false });
 
   useEffect(() => {
     if (chatSessions.length > 0) {
       const activeSession = chatSessions.find(s => s.isActive);
-      if (activeSession) {
-        setCurrentSessionId(activeSession.id);
-      }
+      if (activeSession) setCurrentSessionId(activeSession.id);
     }
   }, [chatSessions]);
 
   const startNewChatMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/chat/sessions/new", {
-        title: `Chat ${new Date().toLocaleTimeString()}`
-      });
+      const response = await apiRequest("POST", "/api/chat/sessions/new", { title: `Chat ${new Date().toLocaleTimeString()}` });
       return response.json();
     },
     onSuccess: (data) => {
@@ -121,50 +93,28 @@ export function ChatInterface() {
       queryClient.invalidateQueries({ queryKey: ["/api/chat/sessions"] });
       setUploadedFiles([]);
       setOptimisticMessages([]);
-      toast({
-        title: "Neuer Chat gestartet",
-        description: "Vorherige Konversation wurde gespeichert",
-      });
+      toast({ title: "Neuer Chat gestartet", description: "Vorherige Konversation wurde gespeichert" });
     },
   });
 
   const sendMessage = useMutation({
     mutationFn: async (message: string) => {
-      const messageData: any = { 
-        message,
-        sessionId: currentSessionId 
-      };
-      
+      const messageData: any = { message, sessionId: currentSessionId };
       if (uploadedFiles.length > 0) {
-        messageData.files = uploadedFiles.map(f => ({
-          name: f.name,
-          content: f.content,
-          type: f.type
-        }));
+        messageData.files = uploadedFiles.map(f => ({ name: f.name, content: f.content, type: f.type }));
         messageData.message = `${message}\n\n[WICHTIG: Analysiere die hochgeladenen Dateien: ${uploadedFiles.map(f => f.name).join(', ')}]`;
       }
-      
       const response = await apiRequest("POST", "/api/chat/messages", messageData);
       return response.json();
     },
     onMutate: async (newMessage) => {
-      const optimisticMsg: OptimisticMessage = {
-        id: `optimistic-${Date.now()}`,
-        message: newMessage,
-        isAi: false,
-        timestamp: new Date(),
-        isOptimistic: true
-      };
+      const optimisticMsg: OptimisticMessage = { id: `optimistic-${Date.now()}`, message: newMessage, isAi: false, timestamp: new Date(), isOptimistic: true };
       setOptimisticMessages(prev => [...prev, optimisticMsg]);
     },
     onSuccess: (data) => {
       setOptimisticMessages([]);
-      if (data.sessionId) {
-        setCurrentSessionId(data.sessionId);
-      }
-      if (data.aiMessage && data.aiMessage.id) {
-        setNewMessageId(data.aiMessage.id);
-      }
+      if (data.sessionId) setCurrentSessionId(data.sessionId);
+      if (data.aiMessage && data.aiMessage.id) setNewMessageId(data.aiMessage.id);
       queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/subscription"] });
       setUploadedFiles([]);
@@ -172,11 +122,7 @@ export function ChatInterface() {
     },
     onError: () => {
       setOptimisticMessages([]);
-      toast({
-        title: "Fehler",
-        description: "Nachricht konnte nicht gesendet werden",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Nachricht konnte nicht gesendet werden", variant: "destructive" });
     },
   });
 
@@ -188,16 +134,9 @@ export function ChatInterface() {
       await queryClient.invalidateQueries({ queryKey: ["/api/chat/sessions"] });
       setShowHistory(false);
       setOptimisticMessages([]);
-      toast({
-        title: "Chat geladen",
-        description: "Konversation wiederhergestellt",
-      });
+      toast({ title: "Chat geladen", description: "Konversation wiederhergestellt" });
     } catch (error) {
-      toast({
-        title: "Fehler",
-        description: "Chat konnte nicht geladen werden",
-        variant: "destructive",
-      });
+      toast({ title: "Fehler", description: "Chat konnte nicht geladen werden", variant: "destructive" });
     }
   };
 
@@ -205,19 +144,15 @@ export function ChatInterface() {
     if (!files || files.length === 0) return;
     const file = files[0];
     const maxSize = 10 * 1024 * 1024;
-
     if (file.size > maxSize) {
       toast({ title: "Datei zu groß", description: "Maximum 10MB erlaubt", variant: "destructive" });
       return;
     }
-
     const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'image/jpeg', 'image/png', 'image/webp'];
-
     if (!allowedTypes.includes(file.type)) {
       toast({ title: "Dateityp nicht unterstützt", description: "Nur PDF, DOCX, TXT und Bilder erlaubt", variant: "destructive" });
       return;
     }
-
     try {
       let content = '';
       if (file.type.startsWith('image/')) {
@@ -230,7 +165,6 @@ export function ChatInterface() {
       } else {
         content = await file.text();
       }
-      
       setUploadedFiles([...uploadedFiles, { name: file.name, type: file.type, size: file.size, content: content }]);
       toast({ title: "Datei hochgeladen", description: `${file.name} wurde hinzugefügt` });
     } catch (error) {
@@ -238,34 +172,16 @@ export function ChatInterface() {
     }
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    handleFileUpload(e.dataTransfer.files);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const removeFile = (index: number) => {
-    setUploadedFiles(uploadedFiles.filter((_, i) => i !== index));
-  };
+  const handleDrop = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); handleFileUpload(e.dataTransfer.files); };
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
+  const handleDragLeave = () => { setIsDragging(false); };
+  const removeFile = (index: number) => { setUploadedFiles(uploadedFiles.filter((_, i) => i !== index)); };
 
   const handleSendMessage = async () => {
     if ((!message.trim() && uploadedFiles.length === 0) || sendMessage.isPending) return;
     const userMessage = message || "Analysiere die hochgeladenen Dateien";
     setMessage("");
-    try {
-      await sendMessage.mutateAsync(userMessage);
-    } catch (error) {
-      console.error('Error sending message:', error);
-    }
+    try { await sendMessage.mutateAsync(userMessage); } catch (error) { console.error('Error sending message:', error); }
   };
 
   const startRecording = async () => {
@@ -274,9 +190,7 @@ export function ChatInterface() {
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       const audioChunks: Blob[] = [];
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) audioChunks.push(event.data);
-      };
+      mediaRecorder.ondataavailable = (event) => { if (event.data.size > 0) audioChunks.push(event.data); };
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
         stream.getTracks().forEach(track => track.stop());
@@ -284,18 +198,14 @@ export function ChatInterface() {
       };
       mediaRecorder.start(250);
       setIsRecording(true);
-      setTimeout(() => {
-        if (mediaRecorderRef.current?.state === "recording") stopRecording();
-      }, 30000);
+      setTimeout(() => { if (mediaRecorderRef.current?.state === "recording") stopRecording(); }, 30000);
     } catch (error) {
       toast({ title: "Mikrofon-Fehler", description: "Zugriff verweigert", variant: "destructive" });
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current?.state === "recording") {
-      mediaRecorderRef.current.stop();
-    }
+    if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
     setIsRecording(false);
   };
 
@@ -305,9 +215,7 @@ export function ChatInterface() {
       formData.append('audio', audioBlob, 'recording.webm');
       const response = await fetch("/api/speech/transcribe", { method: "POST", body: formData, credentials: "include" });
       const data = await response.json();
-      if (data.text && data.text.trim()) {
-        setMessage(data.text.trim().replace(/\s+/g, ' '));
-      }
+      if (data.text && data.text.trim()) setMessage(data.text.trim().replace(/\s+/g, ' '));
     } catch (error) {
       toast({ title: "Fehler", description: "Sprache konnte nicht erkannt werden", variant: "destructive" });
     }
@@ -326,9 +234,7 @@ export function ChatInterface() {
     }
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, optimisticMessages]);
+  useEffect(() => { scrollToBottom(); }, [messages, optimisticMessages]);
 
   const getFileIcon = (type: string) => {
     if (type.includes('image')) return <ImageIcon className="w-4 h-4" />;
@@ -447,7 +353,28 @@ export function ChatInterface() {
           )}
           <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, delay: 0.4 }} className="w-full max-w-3xl">
             <div className="relative">
-              <Input value={message} onChange={(e) => setMessage(e.target.value)} onKeyPress={handleKeyPress} placeholder="Was möchtest du wissen?" className="w-full h-14 bg-white/5 backdrop-blur-sm text-white placeholder:text-gray-500 border border-white/10 rounded-2xl px-6 pr-40 text-base focus:border-[#FE9100]/50 transition-all" disabled={sendMessage.isPending} />
+              {/* ANIMATED BORDER für Welcome Input */}
+              <div className="absolute -inset-[2px] rounded-2xl">
+                <motion.div
+                  className="w-full h-full rounded-2xl"
+                  animate={{
+                    background: [
+                      "linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)",
+                      "linear-gradient(90deg, #FE9100 0%, #a34e00 25%, #e9d7c4 50%, #FE9100 75%, #a34e00 100%)",
+                      "linear-gradient(90deg, #a34e00 0%, #e9d7c4 25%, #FE9100 50%, #a34e00 75%, #e9d7c4 100%)",
+                      "linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)",
+                    ],
+                  }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                  style={{
+                    padding: "2px",
+                    WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                    WebkitMaskComposite: "xor",
+                    maskComposite: "exclude",
+                  }}
+                />
+              </div>
+              <Input value={message} onChange={(e) => setMessage(e.target.value)} onKeyPress={handleKeyPress} placeholder="Was möchtest du wissen?" className="relative w-full h-14 bg-black/80 backdrop-blur-sm text-white placeholder:text-gray-500 border-0 rounded-2xl px-6 pr-40 text-base transition-all" disabled={sendMessage.isPending} />
               <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-2">
                 <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => fileInputRef.current?.click()} className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all" disabled={sendMessage.isPending}>
                   <Paperclip className="w-4 h-4 text-gray-400" />
@@ -469,7 +396,6 @@ export function ChatInterface() {
         </div>
       ) : (
         <div className="flex flex-col h-full">
-          {/* TOP BAR mit Historie & Neuer Chat */}
           <div className="flex-shrink-0 px-6 py-3 border-b border-white/10 flex justify-between items-center backdrop-blur-sm bg-black/90">
             <div className="flex items-center space-x-3">
               <Button size="sm" variant="ghost" onClick={() => setShowHistory(true)} className="text-gray-400 hover:text-white h-9 w-9 p-0">
@@ -484,7 +410,6 @@ export function ChatInterface() {
             </Button>
           </div>
 
-          {/* MESSAGES - SCROLLBAR */}
           <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-6 py-4 premium-scroll">
             <div className="max-w-3xl mx-auto">
               <AnimatePresence>
@@ -508,7 +433,7 @@ export function ChatInterface() {
               </AnimatePresence>
               {sendMessage.isPending && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-start mb-6">
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-5">
                     <img src={arasAiImage} alt="ARAS AI" className="w-9 h-9 rounded-full object-cover ring-2 ring-[#FE9100]/20" />
                     <div className="bg-transparent px-5 py-3.5 rounded-xl">
                       <div className="flex items-center space-x-2">
@@ -527,7 +452,6 @@ export function ChatInterface() {
             </div>
           </div>
 
-          {/* INPUT AREA */}
           <div className="flex-shrink-0 border-t border-white/10 bg-black/90 backdrop-blur-xl">
             {uploadedFiles.length > 0 && (
               <div className="px-6 pt-3">
@@ -551,7 +475,28 @@ export function ChatInterface() {
             <div className="px-6 py-4">
               <div className="max-w-3xl mx-auto">
                 <div className="relative">
-                  <Input value={message} onChange={(e) => setMessage(e.target.value)} onKeyPress={handleKeyPress} placeholder="Nachricht an ARAS AI..." className="w-full h-12 bg-white/5 backdrop-blur-sm text-white placeholder:text-gray-500 border border-white/10 rounded-2xl px-6 pr-40 text-base focus:border-[#FE9100]/50 transition-all" disabled={sendMessage.isPending} />
+                  {/* ANIMATED BORDER für Chat Input */}
+                  <div className="absolute -inset-[2px] rounded-2xl">
+                    <motion.div
+                      className="w-full h-full rounded-2xl"
+                      animate={{
+                        background: [
+                          "linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)",
+                          "linear-gradient(90deg, #FE9100 0%, #a34e00 25%, #e9d7c4 50%, #FE9100 75%, #a34e00 100%)",
+                          "linear-gradient(90deg, #a34e00 0%, #e9d7c4 25%, #FE9100 50%, #a34e00 75%, #e9d7c4 100%)",
+                          "linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)",
+                        ],
+                      }}
+                      transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                      style={{
+                        padding: "2px",
+                        WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+                        WebkitMaskComposite: "xor",
+                        maskComposite: "exclude",
+                      }}
+                    />
+                  </div>
+                  <Input value={message} onChange={(e) => setMessage(e.target.value)} onKeyPress={handleKeyPress} placeholder="Nachricht an ARAS AI..." className="relative w-full h-12 bg-black/80 backdrop-blur-sm text-white placeholder:text-gray-500 border-0 rounded-2xl px-6 pr-40 text-base transition-all" disabled={sendMessage.isPending} />
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-2">
                     <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => fileInputRef.current?.click()} className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all" disabled={sendMessage.isPending}>
                       <Paperclip className="w-4 h-4 text-gray-400" />
@@ -572,19 +517,10 @@ export function ChatInterface() {
 
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       <style>{`
-        .premium-scroll::-webkit-scrollbar {
-          width: 6px;
-        }
-        .premium-scroll::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .premium-scroll::-webkit-scrollbar-thumb {
-          background: rgba(254, 145, 0, 0.2);
-          border-radius: 10px;
-        }
-        .premium-scroll::-webkit-scrollbar-thumb:hover {
-          background: rgba(254, 145, 0, 0.4);
-        }
+        .premium-scroll::-webkit-scrollbar { width: 6px; }
+        .premium-scroll::-webkit-scrollbar-track { background: transparent; }
+        .premium-scroll::-webkit-scrollbar-thumb { background: rgba(254, 145, 0, 0.2); border-radius: 10px; }
+        .premium-scroll::-webkit-scrollbar-thumb:hover { background: rgba(254, 145, 0, 0.4); }
       `}</style>
     </div>
   );

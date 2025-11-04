@@ -75,7 +75,8 @@ export function MessageBubble({
       transition={{ duration: 0.3 }}
       className={`flex ${isAi ? 'justify-start' : 'justify-end'} mb-6`}
     >
-      <div className={`flex items-start ${isAi ? 'space-x-4' : 'space-x-4 flex-row-reverse'} max-w-[75%]`}>
+      {/* MEHR ABSTAND zwischen Avatar und Text */}
+      <div className={`flex items-start ${isAi ? 'space-x-5' : 'space-x-5 flex-row-reverse'} max-w-[75%]`}>
         <motion.div className="flex-shrink-0" whileHover={{ scale: 1.05 }}>
           {isAi ? (
             <img src={arasAiImage} alt="ARAS AI" className="w-9 h-9 rounded-full object-cover ring-2 ring-[#FE9100]/20" />
@@ -88,8 +89,9 @@ export function MessageBubble({
         
         <div className="flex flex-col max-w-full">
           <div className="relative">
+            {/* DÜNNER 2PX BORDER für User Messages */}
             {!isAi && (
-              <div className="absolute -inset-[3px] rounded-xl">
+              <div className="absolute -inset-[2px] rounded-xl">
                 <motion.div
                   className="w-full h-full rounded-xl"
                   animate={{
@@ -106,7 +108,7 @@ export function MessageBubble({
                     ease: "linear",
                   }}
                   style={{
-                    padding: "3px",
+                    padding: "2px",
                     WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
                     WebkitMaskComposite: "xor",
                     maskComposite: "exclude",
