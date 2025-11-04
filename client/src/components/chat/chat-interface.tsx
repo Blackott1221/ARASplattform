@@ -381,7 +381,7 @@ export function ChatInterface() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* INPUT AREA - BASIEREND AUF FUNKTIONIERENDEM ALTEN CODE */}
+      {/* INPUT AREA - Optimiert mit Disclaimer UNTER dem Input */}
       <div className="p-6 border-t border-white/50 relative z-10">
         {uploadedFiles.length > 0 && (
           <div className="mb-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 max-w-2xl mx-auto">
@@ -432,15 +432,22 @@ export function ChatInterface() {
           </div>
         </div>
         
-        <div className="text-center mt-3">
-          <p className="text-xs text-gray-500">
-            {subscriptionData ? (
-              <>{subscriptionData.aiMessagesUsed} / {subscriptionData.aiMessagesLimit || '∞'} messages used this month</>
-            ) : (
-              'Loading subscription status...'
-            )}
-          </p>
+        {/* Disclaimer DIREKT UNTER dem Input */}
+        <div className="max-w-4xl mx-auto mt-2">
+          <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+            <AlertCircle className="w-3.5 h-3.5" />
+            <p>ARAS AI kann Fehler machen. Bitte überprüfe wichtige Informationen.</p>
+          </div>
         </div>
+        
+        {/* Message Counter */}
+        {subscriptionData && (
+          <div className="text-center mt-2">
+            <p className="text-xs text-gray-600">
+              {subscriptionData.aiMessagesUsed} / {subscriptionData.aiMessagesLimit || '∞'} Nachrichten
+            </p>
+          </div>
+        )}
         
         {isRecording && (
           <div className="flex justify-center mt-2">
