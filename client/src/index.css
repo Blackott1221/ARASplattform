@@ -312,3 +312,17 @@
     max-width: 100% !important;
   }
 }
+
+/* FIX: Verhindere grauen Scroll-Bereich */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #000000;
+}
+
+* {
+  box-sizing: border-box;
+}

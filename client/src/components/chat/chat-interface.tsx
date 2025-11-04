@@ -255,7 +255,7 @@ export function ChatInterface() {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-black relative" onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave}>
+    <div className="flex-1 flex flex-col h-screen bg-black relative overflow-hidden" onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave}>
       {isDragging && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-50 bg-[#FE9100]/20 backdrop-blur-sm flex items-center justify-center border-4 border-dashed border-[#FE9100]">
           <div className="text-center">
@@ -410,7 +410,7 @@ export function ChatInterface() {
             </Button>
           </div>
 
-          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-6 py-4 premium-scroll">
+          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-6 premium-scroll" style={{ height: "100%", maxHeight: "100%" }}>
             <div className="max-w-3xl mx-auto">
               <AnimatePresence>
                 {allMessages.map((msg, index) => {
