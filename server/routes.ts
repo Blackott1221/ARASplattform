@@ -602,7 +602,13 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
             throw new Error(`OpenAI ${response.status}: ${JSON.stringify(errorData)}`);
           }
           
+          logger.info('[GPT-5] Calling OpenAI API...');
+
           const data = await response.json();
+          logger.info('[GPT-5] Raw Response:', JSON.stringify(data));
+          logger.info('[GPT-5] Choices:', data.choices);
+          logger.info('[GPT-5] Message Content:', data.choices?.[0]?.message?.content);
+
           aiMessage = data.choices[0].message.content;
           break;
         } catch (error: any) {
