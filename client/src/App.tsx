@@ -16,6 +16,7 @@ import Demo from "@/pages/demo";
 import Checkout from "@/pages/checkout";
 import CheckoutSuccess from "@/pages/checkout-success";
 import Space from "@/pages/space";
+import VoiceCalls from "./pages/voice-calls";
 import Power from "@/pages/power";
 import VoiceAgents from "@/pages/voice-agents";
 import Leads from "@/pages/leads";
@@ -69,6 +70,7 @@ function Router() {
           {/* Authenticated routes */}
           <Route path="/" component={Space} />
           <Route path="/app" component={Space} />
+          <Route path="/app/voice" component={VoiceCalls} />
           <Route path="/space" component={Space} />
           <Route path="/app/space" component={Space} />
           <Route path="/power" component={Power} />

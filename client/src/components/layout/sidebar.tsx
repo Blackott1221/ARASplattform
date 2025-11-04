@@ -6,6 +6,7 @@ import {
   Users, 
   CreditCard, 
   Settings,
+  Phone,
   Bot,
   Mail,
   LogOut,
@@ -29,6 +30,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
     { id: "voice-agents", label: "VOICE AGENTS", icon: Bot },
     { id: "leads", label: "Results", icon: Users },
     { id: "billing", label: "Billing", icon: CreditCard },
+    { id: "voice", label: "Voice Calls", icon: Phone },
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
