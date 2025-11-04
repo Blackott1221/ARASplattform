@@ -6,7 +6,7 @@ import { Send, Mic, MicOff, Plus, MessageSquare, X, Menu, Paperclip, File, Image
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tantml:react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { ChatMessage } from "@shared/schema";
 import arasAiImage from "@assets/ChatGPT Image 9. Apr. 2025_ 21_38_23_1754515368187.png";
@@ -14,20 +14,8 @@ import arasLogo from "@/assets/aras_logo_1755067745303.png";
 
 const ANIMATED_TEXTS = ["Anrufe", "Termine vereinbaren", "Termine verschieben", "Leads qualifizieren", "Kunden anrufen", "Verkaufsgespräche", "Follow-ups"];
 
-interface UploadedFile {
-  name: string;
-  type: string;
-  size: number;
-  content: string;
-}
-
-interface OptimisticMessage {
-  id: string;
-  message: string;
-  isAi: boolean;
-  timestamp: Date;
-  isOptimistic: true;
-}
+interface UploadedFile { name: string; type: string; size: number; content: string; }
+interface OptimisticMessage { id: string; message: string; isAi: boolean; timestamp: Date; isOptimistic: true; }
 
 export function ChatInterface() {
   const [message, setMessage] = useState("");
@@ -319,7 +307,6 @@ export function ChatInterface() {
       <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.webp" onChange={(e) => handleFileUpload(e.target.files)} />
 
       {allMessages.length === 0 ? (
-        /* WELCOME SCREEN */
         <div className="flex-1 flex flex-col items-center justify-center px-6 pb-40">
           <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.5 }} className="mb-8">
             <img src={arasLogo} alt="ARAS AI" className="w-20 h-20 object-contain" />
@@ -378,10 +365,8 @@ export function ChatInterface() {
           </motion.div>
         </div>
       ) : (
-        /* CHAT VIEW - MIT FIXEM INPUT */
-        <>
-          {/* TOP BAR */}
-          <div className="flex-shrink-0 px-6 py-3 border-b border-white/10 flex justify-between items-center backdrop-blur-sm bg-black/90 z-10">
+        <div className="flex flex-col h-full">
+          <div className="flex-shrink-0 px-6 py-3 border-b border-white/10 flex justify-between items-center backdrop-blur-sm bg-black/90">
             <div className="flex items-center space-x-3">
               <Button size="sm" variant="ghost" onClick={() => setShowHistory(true)} className="text-gray-400 hover:text-white h-9 w-9 p-0">
                 <Menu className="w-4 h-4" />
@@ -395,9 +380,8 @@ export function ChatInterface() {
             </Button>
           </div>
 
-          {/* MESSAGES - Mit padding-bottom für Input */}
-          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden premium-scroll" style={{ paddingBottom: "180px" }}>
-            <div className="max-w-3xl mx-auto px-6 py-6">
+          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-6 premium-scroll">
+            <div className="max-w-3xl mx-auto pb-4">
               <AnimatePresence>
                 {allMessages.map((msg) => {
                   const isOptimistic = 'isOptimistic' in msg && msg.isOptimistic;
@@ -438,8 +422,7 @@ export function ChatInterface() {
             </div>
           </div>
 
-          {/* FIXED INPUT AREA - IMMER SICHTBAR */}
-          <div className="fixed bottom-0 left-0 right-0 border-t border-white/10 bg-black/95 backdrop-blur-xl z-20">
+          <div className="flex-shrink-0 border-t border-white/10 bg-black/95 backdrop-blur-xl">
             {uploadedFiles.length > 0 && (
               <div className="px-6 pt-3">
                 <div className="max-w-3xl mx-auto">
@@ -459,28 +442,28 @@ export function ChatInterface() {
                 </div>
               </div>
             )}
-            <div className="px-6 pt-3 pb-2">
+            <div className="px-6 pt-4 pb-3">
               <div className="max-w-3xl mx-auto">
                 <div className="relative">
                   <div className="absolute -inset-[2px] rounded-2xl">
                     <motion.div className="w-full h-full rounded-2xl" animate={{ background: ["linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)", "linear-gradient(90deg, #FE9100 0%, #a34e00 25%, #e9d7c4 50%, #FE9100 75%, #a34e00 100%)", "linear-gradient(90deg, #a34e00 0%, #e9d7c4 25%, #FE9100 50%, #a34e00 75%, #e9d7c4 100%)", "linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)"] }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }} style={{ padding: "2px", WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)", WebkitMaskComposite: "xor", maskComposite: "exclude" }} />
                   </div>
-                  <Input value={message} onChange={(e) => setMessage(e.target.value)} onKeyPress={handleKeyPress} placeholder="Nachricht an ARAS AI..." className="relative w-full h-12 bg-black/80 backdrop-blur-sm text-white placeholder:text-gray-500 border-0 rounded-2xl px-6 pr-40 text-base transition-all" disabled={sendMessage.isPending} />
+                  <Input value={message} onChange={(e) => setMessage(e.target.value)} onKeyPress={handleKeyPress} placeholder="Nachricht an ARAS AI..." className="relative w-full h-14 bg-black/80 backdrop-blur-sm text-white placeholder:text-gray-500 border-0 rounded-2xl px-6 pr-40 text-base transition-all" disabled={sendMessage.isPending} />
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-2">
-                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => fileInputRef.current?.click()} className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all" disabled={sendMessage.isPending}>
+                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => fileInputRef.current?.click()} className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all" disabled={sendMessage.isPending}>
                       <Paperclip className="w-4 h-4 text-gray-400" />
                     </motion.button>
-                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={isRecording ? stopRecording : startRecording} className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all" disabled={sendMessage.isPending}>
+                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={isRecording ? stopRecording : startRecording} className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all" disabled={sendMessage.isPending}>
                       {isRecording ? <MicOff className="w-4 h-4 text-red-400" /> : <Mic className="w-4 h-4 text-gray-400" />}
                     </motion.button>
-                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleSendMessage} disabled={(!message.trim() && uploadedFiles.length === 0) || sendMessage.isPending} className="px-4 py-2 bg-gradient-to-r from-[#FE9100] to-[#a34e00] hover:from-[#ff9d1a] hover:to-[#b55a00] disabled:from-gray-700 disabled:to-gray-800 rounded-xl text-white font-medium transition-all">
+                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleSendMessage} disabled={(!message.trim() && uploadedFiles.length === 0) || sendMessage.isPending} className="px-5 py-2.5 bg-gradient-to-r from-[#FE9100] to-[#a34e00] hover:from-[#ff9d1a] hover:to-[#b55a00] disabled:from-gray-700 disabled:to-gray-800 rounded-xl text-white font-medium transition-all">
                       <Send className="w-4 h-4" />
                     </motion.button>
                   </div>
                 </div>
               </div>
             </div>
-            <div className="px-6 pb-3">
+            <div className="px-6 pb-4">
               <div className="max-w-3xl mx-auto">
                 <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
                   <AlertCircle className="w-3.5 h-3.5" />
@@ -489,7 +472,7 @@ export function ChatInterface() {
               </div>
             </div>
           </div>
-        </>
+        </div>
       )}
 
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
