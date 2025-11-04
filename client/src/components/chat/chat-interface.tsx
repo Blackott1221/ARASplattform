@@ -255,7 +255,7 @@ export function ChatInterface() {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-screen bg-black relative overflow-hidden" onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave}>
+    <div className="flex flex-col h-screen bg-black relative overflow-hidden" onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave}>
       {isDragging && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-50 bg-[#FE9100]/20 backdrop-blur-sm flex items-center justify-center border-4 border-dashed border-[#FE9100]">
           <div className="text-center">
@@ -319,7 +319,8 @@ export function ChatInterface() {
       <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.webp" onChange={(e) => handleFileUpload(e.target.files)} />
 
       {allMessages.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center px-6 pb-32">
+        /* WELCOME SCREEN */
+        <div className="flex-1 flex flex-col items-center justify-center px-6 pb-40">
           <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.5 }} className="mb-8">
             <img src={arasLogo} alt="ARAS AI" className="w-20 h-20 object-contain" />
           </motion.div>
@@ -354,24 +355,7 @@ export function ChatInterface() {
           <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.6, delay: 0.4 }} className="w-full max-w-3xl">
             <div className="relative">
               <div className="absolute -inset-[2px] rounded-2xl">
-                <motion.div
-                  className="w-full h-full rounded-2xl"
-                  animate={{
-                    background: [
-                      "linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)",
-                      "linear-gradient(90deg, #FE9100 0%, #a34e00 25%, #e9d7c4 50%, #FE9100 75%, #a34e00 100%)",
-                      "linear-gradient(90deg, #a34e00 0%, #e9d7c4 25%, #FE9100 50%, #a34e00 75%, #e9d7c4 100%)",
-                      "linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)",
-                    ],
-                  }}
-                  transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                  style={{
-                    padding: "2px",
-                    WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                    WebkitMaskComposite: "xor",
-                    maskComposite: "exclude",
-                  }}
-                />
+                <motion.div className="w-full h-full rounded-2xl" animate={{ background: ["linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)", "linear-gradient(90deg, #FE9100 0%, #a34e00 25%, #e9d7c4 50%, #FE9100 75%, #a34e00 100%)", "linear-gradient(90deg, #a34e00 0%, #e9d7c4 25%, #FE9100 50%, #a34e00 75%, #e9d7c4 100%)", "linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)"] }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }} style={{ padding: "2px", WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)", WebkitMaskComposite: "xor", maskComposite: "exclude" }} />
               </div>
               <Input value={message} onChange={(e) => setMessage(e.target.value)} onKeyPress={handleKeyPress} placeholder="Was möchtest du wissen?" className="relative w-full h-14 bg-black/80 backdrop-blur-sm text-white placeholder:text-gray-500 border-0 rounded-2xl px-6 pr-40 text-base transition-all" disabled={sendMessage.isPending} />
               <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-2">
@@ -394,8 +378,10 @@ export function ChatInterface() {
           </motion.div>
         </div>
       ) : (
-        <div className="flex flex-col h-full">
-          <div className="flex-shrink-0 px-6 py-3 border-b border-white/10 flex justify-between items-center backdrop-blur-sm bg-black/90">
+        /* CHAT VIEW - MIT FIXEM INPUT */
+        <>
+          {/* TOP BAR */}
+          <div className="flex-shrink-0 px-6 py-3 border-b border-white/10 flex justify-between items-center backdrop-blur-sm bg-black/90 z-10">
             <div className="flex items-center space-x-3">
               <Button size="sm" variant="ghost" onClick={() => setShowHistory(true)} className="text-gray-400 hover:text-white h-9 w-9 p-0">
                 <Menu className="w-4 h-4" />
@@ -409,10 +395,11 @@ export function ChatInterface() {
             </Button>
           </div>
 
-          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-6 premium-scroll" style={{ paddingBottom: "200px" }}>
-            <div className="max-w-3xl mx-auto">
+          {/* MESSAGES - Mit padding-bottom für Input */}
+          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden premium-scroll" style={{ paddingBottom: "180px" }}>
+            <div className="max-w-3xl mx-auto px-6 py-6">
               <AnimatePresence>
-                {allMessages.map((msg, index) => {
+                {allMessages.map((msg) => {
                   const isOptimistic = 'isOptimistic' in msg && msg.isOptimistic;
                   const isNewAiMessage = !isOptimistic && msg.isAi && msg.id === newMessageId;
                   return (
@@ -451,8 +438,8 @@ export function ChatInterface() {
             </div>
           </div>
 
-          {/* INPUT AREA - WEITER OBEN */}
-          <div className="flex-shrink-0 border-t border-white/10 bg-black/90 backdrop-blur-xl">
+          {/* FIXED INPUT AREA - IMMER SICHTBAR */}
+          <div className="fixed bottom-0 left-0 right-0 border-t border-white/10 bg-black/95 backdrop-blur-xl z-20">
             {uploadedFiles.length > 0 && (
               <div className="px-6 pt-3">
                 <div className="max-w-3xl mx-auto">
@@ -476,24 +463,7 @@ export function ChatInterface() {
               <div className="max-w-3xl mx-auto">
                 <div className="relative">
                   <div className="absolute -inset-[2px] rounded-2xl">
-                    <motion.div
-                      className="w-full h-full rounded-2xl"
-                      animate={{
-                        background: [
-                          "linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)",
-                          "linear-gradient(90deg, #FE9100 0%, #a34e00 25%, #e9d7c4 50%, #FE9100 75%, #a34e00 100%)",
-                          "linear-gradient(90deg, #a34e00 0%, #e9d7c4 25%, #FE9100 50%, #a34e00 75%, #e9d7c4 100%)",
-                          "linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)",
-                        ],
-                      }}
-                      transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                      style={{
-                        padding: "2px",
-                        WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                        WebkitMaskComposite: "xor",
-                        maskComposite: "exclude",
-                      }}
-                    />
+                    <motion.div className="w-full h-full rounded-2xl" animate={{ background: ["linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)", "linear-gradient(90deg, #FE9100 0%, #a34e00 25%, #e9d7c4 50%, #FE9100 75%, #a34e00 100%)", "linear-gradient(90deg, #a34e00 0%, #e9d7c4 25%, #FE9100 50%, #a34e00 75%, #e9d7c4 100%)", "linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)"] }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }} style={{ padding: "2px", WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)", WebkitMaskComposite: "xor", maskComposite: "exclude" }} />
                   </div>
                   <Input value={message} onChange={(e) => setMessage(e.target.value)} onKeyPress={handleKeyPress} placeholder="Nachricht an ARAS AI..." className="relative w-full h-12 bg-black/80 backdrop-blur-sm text-white placeholder:text-gray-500 border-0 rounded-2xl px-6 pr-40 text-base transition-all" disabled={sendMessage.isPending} />
                   <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-2">
@@ -510,8 +480,6 @@ export function ChatInterface() {
                 </div>
               </div>
             </div>
-            
-            {/* DISCLAIMER */}
             <div className="px-6 pb-3">
               <div className="max-w-3xl mx-auto">
                 <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
@@ -521,7 +489,7 @@ export function ChatInterface() {
               </div>
             </div>
           </div>
-        </div>
+        </>
       )}
 
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
