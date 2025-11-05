@@ -29,7 +29,7 @@ export default function VoiceCalls() {
         const taskData = await taskRes.json();
         
         // Execute Task
-        const execRes = await fetch(`/api/voice/tasks/\${taskData.task.id}/execute`, {
+        const execRes = await fetch(`/api/voice/tasks/${taskData.task.id}/execute`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ phoneNumber, taskPrompt: customPrompt })
