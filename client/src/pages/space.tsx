@@ -5,14 +5,16 @@ import { ChatInterface } from "@/components/chat/chat-interface";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, X } from "lucide-react";
+import { X } from "lucide-react";
 import type { User, SubscriptionResponse } from "@shared/schema";
-import arasLogo from "@/assets/aras_logo_1755067745303.png";
 
 export default function Space() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
+  const [displayedText, setDisplayedText] = useState("");
   const { user } = useAuth();
+  
+  const fullText = "Womit kann ich dir heute helfen?";
   
   // Fetch user's subscription data
   const { data: userSubscription } = useQuery<SubscriptionResponse>({
@@ -35,11 +37,28 @@ export default function Space() {
     }
   };
 
-  // Auto-hide welcome banner after 4 seconds
+  // Typewriter effect for subtitle
+  useEffect(() => {
+    if (!showWelcome) return;
+    
+    let currentIndex = 0;
+    const typeInterval = setInterval(() => {
+      if (currentIndex <= fullText.length) {
+        setDisplayedText(fullText.slice(0, currentIndex));
+        currentIndex++;
+      } else {
+        clearInterval(typeInterval);
+      }
+    }, 50);
+
+    return () => clearInterval(typeInterval);
+  }, [showWelcome]);
+
+  // Auto-hide welcome banner after 5 seconds
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowWelcome(false);
-    }, 4000);
+    }, 5000);
 
     return () => clearTimeout(timer);
   }, []);
@@ -79,63 +98,47 @@ export default function Space() {
 
                 <div className="relative px-6 py-4">
                   <div className="max-w-4xl mx-auto flex items-center justify-between">
-                    {/* Left: Welcome Message */}
-                    <div className="flex items-center space-x-4">
-                      {/* Animated Logo */}
-                      <motion.div
-                        animate={{
-                          scale: [1, 1.05, 1],
-                          rotate: [0, 5, -5, 0],
-                        }}
-                        transition={{
-                          duration: 4,
-                          repeat: Infinity,
-                          ease: "easeInOut"
-                        }}
-                        className="relative"
+                    {/* Left: Welcome Message - OHNE Logo & Stern */}
+                    <div className="flex flex-col space-y-1">
+                      {/* Greeting with animated wave */}
+                      <motion.h2 
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="text-lg font-semibold text-white flex items-center space-x-2"
                       >
-                        <div className="absolute inset-0 bg-[#FE9100]/20 blur-xl rounded-full" />
-                        <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-[#FE9100]/20 to-[#a34e00]/20 border border-[#FE9100]/30 flex items-center justify-center backdrop-blur-sm">
-                          <img 
-                            src={arasLogo} 
-                            alt="ARAS AI" 
-                            className="w-5 h-5 object-contain"
-                          />
-                        </div>
-                      </motion.div>
-
-                      {/* Text Content */}
-                      <div className="flex flex-col">
-                        <motion.h2 
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.2 }}
-                          className="text-lg font-semibold text-white flex items-center space-x-2"
+                        <span>Willkommen zurück, {(user as any)?.firstName || (user as any)?.username || "da"}</span>
+                        <motion.span
+                          animate={{ 
+                            rotate: [0, 20, 0, 20, 0],
+                          }}
+                          transition={{ 
+                            duration: 1.5,
+                            times: [0, 0.2, 0.4, 0.6, 0.8],
+                            repeat: 2,
+                            repeatDelay: 2
+                          }}
                         >
-                          <span>Welcome back, {(user as any)?.firstName || (user as any)?.username || "There"}</span>
+                          👋
+                        </motion.span>
+                      </motion.h2>
+                      
+                      {/* Typewriter subtitle */}
+                      <motion.p 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.3 }}
+                        className="text-sm text-gray-400 flex items-center"
+                      >
+                        <span>{displayedText}</span>
+                        {displayedText.length < fullText.length && (
                           <motion.span
-                            animate={{ 
-                              rotate: [0, 20, 0],
-                            }}
-                            transition={{ 
-                              duration: 0.6,
-                              repeat: 3,
-                              repeatDelay: 2
-                            }}
-                          >
-                            👋
-                          </motion.span>
-                        </motion.h2>
-                        <motion.p 
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.3 }}
-                          className="text-sm text-gray-400 flex items-center space-x-2"
-                        >
-                          <Sparkles className="w-3.5 h-3.5 text-[#FE9100]" />
-                          <span>What can I help you with today?</span>
-                        </motion.p>
-                      </div>
+                            animate={{ opacity: [1, 0, 1] }}
+                            transition={{ duration: 0.8, repeat: Infinity }}
+                            className="inline-block w-[2px] h-[14px] bg-[#FE9100] ml-1"
+                          />
+                        )}
+                      </motion.p>
                     </div>
 
                     {/* Right: Close Button */}
@@ -155,7 +158,7 @@ export default function Space() {
                     className="absolute bottom-0 left-0 h-[2px] bg-gradient-to-r from-[#FE9100] to-[#a34e00]"
                     initial={{ width: "100%" }}
                     animate={{ width: "0%" }}
-                    transition={{ duration: 4, ease: "linear" }}
+                    transition={{ duration: 5, ease: "linear" }}
                   />
                 </div>
               </motion.div>
