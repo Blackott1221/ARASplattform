@@ -5,6 +5,8 @@ import {
   chatMessages,
   chatSessions,
   voiceAgents,
+  voiceTasks,
+  voiceTasks,
   callLogs,
   subscriptionPlans,
   usageTracking,
@@ -127,6 +129,13 @@ export interface IStorage {
   storeCallMessage(callId: number, messageData: any): Promise<void>;
   getCallMessage(callId: string): Promise<any>;
   logCallInteraction(callId: string, interaction: any): Promise<void>;
+  
+  // Voice Task operations
+  createVoiceTask(data: any): Promise<any>;
+  getVoiceTaskById(id: number): Promise<any | null>;
+  getVoiceTasksByUser(userId: string): Promise<any[]>;
+  updateVoiceTask(id: number, updates: any): Promise<any>;
+  deleteVoiceTask(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -451,6 +460,45 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Call log operations
+
+  // Voice Task operations
+  async createVoiceTask(data: any): Promise<any> {
+    const [task] = await db.insert(voiceTasks).values({
+      ...data,
+      status: data.status || 'pending',
+      createdAt: new Date()
+    }).returning();
+    return task;
+  }
+
+  async getVoiceTaskById(id: number): Promise<any | null> {
+    const [task] = await db
+      .select()
+      .from(voiceTasks)
+      .where(eq(voiceTasks.id, id));
+    return task || null;
+  }
+
+  async getVoiceTasksByUser(userId: string): Promise<any[]> {
+    return await db
+      .select()
+      .from(voiceTasks)
+      .where(eq(voiceTasks.userId, userId))
+      .orderBy(desc(voiceTasks.createdAt));
+  }
+
+  async updateVoiceTask(id: number, updates: any): Promise<any> {
+    const [updated] = await db
+      .update(voiceTasks)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(voiceTasks.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteVoiceTask(id: number): Promise<void> {
+    await db.delete(voiceTasks).where(eq(voiceTasks.id, id));
+  }
   async getCallLogs(userId: string): Promise<CallLog[]> {
     return await db
       .select()

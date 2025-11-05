@@ -176,6 +176,25 @@ export const twilioSettings = pgTable("twilio_settings", {
 export type TwilioSettings = typeof twilioSettings.$inferSelect;
 export type InsertTwilioSettings = typeof twilioSettings.$inferInsert;
 
+export const voiceTasks = pgTable("voice_tasks", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  taskName: varchar("task_name", { length: 255 }).notNull(),
+  taskPrompt: text("task_prompt").notNull(),
+  phoneNumber: varchar("phone_number", { length: 50 }).notNull(),
+  status: varchar("status", { length: 50 }).notNull().default("pending"),
+  callId: varchar("call_id", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at"),
+  executedAt: timestamp("executed_at"),
+});
+
+export type VoiceTask = typeof voiceTasks.$inferSelect;
+export type InsertVoiceTask = typeof voiceTasks.$inferInsert;
+
+export type VoiceTask = typeof voiceTasks.$inferSelect;
+export type InsertVoiceTask = typeof voiceTasks.$inferInsert;
+
 // Subscription response types
 export type SubscriptionResponse = {
   plan: string;
