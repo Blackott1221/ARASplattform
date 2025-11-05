@@ -784,5 +784,49 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   });
 
   const httpServer = createServer(app);
+
+  // ==========================================
+  // VOICE TASKS - CUSTOM PROMPTS
+  // ==========================================
+  
+  app.post('/api/voice/tasks', requireAuth, async (req: any, res) => {
+    try {
+      const { taskName, taskPrompt, phoneNumber } = req.body;
+      if (!taskName || !taskPrompt || !phoneNumber) {
+        return res.status(400).json({ message: 'All fields required' });
+      }
+      const task = { id: Date.now(), userId: req.session.userId, taskName, taskPrompt, phoneNumber, status: 'pending', createdAt: new Date() };
+      logger.info('[TASK] Created:', task);
+      res.json({ success: true, task });
+    } catch (error: any) {
+      logger.error('[TASK] Error:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+  
+  app.post('/api/voice/tasks/:taskId/execute', requireAuth, async (req: any, res) => {
+    try {
+      const { taskId } = req.params;
+      const { phoneNumber, taskPrompt } = req.body;
+      
+      logger.info('[TASK] Executing with custom prompt:', taskPrompt);
+      
+      const Retell = (await import('retell-sdk')).default;
+      const retellClient = new Retell({ apiKey: process.env.RETELL_API_KEY });
+      
+      const call = await retellClient.call.createPhoneCall({
+        from_number: process.env.RETELL_PHONE_NUMBER || '+41445054333',
+        to_number: phoneNumber,
+        override_agent_id: process.env.RETELL_AGENT_ID || 'agent_757a5e73525f25b5822586e026',
+        metadata: { taskId, customPrompt: taskPrompt }
+      });
+      
+      logger.info('[TASK] Call initiated with custom prompt:', call);
+      res.json({ success: true, call });
+    } catch (error: any) {
+      logger.error('[TASK] Execute error:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
   return httpServer;
 }

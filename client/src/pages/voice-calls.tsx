@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Phone, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Phone, Loader2, CheckCircle2, XCircle, MessageSquare } from "lucide-react";
 
 export default function VoiceCalls() {
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [customPrompt, setCustomPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
 
@@ -14,14 +15,37 @@ export default function VoiceCalls() {
     setResult(null);
     
     try {
-      const response = await fetch("/api/voice/retell/call", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber })
-      });
-      
-      const data = await response.json();
-      setResult(data);
+      // Wenn Custom Prompt, nutze Task System
+      if (customPrompt.trim()) {
+        const taskRes = await fetch("/api/voice/tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            taskName: "Quick Call",
+            taskPrompt: customPrompt,
+            phoneNumber 
+          })
+        });
+        const taskData = await taskRes.json();
+        
+        // Execute Task
+        const execRes = await fetch(\`/api/voice/tasks/\${taskData.task.id}/execute\`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phoneNumber, taskPrompt: customPrompt })
+        });
+        const data = await execRes.json();
+        setResult(data);
+      } else {
+        // Standard Anruf
+        const response = await fetch("/api/voice/retell/call", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phoneNumber })
+        });
+        const data = await response.json();
+        setResult(data);
+      }
     } catch (error) {
       setResult({ success: false, message: "Call failed" });
     } finally {
@@ -56,7 +80,7 @@ export default function VoiceCalls() {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Telefonnummer</label>
+              <label className="block text-sm font-medium mb-2">Telefonnummer *</label>
               <input
                 type="tel"
                 value={phoneNumber}
@@ -64,6 +88,23 @@ export default function VoiceCalls() {
                 placeholder="+41 44 505 4333"
                 className="w-full px-4 py-3 bg-black border border-gray-700 rounded-xl focus:border-[#fe9100] focus:outline-none transition-colors text-lg"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2 flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-[#fe9100]" />
+                Was soll ARAS sagen? (Optional)
+              </label>
+              <textarea
+                value={customPrompt}
+                onChange={(e) => setCustomPrompt(e.target.value)}
+                placeholder="Beispiel: 'Sag der Person, dass das Meeting auf morgen 15 Uhr verschoben wird. Frag ob das passt.'"
+                rows={4}
+                className="w-full px-4 py-3 bg-black border border-gray-700 rounded-xl focus:border-[#fe9100] focus:outline-none transition-colors resize-none"
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                💡 Lass das Feld leer für einen Standard-Anruf oder gib ARAS spezifische Anweisungen
+              </p>
             </div>
 
             <button
@@ -79,7 +120,7 @@ export default function VoiceCalls() {
               ) : (
                 <>
                   <Phone className="w-6 h-6" />
-                  Jetzt anrufen
+                  {customPrompt ? "Mit Custom Prompt anrufen" : "Jetzt anrufen"}
                 </>
               )}
             </button>
@@ -107,7 +148,13 @@ export default function VoiceCalls() {
               <div className="space-y-2 text-sm">
                 <p className="text-gray-400">Call ID: <span className="text-white font-mono">{result.call.call_id}</span></p>
                 <p className="text-gray-400">Status: <span className="text-green-500">{result.call.call_status}</span></p>
-                <p className="text-gray-400">Agent: <span className="text-[#fe9100]">ARAS AI Global</span></p>
+                <p className="text-gray-400">Agent: <span className="text-[#fe9100]">ARAS AI</span></p>
+                {customPrompt && (
+                  <div className="mt-4 p-4 bg-[#fe9100]/10 border border-[#fe9100]/30 rounded-lg">
+                    <p className="text-xs text-gray-400 mb-1">Custom Prompt:</p>
+                    <p className="text-sm text-white">{customPrompt}</p>
+                  </div>
+                )}
               </div>
             )}
             
@@ -116,6 +163,16 @@ export default function VoiceCalls() {
             )}
           </motion.div>
         )}
+
+        <div className="mt-6 p-4 bg-gray-900/50 border border-gray-800 rounded-xl">
+          <h3 className="font-semibold mb-2 text-[#fe9100]">💡 Beispiele für Custom Prompts:</h3>
+          <ul className="text-sm text-gray-400 space-y-1">
+            <li>• "Erinnere an den Termin morgen um 10 Uhr"</li>
+            <li>• "Sag dass das Essen verschoben wird auf Freitag 19 Uhr"</li>
+            <li>• "Frag ob die Person noch Interesse am Angebot hat"</li>
+            <li>• "Bestätige die Buchung und gib die Referenznummer durch"</li>
+          </ul>
+        </div>
       </motion.div>
     </div>
   );
