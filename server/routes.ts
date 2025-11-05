@@ -784,3 +784,17 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       res.status(500).json({ success: false, message: error.message });
     }
   });
+      logger.info('[RETELL] Making call to:', phoneNumber);
+      const call = await retellClient.call.createPhoneCall({
+        from_number: process.env.RETELL_PHONE_NUMBER || '+41445054333',
+        to_number: phoneNumber,
+        override_agent_id: 'agent_757a5e73525f25b5822586e026'
+      });
+      
+      logger.info('[RETELL] Success:', call);
+      res.json({ success: true, call });
+    } catch (error: any) {
+      logger.error('[RETELL] ERROR:', error.message);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
