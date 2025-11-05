@@ -1005,3 +1005,45 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   });
 
 }
+
+  // Setup Global Voice Agent (Admin only)
+  app.post('/api/voice/setup-global-agent', requireAuth, async (req: any, res) => {
+    try {
+      // Prüfe ob globaler Agent existiert
+      const agents = await storage.getVoiceAgents();
+      const existingGlobal = agents.find((a: any) => a.name === "ARAS AI Global");
+      
+      if (existingGlobal) {
+        return res.json({ success: true, message: "Global agent already exists", agent: existingGlobal });
+      }
+
+      // Erstelle globalen Agent
+      const globalAgent = await storage.createVoiceAgent({
+        name: "ARAS AI Global",
+        systemPrompt: \`Du bist ARAS AI® - die intelligente Stimme der Schwarzott Group.
+
+PERSÖNLICHKEIT:
+- Professionell aber warmherzig
+- Intelligent und präzise
+- Empathisch und verständnisvoll
+- Keine KI-Floskeln
+
+TELEFON-STIL:
+- Kurze, klare Sätze (max 2-3 Sätze)
+- Natürlicher Gesprächsfluss
+- Aktives Zuhören
+
+Du repräsentierst die Schwarzott Group. Sei freundlich, kompetent und hilfreich.\`,
+        voice: "Polly.Vicki",
+        language: "de-DE",
+        welcomeMessage: "Guten Tag! Hier ist ARAS AI von der Schwarzott Group. Wie kann ich Ihnen helfen?",
+        userId: req.session.userId
+      });
+
+      logger.info('Global ARAS Agent created:', globalAgent);
+      res.json({ success: true, message: "Global agent created", agent: globalAgent });
+    } catch (error: any) {
+      logger.error('Setup global agent error:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
