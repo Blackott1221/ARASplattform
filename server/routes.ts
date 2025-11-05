@@ -833,7 +833,6 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       res.status(500).json({ message: error.message });
     }
   });
-    }
   });
   return httpServer;
 }
