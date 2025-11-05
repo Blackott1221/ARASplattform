@@ -11,6 +11,7 @@ import type { User, SubscriptionResponse } from "@shared/schema";
 export default function Space() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
+  const [showTopBar, setShowTopBar] = useState(true);
   const [displayedText, setDisplayedText] = useState("");
   const { user } = useAuth();
   
@@ -63,6 +64,29 @@ export default function Space() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Auto-hide topbar after 4 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowTopBar(false);
+    }, 4000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Show topbar on mouse hover at top
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (e.clientY < 50) {
+        setShowTopBar(true);
+      } else if (e.clientY > 100) {
+        setShowTopBar(false);
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
   return (
     <div className="flex h-screen bg-space space-pattern circuit-pattern">
       <Sidebar 
@@ -77,6 +101,7 @@ export default function Space() {
           currentSection="space" 
           subscriptionData={subscriptionData}
           user={user as import("@shared/schema").User}
+          isVisible={showTopBar}
         />
         
         <div className="flex-1 flex flex-col overflow-hidden relative">
@@ -98,7 +123,7 @@ export default function Space() {
 
                 <div className="relative px-6 py-4">
                   <div className="max-w-4xl mx-auto flex items-center justify-between">
-                    {/* Left: Welcome Message - OHNE Logo & Stern */}
+                    {/* Left: Welcome Message */}
                     <div className="flex flex-col space-y-1">
                       {/* Greeting with animated wave */}
                       <motion.h2 
