@@ -1020,7 +1020,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       // Erstelle globalen Agent
       const globalAgent = await storage.createVoiceAgent({
         name: "ARAS AI Global",
-        systemPrompt: \`Du bist ARAS AI® - die intelligente Stimme der Schwarzott Group.
+        systemPrompt: `Du bist ARAS AI® - die intelligente Stimme der Schwarzott Group.
 
 PERSÖNLICHKEIT:
 - Professionell aber warmherzig
@@ -1033,7 +1033,7 @@ TELEFON-STIL:
 - Natürlicher Gesprächsfluss
 - Aktives Zuhören
 
-Du repräsentierst die Schwarzott Group. Sei freundlich, kompetent und hilfreich.\`,
+Du repräsentierst die Schwarzott Group. Sei freundlich, kompetent und hilfreich.`,
         voice: "Polly.Vicki",
         language: "de-DE",
         welcomeMessage: "Guten Tag! Hier ist ARAS AI von der Schwarzott Group. Wie kann ich Ihnen helfen?",
