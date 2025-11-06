@@ -841,9 +841,9 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       
       const { event, call } = req.body;
       
-      logger.info('[RETELL-WEBHOOK] Event type:', event);
-      logger.info('[RETELL-WEBHOOK] Call exists:', !!call);
-      logger.info('[RETELL-WEBHOOK] Call object:', call ? JSON.stringify(call, null, 2) : 'null');
+      console.log('[RETELL-WEBHOOK] Event type:', event);
+      console.log('[RETELL-WEBHOOK] Call exists:', !!call);
+      console.log('[RETELL-WEBHOOK] Call object:', call ? JSON.stringify(call, null, 2) : 'null');
       
       if (event === 'call_ended' && call) {
         const { call_id, transcript, call_analysis, end_timestamp, start_timestamp } = call;
