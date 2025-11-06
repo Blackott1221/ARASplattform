@@ -1,568 +1,614 @@
-import { useState } from "react";
+# import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
-import { GlowButton } from "@/components/ui/glow-button";
-import { GradientText } from "@/components/ui/gradient-text";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-
-import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
-import { Bot, Plus, Edit, Trash2, Mic, Play, Pause } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
-import type { SubscriptionResponse, VoiceAgent, InsertVoiceAgent } from "@shared/schema";
+import { useQuery } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
+import { Phone, Loader2, CheckCircle2, XCircle, MessageSquare, Clock, User, FileText, Sparkles, Zap, ChevronDown, ChevronUp } from "lucide-react";
+import type { SubscriptionResponse } from "@shared/schema";
+
+const EXAMPLE_PROMPTS = [
+  "Erinnere an den Termin morgen um 10 Uhr",
+  "Bestätige die Buchung und gib die Referenznummer durch",
+  "Frag ob noch Interesse am Angebot besteht",
+  "Informiere über die neue Produktlinie",
+  "Vereinbare einen Rückruftermin für nächste Woche",
+  "Bestätige den Liefertermin für Freitag",
+  "Erinnere an die ausstehende Rechnung",
+  "Frag nach Feedback zum letzten Service",
+  "Teile mit dass das Meeting verschoben wurde",
+  "Informiere über die Sonderaktion diese Woche",
+  "Bestätige die Tischreservierung für heute Abend",
+  "Erinnere an den Zahnarzttermin übermorgen",
+  "Frag ob die Bestellung angekommen ist",
+  "Teile die neue Öffnungszeit mit",
+  "Bestätige die Anmeldung zum Workshop",
+  "Erinnere an die Vertragsverlängerung",
+  "Frag nach dem bevorzugten Lieferdatum",
+  "Informiere über die Statusänderung",
+  "Bestätige den Abholtermin",
+  "Erinnere an das anstehende Event",
+  "Frag ob weitere Fragen bestehen",
+  "Teile mit dass die Bearbeitung abgeschlossen ist",
+  "Bestätige die Teilnahme am Webinar",
+  "Erinnere an die Verlängerung der Mitgliedschaft",
+  "Frag nach der Zufriedenheit mit dem Produkt"
+];
+
+const PHONE_EXAMPLES = [
+  "+4917631118560",
+  "+4915234567890",
+  "+4916812345678",
+  "+4917798765432",
+  "+4915587654321"
+];
 
 export default function VoiceAgents() {
-  const { toast } = useToast();
-  const { user, isLoading: authLoading } = useAuth();
-  const [showCreateAgent, setShowCreateAgent] = useState(false);
-  const [editingAgent, setEditingAgent] = useState<VoiceAgent | null>(null);
-  const [isPlaying, setIsPlaying] = useState<number | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const { user } = useAuth();
   
-  const [agentData, setAgentData] = useState<InsertVoiceAgent>({
-    name: "",
-    description: "",
-    voice: "professional",
-    personality: "",
-    customScript: "",
-    ttsVoice: "nova",
-    language: "en",
-    industry: "general",
-    userId: null,
-    isSystemAgent: false,
-    isActive: true,
-  });
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [customPrompt, setCustomPrompt] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<any>(null);
+  const [transcript, setTranscript] = useState<string | null>(null);
+  const [loadingTranscript, setLoadingTranscript] = useState(false);
+  const [transcriptError, setTranscriptError] = useState(false);
+  const [currentExampleIndex, setCurrentExampleIndex] = useState(0);
+  const [currentPhoneExample, setCurrentPhoneExample] = useState(0);
+  const [showFullTranscript, setShowFullTranscript] = useState(false);
 
-  const queryClient = useQueryClient();
-
-  // Fetch user's subscription data
-  const { data: subscriptionData } = useQuery<SubscriptionResponse>({
+  const { data: userSubscription } = useQuery<SubscriptionResponse>({
     queryKey: ["/api/user/subscription"],
-    enabled: !!user && !authLoading,
-    retry: false,
+    enabled: !!user,
   });
-
-  // Fetch voice agents
-  const { data: voiceAgents = [], isLoading: agentsLoading } = useQuery<VoiceAgent[]>({
-    queryKey: ["/api/voice-agents"],
-    enabled: !!user && !authLoading,
-    retry: false,
-  });
-
-  // Create voice agent mutation
-  const createAgentMutation = useMutation({
-    mutationFn: async (agentData: InsertVoiceAgent) => {
-      const response = await apiRequest("POST", "/api/voice-agents", agentData);
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Voice Agent Created",
-        description: "Your custom voice agent has been created successfully!",
-      });
-      setShowCreateAgent(false);
-      resetForm();
-      queryClient.invalidateQueries({ queryKey: ["/api/voice-agents"] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Creation Failed",
-        description: error.message || "Failed to create voice agent",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Update voice agent mutation
-  const updateAgentMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: Partial<InsertVoiceAgent> }) => {
-      const response = await apiRequest("PUT", `/api/voice-agents/${id}`, data);
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Voice Agent Updated",
-        description: "Your voice agent has been updated successfully!",
-      });
-      setEditingAgent(null);
-      resetForm();
-      queryClient.invalidateQueries({ queryKey: ["/api/voice-agents"] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Update Failed",
-        description: error.message || "Failed to update voice agent",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Delete voice agent mutation
-  const deleteAgentMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const response = await apiRequest("DELETE", `/api/voice-agents/${id}`);
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Voice Agent Deleted",
-        description: "Voice agent has been removed successfully!",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/voice-agents"] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Deletion Failed",
-        description: error.message || "Failed to delete voice agent",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const resetForm = () => {
-    setAgentData({
-      name: "",
-      description: "",
-      voice: "professional",
-      personality: "",
-      customScript: "",
-      ttsVoice: "nova",
-      language: "en",
-      industry: "general",
-      userId: null,
-      isSystemAgent: false,
-      isActive: true,
-    });
-  };
-
-  const handleEdit = (agent: VoiceAgent) => {
-    setEditingAgent(agent);
-    setAgentData({
-      name: agent.name,
-      description: agent.description || "",
-      voice: agent.voice,
-      personality: agent.personality || "",
-      customScript: agent.customScript || "",
-      ttsVoice: agent.ttsVoice || "nova",
-      language: agent.language || "en",
-      industry: agent.industry || "general",
-      userId: user?.id || null,
-      isSystemAgent: false,
-      isActive: agent.isActive || true,
-    });
-    setShowCreateAgent(true);
-  };
-
-  const handleSubmit = () => {
-    if (!agentData.name.trim()) {
-      toast({
-        title: "Missing Information",
-        description: "Please provide an agent name",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (editingAgent) {
-      updateAgentMutation.mutate({ id: editingAgent.id, data: { ...agentData, userId: user?.id || null } });
-    } else {
-      createAgentMutation.mutate({ ...agentData, userId: user?.id || null });
-    }
-  };
-
-  const handleDelete = (agent: VoiceAgent) => {
-    if (agent.isSystemAgent) {
-      toast({
-        title: "Cannot Delete",
-        description: "System agents cannot be deleted",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (confirm(`Are you sure you want to delete "${agent.name}"?`)) {
-      deleteAgentMutation.mutate(agent.id);
-    }
-  };
-
-  const playVoicePreview = async (agent: VoiceAgent) => {
-    if (isPlaying === agent.id) {
-      setIsPlaying(null);
-      return;
-    }
-
-    setIsPlaying(agent.id);
-    
-    try {
-      const previewText = agent.customScript || `Hello, this is ${agent.name}. I'm your AI voice agent ready to help with your sales calls.`;
-      
-      const response = await apiRequest("POST", "/api/speech/synthesize", {
-        text: previewText,
-        voice: agent.ttsVoice || "nova",
-        speed: 1.0
-      });
-      
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-      
-      audio.onended = () => setIsPlaying(null);
-      audio.onerror = () => {
-        setIsPlaying(null);
-        toast({
-          title: "Preview Failed",
-          description: "Could not play voice preview",
-          variant: "destructive",
-        });
-      };
-      
-      await audio.play();
-    } catch (error) {
-      setIsPlaying(null);
-      toast({
-        title: "Preview Error",
-        description: "Failed to generate voice preview",
-        variant: "destructive",
-      });
-    }
-  };
-
-  if (authLoading) {
-    return (
-      <div className="flex h-screen bg-space space-pattern circuit-pattern items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
-      </div>
-    );
-  }
-
-  const defaultSubscriptionData: SubscriptionResponse = {
+  
+  const subscriptionData = userSubscription || {
     plan: 'starter',
-    status: 'trial',
+    status: 'active',
     aiMessagesUsed: 0,
     voiceCallsUsed: 0,
-    aiMessagesLimit: 5,
-    voiceCallsLimit: 0,
-    renewalDate: null
+    aiMessagesLimit: 100,
+    voiceCallsLimit: 10
+  };
+
+  const handleSectionChange = (section: string) => {
+    if (section !== "voice-agents") {
+      window.location.href = `/${section}`;
+    }
+  };
+
+  // Cycle through example prompts
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentExampleIndex((prev) => (prev + 1) % EXAMPLE_PROMPTS.length);
+    }, 3500);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Cycle through phone examples
+  useEffect(() => {
+    if (phoneNumber) return;
+    
+    const interval = setInterval(() => {
+      setCurrentPhoneExample((prev) => (prev + 1) % PHONE_EXAMPLES.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [phoneNumber]);
+
+  const fetchTranscript = async (callId: string, attempt = 1) => {
+    if (attempt === 1) setLoadingTranscript(true);
+    setTranscriptError(false);
+    
+    try {
+      const response = await fetch(`/api/voice/calls/${callId}/transcript`);
+      const data = await response.json();
+      
+      if (data.success && data.transcript) {
+        setTranscript(data.transcript);
+        setLoadingTranscript(false);
+      } else if (attempt < 10) {
+        setTimeout(() => fetchTranscript(callId, attempt + 1), 5000);
+      } else {
+        setTranscriptError(true);
+        setLoadingTranscript(false);
+      }
+    } catch (error) {
+      console.error('Failed to fetch transcript:', error);
+      if (attempt < 10) {
+        setTimeout(() => fetchTranscript(callId, attempt + 1), 5000);
+      } else {
+        setTranscriptError(true);
+        setLoadingTranscript(false);
+      }
+    }
+  };
+
+  const makeCall = async () => {
+    if (!phoneNumber) return;
+    
+    setLoading(true);
+    setResult(null);
+    setTranscript(null);
+    setTranscriptError(false);
+    setShowFullTranscript(false);
+    
+    try {
+      if (customPrompt.trim()) {
+        const taskRes = await fetch("/api/voice/tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            taskName: "Quick Call",
+            taskPrompt: customPrompt,
+            phoneNumber 
+          })
+        });
+        const taskData = await taskRes.json();
+        
+        const execRes = await fetch("/api/voice/tasks/" + taskData.task.id + "/execute", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phoneNumber, taskPrompt: customPrompt })
+        });
+        const data = await execRes.json();
+        setResult(data);
+        if (data.call && data.call.call_id) {
+          fetchTranscript(data.call.call_id);
+        }
+      } else {
+        const response = await fetch("/api/voice/retell/call", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phoneNumber })
+        });
+        const data = await response.json();
+        setResult(data);
+        if (data.call && data.call.call_id) {
+          fetchTranscript(data.call.call_id);
+        }
+      }
+    } catch (error) {
+      setResult({ success: false, message: "Call failed" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const truncateTranscript = (text: string, maxLength: number = 1000) => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength);
   };
 
   return (
     <div className="flex h-screen bg-space space-pattern circuit-pattern">
-      <Sidebar activeSection="voice-agents" onSectionChange={() => {}} />
-      <div className="flex-1 flex flex-col">
+      <Sidebar 
+        activeSection="voice-agents" 
+        onSectionChange={handleSectionChange}
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
+      
+      <div className="flex-1 flex flex-col relative">
         <TopBar 
           currentSection="voice-agents" 
-          subscriptionData={subscriptionData || defaultSubscriptionData}
-          user={user as any}
+          subscriptionData={subscriptionData}
+          user={user as import("@shared/schema").User}
+          isVisible={true}
         />
         
-        <div className="flex-1 p-8">
-          <div className="max-w-6xl mx-auto space-y-8">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <h1 className="text-4xl font-orbitron font-bold">
-                  <GradientText>Voice Agents</GradientText>
-                </h1>
-                <p className="text-lg text-muted-foreground">
-                  Create and customize AI voice agents for your sales calls
-                </p>
-              </div>
-              
-              <GlowButton
-                size="lg"
-                onClick={() => {
-                  setEditingAgent(null);
-                  resetForm();
-                  setShowCreateAgent(true);
-                }}
-                className="px-6"
+        <div className="flex-1 overflow-y-auto p-8">
+          <div className="max-w-6xl mx-auto">
+            {/* Hero Header */}
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }} 
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-10 text-center"
+            >
+              <motion.div
+                animate={{ scale: [1, 1.02, 1] }}
+                transition={{ duration: 3, repeat: Infinity }}
+                className="inline-block"
               >
-                <Plus className="w-5 h-5 mr-2" />
-                Create Agent
-              </GlowButton>
-            </div>
+                <h1 className="text-5xl font-bold mb-3" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                  <span className="bg-gradient-to-r from-[#FE9100] via-white to-[#FE9100] bg-clip-text text-transparent">
+                    ARAS AI CALL
+                  </span>
+                </h1>
+              </motion.div>
+              <p className="text-gray-400 flex items-center justify-center gap-2 text-lg">
+                <Zap className="w-5 h-5 text-[#FE9100]" />
+                KI-gesteuerte Anrufe in Sekunden
+              </p>
+            </motion.div>
 
-            {/* Agents Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {agentsLoading ? (
-                Array.from({ length: 6 }).map((_, i) => (
-                  <Card key={i} className="animate-pulse">
-                    <CardHeader className="space-y-4">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-muted rounded-full"></div>
-                        <div className="space-y-2 flex-1">
-                          <div className="h-4 bg-muted rounded w-3/4"></div>
-                          <div className="h-3 bg-muted rounded w-1/2"></div>
+            {/* Main Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Left: Call Form */}
+              <motion.div 
+                initial={{ opacity: 0, x: -20 }} 
+                animate={{ opacity: 1, x: 0 }} 
+                transition={{ delay: 0.2 }}
+              >
+                <div className="relative group">
+                  <div className="absolute -inset-[2px] bg-gradient-to-r from-[#FE9100] via-[#a34e00] to-[#FE9100] rounded-2xl opacity-0 group-hover:opacity-100 blur transition-opacity duration-500" />
+                  <div className="relative bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
+                    <div className="flex items-center gap-3 mb-8">
+                      <motion.div 
+                        className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#FE9100]/20 to-[#a34e00]/20 flex items-center justify-center ring-2 ring-[#FE9100]/30"
+                        whileHover={{ scale: 1.1, rotate: 5 }}
+                      >
+                        <Phone className="w-6 h-6 text-[#FE9100]" />
+                      </motion.div>
+                      <div>
+                        <h2 className="text-2xl font-bold text-white">Neuer Anruf</h2>
+                        <p className="text-sm text-gray-400">ARAS ruft für dich an</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-6">
+                      {/* Phone Number Input - FIXED CENTERING */}
+                      <div>
+                        <label className="block text-sm font-medium mb-3 text-gray-300 flex items-center gap-2">
+                          <User className="w-4 h-4 text-[#FE9100]" />
+                          Telefonnummer
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="tel"
+                            value={phoneNumber}
+                            onChange={(e) => setPhoneNumber(e.target.value)}
+                            className="w-full px-5 py-4 bg-black/50 border border-white/10 rounded-xl focus:border-[#FE9100] focus:ring-2 focus:ring-[#FE9100]/20 focus:outline-none transition-all text-white text-lg"
+                          />
+                          
+                          {/* FIXED: Properly Centered Animated Placeholder */}
+                          <AnimatePresence mode="wait">
+                            {!phoneNumber && (
+                              <motion.div
+                                key={currentPhoneExample}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                transition={{ duration: 0.3 }}
+                                className="absolute inset-0 flex items-center px-5 pointer-events-none text-gray-500 text-lg"
+                              >
+                                {PHONE_EXAMPLES[currentPhoneExample]}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                          
+                          {phoneNumber && (
+                            <motion.div 
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              className="absolute right-4 top-1/2 -translate-y-1/2"
+                            >
+                              <CheckCircle2 className="w-5 h-5 text-green-500" />
+                            </motion.div>
+                          )}
                         </div>
                       </div>
-                    </CardHeader>
-                  </Card>
-                ))
-              ) : (
-                voiceAgents.map((agent, index) => (
-                  <motion.div
-                    key={agent.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.1 }}
-                  >
-                    <Card className="hover:shadow-lg transition-all duration-300 border-border/50">
-                      <CardHeader className="space-y-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center space-x-3">
-                            <Avatar className="w-12 h-12">
-                              <AvatarFallback className="bg-primary/10">
-                                <Bot className="w-6 h-6 text-primary" />
-                              </AvatarFallback>
-                            </Avatar>
+
+                      {/* Custom Prompt */}
+                      <div>
+                        <label className="block text-sm font-medium mb-3 text-gray-300 flex items-center gap-2">
+                          <MessageSquare className="w-4 h-4 text-[#FE9100]" />
+                          Was soll ARAS sagen? (Optional)
+                        </label>
+                        <textarea
+                          value={customPrompt}
+                          onChange={(e) => setCustomPrompt(e.target.value)}
+                          placeholder="z.B. Bestätige den Termin für morgen..."
+                          rows={4}
+                          className="w-full px-5 py-4 bg-black/50 border border-white/10 rounded-xl focus:border-[#FE9100] focus:ring-2 focus:ring-[#FE9100]/20 focus:outline-none transition-all resize-none text-white"
+                        />
+                      </div>
+
+                      {/* Call Button */}
+                      <motion.button
+                        onClick={makeCall}
+                        disabled={loading || !phoneNumber}
+                        whileHover={{ scale: !loading && phoneNumber ? 1.02 : 1 }}
+                        whileTap={{ scale: !loading && phoneNumber ? 0.98 : 1 }}
+                        className="w-full relative group"
+                      >
+                        <div className="absolute -inset-[2px] bg-gradient-to-r from-[#FE9100] to-[#a34e00] rounded-xl opacity-75 group-hover:opacity-100 blur-md transition-all" />
+                        <div className={`relative py-5 bg-gradient-to-r from-[#FE9100] to-[#a34e00] rounded-xl font-bold text-xl text-white flex items-center justify-center gap-3 transition-all ${
+                          loading || !phoneNumber ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}>
+                          {loading ? (
+                            <>
+                              <Loader2 className="w-7 h-7 animate-spin" />
+                              <span>Anruf läuft...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Phone className="w-7 h-7" />
+                              <span>Jetzt anrufen</span>
+                            </>
+                          )}
+                        </div>
+                      </motion.button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CLICKABLE Animated Examples Card with 20+ Examples */}
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  transition={{ delay: 0.3 }}
+                  className="mt-6 relative"
+                >
+                  <div className="absolute -inset-[1px] bg-gradient-to-r from-[#FE9100]/20 to-[#a34e00]/20 rounded-xl blur" />
+                  <div className="relative p-6 bg-black/40 backdrop-blur-xl border border-white/10 rounded-xl">
+                    <h3 className="font-semibold mb-4 text-[#FE9100] flex items-center gap-2 text-sm">
+                      <Sparkles className="w-4 h-4" />
+                      Beispiel-Anweisungen (klicken zum Übernehmen)
+                    </h3>
+                    
+                    {/* Clickable Animated Example */}
+                    <AnimatePresence mode="wait">
+                      <motion.button
+                        key={currentExampleIndex}
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ duration: 0.4 }}
+                        onClick={() => setCustomPrompt(EXAMPLE_PROMPTS[currentExampleIndex])}
+                        className="w-full text-left flex items-start gap-3 p-4 bg-white/5 hover:bg-white/10 rounded-lg border border-white/5 hover:border-[#FE9100]/30 transition-all group cursor-pointer"
+                      >
+                        <motion.div
+                          animate={{ rotate: [0, 360] }}
+                          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                          className="flex-shrink-0 mt-0.5"
+                        >
+                          <div className="w-2 h-2 rounded-full bg-[#FE9100] group-hover:shadow-lg group-hover:shadow-[#FE9100]/50" />
+                        </motion.div>
+                        <p className="text-sm text-gray-300 group-hover:text-white leading-relaxed transition-colors">
+                          "{EXAMPLE_PROMPTS[currentExampleIndex]}"
+                        </p>
+                      </motion.button>
+                    </AnimatePresence>
+
+                    {/* Progress Dots */}
+                    <div className="flex items-center justify-center gap-1.5 mt-4 flex-wrap">
+                      {Array.from({ length: Math.min(EXAMPLE_PROMPTS.length, 12) }).map((_, index) => (
+                        <motion.div
+                          key={index}
+                          className={`h-1 rounded-full transition-all ${
+                            index === currentExampleIndex % 12
+                              ? 'w-8 bg-[#FE9100]' 
+                              : 'w-1 bg-gray-600'
+                          }`}
+                          animate={{
+                            scale: index === currentExampleIndex % 12 ? [1, 1.2, 1] : 1
+                          }}
+                          transition={{ duration: 0.3 }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              </motion.div>
+
+              {/* Right: Results */}
+              <motion.div 
+                initial={{ opacity: 0, x: 20 }} 
+                animate={{ opacity: 1, x: 0 }} 
+                transition={{ delay: 0.3 }}
+                className="space-y-6"
+              >
+                <AnimatePresence mode="wait">
+                  {result ? (
+                    <>
+                      {/* Call Status */}
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="relative group"
+                      >
+                        <div className={`absolute -inset-[2px] rounded-2xl blur transition-all ${
+                          result.success ? 'bg-gradient-to-r from-green-500 to-emerald-500 opacity-50 group-hover:opacity-75' : 'bg-gradient-to-r from-red-500 to-pink-500 opacity-50'
+                        }`} />
+                        <div className="relative bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
+                          <div className="flex items-center gap-4 mb-6">
+                            <motion.div 
+                              className={`w-14 h-14 rounded-xl flex items-center justify-center ${
+                                result.success ? 'bg-green-500/20 ring-2 ring-green-500/30' : 'bg-red-500/20 ring-2 ring-red-500/30'
+                              }`}
+                              animate={{ scale: result.success ? [1, 1.05, 1] : 1 }}
+                              transition={{ duration: 2, repeat: Infinity }}
+                            >
+                              {result.success ? 
+                                <CheckCircle2 className="w-7 h-7 text-green-400" /> : 
+                                <XCircle className="w-7 h-7 text-red-400" />
+                              }
+                            </motion.div>
                             <div>
-                              <CardTitle className="flex items-center gap-2">
-                                {agent.name}
-                                {agent.isSystemAgent && (
-                                  <Badge variant="secondary" className="text-xs">System</Badge>
-                                )}
-                              </CardTitle>
-                              <CardDescription>
-                                {agent.description}
-                              </CardDescription>
+                              <h3 className="text-2xl font-bold text-white">
+                                {result.success ? "Anruf aktiv!" : "Fehler"}
+                              </h3>
+                              <p className="text-gray-400">
+                                {result.success ? "ARAS AI ist verbunden" : "Versuch es erneut"}
+                              </p>
                             </div>
                           </div>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">Voice:</span>
-                            <Badge variant="outline">{agent.voice}</Badge>
-                          </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">TTS Voice:</span>
-                            <Badge variant="outline">{agent.ttsVoice}</Badge>
-                          </div>
-                          {agent.industry && (
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-muted-foreground">Industry:</span>
-                              <Badge variant="outline">{agent.industry}</Badge>
+                          
+                          {result.call && (
+                            <div className="space-y-3">
+                              <div className="flex items-center gap-3 p-4 bg-white/5 rounded-lg border border-white/5">
+                                <FileText className="w-5 h-5 text-gray-400" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs text-gray-400 mb-1">Call ID</p>
+                                  <p className="text-sm text-white font-mono truncate">{result.call.call_id}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3 p-4 bg-white/5 rounded-lg border border-white/5">
+                                <Clock className="w-5 h-5 text-gray-400" />
+                                <div>
+                                  <p className="text-xs text-gray-400 mb-1">Status</p>
+                                  <p className="text-sm text-green-400 font-semibold">{result.call.call_status}</p>
+                                </div>
+                              </div>
+                              {customPrompt && (
+                                <motion.div 
+                                  initial={{ opacity: 0, y: 10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  className="mt-4 p-4 bg-[#FE9100]/10 border border-[#FE9100]/30 rounded-lg"
+                                >
+                                  <p className="text-xs text-gray-400 mb-2 flex items-center gap-1.5">
+                                    <MessageSquare className="w-3.5 h-3.5" />
+                                    Anweisung
+                                  </p>
+                                  <p className="text-sm text-white leading-relaxed">{customPrompt}</p>
+                                </motion.div>
+                              )}
                             </div>
                           )}
                         </div>
-                      </CardHeader>
-                      
-                      <CardContent className="space-y-4">
-                        {agent.personality && (
-                          <div>
-                            <Label className="text-xs text-muted-foreground">Personality</Label>
-                            <p className="text-sm mt-1 line-clamp-3">{agent.personality}</p>
+                      </motion.div>
+
+                      {/* Transcript with Expand/Collapse for Long Transcripts */}
+                      {result.success && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.2 }}
+                          className="relative group"
+                        >
+                          <div className="absolute -inset-[2px] bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl opacity-30 group-hover:opacity-50 blur transition-opacity" />
+                          <div className="relative bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
+                            <div className="flex items-center gap-3 mb-6">
+                              <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center ring-2 ring-purple-500/30">
+                                <FileText className="w-6 h-6 text-purple-400" />
+                              </div>
+                              <div>
+                                <h3 className="text-xl font-bold text-white">Transkript</h3>
+                                <p className="text-sm text-gray-400">Live-Konversation</p>
+                              </div>
+                            </div>
+
+                            <div className="min-h-[250px]">
+                              {loadingTranscript && !transcript && (
+                                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                                  <motion.div
+                                    animate={{ rotate: 360 }}
+                                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                  >
+                                    <Loader2 className="w-10 h-10 text-[#FE9100] mb-4" />
+                                  </motion.div>
+                                  <p className="text-sm font-medium">Transkript wird erstellt...</p>
+                                  <p className="text-xs text-gray-500 mt-2">Bis zu 50 Sekunden</p>
+                                </div>
+                              )}
+
+                              {transcript && (
+                                <div>
+                                  <motion.div 
+                                    initial={{ opacity: 0 }} 
+                                    animate={{ opacity: 1 }}
+                                    className="p-5 bg-white/5 rounded-xl border border-white/5 custom-scrollbar"
+                                    style={{ 
+                                      maxHeight: showFullTranscript ? 'none' : '300px',
+                                      overflow: showFullTranscript ? 'visible' : 'hidden'
+                                    }}
+                                  >
+                                    <pre className="text-sm text-gray-200 whitespace-pre-wrap leading-relaxed">
+                                      {showFullTranscript ? transcript : truncateTranscript(transcript)}
+                                    </pre>
+                                  </motion.div>
+                                  
+                                  {/* Show More/Less Button for Long Transcripts */}
+                                  {transcript.length > 1000 && (
+                                    <motion.button
+                                      initial={{ opacity: 0 }}
+                                      animate={{ opacity: 1 }}
+                                      onClick={() => setShowFullTranscript(!showFullTranscript)}
+                                      className="mt-3 w-full py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm text-gray-300 hover:text-white transition-all flex items-center justify-center gap-2"
+                                    >
+                                      {showFullTranscript ? (
+                                        <>
+                                          <ChevronUp className="w-4 h-4" />
+                                          Weniger anzeigen
+                                        </>
+                                      ) : (
+                                        <>
+                                          <ChevronDown className="w-4 h-4" />
+                                          Vollständiges Transkript anzeigen ({transcript.length} Zeichen)
+                                        </>
+                                      )}
+                                    </motion.button>
+                                  )}
+                                </div>
+                              )}
+
+                              {transcriptError && !transcript && (
+                                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                                  <XCircle className="w-10 h-10 mb-4 text-red-500" />
+                                  <p className="text-sm font-medium">Transkript nicht verfügbar</p>
+                                  <p className="text-xs text-gray-500 mt-2">Call war zu kurz oder noch nicht fertig</p>
+                                </div>
+                              )}
+
+                              {!loadingTranscript && !transcript && !transcriptError && (
+                                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                                  <FileText className="w-10 h-10 mb-4 text-gray-600" />
+                                  <p className="text-sm">Warte auf Transkript...</p>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        )}
-                        
-                        <div className="flex items-center justify-between">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => playVoicePreview(agent)}
-                            disabled={isPlaying !== null}
-                            className="flex-1 mr-2"
-                          >
-                            {isPlaying === agent.id ? (
-                              <Pause className="w-4 h-4 mr-1" />
-                            ) : (
-                              <Play className="w-4 h-4 mr-1" />
-                            )}
-                            Preview
-                          </Button>
-                          
-                          <div className="flex space-x-1">
-                            {!agent.isSystemAgent && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleEdit(agent)}
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleDelete(agent)}
-                                  className="text-destructive hover:text-destructive"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))
-              )}
+                        </motion.div>
+                      )}
+                    </>
+                  ) : (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-16 flex flex-col items-center justify-center text-center min-h-[500px]"
+                    >
+                      <motion.div
+                        animate={{ 
+                          scale: [1, 1.1, 1],
+                          rotate: [0, 5, -5, 0]
+                        }}
+                        transition={{ duration: 4, repeat: Infinity }}
+                        className="w-24 h-24 rounded-full bg-[#FE9100]/20 flex items-center justify-center mb-6 ring-4 ring-[#FE9100]/10"
+                      >
+                        <Phone className="w-12 h-12 text-[#FE9100]" />
+                      </motion.div>
+                      <h3 className="text-2xl font-bold text-white mb-3">Bereit für deinen Call?</h3>
+                      <p className="text-gray-400 max-w-sm">
+                        Gib eine Telefonnummer ein und starte einen KI-gesteuerten Anruf
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
             </div>
           </div>
         </div>
-
-        {/* Create/Edit Agent Dialog */}
-        <Dialog open={showCreateAgent} onOpenChange={setShowCreateAgent}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="font-orbitron">
-                <GradientText>
-                  {editingAgent ? "Edit Voice Agent" : "Create Voice Agent"}
-                </GradientText>
-              </DialogTitle>
-            </DialogHeader>
-            
-            <div className="space-y-6">
-              {/* Basic Information */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Basic Information</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="name">Agent Name *</Label>
-                    <Input
-                      id="name"
-                      placeholder="e.g., Professional Sarah"
-                      value={agentData.name}
-                      onChange={(e) => setAgentData(prev => ({ ...prev, name: e.target.value }))}
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="voice">Voice Type *</Label>
-                    <Select 
-                      value={agentData.voice} 
-                      onValueChange={(value) => setAgentData(prev => ({ ...prev, voice: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="professional">Professional</SelectItem>
-                        <SelectItem value="friendly">Friendly</SelectItem>
-                        <SelectItem value="authoritative">Authoritative</SelectItem>
-                        <SelectItem value="casual">Casual</SelectItem>
-                        <SelectItem value="empathetic">Empathetic</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Input
-                    id="description"
-                    placeholder="Brief description of the agent"
-                    value={agentData.description}
-                    onChange={(e) => setAgentData(prev => ({ ...prev, description: e.target.value }))}
-                  />
-                </div>
-              </div>
-
-              {/* Voice Settings */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Voice Settings</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="ttsVoice">TTS Voice</Label>
-                    <Select 
-                      value={agentData.ttsVoice || "nova"} 
-                      onValueChange={(value) => setAgentData(prev => ({ ...prev, ttsVoice: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="alloy">Alloy (Neutral)</SelectItem>
-                        <SelectItem value="echo">Echo (Deep)</SelectItem>
-                        <SelectItem value="fable">Fable (Expressive)</SelectItem>
-                        <SelectItem value="nova">Nova (Warm)</SelectItem>
-                        <SelectItem value="onyx">Onyx (Professional)</SelectItem>
-                        <SelectItem value="shimmer">Shimmer (Friendly)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="industry">Industry</Label>
-                    <Select 
-                      value={agentData.industry || "general"} 
-                      onValueChange={(value) => setAgentData(prev => ({ ...prev, industry: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="general">General</SelectItem>
-                        <SelectItem value="real_estate">Real Estate</SelectItem>
-                        <SelectItem value="finance">Finance</SelectItem>
-                        <SelectItem value="healthcare">Healthcare</SelectItem>
-                        <SelectItem value="technology">Technology</SelectItem>
-                        <SelectItem value="retail">Retail</SelectItem>
-                        <SelectItem value="education">Education</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Personality & Script */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Personality & Script</h3>
-                
-                <div>
-                  <Label htmlFor="personality">Personality Description</Label>
-                  <Textarea
-                    id="personality"
-                    placeholder="Describe how this agent should behave and speak..."
-                    value={agentData.personality || ""}
-                    onChange={(e) => setAgentData(prev => ({ ...prev, personality: e.target.value }))}
-                    className="min-h-[80px]"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="customScript">Custom Opening Script</Label>
-                  <Textarea
-                    id="customScript"
-                    placeholder="The opening message for calls..."
-                    value={agentData.customScript || ""}
-                    onChange={(e) => setAgentData(prev => ({ ...prev, customScript: e.target.value }))}
-                    className="min-h-[80px]"
-                  />
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex justify-end space-x-3 pt-4">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setShowCreateAgent(false)}
-                >
-                  Cancel
-                </Button>
-                <GlowButton 
-                  onClick={handleSubmit}
-                  disabled={createAgentMutation.isPending || updateAgentMutation.isPending}
-                >
-                  {editingAgent ? "Update Agent" : "Create Agent"}
-                </GlowButton>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
+
+      <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(254, 145, 0, 0.3);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(254, 145, 0, 0.5);
+        }
+      `}</style>
     </div>
   );
 }
