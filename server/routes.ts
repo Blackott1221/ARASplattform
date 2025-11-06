@@ -872,7 +872,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
             metadata: call
           });
           
-          logger.info('[RETELL-WEBHOOK] Call log saved successfully');
+          console.log('[RETELL-WEBHOOK] Call log saved successfully!');
         }
       }
       
