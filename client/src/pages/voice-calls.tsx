@@ -15,7 +15,6 @@ export default function VoiceCalls() {
     setResult(null);
     
     try {
-      // Wenn Custom Prompt, nutze Task System
       if (customPrompt.trim()) {
         const taskRes = await fetch("/api/voice/tasks", {
           method: "POST",
@@ -28,8 +27,7 @@ export default function VoiceCalls() {
         });
         const taskData = await taskRes.json();
         
-        // Execute Task
-        const execRes = await fetch(`/api/voice/tasks/${taskData.task.id}/execute`, {
+        const execRes = await fetch("/api/voice/tasks/" + taskData.task.id + "/execute", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ phoneNumber, taskPrompt: customPrompt })
@@ -37,7 +35,6 @@ export default function VoiceCalls() {
         const data = await execRes.json();
         setResult(data);
       } else {
-        // Standard Anruf
         const response = await fetch("/api/voice/retell/call", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
