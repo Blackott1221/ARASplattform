@@ -1,12 +1,26 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Phone, Loader2, CheckCircle2, XCircle, MessageSquare, Clock, User, Mic, FileText, Sparkles, Play, StopCircle, Zap, TrendingUp } from "lucide-react";
+import { Phone, Loader2, CheckCircle2, XCircle, MessageSquare, Clock, User, FileText, Sparkles, Zap } from "lucide-react";
 import type { SubscriptionResponse } from "@shared/schema";
-import arasLogo from "@/assets/aras_logo_1755067745303.png";
+
+const EXAMPLE_PROMPTS = [
+  "Erinnere an den Termin morgen um 10 Uhr",
+  "Bestätige die Buchung und gib Referenznummer durch",
+  "Frag ob noch Interesse am Angebot besteht",
+  "Informiere über die neue Produktlinie",
+  "Vereinbare einen Rückruftermin für nächste Woche"
+];
+
+const PHONE_EXAMPLES = [
+  "+4917631118560",
+  "+4915234567890",
+  "+4916812345678",
+  "+4917798765432"
+];
 
 export default function VoiceCalls() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -19,6 +33,8 @@ export default function VoiceCalls() {
   const [transcript, setTranscript] = useState<string | null>(null);
   const [loadingTranscript, setLoadingTranscript] = useState(false);
   const [transcriptError, setTranscriptError] = useState(false);
+  const [currentExampleIndex, setCurrentExampleIndex] = useState(0);
+  const [currentPhoneExample, setCurrentPhoneExample] = useState(0);
 
   const { data: userSubscription } = useQuery<SubscriptionResponse>({
     queryKey: ["/api/user/subscription"],
@@ -39,6 +55,24 @@ export default function VoiceCalls() {
       window.location.href = `/${section}`;
     }
   };
+
+  // Cycle through example prompts
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentExampleIndex((prev) => (prev + 1) % EXAMPLE_PROMPTS.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Cycle through phone examples
+  useEffect(() => {
+    if (phoneNumber) return; // Stop cycling when user types
+    
+    const interval = setInterval(() => {
+      setCurrentPhoneExample((prev) => (prev + 1) % PHONE_EXAMPLES.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [phoneNumber]);
 
   const fetchTranscript = async (callId: string, attempt = 1) => {
     if (attempt === 1) setLoadingTranscript(true);
@@ -135,106 +169,35 @@ export default function VoiceCalls() {
           isVisible={true}
         />
         
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-7xl mx-auto">
+        <div className="flex-1 overflow-y-auto p-8">
+          <div className="max-w-6xl mx-auto">
             {/* Hero Header */}
             <motion.div 
               initial={{ opacity: 0, y: -20 }} 
               animate={{ opacity: 1, y: 0 }}
-              className="mb-8"
+              className="mb-10 text-center"
             >
-              <div className="flex items-center gap-4 mb-6">
-                <motion.div 
-                  className="relative"
-                  animate={{ 
-                    scale: [1, 1.05, 1],
-                  }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  <div className="absolute inset-0 bg-[#FE9100] blur-2xl opacity-30" />
-                  <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-[#FE9100]/20 to-[#a34e00]/20 border border-[#FE9100]/30 flex items-center justify-center backdrop-blur-sm">
-                    <Phone className="w-8 h-8 text-[#FE9100]" />
-                  </div>
-                </motion.div>
-                <div>
-                  <h1 className="text-4xl font-bold text-white flex items-center gap-3" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                    <span className="bg-gradient-to-r from-white via-[#FE9100] to-white bg-clip-text text-transparent">
-                      VOICE AGENTS
-                    </span>
-                  </h1>
-                  <p className="text-gray-400 flex items-center gap-2 mt-2">
-                    <Zap className="w-4 h-4 text-[#FE9100]" />
-                    KI-gesteuerte Anrufe in Echtzeit
-                  </p>
-                </div>
-              </div>
-
-              {/* Stats Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="relative group"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-[#FE9100]/10 to-[#a34e00]/10 rounded-xl blur-xl group-hover:blur-2xl transition-all" />
-                  <div className="relative bg-black/40 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-gray-400 mb-1">Anrufe heute</p>
-                        <p className="text-2xl font-bold text-white">0</p>
-                      </div>
-                      <div className="w-10 h-10 rounded-lg bg-[#FE9100]/20 flex items-center justify-center">
-                        <Phone className="w-5 h-5 text-[#FE9100]" />
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="relative group"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-xl blur-xl group-hover:blur-2xl transition-all" />
-                  <div className="relative bg-black/40 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-gray-400 mb-1">Erfolgsrate</p>
-                        <p className="text-2xl font-bold text-white">--</p>
-                      </div>
-                      <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
-                        <TrendingUp className="w-5 h-5 text-green-400" />
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="relative group"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-xl blur-xl group-hover:blur-2xl transition-all" />
-                  <div className="relative bg-black/40 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-gray-400 mb-1">Gesamt</p>
-                        <p className="text-2xl font-bold text-white">{subscriptionData.voiceCallsUsed}</p>
-                      </div>
-                      <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                        <Mic className="w-5 h-5 text-blue-400" />
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
+              <motion.div
+                animate={{ 
+                  scale: [1, 1.02, 1],
+                }}
+                transition={{ duration: 3, repeat: Infinity }}
+                className="inline-block"
+              >
+                <h1 className="text-5xl font-bold mb-3" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                  <span className="bg-gradient-to-r from-[#FE9100] via-white to-[#FE9100] bg-clip-text text-transparent">
+                    ARAS AI CALL
+                  </span>
+                </h1>
+              </motion.div>
+              <p className="text-gray-400 flex items-center justify-center gap-2 text-lg">
+                <Zap className="w-5 h-5 text-[#FE9100]" />
+                KI-gesteuerte Anrufe in Sekunden
+              </p>
             </motion.div>
 
             {/* Main Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Left: Call Form */}
               <motion.div 
                 initial={{ opacity: 0, x: -20 }} 
@@ -242,25 +205,25 @@ export default function VoiceCalls() {
                 transition={{ delay: 0.2 }}
               >
                 <div className="relative group">
-                  <div className="absolute -inset-[1px] bg-gradient-to-r from-[#FE9100] via-[#a34e00] to-[#FE9100] rounded-2xl opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-500" />
-                  <div className="relative bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
-                    <div className="flex items-center gap-3 mb-6">
+                  <div className="absolute -inset-[2px] bg-gradient-to-r from-[#FE9100] via-[#a34e00] to-[#FE9100] rounded-2xl opacity-0 group-hover:opacity-100 blur transition-opacity duration-500" />
+                  <div className="relative bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
+                    <div className="flex items-center gap-3 mb-8">
                       <motion.div 
-                        className="w-10 h-10 rounded-xl bg-[#FE9100]/20 flex items-center justify-center ring-2 ring-[#FE9100]/30"
+                        className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#FE9100]/20 to-[#a34e00]/20 flex items-center justify-center ring-2 ring-[#FE9100]/30"
                         whileHover={{ scale: 1.1, rotate: 5 }}
                       >
-                        <Play className="w-5 h-5 text-[#FE9100]" />
+                        <Phone className="w-6 h-6 text-[#FE9100]" />
                       </motion.div>
                       <div>
-                        <h2 className="text-xl font-bold text-white">Neuer Anruf starten</h2>
-                        <p className="text-sm text-gray-400">ARAS AI ruft für dich an</p>
+                        <h2 className="text-2xl font-bold text-white">Neuer Anruf</h2>
+                        <p className="text-sm text-gray-400">ARAS ruft für dich an</p>
                       </div>
                     </div>
 
-                    <div className="space-y-4">
-                      {/* Phone Number Input */}
+                    <div className="space-y-6">
+                      {/* Phone Number Input with Animated Placeholder */}
                       <div>
-                        <label className="block text-sm font-medium mb-2 text-gray-300 flex items-center gap-2">
+                        <label className="block text-sm font-medium mb-3 text-gray-300 flex items-center gap-2">
                           <User className="w-4 h-4 text-[#FE9100]" />
                           Telefonnummer
                         </label>
@@ -269,36 +232,50 @@ export default function VoiceCalls() {
                             type="tel"
                             value={phoneNumber}
                             onChange={(e) => setPhoneNumber(e.target.value)}
-                            placeholder="+49 176 12345678"
-                            className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl focus:border-[#FE9100] focus:ring-2 focus:ring-[#FE9100]/20 focus:outline-none transition-all text-white placeholder-gray-500"
+                            className="w-full px-5 py-4 bg-black/50 border border-white/10 rounded-xl focus:border-[#FE9100] focus:ring-2 focus:ring-[#FE9100]/20 focus:outline-none transition-all text-white text-lg"
                           />
-                          <motion.div 
-                            className="absolute right-3 top-1/2 -translate-y-1/2"
-                            animate={{ scale: phoneNumber ? [1, 1.2, 1] : 1 }}
-                            transition={{ duration: 0.3 }}
-                          >
-                            {phoneNumber && <CheckCircle2 className="w-5 h-5 text-green-500" />}
-                          </motion.div>
+                          
+                          {/* Animated Placeholder */}
+                          <AnimatePresence mode="wait">
+                            {!phoneNumber && (
+                              <motion.div
+                                key={currentPhoneExample}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                transition={{ duration: 0.3 }}
+                                className="absolute left-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 text-lg"
+                              >
+                                {PHONE_EXAMPLES[currentPhoneExample]}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                          
+                          {phoneNumber && (
+                            <motion.div 
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              className="absolute right-4 top-1/2 -translate-y-1/2"
+                            >
+                              <CheckCircle2 className="w-5 h-5 text-green-500" />
+                            </motion.div>
+                          )}
                         </div>
                       </div>
 
                       {/* Custom Prompt */}
                       <div>
-                        <label className="block text-sm font-medium mb-2 text-gray-300 flex items-center gap-2">
+                        <label className="block text-sm font-medium mb-3 text-gray-300 flex items-center gap-2">
                           <MessageSquare className="w-4 h-4 text-[#FE9100]" />
                           Was soll ARAS sagen? (Optional)
                         </label>
                         <textarea
                           value={customPrompt}
                           onChange={(e) => setCustomPrompt(e.target.value)}
-                          placeholder="z.B. Bestätige den Termin für morgen um 10 Uhr..."
+                          placeholder="z.B. Bestätige den Termin für morgen..."
                           rows={4}
-                          className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl focus:border-[#FE9100] focus:ring-2 focus:ring-[#FE9100]/20 focus:outline-none transition-all resize-none text-white placeholder-gray-500"
+                          className="w-full px-5 py-4 bg-black/50 border border-white/10 rounded-xl focus:border-[#FE9100] focus:ring-2 focus:ring-[#FE9100]/20 focus:outline-none transition-all resize-none text-white"
                         />
-                        <p className="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
-                          <Sparkles className="w-3 h-3 text-[#FE9100]" />
-                          Gib ARAS spezifische Anweisungen oder lass es leer für Standard
-                        </p>
                       </div>
 
                       {/* Call Button */}
@@ -309,18 +286,18 @@ export default function VoiceCalls() {
                         whileTap={{ scale: !loading && phoneNumber ? 0.98 : 1 }}
                         className="w-full relative group"
                       >
-                        <div className="absolute -inset-[2px] bg-gradient-to-r from-[#FE9100] to-[#a34e00] rounded-xl opacity-75 group-hover:opacity-100 blur group-hover:blur-md transition-all" />
-                        <div className={`relative py-4 bg-gradient-to-r from-[#FE9100] to-[#a34e00] rounded-xl font-semibold text-lg text-white flex items-center justify-center gap-3 transition-all ${
+                        <div className="absolute -inset-[2px] bg-gradient-to-r from-[#FE9100] to-[#a34e00] rounded-xl opacity-75 group-hover:opacity-100 blur-md transition-all" />
+                        <div className={`relative py-5 bg-gradient-to-r from-[#FE9100] to-[#a34e00] rounded-xl font-bold text-xl text-white flex items-center justify-center gap-3 transition-all ${
                           loading || !phoneNumber ? 'opacity-50 cursor-not-allowed' : ''
                         }`}>
                           {loading ? (
                             <>
-                              <Loader2 className="w-6 h-6 animate-spin" />
+                              <Loader2 className="w-7 h-7 animate-spin" />
                               <span>Anruf läuft...</span>
                             </>
                           ) : (
                             <>
-                              <Phone className="w-6 h-6" />
+                              <Phone className="w-7 h-7" />
                               <span>Jetzt anrufen</span>
                             </>
                           )}
@@ -330,31 +307,68 @@ export default function VoiceCalls() {
                   </div>
                 </div>
 
-                {/* Examples Card */}
+                {/* Animated Examples Card */}
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }} 
                   animate={{ opacity: 1, y: 0 }} 
                   transition={{ delay: 0.3 }}
-                  className="mt-4 p-4 bg-black/40 backdrop-blur-xl border border-white/10 rounded-xl"
+                  className="mt-6 relative"
                 >
-                  <h3 className="font-semibold mb-3 text-[#FE9100] flex items-center gap-2 text-sm">
-                    <Sparkles className="w-4 h-4" />
-                    Beispiel-Anweisungen
-                  </h3>
-                  <ul className="text-xs text-gray-400 space-y-2">
-                    <li className="flex items-start gap-2 hover:text-gray-300 transition-colors">
-                      <span className="text-[#FE9100] mt-0.5">→</span>
-                      <span>"Erinnere an den Termin morgen um 10 Uhr"</span>
-                    </li>
-                    <li className="flex items-start gap-2 hover:text-gray-300 transition-colors">
-                      <span className="text-[#FE9100] mt-0.5">→</span>
-                      <span>"Bestätige die Buchung und gib Referenznummer durch"</span>
-                    </li>
-                    <li className="flex items-start gap-2 hover:text-gray-300 transition-colors">
-                      <span className="text-[#FE9100] mt-0.5">→</span>
-                      <span>"Frag ob noch Interesse am Angebot besteht"</span>
-                    </li>
-                  </ul>
+                  <div className="absolute -inset-[1px] bg-gradient-to-r from-[#FE9100]/20 to-[#a34e00]/20 rounded-xl blur" />
+                  <div className="relative p-6 bg-black/40 backdrop-blur-xl border border-white/10 rounded-xl">
+                    <h3 className="font-semibold mb-4 text-[#FE9100] flex items-center gap-2">
+                      <Sparkles className="w-4 h-4" />
+                      Beispiel-Anweisungen
+                    </h3>
+                    
+                    {/* Animated Example */}
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={currentExampleIndex}
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ duration: 0.4 }}
+                        className="flex items-start gap-3 p-4 bg-white/5 rounded-lg border border-white/5"
+                      >
+                        <motion.div
+                          animate={{ 
+                            scale: [1, 1.2, 1],
+                            rotate: [0, 180, 360]
+                          }}
+                          transition={{ 
+                            duration: 2,
+                            repeat: Infinity,
+                            ease: "linear"
+                          }}
+                          className="flex-shrink-0 mt-0.5"
+                        >
+                          <div className="w-1.5 h-1.5 rounded-full bg-[#FE9100]" />
+                        </motion.div>
+                        <p className="text-sm text-gray-300 leading-relaxed">
+                          "{EXAMPLE_PROMPTS[currentExampleIndex]}"
+                        </p>
+                      </motion.div>
+                    </AnimatePresence>
+
+                    {/* Progress Dots */}
+                    <div className="flex items-center justify-center gap-2 mt-4">
+                      {EXAMPLE_PROMPTS.map((_, index) => (
+                        <motion.div
+                          key={index}
+                          className={`h-1 rounded-full transition-all ${
+                            index === currentExampleIndex 
+                              ? 'w-8 bg-[#FE9100]' 
+                              : 'w-1 bg-gray-600'
+                          }`}
+                          animate={{
+                            scale: index === currentExampleIndex ? [1, 1.2, 1] : 1
+                          }}
+                          transition={{ duration: 0.3 }}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 </motion.div>
               </motion.div>
 
@@ -363,7 +377,7 @@ export default function VoiceCalls() {
                 initial={{ opacity: 0, x: 20 }} 
                 animate={{ opacity: 1, x: 0 }} 
                 transition={{ delay: 0.3 }}
-                className="space-y-4"
+                className="space-y-6"
               >
                 <AnimatePresence mode="wait">
                   {result ? (
@@ -375,57 +389,61 @@ export default function VoiceCalls() {
                         exit={{ opacity: 0, scale: 0.95 }}
                         className="relative group"
                       >
-                        <div className={`absolute -inset-[1px] rounded-2xl blur-sm transition-opacity ${
-                          result.success ? 'bg-gradient-to-r from-green-500 to-emerald-500 opacity-50' : 'bg-gradient-to-r from-red-500 to-pink-500 opacity-50'
+                        <div className={`absolute -inset-[2px] rounded-2xl blur transition-all ${
+                          result.success ? 'bg-gradient-to-r from-green-500 to-emerald-500 opacity-50 group-hover:opacity-75' : 'bg-gradient-to-r from-red-500 to-pink-500 opacity-50'
                         }`} />
-                        <div className="relative bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
-                          <div className="flex items-center gap-3 mb-4">
+                        <div className="relative bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
+                          <div className="flex items-center gap-4 mb-6">
                             <motion.div 
-                              className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                              className={`w-14 h-14 rounded-xl flex items-center justify-center ${
                                 result.success ? 'bg-green-500/20 ring-2 ring-green-500/30' : 'bg-red-500/20 ring-2 ring-red-500/30'
                               }`}
-                              animate={{ scale: [1, 1.1, 1] }}
-                              transition={{ duration: 1, repeat: Infinity }}
+                              animate={{ scale: result.success ? [1, 1.05, 1] : 1 }}
+                              transition={{ duration: 2, repeat: Infinity }}
                             >
                               {result.success ? 
-                                <CheckCircle2 className="w-6 h-6 text-green-400" /> : 
-                                <XCircle className="w-6 h-6 text-red-400" />
+                                <CheckCircle2 className="w-7 h-7 text-green-400" /> : 
+                                <XCircle className="w-7 h-7 text-red-400" />
                               }
                             </motion.div>
                             <div>
-                              <h3 className="text-xl font-bold text-white">
+                              <h3 className="text-2xl font-bold text-white">
                                 {result.success ? "Anruf aktiv!" : "Fehler"}
                               </h3>
-                              <p className="text-sm text-gray-400">
+                              <p className="text-gray-400">
                                 {result.success ? "ARAS AI ist verbunden" : "Versuch es erneut"}
                               </p>
                             </div>
                           </div>
                           
                           {result.call && (
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/5">
-                                <FileText className="w-4 h-4 text-gray-400" />
+                            <div className="space-y-3">
+                              <div className="flex items-center gap-3 p-4 bg-white/5 rounded-lg border border-white/5">
+                                <FileText className="w-5 h-5 text-gray-400" />
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-xs text-gray-400">Call ID</p>
-                                  <p className="text-xs text-white font-mono truncate">{result.call.call_id}</p>
+                                  <p className="text-xs text-gray-400 mb-1">Call ID</p>
+                                  <p className="text-sm text-white font-mono truncate">{result.call.call_id}</p>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-3 p-3 bg-white/5 rounded-lg border border-white/5">
-                                <Clock className="w-4 h-4 text-gray-400" />
+                              <div className="flex items-center gap-3 p-4 bg-white/5 rounded-lg border border-white/5">
+                                <Clock className="w-5 h-5 text-gray-400" />
                                 <div>
-                                  <p className="text-xs text-gray-400">Status</p>
-                                  <p className="text-sm text-green-400 font-medium">{result.call.call_status}</p>
+                                  <p className="text-xs text-gray-400 mb-1">Status</p>
+                                  <p className="text-sm text-green-400 font-semibold">{result.call.call_status}</p>
                                 </div>
                               </div>
                               {customPrompt && (
-                                <div className="mt-3 p-3 bg-[#FE9100]/10 border border-[#FE9100]/30 rounded-lg">
-                                  <p className="text-xs text-gray-400 mb-1 flex items-center gap-1.5">
-                                    <MessageSquare className="w-3 h-3" />
+                                <motion.div 
+                                  initial={{ opacity: 0, y: 10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  className="mt-4 p-4 bg-[#FE9100]/10 border border-[#FE9100]/30 rounded-lg"
+                                >
+                                  <p className="text-xs text-gray-400 mb-2 flex items-center gap-1.5">
+                                    <MessageSquare className="w-3.5 h-3.5" />
                                     Anweisung
                                   </p>
-                                  <p className="text-sm text-white">{customPrompt}</p>
-                                </div>
+                                  <p className="text-sm text-white leading-relaxed">{customPrompt}</p>
+                                </motion.div>
                               )}
                             </div>
                           )}
@@ -440,29 +458,29 @@ export default function VoiceCalls() {
                           transition={{ delay: 0.2 }}
                           className="relative group"
                         >
-                          <div className="absolute -inset-[1px] bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl opacity-30 group-hover:opacity-50 blur-sm transition-opacity" />
-                          <div className="relative bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
-                            <div className="flex items-center gap-3 mb-4">
-                              <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center ring-2 ring-purple-500/30">
-                                <FileText className="w-5 h-5 text-purple-400" />
+                          <div className="absolute -inset-[2px] bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl opacity-30 group-hover:opacity-50 blur transition-opacity" />
+                          <div className="relative bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
+                            <div className="flex items-center gap-3 mb-6">
+                              <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center ring-2 ring-purple-500/30">
+                                <FileText className="w-6 h-6 text-purple-400" />
                               </div>
                               <div>
-                                <h3 className="text-lg font-bold text-white">Gesprächs-Transkript</h3>
+                                <h3 className="text-xl font-bold text-white">Transkript</h3>
                                 <p className="text-sm text-gray-400">Live-Konversation</p>
                               </div>
                             </div>
 
-                            <div className="min-h-[200px]">
+                            <div className="min-h-[250px]">
                               {loadingTranscript && !transcript && (
-                                <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
                                   <motion.div
                                     animate={{ rotate: 360 }}
                                     transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                                   >
-                                    <Loader2 className="w-8 h-8 text-[#FE9100] mb-3" />
+                                    <Loader2 className="w-10 h-10 text-[#FE9100] mb-4" />
                                   </motion.div>
-                                  <p className="text-sm">Transkript wird erstellt...</p>
-                                  <p className="text-xs text-gray-500 mt-1">Bis zu 50 Sekunden</p>
+                                  <p className="text-sm font-medium">Transkript wird erstellt...</p>
+                                  <p className="text-xs text-gray-500 mt-2">Bis zu 50 Sekunden</p>
                                 </div>
                               )}
 
@@ -470,23 +488,23 @@ export default function VoiceCalls() {
                                 <motion.div 
                                   initial={{ opacity: 0 }} 
                                   animate={{ opacity: 1 }}
-                                  className="p-4 bg-white/5 rounded-xl border border-white/5 max-h-[400px] overflow-y-auto"
+                                  className="p-5 bg-white/5 rounded-xl border border-white/5 max-h-[400px] overflow-y-auto custom-scrollbar"
                                 >
-                                  <pre className="text-sm text-gray-200 whitespace-pre-wrap font-mono leading-relaxed">{transcript}</pre>
+                                  <pre className="text-sm text-gray-200 whitespace-pre-wrap leading-relaxed">{transcript}</pre>
                                 </motion.div>
                               )}
 
                               {transcriptError && !transcript && (
-                                <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-                                  <XCircle className="w-8 h-8 mb-3 text-red-500" />
-                                  <p className="text-sm">Transkript nicht verfügbar</p>
-                                  <p className="text-xs text-gray-500 mt-1">Call war zu kurz</p>
+                                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                                  <XCircle className="w-10 h-10 mb-4 text-red-500" />
+                                  <p className="text-sm font-medium">Transkript nicht verfügbar</p>
+                                  <p className="text-xs text-gray-500 mt-2">Call war zu kurz</p>
                                 </div>
                               )}
 
                               {!loadingTranscript && !transcript && !transcriptError && (
-                                <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-                                  <FileText className="w-8 h-8 mb-3 text-gray-600" />
+                                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                                  <FileText className="w-10 h-10 mb-4 text-gray-600" />
                                   <p className="text-sm">Warte auf Transkript...</p>
                                 </div>
                               )}
@@ -499,7 +517,7 @@ export default function VoiceCalls() {
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-12 flex flex-col items-center justify-center text-center"
+                      className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-16 flex flex-col items-center justify-center text-center min-h-[500px]"
                     >
                       <motion.div
                         animate={{ 
@@ -507,13 +525,13 @@ export default function VoiceCalls() {
                           rotate: [0, 5, -5, 0]
                         }}
                         transition={{ duration: 4, repeat: Infinity }}
-                        className="w-20 h-20 rounded-full bg-[#FE9100]/20 flex items-center justify-center mb-4"
+                        className="w-24 h-24 rounded-full bg-[#FE9100]/20 flex items-center justify-center mb-6 ring-4 ring-[#FE9100]/10"
                       >
-                        <Phone className="w-10 h-10 text-[#FE9100]" />
+                        <Phone className="w-12 h-12 text-[#FE9100]" />
                       </motion.div>
-                      <h3 className="text-xl font-bold text-white mb-2">Bereit für deinen Call?</h3>
-                      <p className="text-gray-400 text-sm max-w-sm">
-                        Gib eine Telefonnummer ein und starte einen KI-gesteuerten Anruf mit ARAS AI
+                      <h3 className="text-2xl font-bold text-white mb-3">Bereit für deinen Call?</h3>
+                      <p className="text-gray-400 max-w-sm">
+                        Gib eine Telefonnummer ein und starte einen KI-gesteuerten Anruf
                       </p>
                     </motion.div>
                   )}
@@ -525,6 +543,22 @@ export default function VoiceCalls() {
       </div>
 
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(254, 145, 0, 0.3);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(254, 145, 0, 0.5);
+        }
+      `}</style>
     </div>
   );
 }
