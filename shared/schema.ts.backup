@@ -119,22 +119,17 @@ export const voiceAgents = pgTable("voice_agents", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Call logs table - UPDATED for Retell integration
+// Call logs table
 export const callLogs = pgTable("call_logs", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull().references(() => users.id),
   leadId: integer("lead_id").references(() => leads.id),
   voiceAgentId: integer("voice_agent_id").references(() => voiceAgents.id),
   phoneNumber: varchar("phone_number").notNull(),
-  retellCallId: varchar("retell_call_id").unique(),
-  status: varchar("status").default("initiated"),
-  duration: integer("duration"),
+  status: varchar("status").default("initiated"), // initiated, completed, failed
+  duration: integer("duration"), // in seconds
   transcript: text("transcript"),
-  customPrompt: text("custom_prompt"),
-  recordingUrl: varchar("recording_url"),
-  metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Subscription plans table

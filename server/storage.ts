@@ -136,6 +136,21 @@ export interface IStorage {
   getVoiceTasksByUser(userId: string): Promise<any[]>;
   updateVoiceTask(id: number, updates: any): Promise<any>;
   deleteVoiceTask(id: number): Promise<void>;
+  
+  // Retell call log methods
+  saveCallLog(data: {
+    userId: string;
+    phoneNumber: string;
+    retellCallId: string;
+    status: string;
+    duration?: number | null;
+    transcript?: string | null;
+    customPrompt?: string | null;
+    recordingUrl?: string | null;
+    metadata?: any;
+  }): Promise<void>;
+  getCallLogByRetellId(retellCallId: string, userId: string): Promise<any>;
+  getUserCallLogs(userId: string): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -888,6 +903,56 @@ export class DatabaseStorage implements IStorage {
     interactions.push({ ...interaction, timestamp: new Date() });
     this.callInteractions.set(callId, interactions);
   }
+
+  // ==========================================
+  // RETELL CALL LOG METHODS
+  // ==========================================
+  
+  async saveCallLog(data: {
+    userId: string;
+    phoneNumber: string;
+    retellCallId: string;
+    status: string;
+    duration?: number | null;
+    transcript?: string | null;
+    customPrompt?: string | null;
+    recordingUrl?: string | null;
+    metadata?: any;
+  }) {
+    await this.db.insert(callLogs).values({
+      userId: data.userId,
+      phoneNumber: data.phoneNumber,
+      retellCallId: data.retellCallId,
+      status: data.status,
+      duration: data.duration,
+      transcript: data.transcript,
+      customPrompt: data.customPrompt,
+      recordingUrl: data.recordingUrl,
+      metadata: data.metadata,
+    });
+  }
+
+  async getCallLogByRetellId(retellCallId: string, userId: string) {
+    const result = await this.db
+      .select()
+      .from(callLogs)
+      .where(and(
+        eq(callLogs.retellCallId, retellCallId),
+        eq(callLogs.userId, userId)
+      ))
+      .limit(1);
+    return result[0] || null;
+  }
+
+  async getUserCallLogs(userId: string) {
+    return await this.db
+      .select()
+      .from(callLogs)
+      .where(eq(callLogs.userId, userId))
+      .orderBy(desc(callLogs.createdAt))
+      .limit(50);
+  }
+
 }
 
 // In-memory storage class for authentication without database dependency

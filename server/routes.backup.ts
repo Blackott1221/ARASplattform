@@ -752,170 +752,298 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
 
   app.use("/api", chatRouter);
 
-
-  // RETELL AI VOICE CALLS
-  app.post('/api/voice/retell/call', requireAuth, async (req: any, res) => {
-    try {
-      logger.info('[RETELL] Call request started');
-      const { phoneNumber } = req.body;
-      if (!phoneNumber) {
-        logger.error('[RETELL] Missing phone number');
-        return res.status(400).json({ success: false, message: 'Phone required' });
-      }
-      
-      logger.info('[RETELL] Importing SDK...');
-      const Retell = (await import('retell-sdk')).default;
-      logger.info('[RETELL] Creating client...');
-      const retellClient = new Retell({ apiKey: process.env.RETELL_API_KEY });
-      
-      logger.info('[RETELL] Making call to:', phoneNumber);
-      const call = await retellClient.call.createPhoneCall({
-        from_number: process.env.RETELL_PHONE_NUMBER || '+41445054333',
-        to_number: phoneNumber,
-        override_agent_id: 'agent_757a5e73525f25b5822586e026'
-      });
-      
-      logger.info('[RETELL] Success:', call);
-      res.json({ success: true, call });
-    } catch (error: any) {
-      logger.error('[RETELL] ERROR:', error.message);
-      res.status(500).json({ success: false, message: error.message });
-    }
-  });
-
   const httpServer = createServer(app);
+  return httpServer;
 
-  // ==========================================
-  // VOICE TASKS - CUSTOM PROMPTS
-  // ==========================================
-  
-  app.post('/api/voice/tasks', requireAuth, async (req: any, res) => {
+  // ============================================
+  // TWILIO VOICE AI - ARAS TELEFONIE
+  // ============================================
+
+  app.post('/api/voice/incoming', async (req, res) => {
     try {
-      const { taskName, taskPrompt, phoneNumber } = req.body;
-      if (!taskName || !taskPrompt || !phoneNumber) {
-        return res.status(400).json({ message: 'All fields required' });
+      logger.info('Incoming call received');
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Vicki" language="de-DE">Hallo. Hier ist ARAS AI von der Schwarzott Group. Wie kann ich dir helfen?</Say>
+  <Gather input="speech" action="https://arasai.onrender.com/api/voice/process" method="POST" language="de-DE" speechTimeout="3">
+    <Say voice="Polly.Vicki" language="de-DE">Bitte sprich jetzt.</Say>
+  </Gather>
+  <Say voice="Polly.Vicki" language="de-DE">Ich habe nichts verstanden. Auf Wiedersehen.</Say>
+  <Hangup/>
+</Response>`;
+      res.type('text/xml');
+      res.send(twiml);
+    } catch (error) {
+      logger.error('Voice incoming error:', error);
+      res.status(500).send('Error');
+    }
+  });
+
+  app.post('/api/voice/process', async (req, res) => {
+    try {
+      const { SpeechResult } = req.body;
+      logger.info('Speech received:', { SpeechResult });
+      
+      if (!SpeechResult) {
+        const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Vicki" language="de-DE">Ich habe dich nicht verstanden.</Say>
+  <Hangup/>
+</Response>`;
+        res.type('text/xml');
+        return res.send(twiml);
       }
-      const task = { id: Date.now(), userId: req.session.userId, taskName, taskPrompt, phoneNumber, status: 'pending', createdAt: new Date() };
-      logger.info('[TASK] Created:', task);
-      res.json({ success: true, task });
-    } catch (error: any) {
-      logger.error('[TASK] Error:', error);
-      res.status(500).json({ message: error.message });
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer \${process.env.OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-5',
+          messages: [{
+            role: "system",
+            content: "Du bist ARAS AI - Stimme der Schwarzott Group. Kurz und präzise. Maximum 2 Sätze."
+          }, {
+            role: "user",
+            content: SpeechResult
+          }],
+          max_completion_tokens: 150
+        })
+      });
+
+      const data = await response.json();
+      const aiResponse = data.choices[0].message.content;
+
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Vicki" language="de-DE">\${aiResponse}</Say>
+  <Gather input="speech" action="https://arasai.onrender.com/api/voice/process" method="POST" language="de-DE" speechTimeout="3">
+    <Say voice="Polly.Vicki" language="de-DE">Noch Fragen?</Say>
+  </Gather>
+  <Say voice="Polly.Vicki" language="de-DE">Danke. Auf Wiedersehen.</Say>
+  <Hangup/>
+</Response>`;
+      
+      res.type('text/xml');
+      res.send(twiml);
+    } catch (error) {
+      logger.error('Voice process error:', error);
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Vicki" language="de-DE">Es gab einen Fehler. Auf Wiedersehen.</Say>
+  <Hangup/>
+</Response>`;
+      res.type('text/xml');
+      res.send(twiml);
     }
   });
-  
-  app.post('/api/voice/tasks/:taskId/execute', requireAuth, async (req: any, res) => {
+
+  app.post('/api/voice/fallback', (req, res) => {
+    logger.error('Fallback handler called');
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Vicki" language="de-DE">Service nicht verfügbar. Bitte später erneut versuchen.</Say>
+  <Hangup/>
+</Response>`;
+    res.type('text/xml');
+    res.send(twiml);
+  });
+
+  app.post('/api/voice/outbound/start', requireAuth, async (req: any, res) => {
     try {
-      const { taskId } = req.params;
-      const { phoneNumber, taskPrompt } = req.body;
-      
-      logger.info('[TASK] Executing with custom prompt:', taskPrompt);
-      
-      const Retell = (await import('retell-sdk')).default;
-      const retellClient = new Retell({ apiKey: process.env.RETELL_API_KEY });
-      
-      const call = await retellClient.call.createPhoneCall({
-        from_number: process.env.RETELL_PHONE_NUMBER || '+41445054333',
-        to_number: phoneNumber,
-        override_agent_id: process.env.RETELL_AGENT_ID || 'agent_757a5e73525f25b5822586e026',
-        retell_llm_dynamic_variables: {
-          custom_task: taskPrompt || 'Standard Anruf'
+      const { phoneNumber, campaignMessage } = req.body;
+      if (!phoneNumber) return res.status(400).json({ message: 'Phone number required' });
+
+      const accountSid = process.env.TWILIO_ACCOUNT_SID;
+      const authToken = process.env.TWILIO_AUTH_TOKEN;
+      const twilioNumber = process.env.TWILIO_PHONE_NUMBER;
+
+      const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/\${accountSid}/Calls.json`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': 'Basic ' + Buffer.from(`\${accountSid}:\${authToken}`).toString('base64')
         },
-        metadata: { taskId, customPrompt: taskPrompt, userId: req.session.userId }
+        body: new URLSearchParams({
+          To: phoneNumber,
+          From: twilioNumber,
+          Url: `https://arasai.onrender.com/api/voice/outbound/twiml?message=\${encodeURIComponent(campaignMessage || '')}`
+        })
       });
-      
-      logger.info('[TASK] Call initiated with dynamic variables:', call);
-      res.json({ success: true, call });
+
+      const data = await response.json();
+      if (response.ok) {
+        logger.info('Outbound call initiated:', { phoneNumber, callSid: data.sid });
+        res.json({ success: true, callSid: data.sid, status: data.status });
+      } else {
+        logger.error('Twilio error:', data);
+        res.status(400).json({ message: data.message });
+      }
     } catch (error: any) {
-      logger.error('[TASK] Execute error:', error);
+      logger.error('Outbound call error:', error);
       res.status(500).json({ message: error.message });
     }
   });
 
-  // ==========================================
-  // RETELL WEBHOOK - Receives call updates & transcripts
-  // ==========================================
-  app.post('/api/voice/retell/webhook', async (req: any, res) => {
+  // Bulk Outbound Calls
+  app.post('/api/voice/outbound/bulk', requireAuth, async (req: any, res) => {
     try {
-      logger.info('[RETELL-WEBHOOK] Received:', JSON.stringify(req.body, null, 2));
-      
-      const { event, call } = req.body;
-      
-      if (event === 'call_ended' && call) {
-        const { call_id, transcript, call_analysis, end_timestamp, start_timestamp } = call;
-        
-        // Calculate duration
-        const duration = end_timestamp && start_timestamp 
-          ? Math.floor((new Date(end_timestamp).getTime() - new Date(start_timestamp).getTime()) / 1000)
-          : null;
-        
-        // Extract metadata from call
-        const metadata = call.metadata || {};
-        const customPrompt = metadata.customPrompt || null;
-        const userId = metadata.userId || null;
-        
-        if (userId && call_id) {
-          // Save to database
-          await storage.saveCallLog({
-            userId,
-            phoneNumber: call.to_number || 'Unknown',
-            retellCallId: call_id,
-            status: 'completed',
-            duration,
-            transcript: transcript || call_analysis?.call_summary || 'No transcript available',
-            customPrompt,
-            recordingUrl: call.recording_url || null,
-            metadata: call
+      const { phoneNumbers, campaignMessage } = req.body;
+      if (!phoneNumbers || !Array.isArray(phoneNumbers)) {
+        return res.status(400).json({ message: 'Phone numbers array required' });
+      }
+
+      const accountSid = process.env.TWILIO_ACCOUNT_SID;
+      const authToken = process.env.TWILIO_AUTH_TOKEN;
+      const twilioNumber = process.env.TWILIO_PHONE_NUMBER;
+      const results = [];
+
+      for (const phoneNumber of phoneNumbers) {
+        try {
+          const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Authorization': 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64')
+            },
+            body: new URLSearchParams({
+              To: phoneNumber,
+              From: twilioNumber,
+              Url: `https://arasai.onrender.com/api/voice/outbound/twiml?message=${encodeURIComponent(campaignMessage || '')}` 
+            })
           });
-          
-          logger.info('[RETELL-WEBHOOK] Call log saved successfully');
+
+          const data = await response.json();
+          results.push({ phoneNumber, success: response.ok, callSid: data.sid, status: data.status });
+          await new Promise(r => setTimeout(r, 1000));
+        } catch (error: any) {
+          results.push({ phoneNumber, success: false, error: error.message });
         }
       }
-      
-      res.json({ success: true, received: true });
+
+      res.json({ success: true, results, total: phoneNumbers.length, successful: results.filter(r => r.success).length });
     } catch (error: any) {
-      logger.error('[RETELL-WEBHOOK] Error:', error);
-      res.status(500).json({ success: false, message: error.message });
+      logger.error('Bulk outbound error:', error);
+      res.status(500).json({ message: error.message });
     }
   });
 
-  // Get call transcript by call ID
-  app.get('/api/voice/calls/:callId/transcript', requireAuth, async (req: any, res) => {
+
+  app.get('/api/voice/outbound/twiml', async (req, res) => {
+    const { message } = req.query;
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Vicki" language="de-DE">Hallo. Hier ist ARAS AI. \${message || 'Ich rufe dich an.'}</Say>
+  <Gather input="speech" action="https://arasai.onrender.com/api/voice/outbound/response" method="POST" language="de-DE" speechTimeout="3">
+    <Say voice="Polly.Vicki" language="de-DE">Wie kann ich helfen?</Say>
+  </Gather>
+  <Say voice="Polly.Vicki" language="de-DE">Danke. Auf Wiedersehen.</Say>
+  <Hangup/>
+</Response>`;
+    res.type('text/xml');
+    res.send(twiml);
+  });
+
+  app.post('/api/voice/outbound/response', async (req, res) => {
     try {
-      const { callId } = req.params;
-      const userId = req.session.userId;
-      
-      const callLog = await storage.getCallLogByRetellId(callId, userId);
-      
-      if (!callLog) {
-        return res.status(404).json({ message: 'Call not found' });
+      const { SpeechResult } = req.body;
+      if (!SpeechResult) {
+        const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Vicki" language="de-DE">Nichts verstanden.</Say>
+  <Hangup/>
+</Response>`;
+        res.type('text/xml');
+        return res.send(twiml);
       }
-      
-      res.json({ 
-        success: true, 
-        transcript: callLog.transcript,
-        duration: callLog.duration,
-        customPrompt: callLog.customPrompt,
-        status: callLog.status,
-        createdAt: callLog.createdAt
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer \${process.env.OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-5',
+          messages: [{
+            role: "system",
+            content: "Du bist ARAS AI Sales Agent. Kurz und präzise. Maximum 2 Sätze."
+          }, {
+            role: "user",
+            content: SpeechResult
+          }],
+          max_completion_tokens: 150
+        })
       });
-    } catch (error: any) {
-      logger.error('[TRANSCRIPT] Error:', error);
-      res.status(500).json({ message: error.message });
+
+      const data = await response.json();
+      const aiResponse = data.choices[0].message.content;
+
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Vicki" language="de-DE">\${aiResponse}</Say>
+  <Gather input="speech" action="https://arasai.onrender.com/api/voice/outbound/response" method="POST" language="de-DE" speechTimeout="3">
+    <Say voice="Polly.Vicki" language="de-DE">Noch Fragen?</Say>
+  </Gather>
+  <Say voice="Polly.Vicki" language="de-DE">Danke. Auf Wiedersehen.</Say>
+  <Hangup/>
+</Response>`;
+      res.type('text/xml');
+      res.send(twiml);
+    } catch (error) {
+      logger.error('Outbound response error:', error);
+      const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Vicki" language="de-DE">Fehler. Auf Wiedersehen.</Say>
+  <Hangup/>
+</Response>`;
+      res.type('text/xml');
+      res.send(twiml);
     }
   });
 
-  // Get all call logs for user
-  app.get('/api/voice/calls/history', requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.session.userId;
-      const callLogs = await storage.getUserCallLogs(userId);
-      res.json({ success: true, calls: callLogs });
-    } catch (error: any) {
-      logger.error('[CALL-HISTORY] Error:', error);
-      res.status(500).json({ message: error.message });
-    }
-  });
-
-  return httpServer;
 }
+
+  // Setup Global Voice Agent (Admin only)
+  app.post('/api/voice/setup-global-agent', requireAuth, async (req: any, res) => {
+    try {
+      // Prüfe ob globaler Agent existiert
+      const agents = await storage.getVoiceAgents();
+      const existingGlobal = agents.find((a: any) => a.name === "ARAS AI Global");
+      
+      if (existingGlobal) {
+        return res.json({ success: true, message: "Global agent already exists", agent: existingGlobal });
+      }
+
+      // Erstelle globalen Agent
+      const globalAgent = await storage.createVoiceAgent({
+        name: "ARAS AI Global",
+        systemPrompt: `Du bist ARAS AI® - die intelligente Stimme der Schwarzott Group.
+
+PERSÖNLICHKEIT:
+- Professionell aber warmherzig
+- Intelligent und präzise
+- Empathisch und verständnisvoll
+- Keine KI-Floskeln
+
+TELEFON-STIL:
+- Kurze, klare Sätze (max 2-3 Sätze)
+- Natürlicher Gesprächsfluss
+- Aktives Zuhören
+
+Du repräsentierst die Schwarzott Group. Sei freundlich, kompetent und hilfreich.`,
+        voice: "Polly.Vicki",
+        language: "de-DE",
+        welcomeMessage: "Guten Tag! Hier ist ARAS AI von der Schwarzott Group. Wie kann ich Ihnen helfen?",
+        userId: req.session.userId
+      });
+
+      logger.info('Global ARAS Agent created:', globalAgent);
+      res.json({ success: true, message: "Global agent created", agent: globalAgent });
+    } catch (error: any) {
+      logger.error('Setup global agent error:', error);
+      res.status(500).json({ message: error.message });
+    }
+  });
