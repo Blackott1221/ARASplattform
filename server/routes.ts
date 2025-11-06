@@ -811,18 +811,12 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       const { taskId } = req.params;
       const { phoneNumber, taskPrompt } = req.body;
       
-      logger.info('[TASK-EXECUTE] START - TaskId:', taskId);
-      logger.info('[TASK-EXECUTE] Phone:', phoneNumber);
-      logger.info('[TASK-EXECUTE] Prompt:', taskPrompt);
+      logger.info('[TASK] Executing with custom prompt:', taskPrompt);
       
-      logger.info('[TASK-EXECUTE] Importing Retell SDK...');
       const Retell = (await import('retell-sdk')).default;
-      
-      logger.info('[TASK-EXECUTE] Creating Retell client...');
       const retellClient = new Retell({ apiKey: process.env.RETELL_API_KEY });
       
-      logger.info('[TASK-EXECUTE] Calling Retell API...');
-      const callParams = {
+      const call = await retellClient.call.createPhoneCall({
         from_number: process.env.RETELL_PHONE_NUMBER || '+41445054333',
         to_number: phoneNumber,
         override_agent_id: process.env.RETELL_AGENT_ID || 'agent_757a5e73525f25b5822586e026',
@@ -830,20 +824,8 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
           custom_task: taskPrompt || 'Standard Anruf'
         },
         metadata: { taskId, customPrompt: taskPrompt }
-      };
+      });
       
-      logger.info('[TASK-EXECUTE] Call params:', JSON.stringify(callParams));
-      
-      const call = await retellClient.call.createPhoneCall(callParams);
-      
-      logger.info('[TASK-EXECUTE] SUCCESS - Call created:', call.call_id);
-      res.json({ success: true, call });
-    } catch (error: any) {
-      logger.error('[TASK-EXECUTE] ERROR:', error.message);
-      logger.error('[TASK-EXECUTE] Stack:', error.stack);
-      res.status(500).json({ success: false, message: error.message });
-    }
-  });
       logger.info('[TASK] Call initiated with dynamic variables:', call);
       res.json({ success: true, call });
     } catch (error: any) {
@@ -851,6 +833,6 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       res.status(500).json({ message: error.message });
     }
   });
-  });
   return httpServer;
+}
 }
