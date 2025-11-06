@@ -805,8 +805,6 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   });
   
   app.post('/api/voice/tasks/:taskId/execute', requireAuth, async (req: any, res) => {
-  
-  app.post('/api/voice/tasks/:taskId/execute', requireAuth, async (req: any, res) => {
     try {
       const { taskId } = req.params;
       const { phoneNumber, taskPrompt } = req.body;
@@ -834,5 +832,4 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     }
   });
   return httpServer;
-}
 }
