@@ -7,6 +7,24 @@ export default function VoiceCalls() {
   const [customPrompt, setCustomPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [transcript, setTranscript] = useState<string | null>(null);
+  const [loadingTranscript, setLoadingTranscript] = useState(false);
+
+
+  const fetchTranscript = async (callId: string) => {
+    setLoadingTranscript(true);
+    try {
+      const response = await fetch(`/api/voice/calls/${callId}/transcript`);
+      const data = await response.json();
+      if (data.success) {
+        setTranscript(data.transcript);
+      }
+    } catch (error) {
+      console.error('Failed to fetch transcript:', error);
+    } finally {
+      setLoadingTranscript(false);
+    }
+  };
 
   const makeCall = async () => {
     if (!phoneNumber) return;
@@ -34,6 +52,10 @@ export default function VoiceCalls() {
         });
         const data = await execRes.json();
         setResult(data);
+        if (data.call && data.call.call_id) {
+          // Fetch transcript after 30 seconds (give Retell time to process)
+          setTimeout(() => fetchTranscript(data.call.call_id), 30000);
+        }
       } else {
         const response = await fetch("/api/voice/retell/call", {
           method: "POST",
@@ -42,6 +64,10 @@ export default function VoiceCalls() {
         });
         const data = await response.json();
         setResult(data);
+        if (data.call && data.call.call_id) {
+          // Fetch transcript after 30 seconds (give Retell time to process)
+          setTimeout(() => fetchTranscript(data.call.call_id), 30000);
+        }
       }
     } catch (error) {
       setResult({ success: false, message: "Call failed" });
