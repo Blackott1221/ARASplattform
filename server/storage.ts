@@ -919,7 +919,7 @@ export class DatabaseStorage implements IStorage {
     recordingUrl?: string | null;
     metadata?: any;
   }) {
-    await this.db.insert(callLogs).values({
+    await db.insert(callLogs).values({
       userId: data.userId,
       phoneNumber: data.phoneNumber,
       retellCallId: data.retellCallId,
@@ -933,7 +933,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCallLogByRetellId(retellCallId: string, userId: string) {
-    const result = await this.db
+    const result = await db
       .select()
       .from(callLogs)
       .where(and(
@@ -945,7 +945,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserCallLogs(userId: string) {
-    return await this.db
+    return await db
       .select()
       .from(callLogs)
       .where(eq(callLogs.userId, userId))
