@@ -14,6 +14,7 @@ import multer from "multer";
 import twilio from "twilio";
 import chatRouter from "./chat";
 import { requireAdmin } from "./middleware/admin";
+import { checkCallLimit, checkMessageLimit } from "./middleware/usage-limits";
 
 const scryptAsync = promisify(scrypt);
 
@@ -1296,6 +1297,49 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     }
   });
 
+
+  
+  // Get user usage stats
+  app.get('/api/user/usage', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const user = await storage.getUserById(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const plan = user.subscriptionPlan || 'starter';
+      const limits = {
+        starter: { calls: 1, messages: 5 },
+        pro: { calls: 100, messages: 500 },
+        enterprise: { calls: 20000, messages: -1 }
+      };
+
+      const planLimits = limits[plan as keyof typeof limits] || limits.starter;
+      
+      res.json({
+        success: true,
+        usage: {
+          calls: {
+            used: user.voiceCallsUsed || 0,
+            limit: planLimits.calls,
+            remaining: planLimits.calls === -1 ? -1 : Math.max(0, planLimits.calls - (user.voiceCallsUsed || 0))
+          },
+          messages: {
+            used: user.aiMessagesUsed || 0,
+            limit: planLimits.messages,
+            remaining: planLimits.messages === -1 ? -1 : Math.max(0, planLimits.messages - (user.aiMessagesUsed || 0))
+          },
+          plan: plan,
+          planName: plan.charAt(0).toUpperCase() + plan.slice(1)
+        }
+      });
+    } catch (error) {
+      logger.error('Error fetching usage:', error);
+      res.status(500).json({ error: 'Failed to fetch usage' });
+    }
+  });
 
     return httpServer;
 }
