@@ -12,6 +12,7 @@ import { promisify } from "util";
 import multer from "multer";
 import twilio from "twilio";
 import chatRouter from "./chat";
+import { requireAdmin } from "./middleware/admin";
 
 const scryptAsync = promisify(scrypt);
 
@@ -921,7 +922,69 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     }
   });
 
+  
+  // ==================== ADMIN ENDPOINTS ====================
+  
+  // Get all users
+  app.get('/api/admin/users', requireAdmin, async (req: any, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      res.json({ success: true, users });
+    } catch (error) {
+      logger.error('Error fetching users:', error);
+      res.status(500).json({ error: 'Failed to fetch users' });
+    }
+  });
+
+  // Upgrade user to PRO
+  app.post('/api/admin/users/:userId/upgrade', requireAdmin, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const user = await storage.upgradeUserToPro(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      
+      logger.info(`[ADMIN] User ${userId} upgraded to PRO by ${req.session.username}`);
+      res.json({ success: true, user });
+    } catch (error) {
+      logger.error('Error upgrading user:', error);
+      res.status(500).json({ error: 'Failed to upgrade user' });
+    }
+  });
+
+  // Downgrade user to FREE
+  app.post('/api/admin/users/:userId/downgrade', requireAdmin, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const user = await storage.downgradeUserToFree(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      
+      logger.info(`[ADMIN] User ${userId} downgraded to FREE by ${req.session.username}`);
+      res.json({ success: true, user });
+    } catch (error) {
+      logger.error('Error downgrading user:', error);
+      res.status(500).json({ error: 'Failed to downgrade user' });
+    }
+  });
+
+  // Get platform statistics
+  app.get('/api/admin/stats', requireAdmin, async (req: any, res) => {
+    try {
+      const stats = await storage.getPlatformStats();
+      res.json({ success: true, stats });
+    } catch (error) {
+      logger.error('Error fetching stats:', error);
+      res.status(500).json({ error: 'Failed to fetch statistics' });
+    }
+  });
+
+
   return httpServer;
-}import { requireAdmin } from './middleware/admin';
+}
 
 
