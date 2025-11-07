@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { MessageBubble } from "./message-bubble";
-import { Send, Mic, MicOff, Plus, MessageSquare, X, Menu, Paperclip, File, Image as ImageIcon, FileText, Clock, AlertCircle, Phone, Calendar, TrendingUp, Mail } from "lucide-react";
+import { Send, Mic, MicOff, Plus, MessageSquare, X, Menu, Paperclip, File, Image as ImageIcon, FileText, Clock, AlertCircle, Newspaper, Search, TrendingUp, Mail } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,11 +13,11 @@ import arasLogo from "@/assets/aras_logo_1755067745303.png";
 
 const ANIMATED_TEXTS = ["Anrufe", "Termine vereinbaren", "Termine verschieben", "Leads qualifizieren", "Kunden anrufen", "Verkaufsgespräche", "Follow-ups"];
 
-const SUGGESTED_ACTIONS = [
-  { icon: Phone, text: "Voice Call", prompt: "Ruf meinen Kunden an und vereinbare einen Termin" },
-  { icon: Calendar, text: "Termin", prompt: "Verschiebe alle Meetings von heute auf morgen" },
-  { icon: TrendingUp, text: "Analyse", prompt: "Analysiere meine Verkaufszahlen vom letzten Monat" },
-  { icon: Mail, text: "Email", prompt: "Schreib eine professionelle Follow-up Email" }
+const SUGGESTED_PROMPTS = [
+  { text: "Aktuelle Nachrichten", icon: Newspaper },
+  { text: "ARAS Deepsearch", icon: Search },
+  { text: "Marktanalyse & Trends", icon: TrendingUp },
+  { text: "E-Mail Assistent", icon: Mail }
 ];
 
 interface UploadedFile { name: string; type: string; size: number; content: string; }
@@ -45,6 +45,7 @@ export function ChatInterface() {
   const { user, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
 
+  // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -250,7 +251,7 @@ export function ChatInterface() {
 
   if (authLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-[#1a1a1a]">
+      <div className="flex-1 flex items-center justify-center bg-[#0f0f0f]">
         <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
           <img src={arasLogo} alt="Loading" className="w-12 h-12 object-contain" />
         </motion.div>
@@ -259,41 +260,102 @@ export function ChatInterface() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#1a1a1a] relative overflow-hidden" onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave}>
+    <div className="flex flex-col h-full bg-[#0f0f0f] relative overflow-hidden" onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave}>
+      {/* Dezente funkelnde Sterne im Hintergrund */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {[...Array(15)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-1 h-1 bg-[#FE9100] rounded-full"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+            }}
+            animate={{
+              opacity: [0, 0.6, 0],
+              scale: [0, 1, 0],
+            }}
+            transition={{
+              duration: 3 + Math.random() * 2,
+              repeat: Infinity,
+              delay: Math.random() * 3,
+            }}
+          />
+        ))}
+      </div>
+
       {isDragging && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-50 bg-[#FE9100]/10 backdrop-blur-sm flex items-center justify-center border-2 border-dashed border-[#FE9100]/50 m-8 rounded-2xl">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-50 bg-[#FE9100]/10 backdrop-blur-md flex items-center justify-center border-2 border-dashed border-[#FE9100]/50 m-8 rounded-3xl">
           <div className="text-center">
-            <Paperclip className="w-10 h-10 text-[#FE9100] mx-auto mb-2" />
-            <p className="text-white text-base">Datei ablegen</p>
+            <Paperclip className="w-12 h-12 text-[#FE9100] mx-auto mb-3" />
+            <p className="text-white text-lg font-medium">Datei ablegen</p>
           </div>
         </motion.div>
       )}
 
+      {/* MODERNE SIDEBAR */}
       <AnimatePresence>
         {showHistory && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" onClick={() => setShowHistory(false)} />
-            <motion.div initial={{ x: -300 }} animate={{ x: 0 }} exit={{ x: -300 }} transition={{ type: "spring", damping: 25 }} className="fixed left-0 top-0 bottom-0 w-72 bg-[#1a1a1a] border-r border-white/10 z-50 flex flex-col">
-              <div className="p-4 border-b border-white/10 flex justify-between items-center">
-                <h3 className="text-white font-medium">Chats</h3>
-                <Button size="sm" variant="ghost" onClick={() => setShowHistory(false)} className="h-8 w-8 p-0 hover:bg-white/10">
-                  <X className="w-4 h-4" />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40" onClick={() => setShowHistory(false)} />
+            <motion.div initial={{ x: -320 }} animate={{ x: 0 }} exit={{ x: -320 }} transition={{ type: "spring", damping: 30, stiffness: 300 }} className="fixed left-0 top-0 bottom-0 w-80 bg-black/95 backdrop-blur-2xl border-r border-[#FE9100]/20 z-50 flex flex-col">
+              <div className="p-5 border-b border-white/10 flex justify-between items-center">
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#FE9100] to-[#a34e00] flex items-center justify-center">
+                    <MessageSquare className="w-4 h-4 text-white" />
+                  </div>
+                  <h3 className="text-white font-semibold text-lg">Chats</h3>
+                </div>
+                <Button size="sm" variant="ghost" onClick={() => setShowHistory(false)} className="h-8 w-8 p-0 hover:bg-white/10 rounded-lg">
+                  <X className="w-4 h-4 text-gray-400" />
                 </Button>
               </div>
-              <div className="flex-1 overflow-y-auto p-2 space-y-1 grok-scroll">
+              <div className="flex-1 overflow-y-auto p-3 space-y-2 aras-scroll">
                 {chatSessions.length > 0 ? (
                   chatSessions.map((session) => (
-                    <motion.div key={session.id} whileHover={{ backgroundColor: "rgba(255,255,255,0.08)" }} onClick={() => loadChatSession(session.id)} className={`p-3 rounded-lg cursor-pointer transition-colors ${session.isActive ? "bg-white/10" : "hover:bg-white/5"}`}>
-                      <div className="text-sm text-white mb-1">{session.title}</div>
-                      <div className="text-xs text-gray-500">{new Date(session.updatedAt).toLocaleDateString('de-DE')}</div>
+                    <motion.div
+                      key={session.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      whileHover={{ scale: 1.02, x: 4 }}
+                      onClick={() => loadChatSession(session.id)}
+                      className={`group p-3.5 rounded-xl cursor-pointer transition-all duration-200 ${
+                        session.isActive
+                          ? "bg-gradient-to-r from-[#FE9100]/20 to-transparent border border-[#FE9100]/40"
+                          : "bg-white/5 hover:bg-white/10 border border-transparent hover:border-white/20"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-white truncate flex-1">{session.title}</span>
+                        {session.isActive && (
+                          <motion.div
+                            className="w-2 h-2 bg-[#FE9100] rounded-full"
+                            animate={{ opacity: [1, 0.3, 1] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                          />
+                        )}
+                      </div>
+                      <div className="flex items-center space-x-1 text-xs text-gray-500">
+                        <Clock className="w-3 h-3" />
+                        <span>{new Date(session.updatedAt).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}</span>
+                      </div>
                     </motion.div>
                   ))
                 ) : (
-                  <div className="text-center text-gray-500 text-sm py-10">Keine Chats</div>
+                  <div className="text-center text-gray-500 text-sm py-16">
+                    <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                    <p>Keine Chats vorhanden</p>
+                  </div>
                 )}
               </div>
-              <div className="p-2 border-t border-white/10">
-                <Button onClick={() => { startNewChatMutation.mutate(); setShowHistory(false); }} className="w-full bg-white/10 hover:bg-white/15 text-white h-10">
+              <div className="p-3 border-t border-white/10">
+                <Button
+                  onClick={() => {
+                    startNewChatMutation.mutate();
+                    setShowHistory(false);
+                  }}
+                  className="w-full bg-gradient-to-r from-[#FE9100] to-[#a34e00] hover:from-[#ff9d1a] hover:to-[#b55a00] text-white font-medium rounded-xl h-11 transition-all duration-200"
+                >
                   <Plus className="w-4 h-4 mr-2" />
                   Neuer Chat
                 </Button>
@@ -306,171 +368,195 @@ export function ChatInterface() {
       <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.webp" onChange={(e) => handleFileUpload(e.target.files)} />
 
       {hasMessages && (
-        <div className="p-3 border-b border-white/10 flex justify-between items-center">
-          <Button size="sm" variant="ghost" onClick={() => setShowHistory(!showHistory)} className="text-gray-400 hover:text-white h-8 hover:bg-white/10">
+        <div className="p-3 border-b border-white/10 flex justify-between items-center backdrop-blur-sm bg-black/30">
+          <Button size="sm" variant="ghost" onClick={() => setShowHistory(!showHistory)} className="text-gray-400 hover:text-white h-9 hover:bg-white/10 rounded-lg">
             <Menu className="w-4 h-4" />
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => startNewChatMutation.mutate()} className="text-gray-400 hover:text-white h-8 hover:bg-white/10">
+          <Button size="sm" variant="ghost" onClick={() => startNewChatMutation.mutate()} className="text-gray-400 hover:text-white h-9 hover:bg-white/10 rounded-lg">
             <Plus className="w-4 h-4" />
           </Button>
         </div>
       )}
 
-      <div ref={messagesContainerRef} className={`flex-1 overflow-y-auto relative z-10 grok-scroll ${!hasMessages ? 'flex items-center justify-center' : 'p-6 space-y-4'}`}>
+      <div ref={messagesContainerRef} className={`flex-1 overflow-y-auto relative z-10 aras-scroll ${!hasMessages ? 'flex items-center justify-center' : 'p-6 space-y-4'}`}>
         {!hasMessages ? (
           <div className="w-full max-w-3xl mx-auto px-6">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="text-center mb-12">
-              <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="mb-6">
-                <img src={arasLogo} alt="ARAS AI" className="w-14 h-14 object-contain mx-auto" />
+            <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} className="text-center mb-16">
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.6 }}
+                className="mb-8"
+              >
+                <img src={arasLogo} alt="ARAS AI" className="w-20 h-20 object-contain mx-auto opacity-90" />
               </motion.div>
 
-              <motion.h1 className="text-6xl font-bold mb-3" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                <motion.span 
+              <motion.h1
+                className="text-7xl font-bold mb-6"
+                style={{ fontFamily: 'Orbitron, sans-serif' }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+              >
+                <motion.span
                   className="inline-block"
                   animate={{
                     backgroundImage: [
-                      "linear-gradient(90deg, #ffffff 0%, #FE9100 50%, #ffffff 100%)",
-                      "linear-gradient(90deg, #FE9100 0%, #ffffff 50%, #FE9100 100%)",
-                      "linear-gradient(90deg, #ffffff 0%, #FE9100 50%, #ffffff 100%)"
-                    ]
+                      "linear-gradient(90deg, #e9d7c4 0%, #FE9100 50%, #a34e00 100%)",
+                      "linear-gradient(90deg, #FE9100 0%, #a34e00 50%, #e9d7c4 100%)",
+                      "linear-gradient(90deg, #a34e00 0%, #e9d7c4 50%, #FE9100 100%)",
+                      "linear-gradient(90deg, #e9d7c4 0%, #FE9100 50%, #a34e00 100%)",
+                    ],
                   }}
-                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
                   style={{
                     backgroundClip: "text",
                     WebkitBackgroundClip: "text",
                     WebkitTextFillColor: "transparent",
-                    backgroundSize: "200% 100%"
+                    backgroundSize: "200% 100%",
                   }}
                 >
                   ARAS AI
                 </motion.span>
               </motion.h1>
 
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="flex items-center justify-center space-x-2 text-base text-gray-400 mb-16">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="flex items-center justify-center space-x-3 text-xl text-gray-400 mb-20"
+              >
                 <span>erledigt:</span>
-                <span className="text-[#FE9100] font-medium min-w-[180px] text-left">
+                <span className="text-[#FE9100] font-medium min-w-[220px] text-left">
                   {displayText}
-                  <motion.span animate={{ opacity: [1, 0] }} transition={{ duration: 0.8, repeat: Infinity }} className="inline-block w-[2px] h-[18px] bg-[#FE9100] ml-0.5 align-middle" />
+                  <motion.span
+                    animate={{ opacity: [1, 0, 1] }}
+                    transition={{ duration: 0.8, repeat: Infinity }}
+                    className="inline-block w-[2px] h-[22px] bg-[#FE9100] ml-1 align-middle"
+                  />
                 </span>
+              </motion.div>
+
+              {/* CLEAN PROMPT BUTTONS - HORIZONTAL */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6 }}
+                className="grid grid-cols-2 gap-3 mb-20 max-w-2xl mx-auto"
+              >
+                {SUGGESTED_PROMPTS.map((prompt, index) => {
+                  const Icon = prompt.icon;
+                  return (
+                    <motion.button
+                      key={index}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.7 + index * 0.1 }}
+                      whileHover={{
+                        scale: 1.02,
+                        backgroundColor: "rgba(254, 145, 0, 0.1)",
+                        borderColor: "rgba(254, 145, 0, 0.4)",
+                      }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleSendMessage(prompt.text)}
+                      className="flex items-center space-x-3 px-5 py-4 rounded-xl bg-white/5 border border-white/10 text-white hover:text-[#FE9100] text-left transition-all duration-200"
+                    >
+                      <Icon className="w-5 h-5 flex-shrink-0" />
+                      <span className="text-sm font-medium">{prompt.text}</span>
+                    </motion.button>
+                  );
+                })}
               </motion.div>
             </motion.div>
 
-            {/* GROK-STYLE HORIZONTAL BUTTONS */}
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="flex flex-wrap justify-center gap-3 mb-12">
-              {SUGGESTED_ACTIONS.map((action, index) => {
-                const Icon = action.icon;
-                return (
-                  <motion.button
-                    key={index}
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.5 + index * 0.1 }}
-                    whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.1)" }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handleSendMessage(action.prompt)}
-                    className="flex items-center space-x-2 px-5 py-3 rounded-full bg-white/5 border border-white/20 text-white hover:border-white/30 transition-all duration-200"
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span className="text-sm font-medium">{action.text}</span>
-                  </motion.button>
-                );
-              })}
-            </motion.div>
-
-            {/* GROK-STYLE INPUT */}
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}>
+            {/* CENTERED INPUT WITH GOOGLE-STYLE BORDER */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 }}>
               {uploadedFiles.length > 0 && (
-                <div className="mb-3 space-y-2">
+                <div className="mb-4 space-y-2">
                   {uploadedFiles.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between bg-white/5 rounded-lg p-2 border border-white/10">
+                    <div key={index} className="flex items-center justify-between bg-white/5 rounded-xl p-3 border border-white/10">
                       <div className="flex items-center space-x-2 text-sm text-white">
                         {getFileIcon(file.type)}
-                        <span>{file.name}</span>
+                        <span className="truncate max-w-[400px]">{file.name}</span>
+                        <span className="text-xs text-gray-500">({(file.size / 1024).toFixed(1)} KB)</span>
                       </div>
-                      <Button size="sm" variant="ghost" onClick={() => removeFile(index)} className="h-6 w-6 p-0 hover:bg-white/10">
-                        <X className="w-3 h-3" />
+                      <Button size="sm" variant="ghost" onClick={() => removeFile(index)} className="h-7 w-7 p-0 hover:bg-red-500/20">
+                        <X className="w-3.5 h-3.5 text-red-400" />
                       </Button>
                     </div>
                   ))}
                 </div>
               )}
 
-              <div className="relative flex items-end space-x-2">
-                <div className="flex-1 relative">
-                  {/* ANIMATED BORDER ONLY */}
-                  <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ borderRadius: '24px' }}>
-                    <rect
-                      x="0.5"
-                      y="0.5"
-                      width="calc(100% - 1px)"
-                      height="calc(100% - 1px)"
-                      rx="23.5"
-                      fill="none"
-                      stroke="url(#gradient)"
-                      strokeWidth="1"
+              <div className="relative flex items-end space-x-3">
+                <div className="flex-1 relative group">
+                  {/* GOOGLE-STYLE ANIMATED BORDER */}
+                  <div className="absolute -inset-[2px] rounded-3xl overflow-hidden">
+                    <motion.div
+                      className="absolute inset-0"
+                      animate={{
+                        background: [
+                          "conic-gradient(from 0deg, #4285F4, #EA4335, #FBBC04, #34A853, #4285F4)",
+                          "conic-gradient(from 90deg, #4285F4, #EA4335, #FBBC04, #34A853, #4285F4)",
+                          "conic-gradient(from 180deg, #4285F4, #EA4335, #FBBC04, #34A853, #4285F4)",
+                          "conic-gradient(from 270deg, #4285F4, #EA4335, #FBBC04, #34A853, #4285F4)",
+                          "conic-gradient(from 360deg, #4285F4, #EA4335, #FBBC04, #34A853, #4285F4)",
+                        ],
+                      }}
+                      transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
                     />
-                    <defs>
-                      <linearGradient id="gradient">
-                        <stop offset="0%" stopColor="rgba(254,145,0,0.5)">
-                          <animate attributeName="offset" values="0;1;0" dur="3s" repeatCount="indefinite" />
-                        </stop>
-                        <stop offset="50%" stopColor="rgba(254,145,0,0)">
-                          <animate attributeName="offset" values="0.5;1.5;0.5" dur="3s" repeatCount="indefinite" />
-                        </stop>
-                        <stop offset="100%" stopColor="rgba(254,145,0,0.5)">
-                          <animate attributeName="offset" values="1;2;1" dur="3s" repeatCount="indefinite" />
-                        </stop>
-                      </linearGradient>
-                    </defs>
-                  </svg>
-
-                  <div className="relative flex items-center bg-[#2a2a2a] rounded-3xl border border-transparent">
-                    <Paperclip className="w-5 h-5 text-gray-500 ml-4 flex-shrink-0" />
-                    
-                    <textarea
-                      ref={textareaRef}
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
-                      onKeyDown={handleKeyPress}
-                      placeholder="Was möchtest du wissen?"
-                      className="flex-1 bg-transparent text-white placeholder:text-gray-500 border-0 outline-none px-4 py-4 resize-none min-h-[56px] max-h-[200px]"
-                      disabled={sendMessage.isPending}
-                      rows={1}
-                      style={{ fontSize: '15px' }}
-                    />
-
-                    <div className="flex items-center space-x-1 pr-2">
-                      <Button
-                        onClick={isRecording ? stopRecording : startRecording}
-                        variant="ghost"
-                        size="sm"
-                        className="w-10 h-10 rounded-full p-0 hover:bg-white/10"
-                        disabled={sendMessage.isPending}
-                      >
-                        {isRecording ? (
-                          <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity }}>
-                            <MicOff className="w-5 h-5 text-red-400" />
-                          </motion.div>
-                        ) : (
-                          <Mic className="w-5 h-5 text-gray-400" />
-                        )}
-                      </Button>
-
-                      <Button
-                        onClick={() => handleSendMessage()}
-                        size="sm"
-                        disabled={!message.trim() || sendMessage.isPending}
-                        className="w-10 h-10 rounded-full p-0 bg-white hover:bg-gray-200 text-black disabled:opacity-30 disabled:bg-gray-700"
-                      >
-                        <Send className="w-5 h-5" />
-                      </Button>
-                    </div>
                   </div>
+
+                  <textarea
+                    ref={textareaRef}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                    placeholder="Message ARAS AI"
+                    className="relative w-full min-h-[60px] max-h-[200px] bg-[#1a1a1a] backdrop-blur-xl text-white placeholder:text-gray-500 border-0 rounded-3xl px-6 py-5 pr-16 focus:outline-none focus:ring-0 resize-none transition-all"
+                    disabled={sendMessage.isPending}
+                    rows={1}
+                  />
+
+                  <Button
+                    onClick={isRecording ? stopRecording : startRecording}
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-3 top-4 w-10 h-10 rounded-full p-0 hover:bg-white/10 transition-all"
+                    disabled={sendMessage.isPending}
+                  >
+                    {isRecording ? (
+                      <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity }}>
+                        <MicOff className="w-5 h-5 text-red-400" />
+                      </motion.div>
+                    ) : (
+                      <Mic className="w-5 h-5 text-gray-400 group-hover:text-[#FE9100] transition-colors" />
+                    )}
+                  </Button>
                 </div>
+
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  variant="ghost"
+                  size="sm"
+                  className="h-[60px] w-[60px] p-0 rounded-3xl hover:bg-white/10 transition-all"
+                >
+                  <Paperclip className="w-5 h-5 text-gray-400 hover:text-[#FE9100] transition-colors" />
+                </Button>
+
+                <Button
+                  onClick={() => handleSendMessage()}
+                  size="sm"
+                  disabled={!message.trim() || sendMessage.isPending}
+                  className="h-[60px] px-7 bg-gradient-to-r from-[#FE9100] to-[#a34e00] hover:from-[#ff9d1a] hover:to-[#b55a00] text-white rounded-3xl disabled:opacity-40 transition-all duration-200 font-medium"
+                >
+                  <Send className="w-5 h-5" />
+                </Button>
               </div>
 
-              <div className="mt-2 text-center text-xs text-gray-600">
-                ARAS AI kann Fehler machen. Bitte überprüfe wichtige Informationen.
+              <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-600">
+                <AlertCircle className="w-3.5 h-3.5" />
+                <p>ARAS AI kann Fehler machen. Bitte überprüfe wichtige Informationen.</p>
               </div>
             </motion.div>
           </div>
@@ -497,110 +583,150 @@ export function ChatInterface() {
             </AnimatePresence>
 
             {sendMessage.isPending && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3">
-                <img src={arasAiImage} alt="ARAS AI" className="w-8 h-8 rounded-full" />
-                <div className="flex space-x-1.5">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-4">
+                <img src={arasAiImage} alt="ARAS AI" className="w-9 h-9 rounded-full object-cover ring-2 ring-[#FE9100]/30" />
+                <div className="flex space-x-2">
                   {[0, 0.2, 0.4].map((delay, i) => (
-                    <motion.div key={i} className="w-2 h-2 bg-[#FE9100] rounded-full" animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.5, repeat: Infinity, delay }} />
+                    <motion.div
+                      key={i}
+                      className="w-2 h-2 bg-[#FE9100] rounded-full"
+                      animate={{ opacity: [0.3, 1, 0.3], scale: [1, 1.2, 1] }}
+                      transition={{ duration: 1.5, repeat: Infinity, delay }}
+                    />
                   ))}
                 </div>
               </motion.div>
             )}
-            
+
             <div ref={messagesEndRef} />
           </>
         )}
       </div>
 
       {hasMessages && (
-        <div className="p-4 border-t border-white/10">
+        <div className="p-5 border-t border-white/10 backdrop-blur-sm bg-black/30">
           {uploadedFiles.length > 0 && (
-            <div className="mb-2 space-y-2 max-w-3xl mx-auto">
+            <div className="mb-4 space-y-2 max-w-4xl mx-auto">
               {uploadedFiles.map((file, index) => (
-                <div key={index} className="flex items-center justify-between bg-white/5 rounded-lg p-2 border border-white/10">
+                <div key={index} className="flex items-center justify-between bg-white/5 rounded-xl p-3 border border-white/10">
                   <div className="flex items-center space-x-2 text-sm text-white">
                     {getFileIcon(file.type)}
-                    <span>{file.name}</span>
+                    <span className="truncate max-w-[400px]">{file.name}</span>
+                    <span className="text-xs text-gray-500">({(file.size / 1024).toFixed(1)} KB)</span>
                   </div>
-                  <Button size="sm" variant="ghost" onClick={() => removeFile(index)} className="h-6 w-6 p-0">
-                    <X className="w-3 h-3" />
+                  <Button size="sm" variant="ghost" onClick={() => removeFile(index)} className="h-7 w-7 p-0 hover:bg-red-500/20">
+                    <X className="w-3.5 h-3.5 text-red-400" />
                   </Button>
                 </div>
               ))}
             </div>
           )}
 
-          <div className="max-w-3xl mx-auto">
-            <div className="relative flex items-end space-x-2">
-              <div className="flex-1 relative">
-                <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ borderRadius: '20px' }}>
-                  <rect x="0.5" y="0.5" width="calc(100% - 1px)" height="calc(100% - 1px)" rx="19.5" fill="none" stroke="url(#gradient2)" strokeWidth="1" />
-                  <defs>
-                    <linearGradient id="gradient2">
-                      <stop offset="0%" stopColor="rgba(254,145,0,0.5)">
-                        <animate attributeName="offset" values="0;1;0" dur="3s" repeatCount="indefinite" />
-                      </stop>
-                      <stop offset="50%" stopColor="rgba(254,145,0,0)">
-                        <animate attributeName="offset" values="0.5;1.5;0.5" dur="3s" repeatCount="indefinite" />
-                      </stop>
-                      <stop offset="100%" stopColor="rgba(254,145,0,0.5)">
-                        <animate attributeName="offset" values="1;2;1" dur="3s" repeatCount="indefinite" />
-                      </stop>
-                    </linearGradient>
-                  </defs>
-                </svg>
-
-                <div className="relative flex items-center bg-[#2a2a2a] rounded-[20px] border border-transparent">
-                  <Paperclip className="w-4 h-4 text-gray-500 ml-3" />
-                  
-                  <textarea
-                    ref={textareaRef}
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    onKeyDown={handleKeyPress}
-                    placeholder="Message ARAS AI"
-                    className="flex-1 bg-transparent text-white placeholder:text-gray-500 border-0 outline-none px-3 py-3 resize-none min-h-[48px] max-h-[180px] text-sm"
-                    disabled={sendMessage.isPending}
-                    rows={1}
-                  />
-
-                  <div className="flex items-center space-x-1 pr-1.5">
-                    <Button onClick={isRecording ? stopRecording : startRecording} variant="ghost" size="sm" className="w-9 h-9 rounded-full p-0 hover:bg-white/10" disabled={sendMessage.isPending}>
-                      {isRecording ? (
-                        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity }}>
-                          <MicOff className="w-4 h-4 text-red-400" />
-                        </motion.div>
-                      ) : (
-                        <Mic className="w-4 h-4 text-gray-400" />
-                      )}
-                    </Button>
-
-                    <Button onClick={() => handleSendMessage()} size="sm" disabled={!message.trim() || sendMessage.isPending} className="w-9 h-9 rounded-full p-0 bg-white hover:bg-gray-200 text-black disabled:opacity-30 disabled:bg-gray-700">
-                      <Send className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
+          <div className="relative flex items-end space-x-3 max-w-4xl mx-auto">
+            <div className="flex-1 relative group">
+              {/* GOOGLE-STYLE ANIMATED BORDER */}
+              <div className="absolute -inset-[1.5px] rounded-2xl overflow-hidden">
+                <motion.div
+                  className="absolute inset-0"
+                  animate={{
+                    background: [
+                      "conic-gradient(from 0deg, #4285F4, #EA4335, #FBBC04, #34A853, #4285F4)",
+                      "conic-gradient(from 120deg, #4285F4, #EA4335, #FBBC04, #34A853, #4285F4)",
+                      "conic-gradient(from 240deg, #4285F4, #EA4335, #FBBC04, #34A853, #4285F4)",
+                      "conic-gradient(from 360deg, #4285F4, #EA4335, #FBBC04, #34A853, #4285F4)",
+                    ],
+                  }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                />
               </div>
+
+              <textarea
+                ref={textareaRef}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyDown={handleKeyPress}
+                placeholder="Message ARAS AI"
+                className="relative w-full min-h-[52px] max-h-[200px] bg-[#1a1a1a] backdrop-blur-xl text-white placeholder:text-gray-500 border-0 rounded-2xl px-5 py-4 pr-14 focus:outline-none focus:ring-0 resize-none transition-all"
+                disabled={sendMessage.isPending}
+                rows={1}
+              />
+
+              <Button
+                onClick={isRecording ? stopRecording : startRecording}
+                variant="ghost"
+                size="sm"
+                className="absolute right-2 top-3 w-9 h-9 rounded-full p-0 hover:bg-white/10 transition-all"
+                disabled={sendMessage.isPending}
+              >
+                {isRecording ? (
+                  <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity }}>
+                    <MicOff className="w-4 h-4 text-red-400" />
+                  </motion.div>
+                ) : (
+                  <Mic className="w-4 h-4 text-gray-400 group-hover:text-[#FE9100] transition-colors" />
+                )}
+              </Button>
             </div>
+
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              variant="ghost"
+              size="sm"
+              className="h-[52px] w-[52px] p-0 rounded-2xl hover:bg-white/10 transition-all"
+            >
+              <Paperclip className="w-4 h-4 text-gray-400 hover:text-[#FE9100] transition-colors" />
+            </Button>
+
+            <Button
+              onClick={() => handleSendMessage()}
+              size="sm"
+              disabled={!message.trim() || sendMessage.isPending}
+              className="h-[52px] px-6 bg-gradient-to-r from-[#FE9100] to-[#a34e00] hover:from-[#ff9d1a] hover:to-[#b55a00] text-white rounded-2xl disabled:opacity-40 transition-all duration-200 font-medium"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
+
+          <div className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-600">
+            <AlertCircle className="w-3 h-3" />
+            <p>ARAS AI kann Fehler machen.</p>
           </div>
         </div>
       )}
 
       {isRecording && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-red-500/20 backdrop-blur-xl border border-red-500/50 px-4 py-2 rounded-full">
-          <div className="flex items-center space-x-2">
-            <motion.div className="w-2 h-2 bg-red-500 rounded-full" animate={{ opacity: [1, 0.3] }} transition={{ duration: 1, repeat: Infinity }} />
-            <span className="text-xs text-white font-medium">Recording</span>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          className="absolute bottom-24 left-1/2 -translate-x-1/2 bg-red-600/20 backdrop-blur-2xl border border-red-500/50 px-5 py-3 rounded-full z-50"
+        >
+          <div className="flex items-center space-x-3">
+            <motion.div
+              className="w-2.5 h-2.5 bg-red-500 rounded-full"
+              animate={{ opacity: [1, 0.3, 1] }}
+              transition={{ duration: 1, repeat: Infinity }}
+            />
+            <span className="text-sm text-white font-medium">Aufnahme läuft...</span>
           </div>
         </motion.div>
       )}
 
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       <style>{`
-        .grok-scroll::-webkit-scrollbar { width: 4px; }
-        .grok-scroll::-webkit-scrollbar-track { background: transparent; }
-        .grok-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
-        .grok-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+        .aras-scroll::-webkit-scrollbar {
+          width: 6px;
+        }
+        .aras-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .aras-scroll::-webkit-scrollbar-thumb {
+          background: rgba(254, 145, 0, 0.2);
+          border-radius: 10px;
+        }
+        .aras-scroll::-webkit-scrollbar-thumb:hover {
+          background: rgba(254, 145, 0, 0.4);
+        }
       `}</style>
     </div>
   );
