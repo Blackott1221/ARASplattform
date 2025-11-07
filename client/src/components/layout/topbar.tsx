@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Crown, LogOut, Sparkles, ChevronDown } from "lucide-react";
 import { motion } from "framer-motion";
 import type { User, SubscriptionResponse } from "@shared/schema";
+import UsageWidget from "@/components/usage-widget";
 
 interface TopBarProps {
   currentSection: string;
@@ -213,6 +214,15 @@ export function TopBar({ currentSection, subscriptionData, user, isVisible }: To
             {/* Dropdown Icon */}
             <ChevronDown className="w-2.5 h-2.5 text-gray-400 group-hover:text-gray-300 transition-colors" />
           </button>
+        </motion.div>
+
+        {/* Usage Widget */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.4 }}
+        >
+          <UsageWidget />
         </motion.div>
 
         {/* Logout Button */}
