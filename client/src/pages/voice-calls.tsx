@@ -1,31 +1,8 @@
-import { useState, useEffect } from "react";
-import { Sidebar } from "@/components/layout/sidebar";
-import { TopBar } from "@/components/layout/topbar";
-import { useAuth } from "@/hooks/useAuth";
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Phone, Loader2, CheckCircle2, XCircle, MessageSquare, Clock, User, FileText, Sparkles, Zap } from "lucide-react";
-import type { SubscriptionResponse } from "@shared/schema";
-
-const EXAMPLE_PROMPTS = [
-  "Erinnere an den Termin morgen um 10 Uhr",
-  "Bestätige die Buchung und gib Referenznummer durch",
-  "Frag ob noch Interesse am Angebot besteht",
-  "Informiere über die neue Produktlinie",
-  "Vereinbare einen Rückruftermin für nächste Woche"
-];
-
-const PHONE_EXAMPLES = [
-  "+4917631118560",
-  "+4915234567890",
-  "+4916812345678",
-  "+4917798765432"
-];
+import { Phone, Loader2, CheckCircle2, XCircle, MessageSquare, Clock, User, Mic, FileText, Sparkles } from "lucide-react";
 
 export default function VoiceCalls() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const { user } = useAuth();
-  
   const [phoneNumber, setPhoneNumber] = useState("");
   const [customPrompt, setCustomPrompt] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,46 +10,6 @@ export default function VoiceCalls() {
   const [transcript, setTranscript] = useState<string | null>(null);
   const [loadingTranscript, setLoadingTranscript] = useState(false);
   const [transcriptError, setTranscriptError] = useState(false);
-  const [currentExampleIndex, setCurrentExampleIndex] = useState(0);
-  const [currentPhoneExample, setCurrentPhoneExample] = useState(0);
-
-  const { data: userSubscription } = useQuery<SubscriptionResponse>({
-    queryKey: ["/api/user/subscription"],
-    enabled: !!user,
-  });
-  
-  const subscriptionData = userSubscription || {
-    plan: 'starter',
-    status: 'active',
-    aiMessagesUsed: 0,
-    voiceCallsUsed: 0,
-    aiMessagesLimit: 100,
-    voiceCallsLimit: 10
-  };
-
-  const handleSectionChange = (section: string) => {
-    if (section !== "voice-agents") {
-      window.location.href = `/${section}`;
-    }
-  };
-
-  // Cycle through example prompts
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentExampleIndex((prev) => (prev + 1) % EXAMPLE_PROMPTS.length);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Cycle through phone examples
-  useEffect(() => {
-    if (phoneNumber) return; // Stop cycling when user types
-    
-    const interval = setInterval(() => {
-      setCurrentPhoneExample((prev) => (prev + 1) % PHONE_EXAMPLES.length);
-    }, 2500);
-    return () => clearInterval(interval);
-  }, [phoneNumber]);
 
   const fetchTranscript = async (callId: string, attempt = 1) => {
     if (attempt === 1) setLoadingTranscript(true);
@@ -153,412 +90,210 @@ export default function VoiceCalls() {
   };
 
   return (
-    <div className="flex h-screen bg-space space-pattern circuit-pattern">
-      <Sidebar 
-        activeSection="voice-agents" 
-        onSectionChange={handleSectionChange}
-        isCollapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-      />
-      
-      <div className="flex-1 flex flex-col relative">
-        <TopBar 
-          currentSection="voice-agents" 
-          subscriptionData={subscriptionData}
-          user={user as import("@shared/schema").User}
-          isVisible={true}
-        />
-        
-        <div className="flex-1 overflow-y-auto p-8">
-          <div className="max-w-6xl mx-auto">
-            {/* Hero Header */}
-            <motion.div 
-              initial={{ opacity: 0, y: -20 }} 
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-10 text-center"
-            >
-              <motion.div
-                animate={{ 
-                  scale: [1, 1.02, 1],
-                }}
-                transition={{ duration: 3, repeat: Infinity }}
-                className="inline-block"
-              >
-                <h1 className="text-5xl font-bold mb-3" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                  <span className="bg-gradient-to-r from-[#FE9100] via-white to-[#FE9100] bg-clip-text text-transparent">
-                    ARAS AI CALL
-                  </span>
-                </h1>
-              </motion.div>
-              <p className="text-gray-400 flex items-center justify-center gap-2 text-lg">
-                <Zap className="w-5 h-5 text-[#FE9100]" />
-                KI-gesteuerte Anrufe in Sekunden
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black p-8">
+      <div className="max-w-7xl mx-auto">
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#fe9100] to-orange-600 flex items-center justify-center shadow-lg shadow-[#fe9100]/20">
+              <Phone className="w-8 h-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-white via-gray-100 to-gray-300 bg-clip-text text-transparent">
+                ARAS Voice AI
+              </h1>
+              <p className="text-gray-400 flex items-center gap-2 mt-1">
+                <Sparkles className="w-4 h-4 text-[#fe9100]" />
+                Powered by Retell AI
               </p>
-            </motion.div>
-
-            {/* Main Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Left: Call Form */}
-              <motion.div 
-                initial={{ opacity: 0, x: -20 }} 
-                animate={{ opacity: 1, x: 0 }} 
-                transition={{ delay: 0.2 }}
-              >
-                <div className="relative group">
-                  <div className="absolute -inset-[2px] bg-gradient-to-r from-[#FE9100] via-[#a34e00] to-[#FE9100] rounded-2xl opacity-0 group-hover:opacity-100 blur transition-opacity duration-500" />
-                  <div className="relative bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
-                    <div className="flex items-center gap-3 mb-8">
-                      <motion.div 
-                        className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#FE9100]/20 to-[#a34e00]/20 flex items-center justify-center ring-2 ring-[#FE9100]/30"
-                        whileHover={{ scale: 1.1, rotate: 5 }}
-                      >
-                        <Phone className="w-6 h-6 text-[#FE9100]" />
-                      </motion.div>
-                      <div>
-                        <h2 className="text-2xl font-bold text-white">Neuer Anruf</h2>
-                        <p className="text-sm text-gray-400">ARAS ruft für dich an</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-6">
-                      {/* Phone Number Input with Animated Placeholder */}
-                      <div>
-                        <label className="block text-sm font-medium mb-3 text-gray-300 flex items-center gap-2">
-                          <User className="w-4 h-4 text-[#FE9100]" />
-                          Telefonnummer
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="tel"
-                            value={phoneNumber}
-                            onChange={(e) => setPhoneNumber(e.target.value)}
-                            className="w-full px-5 py-4 bg-black/50 border border-white/10 rounded-xl focus:border-[#FE9100] focus:ring-2 focus:ring-[#FE9100]/20 focus:outline-none transition-all text-white text-lg"
-                          />
-                          
-                          {/* Animated Placeholder */}
-                          <AnimatePresence mode="wait">
-                            {!phoneNumber && (
-                              <motion.div
-                                key={currentPhoneExample}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                transition={{ duration: 0.3 }}
-                                className="absolute left-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 text-lg"
-                              >
-                                {PHONE_EXAMPLES[currentPhoneExample]}
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                          
-                          {phoneNumber && (
-                            <motion.div 
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              className="absolute right-4 top-1/2 -translate-y-1/2"
-                            >
-                              <CheckCircle2 className="w-5 h-5 text-green-500" />
-                            </motion.div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Custom Prompt */}
-                      <div>
-                        <label className="block text-sm font-medium mb-3 text-gray-300 flex items-center gap-2">
-                          <MessageSquare className="w-4 h-4 text-[#FE9100]" />
-                          Was soll ARAS sagen? (Optional)
-                        </label>
-                        <textarea
-                          value={customPrompt}
-                          onChange={(e) => setCustomPrompt(e.target.value)}
-                          placeholder="z.B. Bestätige den Termin für morgen..."
-                          rows={4}
-                          className="w-full px-5 py-4 bg-black/50 border border-white/10 rounded-xl focus:border-[#FE9100] focus:ring-2 focus:ring-[#FE9100]/20 focus:outline-none transition-all resize-none text-white"
-                        />
-                      </div>
-
-                      {/* Call Button */}
-                      <motion.button
-                        onClick={makeCall}
-                        disabled={loading || !phoneNumber}
-                        whileHover={{ scale: !loading && phoneNumber ? 1.02 : 1 }}
-                        whileTap={{ scale: !loading && phoneNumber ? 0.98 : 1 }}
-                        className="w-full relative group"
-                      >
-                        <div className="absolute -inset-[2px] bg-gradient-to-r from-[#FE9100] to-[#a34e00] rounded-xl opacity-75 group-hover:opacity-100 blur-md transition-all" />
-                        <div className={`relative py-5 bg-gradient-to-r from-[#FE9100] to-[#a34e00] rounded-xl font-bold text-xl text-white flex items-center justify-center gap-3 transition-all ${
-                          loading || !phoneNumber ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}>
-                          {loading ? (
-                            <>
-                              <Loader2 className="w-7 h-7 animate-spin" />
-                              <span>Anruf läuft...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Phone className="w-7 h-7" />
-                              <span>Jetzt anrufen</span>
-                            </>
-                          )}
-                        </div>
-                      </motion.button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Animated Examples Card */}
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }} 
-                  animate={{ opacity: 1, y: 0 }} 
-                  transition={{ delay: 0.3 }}
-                  className="mt-6 relative"
-                >
-                  <div className="absolute -inset-[1px] bg-gradient-to-r from-[#FE9100]/20 to-[#a34e00]/20 rounded-xl blur" />
-                  <div className="relative p-6 bg-black/40 backdrop-blur-xl border border-white/10 rounded-xl">
-                    <h3 className="font-semibold mb-4 text-[#FE9100] flex items-center gap-2">
-                      <Sparkles className="w-4 h-4" />
-                      Beispiel-Anweisungen
-                    </h3>
-                    
-                    {/* Animated Example */}
-                    <AnimatePresence mode="wait">
-                      <motion.div
-                        key={currentExampleIndex}
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        transition={{ duration: 0.4 }}
-                        className="flex items-start gap-3 p-4 bg-white/5 rounded-lg border border-white/5"
-                      >
-                        <motion.div
-                          animate={{ 
-                            scale: [1, 1.2, 1],
-                            rotate: [0, 180, 360]
-                          }}
-                          transition={{ 
-                            duration: 2,
-                            repeat: Infinity,
-                            ease: "linear"
-                          }}
-                          className="flex-shrink-0 mt-0.5"
-                        >
-                          <div className="w-1.5 h-1.5 rounded-full bg-[#FE9100]" />
-                        </motion.div>
-                        <p className="text-sm text-gray-300 leading-relaxed">
-                          "{EXAMPLE_PROMPTS[currentExampleIndex]}"
-                        </p>
-                      </motion.div>
-                    </AnimatePresence>
-
-                    {/* Progress Dots */}
-                    <div className="flex items-center justify-center gap-2 mt-4">
-                      {EXAMPLE_PROMPTS.map((_, index) => (
-                        <motion.div
-                          key={index}
-                          className={`h-1 rounded-full transition-all ${
-                            index === currentExampleIndex 
-                              ? 'w-8 bg-[#FE9100]' 
-                              : 'w-1 bg-gray-600'
-                          }`}
-                          animate={{
-                            scale: index === currentExampleIndex ? [1, 1.2, 1] : 1
-                          }}
-                          transition={{ duration: 0.3 }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </motion.div>
-              </motion.div>
-
-              {/* Right: Results */}
-              <motion.div 
-                initial={{ opacity: 0, x: 20 }} 
-                animate={{ opacity: 1, x: 0 }} 
-                transition={{ delay: 0.3 }}
-                className="space-y-6"
-              >
-                <AnimatePresence mode="wait">
-                  {result ? (
-                    <>
-                      {/* Call Status */}
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className="relative group"
-                      >
-                        <div className={`absolute -inset-[2px] rounded-2xl blur transition-all ${
-                          result.success ? 'bg-gradient-to-r from-green-500 to-emerald-500 opacity-50 group-hover:opacity-75' : 'bg-gradient-to-r from-red-500 to-pink-500 opacity-50'
-                        }`} />
-                        <div className="relative bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
-                          <div className="flex items-center gap-4 mb-6">
-                            <motion.div 
-                              className={`w-14 h-14 rounded-xl flex items-center justify-center ${
-                                result.success ? 'bg-green-500/20 ring-2 ring-green-500/30' : 'bg-red-500/20 ring-2 ring-red-500/30'
-                              }`}
-                              animate={{ scale: result.success ? [1, 1.05, 1] : 1 }}
-                              transition={{ duration: 2, repeat: Infinity }}
-                            >
-                              {result.success ? 
-                                <CheckCircle2 className="w-7 h-7 text-green-400" /> : 
-                                <XCircle className="w-7 h-7 text-red-400" />
-                              }
-                            </motion.div>
-                            <div>
-                              <h3 className="text-2xl font-bold text-white">
-                                {result.success ? "Anruf aktiv!" : "Fehler"}
-                              </h3>
-                              <p className="text-gray-400">
-                                {result.success ? "ARAS AI ist verbunden" : "Versuch es erneut"}
-                              </p>
-                            </div>
-                          </div>
-                          
-                          {result.call && (
-                            <div className="space-y-3">
-                              <div className="flex items-center gap-3 p-4 bg-white/5 rounded-lg border border-white/5">
-                                <FileText className="w-5 h-5 text-gray-400" />
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs text-gray-400 mb-1">Call ID</p>
-                                  <p className="text-sm text-white font-mono truncate">{result.call.call_id}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-3 p-4 bg-white/5 rounded-lg border border-white/5">
-                                <Clock className="w-5 h-5 text-gray-400" />
-                                <div>
-                                  <p className="text-xs text-gray-400 mb-1">Status</p>
-                                  <p className="text-sm text-green-400 font-semibold">{result.call.call_status}</p>
-                                </div>
-                              </div>
-                              {customPrompt && (
-                                <motion.div 
-                                  initial={{ opacity: 0, y: 10 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  className="mt-4 p-4 bg-[#FE9100]/10 border border-[#FE9100]/30 rounded-lg"
-                                >
-                                  <p className="text-xs text-gray-400 mb-2 flex items-center gap-1.5">
-                                    <MessageSquare className="w-3.5 h-3.5" />
-                                    Anweisung
-                                  </p>
-                                  <p className="text-sm text-white leading-relaxed">{customPrompt}</p>
-                                </motion.div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </motion.div>
-
-                      {/* Transcript */}
-                      {result.success && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.2 }}
-                          className="relative group"
-                        >
-                          <div className="absolute -inset-[2px] bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl opacity-30 group-hover:opacity-50 blur transition-opacity" />
-                          <div className="relative bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
-                            <div className="flex items-center gap-3 mb-6">
-                              <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center ring-2 ring-purple-500/30">
-                                <FileText className="w-6 h-6 text-purple-400" />
-                              </div>
-                              <div>
-                                <h3 className="text-xl font-bold text-white">Transkript</h3>
-                                <p className="text-sm text-gray-400">Live-Konversation</p>
-                              </div>
-                            </div>
-
-                            <div className="min-h-[250px]">
-                              {loadingTranscript && !transcript && (
-                                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-                                  <motion.div
-                                    animate={{ rotate: 360 }}
-                                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                  >
-                                    <Loader2 className="w-10 h-10 text-[#FE9100] mb-4" />
-                                  </motion.div>
-                                  <p className="text-sm font-medium">Transkript wird erstellt...</p>
-                                  <p className="text-xs text-gray-500 mt-2">Bis zu 50 Sekunden</p>
-                                </div>
-                              )}
-
-                              {transcript && (
-                                <motion.div 
-                                  initial={{ opacity: 0 }} 
-                                  animate={{ opacity: 1 }}
-                                  className="p-5 bg-white/5 rounded-xl border border-white/5 max-h-[400px] overflow-y-auto custom-scrollbar"
-                                >
-                                  <pre className="text-sm text-gray-200 whitespace-pre-wrap leading-relaxed">{transcript}</pre>
-                                </motion.div>
-                              )}
-
-                              {transcriptError && !transcript && (
-                                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-                                  <XCircle className="w-10 h-10 mb-4 text-red-500" />
-                                  <p className="text-sm font-medium">Transkript nicht verfügbar</p>
-                                  <p className="text-xs text-gray-500 mt-2">Call war zu kurz</p>
-                                </div>
-                              )}
-
-                              {!loadingTranscript && !transcript && !transcriptError && (
-                                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-                                  <FileText className="w-10 h-10 mb-4 text-gray-600" />
-                                  <p className="text-sm">Warte auf Transkript...</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </>
-                  ) : (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-16 flex flex-col items-center justify-center text-center min-h-[500px]"
-                    >
-                      <motion.div
-                        animate={{ 
-                          scale: [1, 1.1, 1],
-                          rotate: [0, 5, -5, 0]
-                        }}
-                        transition={{ duration: 4, repeat: Infinity }}
-                        className="w-24 h-24 rounded-full bg-[#FE9100]/20 flex items-center justify-center mb-6 ring-4 ring-[#FE9100]/10"
-                      >
-                        <Phone className="w-12 h-12 text-[#FE9100]" />
-                      </motion.div>
-                      <h3 className="text-2xl font-bold text-white mb-3">Bereit für deinen Call?</h3>
-                      <p className="text-gray-400 max-w-sm">
-                        Gib eine Telefonnummer ein und starte einen KI-gesteuerten Anruf
-                      </p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
             </div>
           </div>
+        </motion.div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
+            <div className="bg-gradient-to-br from-gray-900/80 to-gray-950/80 backdrop-blur-xl border border-gray-800/50 rounded-3xl p-8 shadow-2xl">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 rounded-xl bg-[#fe9100]/20 flex items-center justify-center ring-2 ring-[#fe9100]/30">
+                  <Phone className="w-6 h-6 text-[#fe9100]" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">Neuer Anruf</h2>
+                  <p className="text-sm text-gray-400">Starte einen KI-gesteuerten Call</p>
+                </div>
+              </div>
+
+              <div className="space-y-5">
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-gray-300 flex items-center gap-2">
+                    <User className="w-4 h-4 text-[#fe9100]" />
+                    Telefonnummer *
+                  </label>
+                  <input
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="+4917661119320"
+                    className="w-full px-4 py-3.5 bg-black/50 border border-gray-700/50 rounded-xl focus:border-[#fe9100] focus:ring-2 focus:ring-[#fe9100]/20 focus:outline-none transition-all text-lg text-white placeholder-gray-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-gray-300 flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-[#fe9100]" />
+                    Was soll ARAS sagen? (Optional)
+                  </label>
+                  <textarea
+                    value={customPrompt}
+                    onChange={(e) => setCustomPrompt(e.target.value)}
+                    placeholder="Bestätige die Buchung und gib die Referenznummer durch"
+                    rows={4}
+                    className="w-full px-4 py-3 bg-black/50 border border-gray-700/50 rounded-xl focus:border-[#fe9100] focus:ring-2 focus:ring-[#fe9100]/20 focus:outline-none transition-all resize-none text-white placeholder-gray-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
+                    <Sparkles className="w-3 h-3" />
+                    Lass das Feld leer für einen Standard-Anruf oder gib ARAS spezifische Anweisungen
+                  </p>
+                </div>
+
+                <button
+                  onClick={makeCall}
+                  disabled={loading || !phoneNumber}
+                  className="w-full py-4 bg-gradient-to-r from-[#fe9100] to-orange-600 rounded-xl font-semibold text-lg hover:shadow-lg hover:shadow-[#fe9100]/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 text-white hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                      <span>Rufe an...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Phone className="w-6 h-6" />
+                      <span>{customPrompt ? "Mit Custom Prompt anrufen" : "Jetzt anrufen"}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mt-6 p-6 bg-gradient-to-br from-gray-900/50 to-gray-950/50 backdrop-blur-xl border border-gray-800/50 rounded-2xl">
+              <h3 className="font-semibold mb-3 text-[#fe9100] flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                Beispiele für Custom Prompts
+              </h3>
+              <ul className="text-sm text-gray-400 space-y-2">
+                <li className="flex items-start gap-2"><span className="text-[#fe9100] mt-0.5">•</span><span>"Erinnere an den Termin morgen um 10 Uhr"</span></li>
+                <li className="flex items-start gap-2"><span className="text-[#fe9100] mt-0.5">•</span><span>"Sag dass das Essen verschoben wird auf Freitag 19 Uhr"</span></li>
+                <li className="flex items-start gap-2"><span className="text-[#fe9100] mt-0.5">•</span><span>"Frag ob die Person noch Interesse am Angebot hat"</span></li>
+                <li className="flex items-start gap-2"><span className="text-[#fe9100] mt-0.5">•</span><span>"Bestätige die Buchung und gib die Referenznummer durch"</span></li>
+              </ul>
+            </motion.div>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className="space-y-6">
+            <AnimatePresence>
+              {result && (
+                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-gradient-to-br from-gray-900/80 to-gray-950/80 backdrop-blur-xl border border-gray-800/50 rounded-3xl p-8 shadow-2xl">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${result.success ? 'bg-green-500/20 ring-2 ring-green-500/30' : 'bg-red-500/20 ring-2 ring-red-500/30'}`}>
+                      {result.success ? <CheckCircle2 className="w-6 h-6 text-green-500" /> : <XCircle className="w-6 h-6 text-red-500" />}
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-white">{result.success ? "Anruf gestartet!" : "Fehler"}</h3>
+                      <p className="text-sm text-gray-400">Call Details</p>
+                    </div>
+                  </div>
+                  
+                  {result.call && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3 p-3 bg-black/30 rounded-lg">
+                        <FileText className="w-4 h-4 text-gray-400" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-gray-400">Call ID</p>
+                          <p className="text-sm text-white font-mono truncate">{result.call.call_id}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 bg-black/30 rounded-lg">
+                        <Clock className="w-4 h-4 text-gray-400" />
+                        <div>
+                          <p className="text-xs text-gray-400">Status</p>
+                          <p className="text-sm text-green-500 font-medium">{result.call.call_status}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-3 bg-black/30 rounded-lg">
+                        <Mic className="w-4 h-4 text-gray-400" />
+                        <div>
+                          <p className="text-xs text-gray-400">Agent</p>
+                          <p className="text-sm text-[#fe9100] font-medium">ARAS AI</p>
+                        </div>
+                      </div>
+                      {customPrompt && (
+                        <div className="mt-4 p-4 bg-gradient-to-br from-[#fe9100]/10 to-orange-600/10 border border-[#fe9100]/30 rounded-xl">
+                          <p className="text-xs text-gray-400 mb-2 flex items-center gap-1.5">
+                            <MessageSquare className="w-3 h-3" />
+                            Custom Prompt
+                          </p>
+                          <p className="text-sm text-white leading-relaxed">{customPrompt}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {result.message && !result.success && (
+                    <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+                      <p className="text-red-400 text-sm">{result.message}</p>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {result && result.success && (
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-gradient-to-br from-gray-900/80 to-gray-950/80 backdrop-blur-xl border border-gray-800/50 rounded-3xl p-8 shadow-2xl">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center ring-2 ring-purple-500/30">
+                      <FileText className="w-6 h-6 text-purple-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-white">Gesprächs-Transkript</h3>
+                      <p className="text-sm text-gray-400">Live-Konversation</p>
+                    </div>
+                  </div>
+
+                  <div className="min-h-[200px]">
+                    {loadingTranscript && !transcript && (
+                      <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                        <Loader2 className="w-8 h-8 animate-spin mb-3 text-[#fe9100]" />
+                        <p className="text-sm">Transkript wird geladen...</p>
+                        <p className="text-xs text-gray-500 mt-1">Dies kann bis zu 50 Sekunden dauern</p>
+                      </div>
+                    )}
+
+                    {transcript && (
+                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-6 bg-black/30 rounded-xl border border-gray-700/50">
+                        <pre className="text-sm text-gray-200 whitespace-pre-wrap font-mono leading-relaxed">{transcript}</pre>
+                      </motion.div>
+                    )}
+
+                    {transcriptError && !transcript && (
+                      <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                        <XCircle className="w-8 h-8 mb-3 text-red-500" />
+                        <p className="text-sm">Transkript konnte nicht geladen werden</p>
+                        <p className="text-xs text-gray-500 mt-1">Der Call war möglicherweise zu kurz</p>
+                      </div>
+                    )}
+
+                    {!loadingTranscript && !transcript && !transcriptError && (
+                      <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                        <FileText className="w-8 h-8 mb-3 text-gray-600" />
+                        <p className="text-sm">Warte auf Transkript...</p>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
         </div>
       </div>
-
-      <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(254, 145, 0, 0.3);
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(254, 145, 0, 0.5);
-        }
-      `}</style>
     </div>
   );
 }

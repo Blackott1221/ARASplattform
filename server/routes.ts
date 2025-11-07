@@ -922,4 +922,6 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   });
 
   return httpServer;
-}
+}import { requireAdmin } from './middleware/admin';
+
+

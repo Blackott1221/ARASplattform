@@ -1739,6 +1739,69 @@ export class MemStorage implements IStorage {
     interactions.push({ ...interaction, timestamp: new Date() });
     this.callInteractions.set(callId, interactions);
   }
+
+  // ==================== ADMIN METHODS ====================
+  
+  async getAllUsers() {
+    const query = `
+      SELECT id, username, email, subscription_plan, subscription_status, created_at
+      FROM users
+      ORDER BY created_at DESC
+    `;
+    const result = await this.db.query(query);
+    return result.rows;
+  }
+
+  async upgradeUserToPro(userId: string) {
+    const query = `
+      UPDATE users
+      SET subscription_plan = 'pro',
+          subscription_status = 'active',
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING id, username, email, subscription_plan, subscription_status
+    `;
+    const result = await this.db.query(query, [userId]);
+    return result.rows[0];
+  }
+
+  async downgradeUserToFree(userId: string) {
+    const query = `
+      UPDATE users
+      SET subscription_plan = 'free',
+          subscription_status = 'active',
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING id, username, email, subscription_plan, subscription_status
+    `;
+    const result = await this.db.query(query, [userId]);
+    return result.rows[0];
+  }
+
+  async getPlatformStats() {
+    const statsQuery = `
+      SELECT
+        COUNT(*) as total_users,
+        COUNT(*) FILTER (WHERE subscription_plan = 'free') as free_users,
+        COUNT(*) FILTER (WHERE subscription_plan = 'pro') as pro_users,
+        COUNT(*) FILTER (WHERE subscription_plan = 'enterprise') as enterprise_users
+      FROM users
+    `;
+    const callsQuery = `
+      SELECT COUNT(*) as total_calls FROM call_logs
+    `;
+    
+    const [stats, calls] = await Promise.all([
+      this.db.query(statsQuery),
+      this.db.query(callsQuery)
+    ]);
+    
+    return {
+      ...stats.rows[0],
+      ...calls.rows[0]
+    };
+  }
+
 }
 
 // Use database storage for persistent data
