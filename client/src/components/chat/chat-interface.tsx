@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { MessageBubble } from "./message-bubble";
-import { Send, Mic, MicOff, Plus, MessageSquare, X, Menu, Paperclip, File, Image as ImageIcon, FileText, Clock, AlertCircle } from "lucide-react";
+import { Send, Mic, MicOff, Plus, MessageSquare, X, Menu, Paperclip, File, Image as ImageIcon, FileText, Clock, AlertCircle, Phone, Calendar, TrendingUp, Mail } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,11 +13,11 @@ import arasLogo from "@/assets/aras_logo_1755067745303.png";
 
 const ANIMATED_TEXTS = ["Anrufe", "Termine vereinbaren", "Termine verschieben", "Leads qualifizieren", "Kunden anrufen", "Verkaufsgespräche", "Follow-ups"];
 
-const SUGGESTED_PROMPTS = [
-  "Ruf meinen Kunden an und vereinbare einen Termin",
-  "Verschiebe alle Meetings von heute auf morgen",
-  "Analysiere meine Verkaufszahlen vom letzten Monat",
-  "Schreib eine professionelle Follow-up Email"
+const SUGGESTED_ACTIONS = [
+  { icon: Phone, text: "Voice Call", prompt: "Ruf meinen Kunden an und vereinbare einen Termin" },
+  { icon: Calendar, text: "Termin", prompt: "Verschiebe alle Meetings von heute auf morgen" },
+  { icon: TrendingUp, text: "Analyse", prompt: "Analysiere meine Verkaufszahlen vom letzten Monat" },
+  { icon: Mail, text: "Email", prompt: "Schreib eine professionelle Follow-up Email" }
 ];
 
 interface UploadedFile { name: string; type: string; size: number; content: string; }
@@ -45,7 +45,6 @@ export function ChatInterface() {
   const { user, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
 
-  // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -251,7 +250,7 @@ export function ChatInterface() {
 
   if (authLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-black">
+      <div className="flex-1 flex items-center justify-center bg-[#1a1a1a]">
         <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
           <img src={arasLogo} alt="Loading" className="w-12 h-12 object-contain" />
         </motion.div>
@@ -260,42 +259,41 @@ export function ChatInterface() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-black relative overflow-hidden" onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave}>
+    <div className="flex flex-col h-full bg-[#1a1a1a] relative overflow-hidden" onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave}>
       {isDragging && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-50 bg-[#FE9100]/10 backdrop-blur-md flex items-center justify-center border-2 border-dashed border-[#FE9100]/50 m-8 rounded-3xl">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-50 bg-[#FE9100]/10 backdrop-blur-sm flex items-center justify-center border-2 border-dashed border-[#FE9100]/50 m-8 rounded-2xl">
           <div className="text-center">
-            <Paperclip className="w-12 h-12 text-[#FE9100] mx-auto mb-3" />
-            <p className="text-white text-lg font-medium">Datei ablegen</p>
+            <Paperclip className="w-10 h-10 text-[#FE9100] mx-auto mb-2" />
+            <p className="text-white text-base">Datei ablegen</p>
           </div>
         </motion.div>
       )}
 
-      {/* CLEAN SIDEBAR */}
       <AnimatePresence>
         {showHistory && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" onClick={() => setShowHistory(false)} />
-            <motion.div initial={{ x: -320 }} animate={{ x: 0 }} exit={{ x: -320 }} transition={{ type: "spring", damping: 25 }} className="fixed left-0 top-0 bottom-0 w-80 bg-black/95 backdrop-blur-xl border-r border-white/10 z-50 flex flex-col">
-              <div className="p-5 border-b border-white/10 flex justify-between items-center">
-                <h3 className="text-white font-semibold text-lg">Chats</h3>
+            <motion.div initial={{ x: -300 }} animate={{ x: 0 }} exit={{ x: -300 }} transition={{ type: "spring", damping: 25 }} className="fixed left-0 top-0 bottom-0 w-72 bg-[#1a1a1a] border-r border-white/10 z-50 flex flex-col">
+              <div className="p-4 border-b border-white/10 flex justify-between items-center">
+                <h3 className="text-white font-medium">Chats</h3>
                 <Button size="sm" variant="ghost" onClick={() => setShowHistory(false)} className="h-8 w-8 p-0 hover:bg-white/10">
                   <X className="w-4 h-4" />
                 </Button>
               </div>
-              <div className="flex-1 overflow-y-auto p-3 space-y-2 clean-scroll">
+              <div className="flex-1 overflow-y-auto p-2 space-y-1 grok-scroll">
                 {chatSessions.length > 0 ? (
                   chatSessions.map((session) => (
-                    <motion.div key={session.id} whileHover={{ x: 2 }} onClick={() => loadChatSession(session.id)} className={`p-3 rounded-lg cursor-pointer transition-colors ${session.isActive ? "bg-white/10 border border-white/20" : "bg-white/5 hover:bg-white/10"}`}>
-                      <div className="text-sm font-medium text-white mb-1">{session.title}</div>
+                    <motion.div key={session.id} whileHover={{ backgroundColor: "rgba(255,255,255,0.08)" }} onClick={() => loadChatSession(session.id)} className={`p-3 rounded-lg cursor-pointer transition-colors ${session.isActive ? "bg-white/10" : "hover:bg-white/5"}`}>
+                      <div className="text-sm text-white mb-1">{session.title}</div>
                       <div className="text-xs text-gray-500">{new Date(session.updatedAt).toLocaleDateString('de-DE')}</div>
                     </motion.div>
                   ))
                 ) : (
-                  <div className="text-center text-gray-500 text-sm py-12">Keine Chats</div>
+                  <div className="text-center text-gray-500 text-sm py-10">Keine Chats</div>
                 )}
               </div>
-              <div className="p-3 border-t border-white/10">
-                <Button onClick={() => { startNewChatMutation.mutate(); setShowHistory(false); }} className="w-full bg-white/10 hover:bg-white/20 text-white">
+              <div className="p-2 border-t border-white/10">
+                <Button onClick={() => { startNewChatMutation.mutate(); setShowHistory(false); }} className="w-full bg-white/10 hover:bg-white/15 text-white h-10">
                   <Plus className="w-4 h-4 mr-2" />
                   Neuer Chat
                 </Button>
@@ -309,24 +307,24 @@ export function ChatInterface() {
 
       {hasMessages && (
         <div className="p-3 border-b border-white/10 flex justify-between items-center">
-          <Button size="sm" variant="ghost" onClick={() => setShowHistory(!showHistory)} className="text-gray-400 hover:text-white h-8">
+          <Button size="sm" variant="ghost" onClick={() => setShowHistory(!showHistory)} className="text-gray-400 hover:text-white h-8 hover:bg-white/10">
             <Menu className="w-4 h-4" />
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => startNewChatMutation.mutate()} className="text-gray-400 hover:text-white h-8">
+          <Button size="sm" variant="ghost" onClick={() => startNewChatMutation.mutate()} className="text-gray-400 hover:text-white h-8 hover:bg-white/10">
             <Plus className="w-4 h-4" />
           </Button>
         </div>
       )}
 
-      <div ref={messagesContainerRef} className={`flex-1 overflow-y-auto relative z-10 clean-scroll ${!hasMessages ? 'flex items-center justify-center' : 'p-6 space-y-4'}`}>
+      <div ref={messagesContainerRef} className={`flex-1 overflow-y-auto relative z-10 grok-scroll ${!hasMessages ? 'flex items-center justify-center' : 'p-6 space-y-4'}`}>
         {!hasMessages ? (
-          <div className="w-full max-w-2xl mx-auto px-6">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center mb-16">
-              <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} transition={{ duration: 0.5 }} className="mb-8">
-                <img src={arasLogo} alt="ARAS AI" className="w-16 h-16 object-contain mx-auto opacity-90" />
+          <div className="w-full max-w-3xl mx-auto px-6">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="text-center mb-12">
+              <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} className="mb-6">
+                <img src={arasLogo} alt="ARAS AI" className="w-14 h-14 object-contain mx-auto" />
               </motion.div>
 
-              <motion.h1 className="text-6xl font-bold mb-4" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+              <motion.h1 className="text-6xl font-bold mb-3" style={{ fontFamily: 'Orbitron, sans-serif' }}>
                 <motion.span 
                   className="inline-block"
                   animate={{
@@ -334,8 +332,7 @@ export function ChatInterface() {
                       "linear-gradient(90deg, #ffffff 0%, #FE9100 50%, #ffffff 100%)",
                       "linear-gradient(90deg, #FE9100 0%, #ffffff 50%, #FE9100 100%)",
                       "linear-gradient(90deg, #ffffff 0%, #FE9100 50%, #ffffff 100%)"
-                    ],
-                    backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"]
+                    ]
                   }}
                   transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
                   style={{
@@ -349,35 +346,39 @@ export function ChatInterface() {
                 </motion.span>
               </motion.h1>
 
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="flex items-center justify-center space-x-2 text-lg text-gray-400 mb-20">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="flex items-center justify-center space-x-2 text-base text-gray-400 mb-16">
                 <span>erledigt:</span>
-                <span className="text-[#FE9100] font-medium min-w-[200px] text-left">
+                <span className="text-[#FE9100] font-medium min-w-[180px] text-left">
                   {displayText}
-                  <motion.span animate={{ opacity: [1, 0] }} transition={{ duration: 0.8, repeat: Infinity }} className="inline-block w-[2px] h-[20px] bg-[#FE9100] ml-1 align-middle" />
+                  <motion.span animate={{ opacity: [1, 0] }} transition={{ duration: 0.8, repeat: Infinity }} className="inline-block w-[2px] h-[18px] bg-[#FE9100] ml-0.5 align-middle" />
                 </span>
-              </motion.div>
-
-              {/* CLEAN SUGGESTIONS */}
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="space-y-2 mb-16">
-                {SUGGESTED_PROMPTS.map((prompt, index) => (
-                  <motion.button
-                    key={index}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6 + index * 0.1 }}
-                    whileHover={{ x: 4, backgroundColor: "rgba(255, 255, 255, 0.08)" }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => handleSendMessage(prompt)}
-                    className="w-full text-left px-5 py-3.5 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white text-sm transition-all duration-200"
-                  >
-                    {prompt}
-                  </motion.button>
-                ))}
               </motion.div>
             </motion.div>
 
-            {/* CENTERED INPUT */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.9 }}>
+            {/* GROK-STYLE HORIZONTAL BUTTONS */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="flex flex-wrap justify-center gap-3 mb-12">
+              {SUGGESTED_ACTIONS.map((action, index) => {
+                const Icon = action.icon;
+                return (
+                  <motion.button
+                    key={index}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.5 + index * 0.1 }}
+                    whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.1)" }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => handleSendMessage(action.prompt)}
+                    className="flex items-center space-x-2 px-5 py-3 rounded-full bg-white/5 border border-white/20 text-white hover:border-white/30 transition-all duration-200"
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span className="text-sm font-medium">{action.text}</span>
+                  </motion.button>
+                );
+              })}
+            </motion.div>
+
+            {/* GROK-STYLE INPUT */}
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}>
               {uploadedFiles.length > 0 && (
                 <div className="mb-3 space-y-2">
                   {uploadedFiles.map((file, index) => (
@@ -386,7 +387,7 @@ export function ChatInterface() {
                         {getFileIcon(file.type)}
                         <span>{file.name}</span>
                       </div>
-                      <Button size="sm" variant="ghost" onClick={() => removeFile(index)} className="h-6 w-6 p-0">
+                      <Button size="sm" variant="ghost" onClick={() => removeFile(index)} className="h-6 w-6 p-0 hover:bg-white/10">
                         <X className="w-3 h-3" />
                       </Button>
                     </div>
@@ -395,64 +396,81 @@ export function ChatInterface() {
               )}
 
               <div className="relative flex items-end space-x-2">
-                <div className="flex-1 relative group">
-                  {/* SUBTLE ANIMATED BORDER */}
-                  <div className="absolute -inset-[1px] rounded-2xl overflow-hidden">
-                    <motion.div
-                      className="absolute inset-0"
-                      animate={{
-                        background: [
-                          "linear-gradient(0deg, transparent 0%, rgba(254,145,0,0.3) 50%, transparent 100%)",
-                          "linear-gradient(90deg, transparent 0%, rgba(254,145,0,0.3) 50%, transparent 100%)",
-                          "linear-gradient(180deg, transparent 0%, rgba(254,145,0,0.3) 50%, transparent 100%)",
-                          "linear-gradient(270deg, transparent 0%, rgba(254,145,0,0.3) 50%, transparent 100%)",
-                          "linear-gradient(360deg, transparent 0%, rgba(254,145,0,0.3) 50%, transparent 100%)"
-                        ]
-                      }}
-                      transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                <div className="flex-1 relative">
+                  {/* ANIMATED BORDER ONLY */}
+                  <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ borderRadius: '24px' }}>
+                    <rect
+                      x="0.5"
+                      y="0.5"
+                      width="calc(100% - 1px)"
+                      height="calc(100% - 1px)"
+                      rx="23.5"
+                      fill="none"
+                      stroke="url(#gradient)"
+                      strokeWidth="1"
                     />
+                    <defs>
+                      <linearGradient id="gradient">
+                        <stop offset="0%" stopColor="rgba(254,145,0,0.5)">
+                          <animate attributeName="offset" values="0;1;0" dur="3s" repeatCount="indefinite" />
+                        </stop>
+                        <stop offset="50%" stopColor="rgba(254,145,0,0)">
+                          <animate attributeName="offset" values="0.5;1.5;0.5" dur="3s" repeatCount="indefinite" />
+                        </stop>
+                        <stop offset="100%" stopColor="rgba(254,145,0,0.5)">
+                          <animate attributeName="offset" values="1;2;1" dur="3s" repeatCount="indefinite" />
+                        </stop>
+                      </linearGradient>
+                    </defs>
+                  </svg>
+
+                  <div className="relative flex items-center bg-[#2a2a2a] rounded-3xl border border-transparent">
+                    <Paperclip className="w-5 h-5 text-gray-500 ml-4 flex-shrink-0" />
+                    
+                    <textarea
+                      ref={textareaRef}
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      onKeyDown={handleKeyPress}
+                      placeholder="Was möchtest du wissen?"
+                      className="flex-1 bg-transparent text-white placeholder:text-gray-500 border-0 outline-none px-4 py-4 resize-none min-h-[56px] max-h-[200px]"
+                      disabled={sendMessage.isPending}
+                      rows={1}
+                      style={{ fontSize: '15px' }}
+                    />
+
+                    <div className="flex items-center space-x-1 pr-2">
+                      <Button
+                        onClick={isRecording ? stopRecording : startRecording}
+                        variant="ghost"
+                        size="sm"
+                        className="w-10 h-10 rounded-full p-0 hover:bg-white/10"
+                        disabled={sendMessage.isPending}
+                      >
+                        {isRecording ? (
+                          <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity }}>
+                            <MicOff className="w-5 h-5 text-red-400" />
+                          </motion.div>
+                        ) : (
+                          <Mic className="w-5 h-5 text-gray-400" />
+                        )}
+                      </Button>
+
+                      <Button
+                        onClick={() => handleSendMessage()}
+                        size="sm"
+                        disabled={!message.trim() || sendMessage.isPending}
+                        className="w-10 h-10 rounded-full p-0 bg-white hover:bg-gray-200 text-black disabled:opacity-30 disabled:bg-gray-700"
+                      >
+                        <Send className="w-5 h-5" />
+                      </Button>
+                    </div>
                   </div>
-
-                  <textarea
-                    ref={textareaRef}
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    onKeyDown={handleKeyPress}
-                    placeholder="Message ARAS AI"
-                    className="relative w-full min-h-[56px] max-h-[200px] bg-black/60 backdrop-blur-sm text-white placeholder:text-gray-500 border-0 rounded-2xl px-5 py-4 pr-14 focus:outline-none focus:ring-2 focus:ring-white/20 resize-none transition-all"
-                    disabled={sendMessage.isPending}
-                    rows={1}
-                  />
-
-                  <Button
-                    onClick={isRecording ? stopRecording : startRecording}
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-2 top-3 w-10 h-10 rounded-full p-0 hover:bg-white/10"
-                    disabled={sendMessage.isPending}
-                  >
-                    {isRecording ? (
-                      <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity }}>
-                        <MicOff className="w-5 h-5 text-red-400" />
-                      </motion.div>
-                    ) : (
-                      <Mic className="w-5 h-5 text-gray-400" />
-                    )}
-                  </Button>
                 </div>
-
-                <Button onClick={() => fileInputRef.current?.click()} variant="ghost" size="sm" className="h-14 w-14 p-0 rounded-2xl hover:bg-white/10">
-                  <Paperclip className="w-5 h-5" />
-                </Button>
-
-                <Button onClick={() => handleSendMessage()} size="sm" disabled={!message.trim() || sendMessage.isPending} className="h-14 px-6 bg-white/10 hover:bg-white/20 text-white rounded-2xl disabled:opacity-30">
-                  <Send className="w-5 h-5" />
-                </Button>
               </div>
 
-              <div className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-600">
-                <AlertCircle className="w-3 h-3" />
-                <p>ARAS AI kann Fehler machen. Bitte überprüfe wichtige Informationen.</p>
+              <div className="mt-2 text-center text-xs text-gray-600">
+                ARAS AI kann Fehler machen. Bitte überprüfe wichtige Informationen.
               </div>
             </motion.div>
           </div>
@@ -479,7 +497,7 @@ export function ChatInterface() {
             </AnimatePresence>
 
             {sendMessage.isPending && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-4">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3">
                 <img src={arasAiImage} alt="ARAS AI" className="w-8 h-8 rounded-full" />
                 <div className="flex space-x-1.5">
                   {[0, 0.2, 0.4].map((delay, i) => (
@@ -497,7 +515,7 @@ export function ChatInterface() {
       {hasMessages && (
         <div className="p-4 border-t border-white/10">
           {uploadedFiles.length > 0 && (
-            <div className="mb-3 space-y-2">
+            <div className="mb-2 space-y-2 max-w-3xl mx-auto">
               {uploadedFiles.map((file, index) => (
                 <div key={index} className="flex items-center justify-between bg-white/5 rounded-lg p-2 border border-white/10">
                   <div className="flex items-center space-x-2 text-sm text-white">
@@ -512,57 +530,58 @@ export function ChatInterface() {
             </div>
           )}
 
-          <div className="relative flex items-end space-x-2 max-w-4xl mx-auto">
-            <div className="flex-1 relative">
-              <div className="absolute -inset-[1px] rounded-xl overflow-hidden">
-                <motion.div
-                  className="absolute inset-0"
-                  animate={{
-                    background: [
-                      "linear-gradient(0deg, transparent, rgba(254,145,0,0.3), transparent)",
-                      "linear-gradient(120deg, transparent, rgba(254,145,0,0.3), transparent)",
-                      "linear-gradient(240deg, transparent, rgba(254,145,0,0.3), transparent)",
-                      "linear-gradient(360deg, transparent, rgba(254,145,0,0.3), transparent)"
-                    ]
-                  }}
-                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                />
+          <div className="max-w-3xl mx-auto">
+            <div className="relative flex items-end space-x-2">
+              <div className="flex-1 relative">
+                <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ borderRadius: '20px' }}>
+                  <rect x="0.5" y="0.5" width="calc(100% - 1px)" height="calc(100% - 1px)" rx="19.5" fill="none" stroke="url(#gradient2)" strokeWidth="1" />
+                  <defs>
+                    <linearGradient id="gradient2">
+                      <stop offset="0%" stopColor="rgba(254,145,0,0.5)">
+                        <animate attributeName="offset" values="0;1;0" dur="3s" repeatCount="indefinite" />
+                      </stop>
+                      <stop offset="50%" stopColor="rgba(254,145,0,0)">
+                        <animate attributeName="offset" values="0.5;1.5;0.5" dur="3s" repeatCount="indefinite" />
+                      </stop>
+                      <stop offset="100%" stopColor="rgba(254,145,0,0.5)">
+                        <animate attributeName="offset" values="1;2;1" dur="3s" repeatCount="indefinite" />
+                      </stop>
+                    </linearGradient>
+                  </defs>
+                </svg>
+
+                <div className="relative flex items-center bg-[#2a2a2a] rounded-[20px] border border-transparent">
+                  <Paperclip className="w-4 h-4 text-gray-500 ml-3" />
+                  
+                  <textarea
+                    ref={textareaRef}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                    placeholder="Message ARAS AI"
+                    className="flex-1 bg-transparent text-white placeholder:text-gray-500 border-0 outline-none px-3 py-3 resize-none min-h-[48px] max-h-[180px] text-sm"
+                    disabled={sendMessage.isPending}
+                    rows={1}
+                  />
+
+                  <div className="flex items-center space-x-1 pr-1.5">
+                    <Button onClick={isRecording ? stopRecording : startRecording} variant="ghost" size="sm" className="w-9 h-9 rounded-full p-0 hover:bg-white/10" disabled={sendMessage.isPending}>
+                      {isRecording ? (
+                        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity }}>
+                          <MicOff className="w-4 h-4 text-red-400" />
+                        </motion.div>
+                      ) : (
+                        <Mic className="w-4 h-4 text-gray-400" />
+                      )}
+                    </Button>
+
+                    <Button onClick={() => handleSendMessage()} size="sm" disabled={!message.trim() || sendMessage.isPending} className="w-9 h-9 rounded-full p-0 bg-white hover:bg-gray-200 text-black disabled:opacity-30 disabled:bg-gray-700">
+                      <Send className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
               </div>
-
-              <textarea
-                ref={textareaRef}
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                onKeyDown={handleKeyPress}
-                placeholder="Message ARAS AI"
-                className="relative w-full min-h-[48px] max-h-[200px] bg-black/60 backdrop-blur-sm text-white placeholder:text-gray-500 border-0 rounded-xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-white/20 resize-none"
-                disabled={sendMessage.isPending}
-                rows={1}
-              />
-
-              <Button onClick={isRecording ? stopRecording : startRecording} variant="ghost" size="sm" className="absolute right-2 top-2 w-8 h-8 rounded-full p-0 hover:bg-white/10" disabled={sendMessage.isPending}>
-                {isRecording ? (
-                  <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity }}>
-                    <MicOff className="w-4 h-4 text-red-400" />
-                  </motion.div>
-                ) : (
-                  <Mic className="w-4 h-4 text-gray-400" />
-                )}
-              </Button>
             </div>
-
-            <Button onClick={() => fileInputRef.current?.click()} variant="ghost" size="sm" className="h-12 w-12 p-0 rounded-xl hover:bg-white/10">
-              <Paperclip className="w-4 h-4" />
-            </Button>
-
-            <Button onClick={() => handleSendMessage()} size="sm" disabled={!message.trim() || sendMessage.isPending} className="h-12 px-5 bg-white/10 hover:bg-white/20 text-white rounded-xl disabled:opacity-30">
-              <Send className="w-4 h-4" />
-            </Button>
-          </div>
-
-          <div className="mt-2 flex items-center justify-center gap-2 text-xs text-gray-600">
-            <AlertCircle className="w-3 h-3" />
-            <p>ARAS AI kann Fehler machen.</p>
           </div>
         </div>
       )}
@@ -571,17 +590,17 @@ export function ChatInterface() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-red-500/20 backdrop-blur-xl border border-red-500/50 px-4 py-2 rounded-full">
           <div className="flex items-center space-x-2">
             <motion.div className="w-2 h-2 bg-red-500 rounded-full" animate={{ opacity: [1, 0.3] }} transition={{ duration: 1, repeat: Infinity }} />
-            <span className="text-sm text-white">Recording</span>
+            <span className="text-xs text-white font-medium">Recording</span>
           </div>
         </motion.div>
       )}
 
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
       <style>{`
-        .clean-scroll::-webkit-scrollbar { width: 4px; }
-        .clean-scroll::-webkit-scrollbar-track { background: transparent; }
-        .clean-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
-        .clean-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+        .grok-scroll::-webkit-scrollbar { width: 4px; }
+        .grok-scroll::-webkit-scrollbar-track { background: transparent; }
+        .grok-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        .grok-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
       `}</style>
     </div>
   );
