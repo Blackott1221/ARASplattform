@@ -1347,6 +1347,30 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     }
   });
 
+  
+  // DEBUG: Check user usage
+  app.get('/api/debug/usage/:username', requireAuth, async (req: any, res) => {
+    try {
+      const { username } = req.params;
+      const user = await storage.getUserByUsername(username);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      res.json({
+        username: user.username,
+        plan: user.subscriptionPlan,
+        aiMessagesUsed: user.aiMessagesUsed,
+        voiceCallsUsed: user.voiceCallsUsed,
+        limits: {
+          calls: user.subscriptionPlan === 'starter' ? 1 : user.subscriptionPlan === 'pro' ? 100 : 20000,
+          messages: user.subscriptionPlan === 'starter' ? 5 : user.subscriptionPlan === 'pro' ? 500 : -1
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to check usage' });
+    }
+  });
+
     return httpServer;
 }
 
