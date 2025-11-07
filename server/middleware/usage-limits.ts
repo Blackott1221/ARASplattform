@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
-import { storage } from "./storage";
-import { checkUsageLimit } from "./usage-limits";
-import { logger } from "./logger";
+import { storage } from "../storage";
+import { checkUsageLimit } from "../usage-limits";
+import { logger } from "../logger";
 
 export async function checkCallLimit(req: any, res: Response, next: NextFunction) {
   try {

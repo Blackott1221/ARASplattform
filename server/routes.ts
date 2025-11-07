@@ -503,6 +503,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestamp: new Date()
       });
       
+      // Track user message
+      await storage.trackUsage(userId, 'ai_message', 'User message');
+      
       const allMessages = await storage.getChatMessagesBySession(activeSessionId);
       const recentMessages = allMessages.slice(-30);
       
@@ -759,7 +762,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
 
 
   // RETELL AI VOICE CALLS
-  app.post('/api/voice/retell/call', requireAuth, async (req: any, res) => {
+  app.post('/api/voice/retell/call', requireAuth, checkCallLimit, async (req: any, res) => {
     try {
       logger.info('[RETELL] Call request started');
       const { phoneNumber } = req.body;
@@ -781,6 +784,9 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       });
       
       logger.info('[RETELL] Success:', call);
+      
+      // Track voice call usage
+      await storage.trackUsage(req.session.userId, 'voice_call', `Call to ${phoneNumber}`);
       res.json({ success: true, call });
     } catch (error: any) {
       logger.error('[RETELL] ERROR:', error.message);
