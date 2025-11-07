@@ -996,22 +996,18 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   // Get platform statistics
   app.get('/api/admin/stats', requireAdmin, async (req: any, res) => {
     try {
-      const statsQuery = `
-        SELECT
+      const results = await Promise.all([
+        client`SELECT
           COUNT(*) as total_users,
           COUNT(*) FILTER (WHERE subscription_plan = 'free') as free_users,
           COUNT(*) FILTER (WHERE subscription_plan = 'pro') as pro_users,
           COUNT(*) FILTER (WHERE subscription_plan = 'enterprise') as enterprise_users
-        FROM users
-      `;
-      const callsQuery = `SELECT COUNT(*) as total_calls FROM call_logs`;
-      const [statsResult, callsResult] = await Promise.all([
-        storage.db.query(statsQuery),
-        storage.db.query(callsQuery)
+        FROM users`,
+        client`SELECT COUNT(*) as total_calls FROM call_logs`
       ]);
       const stats = {
-        ...statsResult.rows[0],
-        ...callsResult.rows[0]
+        ...results[0][0],
+        ...results[1][0]
       };
       res.json({ success: true, stats });
     } catch (error) {
