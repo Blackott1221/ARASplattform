@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { db } from "./db";
+import { client } from "./db";
 import { logger } from "./logger";
 import { PerformanceMonitor, performanceMiddleware } from "./performance-monitor";
 import { insertLeadSchema, insertCampaignSchema, insertChatMessageSchema, sanitizeUser } from "@shared/schema";
@@ -936,7 +936,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         FROM users
         ORDER BY created_at DESC
       `;
-      const usersResult = await db.query(usersQuery);
+      const usersResult = await client.query(usersQuery);
       const users = usersResult.rows;
       res.json({ success: true, users });
     } catch (error) {
@@ -957,7 +957,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         WHERE id = $1
         RETURNING id, username, email, subscription_plan, subscription_status
       `;
-      const upgradeResult = await db.query(upgradeQuery, [userId]);
+      const upgradeResult = await client.query(upgradeQuery, [userId]);
       const user = upgradeResult.rows[0];
       
       if (!user) {
@@ -984,7 +984,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         WHERE id = $1
         RETURNING id, username, email, subscription_plan, subscription_status
       `;
-      const downgradeResult = await db.query(downgradeQuery, [userId]);
+      const downgradeResult = await client.query(downgradeQuery, [userId]);
       const user = downgradeResult.rows[0];
       
       if (!user) {
