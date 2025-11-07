@@ -1349,7 +1349,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
 
   
   // DEBUG: Check user usage
-  app.get('/api/debug/usage/:username', requireAuth, async (req: any, res) => {
+  app.get('/api/debug/usage/:username', async (req: any, res) => {
     try {
       const { username } = req.params;
       const user = await storage.getUserByUsername(username);
