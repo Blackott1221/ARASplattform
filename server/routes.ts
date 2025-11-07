@@ -1017,7 +1017,101 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   });
 
 
-  return httpServer;
+
+  // Get detailed user data
+  app.get('/api/admin/users/:userId/details', requireAdmin, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      
+      // Get user with all data
+      const [userResult, callsResult, messagesResult] = await Promise.all([
+        client`SELECT * FROM users WHERE id = ${userId}`,
+        client`SELECT * FROM call_logs WHERE user_id = ${userId} ORDER BY created_at DESC LIMIT 50`,
+        client`SELECT COUNT(*) as total_messages FROM chat_messages WHERE user_id = ${userId}`
+      ]);
+      
+      if (userResult.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      
+      res.json({
+        success: true,
+        user: userResult[0],
+        calls: callsResult,
+        messageCount: messagesResult[0]?.total_messages || 0
+      });
+    } catch (error) {
+      logger.error('Error fetching user details:', error);
+      res.status(500).json({ error: 'Failed to fetch user details' });
+    }
+  });
+
+  // Reset user password
+  app.post('/api/admin/users/:userId/reset-password', requireAdmin, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const { newPassword } = req.body;
+      
+      if (!newPassword || newPassword.length < 8) {
+        return res.status(400).json({ error: 'Password must be at least 8 characters' });
+      }
+      
+      const salt = randomBytes(16).toString("hex");
+      const buf = (await scryptAsync(newPassword, salt, 64)) as Buffer;
+      const hashedPassword = `${buf.toString("hex")}.${salt}`;
+      
+      const [user] = await client`
+        UPDATE users
+        SET password = ${hashedPassword}, updated_at = NOW()
+        WHERE id = ${userId}
+        RETURNING id, username, email
+      `;
+      
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      
+      logger.info(`[ADMIN] Password reset for user ${userId} by ${req.session.username}`);
+      res.json({ success: true, user });
+    } catch (error) {
+      logger.error('Error resetting password:', error);
+      res.status(500).json({ error: 'Failed to reset password' });
+    }
+  });
+
+  // Delete user account
+  app.delete('/api/admin/users/:userId', requireAdmin, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      
+      // Delete user and all related data
+      await Promise.all([
+        client`DELETE FROM chat_messages WHERE user_id = ${userId}`,
+        client`DELETE FROM chat_sessions WHERE user_id = ${userId}`,
+        client`DELETE FROM call_logs WHERE user_id = ${userId}`,
+        client`DELETE FROM campaigns WHERE user_id = ${userId}`,
+        client`DELETE FROM leads WHERE user_id = ${userId}`
+      ]);
+      
+      const [deletedUser] = await client`
+        DELETE FROM users WHERE id = ${userId}
+        RETURNING username, email
+      `;
+      
+      if (!deletedUser) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      
+      logger.info(`[ADMIN] User ${userId} (${deletedUser.username}) deleted by ${req.session.username}`);
+      res.json({ success: true, deletedUser });
+    } catch (error) {
+      logger.error('Error deleting user:', error);
+      res.status(500).json({ error: 'Failed to delete user' });
+    }
+  });
+
+
+    return httpServer;
 }
 
 
