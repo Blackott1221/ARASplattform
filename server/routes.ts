@@ -182,6 +182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('[LOGIN-DEBUG] Setting session userId:', user.id);
       req.session.userId = user.id;
+      req.session.username = user.username;
       
       // Explicitly save the session to ensure it persists
       req.session.save((err: any) => {
@@ -240,6 +241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('[REGISTER-DEBUG] Setting session userId:', newUser.id);
       req.session.userId = newUser.id;
+      req.session.username = newUser.username;
       
       // Explicitly save the session to ensure it persists
       req.session.save((err: any) => {
