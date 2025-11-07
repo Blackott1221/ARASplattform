@@ -62,7 +62,6 @@ function Router() {
           <Route path="/power" component={AuthPage} />
           <Route path="/voice-agents" component={AuthPage} />
           <Route path="/leads" component={AuthPage} />
-          <Route path="/admin" component={AdminDashboard} />
           <Route path="/campaigns" component={AuthPage} />
           <Route path="/billing" component={AuthPage} />
           <Route path="/settings" component={AuthPage} />
@@ -81,6 +80,8 @@ function Router() {
           <Route path="/app/voice-agents" component={VoiceAgents} />
           <Route path="/leads" component={Leads} />
           <Route path="/app/leads" component={Leads} />
+          <Route path="/admin" component={AdminDashboard} />
+          <Route path="/app/admin" component={AdminDashboard} />
           <Route path="/campaigns" component={Campaigns} />
           <Route path="/app/campaigns" component={Campaigns} />
           <Route path="/billing" component={Billing} />
