@@ -1111,6 +1111,192 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   });
 
 
+  
+  // ==================== MEGA ADMIN ENDPOINTS ====================
+  
+  // Get all chats from all users
+  app.get('/api/admin/chats', requireAdmin, async (req: any, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 100;
+      const search = req.query.search as string || '';
+      
+      let query;
+      if (search) {
+        query = client`
+          SELECT cm.*, cs.title, u.username, u.email
+          FROM chat_messages cm
+          JOIN chat_sessions cs ON cm.session_id = cs.id
+          JOIN users u ON cm.user_id = u.id
+          WHERE cm.message ILIKE ${'%' + search + '%'}
+          ORDER BY cm.timestamp DESC
+          LIMIT ${limit}
+        `;
+      } else {
+        query = client`
+          SELECT cm.*, cs.title, u.username, u.email
+          FROM chat_messages cm
+          JOIN chat_sessions cs ON cm.session_id = cs.id
+          JOIN users u ON cm.user_id = u.id
+          ORDER BY cm.timestamp DESC
+          LIMIT ${limit}
+        `;
+      }
+      
+      const messages = await query;
+      res.json({ success: true, messages });
+    } catch (error) {
+      logger.error('Error fetching chats:', error);
+      res.status(500).json({ error: 'Failed to fetch chats' });
+    }
+  });
+
+  // Get all leads
+  app.get('/api/admin/leads', requireAdmin, async (req: any, res) => {
+    try {
+      const leads = await client`
+        SELECT l.*, u.username, u.email as user_email
+        FROM leads l
+        JOIN users u ON l.user_id = u.id
+        ORDER BY l.created_at DESC
+      `;
+      res.json({ success: true, leads });
+    } catch (error) {
+      logger.error('Error fetching leads:', error);
+      res.status(500).json({ error: 'Failed to fetch leads' });
+    }
+  });
+
+  // Get all campaigns
+  app.get('/api/admin/campaigns', requireAdmin, async (req: any, res) => {
+    try {
+      const campaigns = await client`
+        SELECT c.*, u.username, u.email as user_email
+        FROM campaigns c
+        JOIN users u ON c.user_id = u.id
+        ORDER BY c.created_at DESC
+      `;
+      res.json({ success: true, campaigns });
+    } catch (error) {
+      logger.error('Error fetching campaigns:', error);
+      res.status(500).json({ error: 'Failed to fetch campaigns' });
+    }
+  });
+
+  // Get all call logs with details
+  app.get('/api/admin/calls', requireAdmin, async (req: any, res) => {
+    try {
+      const calls = await client`
+        SELECT cl.*, u.username, u.email as user_email,
+               l.name as lead_name, l.phone as lead_phone
+        FROM call_logs cl
+        JOIN users u ON cl.user_id = u.id
+        LEFT JOIN leads l ON cl.lead_id = l.id
+        ORDER BY cl.created_at DESC
+        LIMIT 100
+      `;
+      res.json({ success: true, calls });
+    } catch (error) {
+      logger.error('Error fetching calls:', error);
+      res.status(500).json({ error: 'Failed to fetch calls' });
+    }
+  });
+
+  // Create new user (admin)
+  app.post('/api/admin/users/create', requireAdmin, async (req: any, res) => {
+    try {
+      const { username, email, password, subscription_plan } = req.body;
+      
+      if (!username || !email || !password) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+
+      // Check if user exists
+      const existing = await client`
+        SELECT id FROM users WHERE username = ${username} OR email = ${email}
+      `;
+      
+      if (existing.length > 0) {
+        return res.status(400).json({ error: 'Username or email already exists' });
+      }
+
+      // Hash password
+      const salt = randomBytes(16).toString("hex");
+      const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+      const hashedPassword = `${buf.toString("hex")}.${salt}`;
+
+      const userId = `user_${Date.now()}_${randomBytes(6).toString('hex')}`;
+
+      const [newUser] = await client`
+        INSERT INTO users (
+          id, username, email, password, subscription_plan,
+          subscription_status, created_at, updated_at
+        ) VALUES (
+          ${userId}, ${username}, ${email}, ${hashedPassword},
+          ${subscription_plan || 'starter'}, 'active', NOW(), NOW()
+        )
+        RETURNING id, username, email, subscription_plan, subscription_status, created_at
+      `;
+
+      logger.info(`[ADMIN] User created: ${username} by ${req.session.username}`);
+      res.json({ success: true, user: newUser });
+    } catch (error) {
+      logger.error('Error creating user:', error);
+      res.status(500).json({ error: 'Failed to create user' });
+    }
+  });
+
+  // Global search
+  app.get('/api/admin/search', requireAdmin, async (req: any, res) => {
+    try {
+      const query = req.query.q as string;
+      
+      if (!query) {
+        return res.status(400).json({ error: 'Search query required' });
+      }
+
+      const [users, chats, leads, campaigns] = await Promise.all([
+        client`SELECT id, username, email FROM users WHERE username ILIKE ${'%' + query + '%'} OR email ILIKE ${'%' + query + '%'} LIMIT 10`,
+        client`SELECT id, message, timestamp FROM chat_messages WHERE message ILIKE ${'%' + query + '%'} LIMIT 10`,
+        client`SELECT id, name, email, phone FROM leads WHERE name ILIKE ${'%' + query + '%'} OR email ILIKE ${'%' + query + '%'} LIMIT 10`,
+        client`SELECT id, name, description FROM campaigns WHERE name ILIKE ${'%' + query + '%'} OR description ILIKE ${'%' + query + '%'} LIMIT 10`
+      ]);
+
+      res.json({
+        success: true,
+        results: { users, chats, leads, campaigns }
+      });
+    } catch (error) {
+      logger.error('Error searching:', error);
+      res.status(500).json({ error: 'Search failed' });
+    }
+  });
+
+  // Activity feed
+  app.get('/api/admin/activity', requireAdmin, async (req: any, res) => {
+    try {
+      const [recentUsers, recentCalls, recentMessages] = await Promise.all([
+        client`SELECT username, created_at FROM users ORDER BY created_at DESC LIMIT 5`,
+        client`SELECT cl.phone_number, cl.created_at, u.username 
+               FROM call_logs cl JOIN users u ON cl.user_id = u.id 
+               ORDER BY cl.created_at DESC LIMIT 5`,
+        client`SELECT COUNT(*) as count FROM chat_messages WHERE timestamp > NOW() - INTERVAL '24 hours'`
+      ]);
+
+      res.json({
+        success: true,
+        activity: {
+          recentUsers,
+          recentCalls,
+          messagesLast24h: recentMessages[0]?.count || 0
+        }
+      });
+    } catch (error) {
+      logger.error('Error fetching activity:', error);
+      res.status(500).json({ error: 'Failed to fetch activity' });
+    }
+  });
+
+
     return httpServer;
 }
 
