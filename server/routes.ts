@@ -930,7 +930,13 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   // Get all users
   app.get('/api/admin/users', requireAdmin, async (req: any, res) => {
     try {
-      const users = await storage.getAllUsers();
+      const usersQuery = `
+        SELECT id, username, email, subscription_plan, subscription_status, created_at
+        FROM users
+        ORDER BY created_at DESC
+      `;
+      const usersResult = await storage.db.query(usersQuery);
+      const users = usersResult.rows;
       res.json({ success: true, users });
     } catch (error) {
       logger.error('Error fetching users:', error);
@@ -942,7 +948,16 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   app.post('/api/admin/users/:userId/upgrade', requireAdmin, async (req: any, res) => {
     try {
       const { userId } = req.params;
-      const user = await storage.upgradeUserToPro(userId);
+      const upgradeQuery = `
+        UPDATE users
+        SET subscription_plan = 'pro',
+            subscription_status = 'active',
+            updated_at = NOW()
+        WHERE id = $1
+        RETURNING id, username, email, subscription_plan, subscription_status
+      `;
+      const upgradeResult = await storage.db.query(upgradeQuery, [userId]);
+      const user = upgradeResult.rows[0];
       
       if (!user) {
         return res.status(404).json({ error: 'User not found' });
@@ -960,7 +975,16 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   app.post('/api/admin/users/:userId/downgrade', requireAdmin, async (req: any, res) => {
     try {
       const { userId } = req.params;
-      const user = await storage.downgradeUserToFree(userId);
+      const downgradeQuery = `
+        UPDATE users
+        SET subscription_plan = 'free',
+            subscription_status = 'active',
+            updated_at = NOW()
+        WHERE id = $1
+        RETURNING id, username, email, subscription_plan, subscription_status
+      `;
+      const downgradeResult = await storage.db.query(downgradeQuery, [userId]);
+      const user = downgradeResult.rows[0];
       
       if (!user) {
         return res.status(404).json({ error: 'User not found' });
@@ -977,7 +1001,23 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   // Get platform statistics
   app.get('/api/admin/stats', requireAdmin, async (req: any, res) => {
     try {
-      const stats = await storage.getPlatformStats();
+      const statsQuery = `
+        SELECT
+          COUNT(*) as total_users,
+          COUNT(*) FILTER (WHERE subscription_plan = 'free') as free_users,
+          COUNT(*) FILTER (WHERE subscription_plan = 'pro') as pro_users,
+          COUNT(*) FILTER (WHERE subscription_plan = 'enterprise') as enterprise_users
+        FROM users
+      `;
+      const callsQuery = `SELECT COUNT(*) as total_calls FROM call_logs`;
+      const [statsResult, callsResult] = await Promise.all([
+        storage.db.query(statsQuery),
+        storage.db.query(callsQuery)
+      ]);
+      const stats = {
+        ...statsResult.rows[0],
+        ...callsResult.rows[0]
+      };
       res.json({ success: true, stats });
     } catch (error) {
       logger.error('Error fetching stats:', error);
