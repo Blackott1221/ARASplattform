@@ -62,6 +62,7 @@ function Router() {
           <Route path="/power" component={AuthPage} />
           <Route path="/voice-agents" component={AuthPage} />
           <Route path="/leads" component={AuthPage} />
+          <Route path="/admin" component={AdminDashboard} />
           <Route path="/campaigns" component={AuthPage} />
           <Route path="/billing" component={AuthPage} />
           <Route path="/settings" component={AuthPage} />
