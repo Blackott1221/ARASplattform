@@ -931,13 +931,11 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   // Get all users
   app.get('/api/admin/users', requireAdmin, async (req: any, res) => {
     try {
-      const usersQuery = `
+      const users = await client`
         SELECT id, username, email, subscription_plan, subscription_status, created_at
         FROM users
         ORDER BY created_at DESC
       `;
-      const usersResult = await client.query(usersQuery);
-      const users = usersResult.rows;
       res.json({ success: true, users });
     } catch (error) {
       logger.error('Error fetching users:', error);
@@ -949,16 +947,14 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   app.post('/api/admin/users/:userId/upgrade', requireAdmin, async (req: any, res) => {
     try {
       const { userId } = req.params;
-      const upgradeQuery = `
+      const [user] = await client`
         UPDATE users
         SET subscription_plan = 'pro',
             subscription_status = 'active',
             updated_at = NOW()
-        WHERE id = $1
+        WHERE id = ${userId}
         RETURNING id, username, email, subscription_plan, subscription_status
       `;
-      const upgradeResult = await client.query(upgradeQuery, [userId]);
-      const user = upgradeResult.rows[0];
       
       if (!user) {
         return res.status(404).json({ error: 'User not found' });
@@ -976,16 +972,14 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   app.post('/api/admin/users/:userId/downgrade', requireAdmin, async (req: any, res) => {
     try {
       const { userId } = req.params;
-      const downgradeQuery = `
+      const [user] = await client`
         UPDATE users
         SET subscription_plan = 'free',
             subscription_status = 'active',
             updated_at = NOW()
-        WHERE id = $1
+        WHERE id = ${userId}
         RETURNING id, username, email, subscription_plan, subscription_status
       `;
-      const downgradeResult = await client.query(downgradeQuery, [userId]);
-      const user = downgradeResult.rows[0];
       
       if (!user) {
         return res.status(404).json({ error: 'User not found' });
