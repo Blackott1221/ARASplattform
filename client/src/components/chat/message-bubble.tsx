@@ -48,7 +48,7 @@ export function MessageBubble({
   const [displayedText, setDisplayedText] = useState(isAi && isNew ? "" : cleanMessage);
   const [isTyping, setIsTyping] = useState(isAi && isNew);
 
-  // ✅ TYPING ANIMATION - Startet SOFORT
+  // ✅ TYPING ANIMATION - Startet SOFORT wenn isNew === true
   useEffect(() => {
     if (isAi && isNew && cleanMessage) {
       let currentIndex = 0;
@@ -63,9 +63,13 @@ export function MessageBubble({
           setIsTyping(false);
           clearInterval(interval);
         }
-      }, 25); // 25ms pro Buchstabe - langsam & natürlich, Antwort wird schneller sichtbar
+      }, 20); // ✅ 20ms pro Buchstabe - schnell genug um sofort sichtbar, langsam genug um smooth zu sein
 
       return () => clearInterval(interval);
+    } else if (!isNew) {
+      // Wenn nicht neu, zeige direkt den ganzen Text
+      setDisplayedText(cleanMessage);
+      setIsTyping(false);
     }
   }, [cleanMessage, isAi, isNew]);
 
@@ -89,15 +93,16 @@ export function MessageBubble({
         
         <div className="flex flex-col max-w-full">
           <div className="relative">
+            {/* ✅ USER BUBBLE - DEZENTER RAND */}
             {!isAi && (
               <div className="absolute -inset-[1px] rounded-xl">
                 <motion.div
                   className="w-full h-full rounded-xl"
                   animate={{
                     background: [
-                      "linear-gradient(90deg, rgba(233, 215, 196, 0.3) 0%, rgba(254, 145, 0, 0.3) 50%, rgba(233, 215, 196, 0.3) 100%)",
-                      "linear-gradient(90deg, rgba(254, 145, 0, 0.3) 0%, rgba(233, 215, 196, 0.3) 50%, rgba(254, 145, 0, 0.3) 100%)",
-                      "linear-gradient(90deg, rgba(233, 215, 196, 0.3) 0%, rgba(254, 145, 0, 0.3) 50%, rgba(233, 215, 196, 0.3) 100%)",
+                      "linear-gradient(90deg, rgba(233, 215, 196, 0.2) 0%, rgba(254, 145, 0, 0.2) 50%, rgba(233, 215, 196, 0.2) 100%)",
+                      "linear-gradient(90deg, rgba(254, 145, 0, 0.2) 0%, rgba(233, 215, 196, 0.2) 50%, rgba(254, 145, 0, 0.2) 100%)",
+                      "linear-gradient(90deg, rgba(233, 215, 196, 0.2) 0%, rgba(254, 145, 0, 0.2) 50%, rgba(233, 215, 196, 0.2) 100%)",
                     ],
                   }}
                   transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
@@ -119,6 +124,7 @@ export function MessageBubble({
             >
               <div className="text-[14px] leading-relaxed break-words whitespace-pre-wrap">
                 {displayedText}
+                {/* ✅ CURSOR WÄHREND ANIMATION */}
                 {isTyping && (
                   <motion.span
                     animate={{ opacity: [1, 0.3, 1] }}
