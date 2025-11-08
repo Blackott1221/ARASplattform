@@ -622,7 +622,7 @@ export function ChatInterface() {
               })}
             </AnimatePresence>
 
-            {sendMessage.isPending && (
+            {sendMessage.isPending && !isStreaming && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-4">
                 <img src={arasAiImage} alt="ARAS AI" className="w-8 h-8 rounded-full" />
                 <div className="flex space-x-1.5">
