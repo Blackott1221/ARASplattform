@@ -596,7 +596,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
             'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
           },
           body: JSON.stringify({
-            model: 'gpt-5',
+            model: 'gpt-4o',
             messages: openaiMessages,
             max_completion_tokens: 2000,
             stream: true
