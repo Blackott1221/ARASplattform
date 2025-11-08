@@ -125,8 +125,6 @@ export function ChatInterface() {
     },
   });
 
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [streamingMessage, setStreamingMessage] = useState('');
 
   const sendMessage = useMutation({
     mutationFn: async (message: string) => {
