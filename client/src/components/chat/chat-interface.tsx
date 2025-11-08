@@ -40,7 +40,10 @@ export function ChatInterface() {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [optimisticMessages, setOptimisticMessages] = useState<OptimisticMessage[]>([]);
-  const [newMessageId, setNewMessageId] = useState<number | null>(null);
+  
+  // ✅ NEUER ANSATZ: Wir animieren einfach die LETZTE AI-Message wenn gerade Response kam
+  const [shouldAnimateLastAiMessage, setShouldAnimateLastAiMessage] = useState(false);
+  const previousMessagesLength = useRef(0);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -84,6 +87,18 @@ export function ChatInterface() {
   const { data: chatSessions = [] } = useQuery<any[]>({ queryKey: ["/api/chat/sessions"], enabled: !!user && !authLoading, retry: false });
   const { data: subscriptionData } = useQuery<import("@shared/schema").SubscriptionResponse>({ queryKey: ["/api/user/subscription"], enabled: !!user && !authLoading, retry: false });
 
+  // ✅ KRITISCH: Wenn neue AI-Message hinzukommt, starte Animation!
+  useEffect(() => {
+    if (messages.length > previousMessagesLength.current) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage && lastMessage.isAi) {
+        setShouldAnimateLastAiMessage(true);
+        setTimeout(() => setShouldAnimateLastAiMessage(false), 30000);
+      }
+    }
+    previousMessagesLength.current = messages.length;
+  }, [messages]);
+
   useEffect(() => {
     if (chatSessions.length > 0) {
       const activeSession = chatSessions.find(s => s.isActive);
@@ -102,7 +117,8 @@ export function ChatInterface() {
       queryClient.invalidateQueries({ queryKey: ["/api/chat/sessions"] });
       setUploadedFiles([]);
       setOptimisticMessages([]);
-      setNewMessageId(null);
+      setShouldAnimateLastAiMessage(false);
+      previousMessagesLength.current = 0;
       toast({ title: "Neuer Chat gestartet", description: "Vorherige Konversation wurde gespeichert" });
     },
   });
@@ -122,27 +138,15 @@ export function ChatInterface() {
       setOptimisticMessages(prev => [...prev, optimisticMsg]);
     },
     onSuccess: (data) => {
-      // ✅ KRITISCH: ZUERST newMessageId setzen, DANN Query invalidieren!
-      if (data.aiMessage && data.aiMessage.id) {
-        setNewMessageId(data.aiMessage.id);
-      }
-      
       setOptimisticMessages([]);
       if (data.sessionId) setCurrentSessionId(data.sessionId);
       setUploadedFiles([]);
       
-      // Query invalidieren - jetzt ist newMessageId schon gesetzt!
       queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/subscription"] });
-      
-      // Reset nach 30 Sekunden
-      setTimeout(() => {
-        setNewMessageId(null);
-      }, 30000);
     },
     onError: () => {
       setOptimisticMessages([]);
-      setNewMessageId(null);
       toast({ title: "Fehler", description: "Nachricht konnte nicht gesendet werden", variant: "destructive" });
     },
   });
@@ -155,7 +159,8 @@ export function ChatInterface() {
       await queryClient.invalidateQueries({ queryKey: ["/api/chat/sessions"] });
       setShowHistory(false);
       setOptimisticMessages([]);
-      setNewMessageId(null);
+      setShouldAnimateLastAiMessage(false);
+      previousMessagesLength.current = 0;
       toast({ title: "Chat geladen", description: "Konversation wiederhergestellt" });
     } catch (error) {
       toast({ title: "Fehler", description: "Chat konnte nicht geladen werden", variant: "destructive" });
@@ -346,8 +351,8 @@ export function ChatInterface() {
 
       <div ref={messagesContainerRef} className={`flex-1 overflow-y-auto relative z-10 aras-scroll ${!hasMessages ? 'flex items-center justify-center' : 'p-6 space-y-4'}`}>
         {!hasMessages ? (
-          <div className="w-full max-w-3xl mx-auto px-6">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center mb-8">
+          <div className="w-full flex flex-col items-center px-6">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center mb-8 w-full max-w-3xl">
               
               {/* ARAS AI LOGO MIT GRADIENT */}
               <motion.h1 
@@ -444,109 +449,114 @@ export function ChatInterface() {
               </motion.div>
             </motion.div>
 
-            {/* EINGABEFELD - ZENTRIERT ZUM MITTLEREN BUTTON */}
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }} className="flex justify-center">
-              <div className="w-full max-w-2xl">
-                {uploadedFiles.length > 0 && (
-                  <div className="mb-3 space-y-2">
-                    {uploadedFiles.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between bg-white/5 rounded-lg p-2 border border-white/10">
-                        <div className="flex items-center space-x-2 text-sm text-white">
-                          {getFileIcon(file.type)}
-                          <span className="truncate">{file.name}</span>
-                        </div>
-                        <Button size="sm" variant="ghost" onClick={() => removeFile(index)} className="h-6 w-6 p-0">
-                          <X className="w-3 h-3" />
-                        </Button>
+            {/* EINGABEFELD - ZENTRIERT MIT BUTTONS */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }} className="w-full max-w-3xl">
+              {uploadedFiles.length > 0 && (
+                <div className="mb-3 space-y-2">
+                  {uploadedFiles.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between bg-white/5 rounded-lg p-2 border border-white/10">
+                      <div className="flex items-center space-x-2 text-sm text-white">
+                        {getFileIcon(file.type)}
+                        <span className="truncate">{file.name}</span>
                       </div>
-                    ))}
-                  </div>
-                )}
-
-                <div className="relative flex items-end space-x-2">
-                  <div className="flex-1 relative">
-                    {/* FLOWING GRADIENT BORDER */}
-                    <div className="absolute -inset-[2px] rounded-3xl">
-                      <motion.div
-                        className="w-full h-full rounded-3xl"
-                        animate={{
-                          backgroundImage: [
-                            'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
-                            'linear-gradient(90deg, #FE9100 0%, #a34e00 25%, #e9d7c4 50%, #a34e00 75%, #FE9100 100%)',
-                            'linear-gradient(90deg, #a34e00 0%, #e9d7c4 25%, #FE9100 50%, #e9d7c4 75%, #a34e00 100%)',
-                            'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
-                          ],
-                        }}
-                        transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
-                        style={{
-                          padding: '2px',
-                          WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                          WebkitMaskComposite: 'xor',
-                          maskComposite: 'exclude',
-                        }}
-                      />
+                      <Button size="sm" variant="ghost" onClick={() => removeFile(index)} className="h-6 w-6 p-0">
+                        <X className="w-3 h-3" />
+                      </Button>
                     </div>
+                  ))}
+                </div>
+              )}
 
-                    <textarea
-                      ref={textareaRef}
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
-                      onKeyDown={handleKeyPress}
-                      placeholder="Message ARAS AI"
-                      className="relative w-full min-h-[56px] max-h-[200px] bg-[#141414] text-white placeholder:text-gray-600 placeholder:opacity-50 border-0 rounded-3xl px-6 py-4 pr-14 focus:outline-none resize-none"
-                      disabled={sendMessage.isPending}
-                      rows={1}
+              <div className="relative flex items-end space-x-2">
+                <div className="flex-1 relative">
+                  {/* FLOWING GRADIENT BORDER */}
+                  <div className="absolute -inset-[2px] rounded-3xl">
+                    <motion.div
+                      className="w-full h-full rounded-3xl"
+                      animate={{
+                        backgroundImage: [
+                          'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
+                          'linear-gradient(90deg, #FE9100 0%, #a34e00 25%, #e9d7c4 50%, #a34e00 75%, #FE9100 100%)',
+                          'linear-gradient(90deg, #a34e00 0%, #e9d7c4 25%, #FE9100 50%, #e9d7c4 75%, #a34e00 100%)',
+                          'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
+                        ],
+                      }}
+                      transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+                      style={{
+                        padding: '2px',
+                        WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                        WebkitMaskComposite: 'xor',
+                        maskComposite: 'exclude',
+                      }}
                     />
-
-                    <Button
-                      onClick={isRecording ? stopRecording : startRecording}
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-3 top-3 w-10 h-10 rounded-full p-0 hover:bg-white/10"
-                      disabled={sendMessage.isPending}
-                    >
-                      {isRecording ? (
-                        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity }}>
-                          <MicOff className="w-5 h-5 text-red-400" />
-                        </motion.div>
-                      ) : (
-                        <Mic className="w-5 h-5 text-gray-500" />
-                      )}
-                    </Button>
                   </div>
+
+                  <textarea
+                    ref={textareaRef}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                    placeholder="Message ARAS AI"
+                    className="relative w-full min-h-[56px] max-h-[200px] bg-[#141414] text-white placeholder:text-gray-600 placeholder:opacity-50 border-0 rounded-3xl px-6 py-4 pr-14 focus:outline-none resize-none"
+                    disabled={sendMessage.isPending}
+                    rows={1}
+                  />
 
                   <Button
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={isRecording ? stopRecording : startRecording}
                     variant="ghost"
                     size="sm"
-                    className="h-14 w-14 p-0 rounded-2xl hover:bg-white/5"
+                    className="absolute right-3 top-3 w-10 h-10 rounded-full p-0 hover:bg-white/10"
+                    disabled={sendMessage.isPending}
                   >
-                    <Paperclip className="w-5 h-5 text-gray-500" />
-                  </Button>
-
-                  <Button
-                    onClick={() => handleSendMessage()}
-                    size="sm"
-                    disabled={!message.trim() || sendMessage.isPending}
-                    className="h-14 px-6 bg-white/10 hover:bg-white/15 text-white rounded-2xl disabled:opacity-30"
-                  >
-                    <Send className="w-5 h-5" />
+                    {isRecording ? (
+                      <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity }}>
+                        <MicOff className="w-5 h-5 text-red-400" />
+                      </motion.div>
+                    ) : (
+                      <Mic className="w-5 h-5 text-gray-500" />
+                    )}
                   </Button>
                 </div>
 
-                <div className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-700">
-                  <AlertCircle className="w-3 h-3" />
-                  <p>ARAS AI ® kann Fehler machen. Bitte verlasse Dich nicht auf jede Ausgabe und überprüfe wichtige Informationen</p>
-                </div>
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  variant="ghost"
+                  size="sm"
+                  className="h-14 w-14 p-0 rounded-2xl hover:bg-white/5"
+                >
+                  <Paperclip className="w-5 h-5 text-gray-500" />
+                </Button>
+
+                <Button
+                  onClick={() => handleSendMessage()}
+                  size="sm"
+                  disabled={!message.trim() || sendMessage.isPending}
+                  className="h-14 px-6 bg-white/10 hover:bg-white/15 text-white rounded-2xl disabled:opacity-30"
+                >
+                  <Send className="w-5 h-5" />
+                </Button>
+              </div>
+
+              <div className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-700">
+                <AlertCircle className="w-3 h-3" />
+                <p>ARAS AI ® kann Fehler machen. Bitte verlasse Dich nicht auf jede Ausgabe und überprüfe wichtige Informationen</p>
               </div>
             </motion.div>
           </div>
         ) : (
           <div className="max-w-4xl mx-auto">
             <AnimatePresence>
-              {allMessages.map((msg) => {
+              {allMessages.map((msg, index) => {
                 const isOptimistic = 'isOptimistic' in msg && msg.isOptimistic;
-                const isNewAiMessage = !isOptimistic && msg.isAi && msg.id === newMessageId;
+                
+                // ✅ KRITISCH: Animiere die LETZTE AI-Message wenn Flag gesetzt ist!
+                const lastAiMessage = [...allMessages].reverse().find(m => m.isAi && !('isOptimistic' in m));
+                const isNewAiMessage = shouldAnimateLastAiMessage && 
+                                       !isOptimistic && 
+                                       msg.isAi && 
+                                       lastAiMessage && 
+                                       msg.id === lastAiMessage.id;
                 
                 return (
                   <MessageBubble

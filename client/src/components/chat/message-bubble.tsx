@@ -48,7 +48,6 @@ export function MessageBubble({
   const [displayedText, setDisplayedText] = useState(isAi && isNew ? "" : cleanMessage);
   const [isTyping, setIsTyping] = useState(isAi && isNew);
 
-  // ✅ TYPING ANIMATION - Startet SOFORT wenn isNew === true
   useEffect(() => {
     if (isAi && isNew && cleanMessage) {
       let currentIndex = 0;
