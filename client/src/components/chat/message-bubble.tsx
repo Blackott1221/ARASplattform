@@ -63,7 +63,7 @@ export function MessageBubble({
           setIsTyping(false);
           clearInterval(interval);
         }
-      }, 15); // 15ms pro Buchstabe - schnell & smooth
+      }, 25); // 25ms pro Buchstabe - langsam & natürlich, Antwort wird schneller sichtbar
 
       return () => clearInterval(interval);
     }
@@ -90,23 +90,22 @@ export function MessageBubble({
         <div className="flex flex-col max-w-full">
           <div className="relative">
             {!isAi && (
-              <div className="absolute -inset-[2px] rounded-xl">
+              <div className="absolute -inset-[1px] rounded-xl">
                 <motion.div
                   className="w-full h-full rounded-xl"
                   animate={{
                     background: [
-                      "linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)",
-                      "linear-gradient(90deg, #FE9100 0%, #a34e00 25%, #e9d7c4 50%, #FE9100 75%, #a34e00 100%)",
-                      "linear-gradient(90deg, #a34e00 0%, #e9d7c4 25%, #FE9100 50%, #a34e00 75%, #e9d7c4 100%)",
-                      "linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)",
+                      "linear-gradient(90deg, rgba(233, 215, 196, 0.3) 0%, rgba(254, 145, 0, 0.3) 50%, rgba(233, 215, 196, 0.3) 100%)",
+                      "linear-gradient(90deg, rgba(254, 145, 0, 0.3) 0%, rgba(233, 215, 196, 0.3) 50%, rgba(254, 145, 0, 0.3) 100%)",
+                      "linear-gradient(90deg, rgba(233, 215, 196, 0.3) 0%, rgba(254, 145, 0, 0.3) 50%, rgba(233, 215, 196, 0.3) 100%)",
                     ],
                   }}
-                  transition={{ duration: 3.5, repeat: Infinity, ease: "linear" }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
                   style={{
-                    padding: "2px",
-                    WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                    WebkitMaskComposite: "xor",
-                    maskComposite: "exclude",
+                    padding: '1px',
+                    WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                    WebkitMaskComposite: 'xor',
+                    maskComposite: 'exclude',
                   }}
                 />
               </div>

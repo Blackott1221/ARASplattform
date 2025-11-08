@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { MessageBubble } from "./message-bubble";
-import { Send, Mic, MicOff, Plus, MessageSquare, X, Menu, Paperclip, File, Image as ImageIcon, FileText, Clock, AlertCircle, Phone, BarChart3, Zap, Calendar } from "lucide-react";
+import { Send, Mic, MicOff, Plus, MessageSquare, X, Menu, Paperclip, File, Image as ImageIcon, FileText, Clock, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -21,10 +21,9 @@ const ANIMATED_TEXTS = [
 ];
 
 const SUGGESTED_PROMPTS = [
-  { text: "Starte Outbound Call", icon: Phone },
-  { text: "Analysiere Gesprächsqualität", icon: BarChart3 },
-  { text: "Optimiere Call-Strategie", icon: Zap },
-  { text: "Terminvereinbarung durchführen", icon: Calendar }
+  "Was ist ARAS AI?",
+  "Aktuelle Nachrichten",
+  "Vertriebsstrategien"
 ];
 
 interface UploadedFile { name: string; type: string; size: number; content: string; }
@@ -128,7 +127,7 @@ export function ChatInterface() {
       queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/subscription"] });
       setUploadedFiles([]);
-      setTimeout(() => setNewMessageId(null), 5000); // ✅ 5 Sekunden für Tipp-Animation
+      setTimeout(() => setNewMessageId(null), 30000); // ✅ 30 Sekunden für Tipp-Animation
     },
     onError: () => {
       setOptimisticMessages([]);
@@ -434,30 +433,26 @@ export function ChatInterface() {
                 initial={{ opacity: 0 }} 
                 animate={{ opacity: 1 }} 
                 transition={{ delay: 0.5 }}
-                className="flex flex-wrap justify-center gap-2 mb-16"
+                className="flex flex-wrap justify-center gap-3 mb-16"
               >
-                {SUGGESTED_PROMPTS.map((prompt, index) => {
-                  const Icon = prompt.icon;
-                  return (
-                    <motion.button
-                      key={index}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.6 + index * 0.1 }}
-                      whileHover={{ 
-                        scale: 1.02,
-                        backgroundColor: 'rgba(254, 145, 0, 0.05)',
-                        borderColor: 'rgba(254, 145, 0, 0.3)'
-                      }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => handleSendMessage(prompt.text)}
-                      className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-transparent border border-white/10 text-gray-400 hover:text-white text-sm transition-all"
-                    >
-                      <Icon className="w-4 h-4" />
-                      <span>{prompt.text}</span>
-                    </motion.button>
-                  );
-                })}
+                {SUGGESTED_PROMPTS.map((prompt, index) => (
+                  <motion.button
+                    key={index}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.6 + index * 0.1 }}
+                    whileHover={{ 
+                      scale: 1.02,
+                      backgroundColor: 'rgba(254, 145, 0, 0.05)',
+                      borderColor: 'rgba(254, 145, 0, 0.3)'
+                    }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleSendMessage(prompt)}
+                    className="px-5 py-3 rounded-xl bg-transparent border border-white/10 text-gray-400 hover:text-white text-sm transition-all"
+                  >
+                    {prompt}
+                  </motion.button>
+                ))}
               </motion.div>
             </motion.div>
 
@@ -481,18 +476,25 @@ export function ChatInterface() {
 
               <div className="relative flex items-end space-x-2">
                 <div className="flex-1 relative">
-                  {/* SMOOTH CONIC GRADIENT BORDER */}
-                  <div className="absolute -inset-[1px] rounded-3xl overflow-hidden">
+                  {/* FLOWING GRADIENT BORDER WIE ARAS AI TEXT */}
+                  <div className="absolute -inset-[2px] rounded-3xl">
                     <motion.div
-                      className="absolute inset-0"
+                      className="w-full h-full rounded-3xl"
                       animate={{
-                        background: [
-                          'conic-gradient(from 0deg, #4285F4, #EA4335, #FBBC04, #34A853, #4285F4)',
-                          'conic-gradient(from 360deg, #4285F4, #EA4335, #FBBC04, #34A853, #4285F4)',
+                        backgroundImage: [
+                          'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
+                          'linear-gradient(90deg, #FE9100 0%, #a34e00 25%, #e9d7c4 50%, #a34e00 75%, #FE9100 100%)',
+                          'linear-gradient(90deg, #a34e00 0%, #e9d7c4 25%, #FE9100 50%, #e9d7c4 75%, #a34e00 100%)',
+                          'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
                         ],
                       }}
                       transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
-                      style={{ opacity: 0.5 }}
+                      style={{
+                        padding: '2px',
+                        WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                        WebkitMaskComposite: 'xor',
+                        maskComposite: 'exclude',
+                      }}
                     />
                   </div>
 
@@ -607,18 +609,25 @@ export function ChatInterface() {
 
           <div className="relative flex items-end space-x-2 max-w-4xl mx-auto">
             <div className="flex-1 relative">
-              {/* SMOOTH CONIC GRADIENT BORDER */}
-              <div className="absolute -inset-[1px] rounded-2xl overflow-hidden">
+              {/* FLOWING GRADIENT BORDER WIE ARAS AI TEXT */}
+              <div className="absolute -inset-[2px] rounded-2xl">
                 <motion.div
-                  className="absolute inset-0"
+                  className="w-full h-full rounded-2xl"
                   animate={{
-                    background: [
-                      'conic-gradient(from 0deg, #4285F4, #EA4335, #FBBC04, #34A853, #4285F4)',
-                      'conic-gradient(from 360deg, #4285F4, #EA4335, #FBBC04, #34A853, #4285F4)',
+                    backgroundImage: [
+                      'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
+                      'linear-gradient(90deg, #FE9100 0%, #a34e00 25%, #e9d7c4 50%, #a34e00 75%, #FE9100 100%)',
+                      'linear-gradient(90deg, #a34e00 0%, #e9d7c4 25%, #FE9100 50%, #e9d7c4 75%, #a34e00 100%)',
+                      'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
                     ],
                   }}
                   transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
-                  style={{ opacity: 0.5 }}
+                  style={{
+                    padding: '2px',
+                    WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                    WebkitMaskComposite: 'xor',
+                    maskComposite: 'exclude',
+                  }}
                 />
               </div>
 
