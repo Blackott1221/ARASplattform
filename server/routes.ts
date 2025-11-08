@@ -1307,71 +1307,67 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   
   // Get user usage stats
   app.get('/api/user/usage', requireAuth, async (req: any, res) => {
+    const userId = req.session.userId;
+
+    // Hole User direkt aus der Datenbank
+    const [user] = await client`
+      SELECT
+        id,
+        username,
+        email,
+        subscription_plan AS "subscriptionPlan",
+        ai_messages_used AS "aiMessagesUsed",
+        voice_calls_used AS "voiceCallsUsed"
+      FROM users
+      WHERE id = ${userId}
+    `;
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const plan = (user.subscriptionPlan || 'starter') as 'starter' | 'pro' | 'enterprise';
+
+    const limits = {
+      starter: { calls: 1, messages: 5 },
+      pro: { calls: 100, messages: 500 },
+      enterprise: { calls: 20000, messages: -1 },
+    } as const;
+
+    const planLimits = limits[plan] || limits.starter;
+
+    res.json({
+      success: true,
+      usage: {
+        calls: {
+          used: user.voiceCallsUsed || 0,
+          limit: planLimits.calls,
+          remaining: planLimits.calls === -1
+            ? -1
+            : Math.max(0, planLimits.calls - (user.voiceCallsUsed || 0)),
+        },
+        messages: {
+          used: user.aiMessagesUsed || 0,
+          limit: planLimits.messages,
+          remaining: planLimits.messages === -1
+            ? -1
+            : Math.max(0, planLimits.messages - (user.aiMessagesUsed || 0)),
+        },
+        plan,
+        planName: plan.charAt(0).toUpperCase() + plan.slice(1),
+      },
+    });
+  });
+
+
+  app.get('/api/debug/users/all', async (req: any, res) => {
     try {
-      const userId = req.session.userId;
-      const user = await storage.getUserById(userId);
-      
-      if (!user) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-
-      const plan = user.subscriptionPlan || 'starter';
-      const limits = {
-        starter: { calls: 1, messages: 5 },
-        pro: { calls: 100, messages: 500 },
-        enterprise: { calls: 20000, messages: -1 }
-      };
-
-      const planLimits = limits[plan as keyof typeof limits] || limits.starter;
-      
-      res.json({
-        success: true,
-        usage: {
-          calls: {
-            used: user.voiceCallsUsed || 0,
-            limit: planLimits.calls,
-            remaining: planLimits.calls === -1 ? -1 : Math.max(0, planLimits.calls - (user.voiceCallsUsed || 0))
-          },
-          messages: {
-            used: user.aiMessagesUsed || 0,
-            limit: planLimits.messages,
-            remaining: planLimits.messages === -1 ? -1 : Math.max(0, planLimits.messages - (user.aiMessagesUsed || 0))
-          },
-          plan: plan,
-          planName: plan.charAt(0).toUpperCase() + plan.slice(1)
-        }
-      });
+      const allUsers = await client`SELECT id, username, email, subscription_plan, ai_messages_used, voice_calls_used FROM users LIMIT 20`;
+      res.json({ users: allUsers });
     } catch (error) {
-      logger.error('Error fetching usage:', error);
-      res.status(500).json({ error: 'Failed to fetch usage' });
+      res.status(500).json({ error: 'Failed to fetch users' });
     }
   });
 
-  
-  // DEBUG: Check user usage
-  app.get('/api/debug/usage/:username', async (req: any, res) => {
-    try {
-      const { username } = req.params;
-      const user = await storage.getUserByUsername(username);
-      if (!user) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-      res.json({
-        username: user.username,
-        plan: user.subscriptionPlan,
-        aiMessagesUsed: user.aiMessagesUsed,
-        voiceCallsUsed: user.voiceCallsUsed,
-        limits: {
-          calls: user.subscriptionPlan === 'starter' ? 1 : user.subscriptionPlan === 'pro' ? 100 : 20000,
-          messages: user.subscriptionPlan === 'starter' ? 5 : user.subscriptionPlan === 'pro' ? 500 : -1
-        }
-      });
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to check usage' });
-    }
-  });
-
-    return httpServer;
+  return httpServer;
 }
-
-

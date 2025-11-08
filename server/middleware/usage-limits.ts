@@ -23,7 +23,7 @@ export async function checkCallLimit(req: any, res: Response, next: NextFunction
       'calls'
     );
 
-    if (!allowed) {
+    if (!allowed && user.subscriptionPlan !== 'pro' && user.subscriptionPlan !== 'enterprise') {
       logger.warn(`[LIMIT] User ${user.username} reached call limit (${limit})`);
       return res.status(403).json({
         error: "Call limit reached",
@@ -63,7 +63,7 @@ export async function checkMessageLimit(req: any, res: Response, next: NextFunct
       'messages'
     );
 
-    if (!allowed) {
+    if (!allowed && user.subscriptionPlan !== 'pro' && user.subscriptionPlan !== 'enterprise') {
       logger.warn(`[LIMIT] User ${user.username} reached message limit (${limit})`);
       return res.status(403).json({
         error: "Message limit reached",
