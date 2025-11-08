@@ -21,9 +21,10 @@ const ANIMATED_TEXTS = [
 ];
 
 const SUGGESTED_PROMPTS = [
-  "Was ist ARAS AI?",
   "Aktuelle Nachrichten",
-  "Vertriebsstrategien"
+  "Outbound-Kampagne planen",
+  "Call-Skript erstellen",
+  "Einwandbehandlung trainieren"
 ];
 
 interface UploadedFile { name: string; type: string; size: number; content: string; }
@@ -127,7 +128,8 @@ export function ChatInterface() {
       queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/subscription"] });
       setUploadedFiles([]);
-      setTimeout(() => setNewMessageId(null), 30000); // ✅ 30 Sekunden für Tipp-Animation
+      // ✅ KRITISCH: 30 Sekunden damit Tipp-Animation sicher durchläuft!
+      setTimeout(() => setNewMessageId(null), 30000);
     },
     onError: () => {
       setOptimisticMessages([]);
@@ -267,31 +269,6 @@ export function ChatInterface() {
 
   return (
     <div className="flex flex-col h-full bg-[#0a0a0a] relative overflow-hidden" onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave}>
-      {/* DEZENTE FUNKELNDE STERNE - LANGSAMER & TRANSPARENTER */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(25)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-[1.5px] h-[1.5px] bg-[#FE9100] rounded-full"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              filter: 'blur(0.8px)',
-            }}
-            animate={{
-              opacity: [0, 0.25, 0],
-              scale: [0, 1, 0],
-            }}
-            transition={{
-              duration: 4 + Math.random() * 4,
-              repeat: Infinity,
-              delay: Math.random() * 8,
-              ease: "easeInOut",
-            }}
-          />
-        ))}
-      </div>
-
       {isDragging && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-50 bg-[#FE9100]/5 backdrop-blur-sm flex items-center justify-center">
           <div className="text-center">
@@ -359,7 +336,7 @@ export function ChatInterface() {
       <div ref={messagesContainerRef} className={`flex-1 overflow-y-auto relative z-10 aras-scroll ${!hasMessages ? 'flex items-center justify-center' : 'p-6 space-y-4'}`}>
         {!hasMessages ? (
           <div className="w-full max-w-2xl mx-auto px-6">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center mb-12">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center mb-8">
               
               {/* ARAS AI LOGO MIT GRADIENT */}
               <motion.h1 
@@ -406,7 +383,7 @@ export function ChatInterface() {
                 initial={{ opacity: 0 }} 
                 animate={{ opacity: 1 }} 
                 transition={{ delay: 0.3 }}
-                className="flex items-center justify-center space-x-2 text-base text-gray-500 mb-16"
+                className="flex items-center justify-center space-x-2 text-base text-gray-500 mb-12"
               >
                 <span>erledigt für dich:</span>
                 <span 
@@ -428,12 +405,12 @@ export function ChatInterface() {
                 </span>
               </motion.div>
 
-              {/* PROMPT BUTTONS */}
+              {/* PROMPT BUTTONS - NEBENEINANDER OHNE ICONS */}
               <motion.div 
                 initial={{ opacity: 0 }} 
                 animate={{ opacity: 1 }} 
                 transition={{ delay: 0.5 }}
-                className="flex flex-wrap justify-center gap-3 mb-16"
+                className="flex flex-wrap justify-center gap-3 mb-12"
               >
                 {SUGGESTED_PROMPTS.map((prompt, index) => (
                   <motion.button
@@ -456,7 +433,7 @@ export function ChatInterface() {
               </motion.div>
             </motion.div>
 
-            {/* ZENTRIERTES EINGABEFELD MIT SMOOTH BORDER */}
+            {/* ZENTRIERTES EINGABEFELD */}
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }}>
               {uploadedFiles.length > 0 && (
                 <div className="mb-3 space-y-2">
@@ -476,7 +453,7 @@ export function ChatInterface() {
 
               <div className="relative flex items-end space-x-2">
                 <div className="flex-1 relative">
-                  {/* FLOWING GRADIENT BORDER WIE ARAS AI TEXT */}
+                  {/* FLOWING GRADIENT BORDER WIE "ERLEDIGT FÜR DICH" */}
                   <div className="absolute -inset-[2px] rounded-3xl">
                     <motion.div
                       className="w-full h-full rounded-3xl"
@@ -504,7 +481,7 @@ export function ChatInterface() {
                     onChange={(e) => setMessage(e.target.value)}
                     onKeyDown={handleKeyPress}
                     placeholder="Message ARAS AI"
-                    className="relative w-full min-h-[56px] max-h-[200px] bg-[#141414] text-white placeholder:text-gray-600 border-0 rounded-3xl px-6 py-4 pr-14 focus:outline-none resize-none"
+                    className="relative w-full min-h-[56px] max-h-[200px] bg-[#141414] text-white placeholder:text-gray-500 placeholder:opacity-40 border-0 rounded-3xl px-6 py-4 pr-14 focus:outline-none resize-none"
                     disabled={sendMessage.isPending}
                     rows={1}
                   />
@@ -609,7 +586,7 @@ export function ChatInterface() {
 
           <div className="relative flex items-end space-x-2 max-w-4xl mx-auto">
             <div className="flex-1 relative">
-              {/* FLOWING GRADIENT BORDER WIE ARAS AI TEXT */}
+              {/* FLOWING GRADIENT BORDER */}
               <div className="absolute -inset-[2px] rounded-2xl">
                 <motion.div
                   className="w-full h-full rounded-2xl"
@@ -631,7 +608,7 @@ export function ChatInterface() {
                 />
               </div>
 
-              <textarea ref={textareaRef} value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyPress} placeholder="Message ARAS AI" className="relative w-full min-h-[48px] max-h-[200px] bg-[#141414] text-white placeholder:text-gray-600 border-0 rounded-2xl px-4 py-3 pr-12 focus:outline-none resize-none" disabled={sendMessage.isPending} rows={1} />
+              <textarea ref={textareaRef} value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyPress} placeholder="Message ARAS AI" className="relative w-full min-h-[48px] max-h-[200px] bg-[#141414] text-white placeholder:text-gray-500 placeholder:opacity-40 border-0 rounded-2xl px-4 py-3 pr-12 focus:outline-none resize-none" disabled={sendMessage.isPending} rows={1} />
 
               <Button onClick={isRecording ? stopRecording : startRecording} variant="ghost" size="sm" className="absolute right-2 top-2 w-9 h-9 rounded-full p-0 hover:bg-white/10" disabled={sendMessage.isPending}>
                 {isRecording ? (
