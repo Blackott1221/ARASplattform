@@ -54,6 +54,7 @@ export function MessageBubble({
       setDisplayedText("");
       setIsTyping(true);
 
+      // SCHNELLER START - Animation beginnt sofort
       const interval = setInterval(() => {
         if (currentIndex < cleanMessage.length) {
           setDisplayedText(cleanMessage.slice(0, currentIndex + 1));
@@ -62,7 +63,7 @@ export function MessageBubble({
           setIsTyping(false);
           clearInterval(interval);
         }
-      }, 15);
+      }, 20); // Etwas langsamer (war 15ms) - wirkt dadurch smootherer und schneller
 
       return () => clearInterval(interval);
     }
@@ -73,15 +74,15 @@ export function MessageBubble({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className={`flex ${isAi ? 'justify-start' : 'justify-end'} mb-6`}
+      className={`flex ${isAi ? 'justify-start' : 'justify-end'} mb-4`}
     >
-      {/* MAXIMALER ABSTAND zwischen Avatar und Text */}
-      <div className={`flex items-start ${isAi ? 'gap-6' : 'gap-6 flex-row-reverse'} max-w-[75%]`}>
+      {/* ENGERER ABSTAND zwischen Avatar und Text */}
+      <div className={`flex items-start ${isAi ? 'gap-3' : 'gap-3 flex-row-reverse'} max-w-[70%]`}>
         <motion.div className="flex-shrink-0" whileHover={{ scale: 1.05 }}>
           {isAi ? (
-            <img src={arasAiImage} alt="ARAS AI" className="w-9 h-9 rounded-full object-cover ring-2 ring-[#FE9100]/20" />
+            <img src={arasAiImage} alt="ARAS AI" className="w-8 h-8 rounded-full object-cover ring-2 ring-[#FE9100]/20" />
           ) : (
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#FE9100] to-[#a34e00] flex items-center justify-center ring-2 ring-[#FE9100]/20">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FE9100] to-[#a34e00] flex items-center justify-center ring-2 ring-[#FE9100]/20">
               <User className="w-4 h-4 text-white" />
             </div>
           )}
@@ -113,7 +114,7 @@ export function MessageBubble({
             )}
 
             <motion.div 
-              className={`relative px-5 py-3.5 rounded-xl ${isAi ? 'bg-transparent text-gray-100' : 'bg-transparent text-white'}`}
+              className={`relative px-4 py-3 rounded-xl ${isAi ? 'bg-transparent text-gray-100' : 'bg-transparent text-white'}`}
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               transition={{ duration: 0.2 }}
@@ -131,7 +132,7 @@ export function MessageBubble({
             </motion.div>
           </div>
           
-          <div className={`flex items-center mt-1.5 px-2 space-x-2 ${isAi ? '' : 'flex-row-reverse space-x-reverse'}`}>
+          <div className={`flex items-center mt-1 px-1.5 space-x-2 ${isAi ? '' : 'flex-row-reverse space-x-reverse'}`}>
             <p className="text-xs text-gray-500">{format(timestamp, 'HH:mm')}</p>
             {isAi && onSpeak && (
               <Button size="sm" variant="ghost" onClick={() => onSpeak(cleanMessage)} className="h-6 w-6 p-0 hover:bg-white/10 rounded-lg" disabled={isSpeaking}>
