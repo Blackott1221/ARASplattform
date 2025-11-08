@@ -40,6 +40,8 @@ export function ChatInterface() {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [optimisticMessages, setOptimisticMessages] = useState<OptimisticMessage[]>([]);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingMessage, setStreamingMessage] = useState("");
   
   // ✅ NEUER ANSATZ: Wir animieren einfach die LETZTE AI-Message wenn gerade Response kam
   const [shouldAnimateLastAiMessage, setShouldAnimateLastAiMessage] = useState(false);
@@ -123,6 +125,9 @@ export function ChatInterface() {
     },
   });
 
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingMessage, setStreamingMessage] = useState('');
+
   const sendMessage = useMutation({
     mutationFn: async (message: string) => {
       const messageData: any = { message, sessionId: currentSessionId };
@@ -130,8 +135,52 @@ export function ChatInterface() {
         messageData.files = uploadedFiles.map(f => ({ name: f.name, content: f.content, type: f.type }));
         messageData.message = `${message}\n\n[WICHTIG: Analysiere die hochgeladenen Dateien: ${uploadedFiles.map(f => f.name).join(', ')}]`;
       }
-      const response = await apiRequest("POST", "/api/chat/messages", messageData);
-      return response.json();
+
+      setIsStreaming(true);
+      setStreamingMessage('');
+
+      const response = await fetch('/api/chat/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(messageData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send message');
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullMessage = '';
+      let sessionId = currentSessionId;
+
+      while (true) {
+        const { done, value } = await reader!.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n').filter(line => line.trim() !== '');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.content) {
+                fullMessage += data.content;
+                setStreamingMessage(fullMessage);
+              }
+              if (data.done && data.sessionId) {
+                sessionId = data.sessionId;
+              }
+            } catch (e) {}
+          }
+        }
+      }
+
+      setIsStreaming(false);
+      setStreamingMessage('');
+      return { sessionId };
     },
     onMutate: async (newMessage) => {
       const optimisticMsg: OptimisticMessage = { id: `optimistic-${Date.now()}`, message: newMessage, isAi: false, timestamp: new Date(), isOptimistic: true };
@@ -139,7 +188,7 @@ export function ChatInterface() {
     },
     onSuccess: (data) => {
       setOptimisticMessages([]);
-      if (data.sessionId) setCurrentSessionId(data.sessionId);
+      if (data?.sessionId) setCurrentSessionId(data.sessionId);
       setUploadedFiles([]);
       
       queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
@@ -147,10 +196,11 @@ export function ChatInterface() {
     },
     onError: () => {
       setOptimisticMessages([]);
+      setIsStreaming(false);
+      setStreamingMessage('');
       toast({ title: "Fehler", description: "Nachricht konnte nicht gesendet werden", variant: "destructive" });
     },
   });
-
   const loadChatSession = async (sessionId: string) => {
     try {
       await apiRequest("POST", `/api/chat/sessions/${sessionId}/activate`, {});
@@ -578,6 +628,20 @@ export function ChatInterface() {
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-4">
                 <img src={arasAiImage} alt="ARAS AI" className="w-8 h-8 rounded-full" />
                 <div className="flex space-x-1.5">
+
+            {isStreaming && streamingMessage && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-start gap-4">
+                <img src={arasAiImage} alt="ARAS AI" className="w-8 h-8 rounded-full" />
+                <div className="flex-1 bg-white/5 rounded-lg p-4 text-white whitespace-pre-wrap">
+                  {streamingMessage}
+                  <motion.span
+                    animate={{ opacity: [1, 0] }}
+                    transition={{ duration: 0.8, repeat: Infinity }}
+                    className="inline-block w-[2px] h-[18px] bg-[#FE9100] ml-1 align-middle"
+                  />
+                </div>
+              </motion.div>
+            )}
                   {[0, 0.2, 0.4].map((delay, i) => (
                     <motion.div key={i} className="w-2 h-2 bg-[#FE9100] rounded-full" animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.5, repeat: Infinity, delay }} />
                   ))}
