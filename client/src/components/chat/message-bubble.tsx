@@ -48,13 +48,13 @@ export function MessageBubble({
   const [displayedText, setDisplayedText] = useState(isAi && isNew ? "" : cleanMessage);
   const [isTyping, setIsTyping] = useState(isAi && isNew);
 
+  // ✅ TYPING ANIMATION - Startet SOFORT
   useEffect(() => {
     if (isAi && isNew && cleanMessage) {
       let currentIndex = 0;
       setDisplayedText("");
       setIsTyping(true);
 
-      // SCHNELLER START - Animation beginnt sofort
       const interval = setInterval(() => {
         if (currentIndex < cleanMessage.length) {
           setDisplayedText(cleanMessage.slice(0, currentIndex + 1));
@@ -63,7 +63,7 @@ export function MessageBubble({
           setIsTyping(false);
           clearInterval(interval);
         }
-      }, 20); // Etwas langsamer (war 15ms) - wirkt dadurch smootherer und schneller
+      }, 15); // 15ms pro Buchstabe - schnell & smooth
 
       return () => clearInterval(interval);
     }
@@ -74,10 +74,9 @@ export function MessageBubble({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className={`flex ${isAi ? 'justify-start' : 'justify-end'} mb-4`}
+      className={`flex ${isAi ? 'justify-start' : 'justify-end'} mb-3`}
     >
-      {/* ENGERER ABSTAND zwischen Avatar und Text */}
-      <div className={`flex items-start ${isAi ? 'gap-3' : 'gap-3 flex-row-reverse'} max-w-[70%]`}>
+      <div className={`flex items-start ${isAi ? 'gap-3' : 'gap-3 flex-row-reverse'} max-w-[68%]`}>
         <motion.div className="flex-shrink-0" whileHover={{ scale: 1.05 }}>
           {isAi ? (
             <img src={arasAiImage} alt="ARAS AI" className="w-8 h-8 rounded-full object-cover ring-2 ring-[#FE9100]/20" />

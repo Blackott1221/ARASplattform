@@ -128,7 +128,7 @@ export function ChatInterface() {
       queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/subscription"] });
       setUploadedFiles([]);
-      setTimeout(() => setNewMessageId(null), 100);
+      setTimeout(() => setNewMessageId(null), 5000); // ✅ 5 Sekunden für Tipp-Animation
     },
     onError: () => {
       setOptimisticMessages([]);
@@ -258,7 +258,7 @@ export function ChatInterface() {
 
   if (authLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-[#0f0f0f]">
+      <div className="flex-1 flex items-center justify-center bg-[#0a0a0a]">
         <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }}>
           <img src={arasLogo} alt="Loading" className="w-12 h-12 object-contain" />
         </motion.div>
@@ -267,26 +267,26 @@ export function ChatInterface() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#0f0f0f] relative overflow-hidden" onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave}>
-      {/* FUNKELNDE STERNE - DEZENT WIE AUF DER WEBSITE */}
+    <div className="flex flex-col h-full bg-[#0a0a0a] relative overflow-hidden" onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave}>
+      {/* DEZENTE FUNKELNDE STERNE - LANGSAMER & TRANSPARENTER */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(30)].map((_, i) => (
+        {[...Array(25)].map((_, i) => (
           <motion.div
             key={i}
-            className="absolute w-[2px] h-[2px] bg-[#FE9100] rounded-full"
+            className="absolute w-[1.5px] h-[1.5px] bg-[#FE9100] rounded-full"
             style={{
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
-              filter: 'blur(0.5px)',
+              filter: 'blur(0.8px)',
             }}
             animate={{
-              opacity: [0, 0.4, 0],
+              opacity: [0, 0.25, 0],
               scale: [0, 1, 0],
             }}
             transition={{
-              duration: 2 + Math.random() * 3,
+              duration: 4 + Math.random() * 4,
               repeat: Infinity,
-              delay: Math.random() * 5,
+              delay: Math.random() * 8,
               ease: "easeInOut",
             }}
           />
@@ -307,7 +307,7 @@ export function ChatInterface() {
         {showHistory && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 z-40" onClick={() => setShowHistory(false)} />
-            <motion.div initial={{ x: -280 }} animate={{ x: 0 }} exit={{ x: -280 }} transition={{ type: "spring", damping: 30 }} className="fixed left-0 top-0 bottom-0 w-72 bg-[#0f0f0f] border-r border-white/5 z-50 flex flex-col">
+            <motion.div initial={{ x: -280 }} animate={{ x: 0 }} exit={{ x: -280 }} transition={{ type: "spring", damping: 30 }} className="fixed left-0 top-0 bottom-0 w-72 bg-[#0a0a0a] border-r border-white/5 z-50 flex flex-col">
               <div className="p-4 border-b border-white/5 flex justify-between items-center">
                 <h3 className="text-white font-medium text-sm">Chats</h3>
                 <Button size="sm" variant="ghost" onClick={() => setShowHistory(false)} className="h-7 w-7 p-0 hover:bg-white/5">
@@ -359,7 +359,7 @@ export function ChatInterface() {
 
       <div ref={messagesContainerRef} className={`flex-1 overflow-y-auto relative z-10 aras-scroll ${!hasMessages ? 'flex items-center justify-center' : 'p-6 space-y-4'}`}>
         {!hasMessages ? (
-          <div className="w-full max-w-3xl mx-auto px-6">
+          <div className="w-full max-w-2xl mx-auto px-6">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center mb-12">
               
               {/* ARAS AI LOGO MIT GRADIENT */}
@@ -461,7 +461,7 @@ export function ChatInterface() {
               </motion.div>
             </motion.div>
 
-            {/* ZENTRIERTES EINGABEFELD MIT GOOGLE AI BORDER */}
+            {/* ZENTRIERTES EINGABEFELD MIT SMOOTH BORDER */}
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }}>
               {uploadedFiles.length > 0 && (
                 <div className="mb-3 space-y-2">
@@ -481,39 +481,20 @@ export function ChatInterface() {
 
               <div className="relative flex items-end space-x-2">
                 <div className="flex-1 relative">
-                  {/* GOOGLE AI STYLE BORDER - DEZENT & SMOOTH */}
-                  <svg className="absolute -inset-[1px] w-[calc(100%+2px)] h-[calc(100%+2px)] pointer-events-none" style={{ borderRadius: '1.5rem' }}>
-                    <defs>
-                      <linearGradient id="border-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="#4285F4" stopOpacity="0.6">
-                          <animate attributeName="offset" values="0;1;0" dur="3s" repeatCount="indefinite" />
-                        </stop>
-                        <stop offset="25%" stopColor="#EA4335" stopOpacity="0.6">
-                          <animate attributeName="offset" values="0.25;0.75;0.25" dur="3s" repeatCount="indefinite" />
-                        </stop>
-                        <stop offset="50%" stopColor="#FBBC04" stopOpacity="0.6">
-                          <animate attributeName="offset" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" />
-                        </stop>
-                        <stop offset="75%" stopColor="#34A853" stopOpacity="0.6">
-                          <animate attributeName="offset" values="0.75;0.25;0.75" dur="3s" repeatCount="indefinite" />
-                        </stop>
-                        <stop offset="100%" stopColor="#4285F4" stopOpacity="0.6">
-                          <animate attributeName="offset" values="1;0;1" dur="3s" repeatCount="indefinite" />
-                        </stop>
-                      </linearGradient>
-                    </defs>
-                    <rect 
-                      x="0.5" 
-                      y="0.5" 
-                      width="calc(100% - 1px)" 
-                      height="calc(100% - 1px)" 
-                      rx="24" 
-                      ry="24" 
-                      fill="none" 
-                      stroke="url(#border-gradient)" 
-                      strokeWidth="1"
+                  {/* SMOOTH CONIC GRADIENT BORDER */}
+                  <div className="absolute -inset-[1px] rounded-3xl overflow-hidden">
+                    <motion.div
+                      className="absolute inset-0"
+                      animate={{
+                        background: [
+                          'conic-gradient(from 0deg, #4285F4, #EA4335, #FBBC04, #34A853, #4285F4)',
+                          'conic-gradient(from 360deg, #4285F4, #EA4335, #FBBC04, #34A853, #4285F4)',
+                        ],
+                      }}
+                      transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+                      style={{ opacity: 0.5 }}
                     />
-                  </svg>
+                  </div>
 
                   <textarea
                     ref={textareaRef}
@@ -521,7 +502,7 @@ export function ChatInterface() {
                     onChange={(e) => setMessage(e.target.value)}
                     onKeyDown={handleKeyPress}
                     placeholder="Message ARAS AI"
-                    className="w-full min-h-[56px] max-h-[200px] bg-[#1a1a1a] text-white placeholder:text-gray-600 border-0 rounded-3xl px-6 py-4 pr-14 focus:outline-none resize-none"
+                    className="relative w-full min-h-[56px] max-h-[200px] bg-[#141414] text-white placeholder:text-gray-600 border-0 rounded-3xl px-6 py-4 pr-14 focus:outline-none resize-none"
                     disabled={sendMessage.isPending}
                     rows={1}
                   />
@@ -569,7 +550,7 @@ export function ChatInterface() {
             </motion.div>
           </div>
         ) : (
-          <>
+          <div className="max-w-4xl mx-auto">
             <AnimatePresence>
               {allMessages.map((msg) => {
                 const isOptimistic = 'isOptimistic' in msg && msg.isOptimistic;
@@ -602,7 +583,7 @@ export function ChatInterface() {
             )}
 
             <div ref={messagesEndRef} />
-          </>
+          </div>
         )}
       </div>
 
@@ -626,31 +607,22 @@ export function ChatInterface() {
 
           <div className="relative flex items-end space-x-2 max-w-4xl mx-auto">
             <div className="flex-1 relative">
-              {/* GOOGLE AI BORDER */}
-              <svg className="absolute -inset-[1px] w-[calc(100%+2px)] h-[calc(100%+2px)] pointer-events-none" style={{ borderRadius: '1rem' }}>
-                <defs>
-                  <linearGradient id="border-gradient-2" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#4285F4" stopOpacity="0.6">
-                      <animate attributeName="offset" values="0;1;0" dur="3s" repeatCount="indefinite" />
-                    </stop>
-                    <stop offset="25%" stopColor="#EA4335" stopOpacity="0.6">
-                      <animate attributeName="offset" values="0.25;0.75;0.25" dur="3s" repeatCount="indefinite" />
-                    </stop>
-                    <stop offset="50%" stopColor="#FBBC04" stopOpacity="0.6">
-                      <animate attributeName="offset" values="0.5;1;0.5" dur="3s" repeatCount="indefinite" />
-                    </stop>
-                    <stop offset="75%" stopColor="#34A853" stopOpacity="0.6">
-                      <animate attributeName="offset" values="0.75;0.25;0.75" dur="3s" repeatCount="indefinite" />
-                    </stop>
-                    <stop offset="100%" stopColor="#4285F4" stopOpacity="0.6">
-                      <animate attributeName="offset" values="1;0;1" dur="3s" repeatCount="indefinite" />
-                    </stop>
-                  </linearGradient>
-                </defs>
-                <rect x="0.5" y="0.5" width="calc(100% - 1px)" height="calc(100% - 1px)" rx="16" ry="16" fill="none" stroke="url(#border-gradient-2)" strokeWidth="1" />
-              </svg>
+              {/* SMOOTH CONIC GRADIENT BORDER */}
+              <div className="absolute -inset-[1px] rounded-2xl overflow-hidden">
+                <motion.div
+                  className="absolute inset-0"
+                  animate={{
+                    background: [
+                      'conic-gradient(from 0deg, #4285F4, #EA4335, #FBBC04, #34A853, #4285F4)',
+                      'conic-gradient(from 360deg, #4285F4, #EA4335, #FBBC04, #34A853, #4285F4)',
+                    ],
+                  }}
+                  transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+                  style={{ opacity: 0.5 }}
+                />
+              </div>
 
-              <textarea ref={textareaRef} value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyPress} placeholder="Message ARAS AI" className="w-full min-h-[48px] max-h-[200px] bg-[#1a1a1a] text-white placeholder:text-gray-600 border-0 rounded-2xl px-4 py-3 pr-12 focus:outline-none resize-none" disabled={sendMessage.isPending} rows={1} />
+              <textarea ref={textareaRef} value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyPress} placeholder="Message ARAS AI" className="relative w-full min-h-[48px] max-h-[200px] bg-[#141414] text-white placeholder:text-gray-600 border-0 rounded-2xl px-4 py-3 pr-12 focus:outline-none resize-none" disabled={sendMessage.isPending} rows={1} />
 
               <Button onClick={isRecording ? stopRecording : startRecording} variant="ghost" size="sm" className="absolute right-2 top-2 w-9 h-9 rounded-full p-0 hover:bg-white/10" disabled={sendMessage.isPending}>
                 {isRecording ? (
