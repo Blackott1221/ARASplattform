@@ -598,7 +598,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
           body: JSON.stringify({
             model: 'gpt-5',
             messages: openaiMessages,
-            max_tokens: 2000,
+            max_completion_tokens: 2000,
             stream: true
           })
         });
