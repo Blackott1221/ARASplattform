@@ -40,9 +40,7 @@ export function ChatInterface() {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [optimisticMessages, setOptimisticMessages] = useState<OptimisticMessage[]>([]);
-  
-  // ✅ KRITISCH: Wir verwenden TIMESTAMP statt ID für die Animation!
-  const lastMessageSentTime = useRef<number | null>(null);
+  const [newMessageId, setNewMessageId] = useState<number | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -104,7 +102,7 @@ export function ChatInterface() {
       queryClient.invalidateQueries({ queryKey: ["/api/chat/sessions"] });
       setUploadedFiles([]);
       setOptimisticMessages([]);
-      lastMessageSentTime.current = null;
+      setNewMessageId(null);
       toast({ title: "Neuer Chat gestartet", description: "Vorherige Konversation wurde gespeichert" });
     },
   });
@@ -120,27 +118,31 @@ export function ChatInterface() {
       return response.json();
     },
     onMutate: async (newMessage) => {
-      // ✅ Speichere den Zeitpunkt des Sendens
-      lastMessageSentTime.current = Date.now();
-      
       const optimisticMsg: OptimisticMessage = { id: `optimistic-${Date.now()}`, message: newMessage, isAi: false, timestamp: new Date(), isOptimistic: true };
       setOptimisticMessages(prev => [...prev, optimisticMsg]);
     },
     onSuccess: (data) => {
+      // ✅ KRITISCH: ZUERST newMessageId setzen, DANN Query invalidieren!
+      if (data.aiMessage && data.aiMessage.id) {
+        setNewMessageId(data.aiMessage.id);
+      }
+      
       setOptimisticMessages([]);
       if (data.sessionId) setCurrentSessionId(data.sessionId);
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/user/subscription"] });
       setUploadedFiles([]);
       
-      // ✅ Reset nach 30 Sekunden (Animation hat genug Zeit)
+      // Query invalidieren - jetzt ist newMessageId schon gesetzt!
+      queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/subscription"] });
+      
+      // Reset nach 30 Sekunden
       setTimeout(() => {
-        lastMessageSentTime.current = null;
+        setNewMessageId(null);
       }, 30000);
     },
     onError: () => {
       setOptimisticMessages([]);
-      lastMessageSentTime.current = null;
+      setNewMessageId(null);
       toast({ title: "Fehler", description: "Nachricht konnte nicht gesendet werden", variant: "destructive" });
     },
   });
@@ -153,7 +155,7 @@ export function ChatInterface() {
       await queryClient.invalidateQueries({ queryKey: ["/api/chat/sessions"] });
       setShowHistory(false);
       setOptimisticMessages([]);
-      lastMessageSentTime.current = null;
+      setNewMessageId(null);
       toast({ title: "Chat geladen", description: "Konversation wiederhergestellt" });
     } catch (error) {
       toast({ title: "Fehler", description: "Chat konnte nicht geladen werden", variant: "destructive" });
@@ -344,7 +346,7 @@ export function ChatInterface() {
 
       <div ref={messagesContainerRef} className={`flex-1 overflow-y-auto relative z-10 aras-scroll ${!hasMessages ? 'flex items-center justify-center' : 'p-6 space-y-4'}`}>
         {!hasMessages ? (
-          <div className="w-full max-w-2xl mx-auto px-6">
+          <div className="w-full max-w-3xl mx-auto px-6">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center mb-8">
               
               {/* ARAS AI LOGO MIT GRADIENT */}
@@ -414,7 +416,7 @@ export function ChatInterface() {
                 </span>
               </motion.div>
 
-              {/* PROMPT BUTTONS - NUR 3 BUTTONS NEBENEINANDER OHNE ICONS */}
+              {/* PROMPT BUTTONS - 3 BUTTONS NEBENEINANDER */}
               <motion.div 
                 initial={{ opacity: 0 }} 
                 animate={{ opacity: 1 }} 
@@ -442,98 +444,100 @@ export function ChatInterface() {
               </motion.div>
             </motion.div>
 
-            {/* ZENTRIERTES EINGABEFELD */}
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }}>
-              {uploadedFiles.length > 0 && (
-                <div className="mb-3 space-y-2">
-                  {uploadedFiles.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between bg-white/5 rounded-lg p-2 border border-white/10">
-                      <div className="flex items-center space-x-2 text-sm text-white">
-                        {getFileIcon(file.type)}
-                        <span className="truncate">{file.name}</span>
+            {/* EINGABEFELD - ZENTRIERT ZUM MITTLEREN BUTTON */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }} className="flex justify-center">
+              <div className="w-full max-w-2xl">
+                {uploadedFiles.length > 0 && (
+                  <div className="mb-3 space-y-2">
+                    {uploadedFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between bg-white/5 rounded-lg p-2 border border-white/10">
+                        <div className="flex items-center space-x-2 text-sm text-white">
+                          {getFileIcon(file.type)}
+                          <span className="truncate">{file.name}</span>
+                        </div>
+                        <Button size="sm" variant="ghost" onClick={() => removeFile(index)} className="h-6 w-6 p-0">
+                          <X className="w-3 h-3" />
+                        </Button>
                       </div>
-                      <Button size="sm" variant="ghost" onClick={() => removeFile(index)} className="h-6 w-6 p-0">
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
 
-              <div className="relative flex items-end space-x-2">
-                <div className="flex-1 relative">
-                  {/* FLOWING GRADIENT BORDER WIE "ARAS AI" TEXT */}
-                  <div className="absolute -inset-[2px] rounded-3xl">
-                    <motion.div
-                      className="w-full h-full rounded-3xl"
-                      animate={{
-                        backgroundImage: [
-                          'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
-                          'linear-gradient(90deg, #FE9100 0%, #a34e00 25%, #e9d7c4 50%, #a34e00 75%, #FE9100 100%)',
-                          'linear-gradient(90deg, #a34e00 0%, #e9d7c4 25%, #FE9100 50%, #e9d7c4 75%, #a34e00 100%)',
-                          'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
-                        ],
-                      }}
-                      transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
-                      style={{
-                        padding: '2px',
-                        WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                        WebkitMaskComposite: 'xor',
-                        maskComposite: 'exclude',
-                      }}
+                <div className="relative flex items-end space-x-2">
+                  <div className="flex-1 relative">
+                    {/* FLOWING GRADIENT BORDER */}
+                    <div className="absolute -inset-[2px] rounded-3xl">
+                      <motion.div
+                        className="w-full h-full rounded-3xl"
+                        animate={{
+                          backgroundImage: [
+                            'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
+                            'linear-gradient(90deg, #FE9100 0%, #a34e00 25%, #e9d7c4 50%, #a34e00 75%, #FE9100 100%)',
+                            'linear-gradient(90deg, #a34e00 0%, #e9d7c4 25%, #FE9100 50%, #e9d7c4 75%, #a34e00 100%)',
+                            'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
+                          ],
+                        }}
+                        transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+                        style={{
+                          padding: '2px',
+                          WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                          WebkitMaskComposite: 'xor',
+                          maskComposite: 'exclude',
+                        }}
+                      />
+                    </div>
+
+                    <textarea
+                      ref={textareaRef}
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      onKeyDown={handleKeyPress}
+                      placeholder="Message ARAS AI"
+                      className="relative w-full min-h-[56px] max-h-[200px] bg-[#141414] text-white placeholder:text-gray-600 placeholder:opacity-50 border-0 rounded-3xl px-6 py-4 pr-14 focus:outline-none resize-none"
+                      disabled={sendMessage.isPending}
+                      rows={1}
                     />
+
+                    <Button
+                      onClick={isRecording ? stopRecording : startRecording}
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-3 top-3 w-10 h-10 rounded-full p-0 hover:bg-white/10"
+                      disabled={sendMessage.isPending}
+                    >
+                      {isRecording ? (
+                        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity }}>
+                          <MicOff className="w-5 h-5 text-red-400" />
+                        </motion.div>
+                      ) : (
+                        <Mic className="w-5 h-5 text-gray-500" />
+                      )}
+                    </Button>
                   </div>
 
-                  <textarea
-                    ref={textareaRef}
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    onKeyDown={handleKeyPress}
-                    placeholder="Message ARAS AI"
-                    className="relative w-full min-h-[56px] max-h-[200px] bg-[#141414] text-white placeholder:text-gray-600 placeholder:opacity-50 border-0 rounded-3xl px-6 py-4 pr-14 focus:outline-none resize-none"
-                    disabled={sendMessage.isPending}
-                    rows={1}
-                  />
-
                   <Button
-                    onClick={isRecording ? stopRecording : startRecording}
+                    onClick={() => fileInputRef.current?.click()}
                     variant="ghost"
                     size="sm"
-                    className="absolute right-3 top-3 w-10 h-10 rounded-full p-0 hover:bg-white/10"
-                    disabled={sendMessage.isPending}
+                    className="h-14 w-14 p-0 rounded-2xl hover:bg-white/5"
                   >
-                    {isRecording ? (
-                      <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity }}>
-                        <MicOff className="w-5 h-5 text-red-400" />
-                      </motion.div>
-                    ) : (
-                      <Mic className="w-5 h-5 text-gray-500" />
-                    )}
+                    <Paperclip className="w-5 h-5 text-gray-500" />
+                  </Button>
+
+                  <Button
+                    onClick={() => handleSendMessage()}
+                    size="sm"
+                    disabled={!message.trim() || sendMessage.isPending}
+                    className="h-14 px-6 bg-white/10 hover:bg-white/15 text-white rounded-2xl disabled:opacity-30"
+                  >
+                    <Send className="w-5 h-5" />
                   </Button>
                 </div>
 
-                <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  variant="ghost"
-                  size="sm"
-                  className="h-14 w-14 p-0 rounded-2xl hover:bg-white/5"
-                >
-                  <Paperclip className="w-5 h-5 text-gray-500" />
-                </Button>
-
-                <Button
-                  onClick={() => handleSendMessage()}
-                  size="sm"
-                  disabled={!message.trim() || sendMessage.isPending}
-                  className="h-14 px-6 bg-white/10 hover:bg-white/15 text-white rounded-2xl disabled:opacity-30"
-                >
-                  <Send className="w-5 h-5" />
-                </Button>
-              </div>
-
-              <div className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-700">
-                <AlertCircle className="w-3 h-3" />
-                <p>ARAS AI kann Fehler machen. Bitte überprüfe wichtige Informationen.</p>
+                <div className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-700">
+                  <AlertCircle className="w-3 h-3" />
+                  <p>ARAS AI ® kann Fehler machen. Bitte verlasse Dich nicht auf jede Ausgabe und überprüfe wichtige Informationen</p>
+                </div>
               </div>
             </motion.div>
           </div>
@@ -542,13 +546,7 @@ export function ChatInterface() {
             <AnimatePresence>
               {allMessages.map((msg) => {
                 const isOptimistic = 'isOptimistic' in msg && msg.isOptimistic;
-                
-                // ✅ KRITISCH: Prüfe ob Message innerhalb von 5 Sekunden nach dem Senden kam
-                const messageTime = msg.timestamp ? new Date(msg.timestamp).getTime() : 0;
-                const isNewAiMessage = !isOptimistic && 
-                                       msg.isAi && 
-                                       lastMessageSentTime.current !== null && 
-                                       (messageTime - lastMessageSentTime.current) < 5000;
+                const isNewAiMessage = !isOptimistic && msg.isAi && msg.id === newMessageId;
                 
                 return (
                   <MessageBubble
@@ -647,7 +645,7 @@ export function ChatInterface() {
           </div>
 
           <div className="mt-2 text-center text-xs text-gray-700">
-            <p>ARAS AI kann Fehler machen.</p>
+            <p>ARAS AI ® kann Fehler machen. Bitte verlasse Dich nicht auf jede Ausgabe und überprüfe wichtige Informationen</p>
           </div>
         </div>
       )}

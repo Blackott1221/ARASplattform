@@ -63,11 +63,10 @@ export function MessageBubble({
           setIsTyping(false);
           clearInterval(interval);
         }
-      }, 20); // ✅ 20ms pro Buchstabe - schnell genug um sofort sichtbar, langsam genug um smooth zu sein
+      }, 20);
 
       return () => clearInterval(interval);
     } else if (!isNew) {
-      // Wenn nicht neu, zeige direkt den ganzen Text
       setDisplayedText(cleanMessage);
       setIsTyping(false);
     }
@@ -93,7 +92,6 @@ export function MessageBubble({
         
         <div className="flex flex-col max-w-full">
           <div className="relative">
-            {/* ✅ USER BUBBLE - DEZENTER RAND */}
             {!isAi && (
               <div className="absolute -inset-[1px] rounded-xl">
                 <motion.div
@@ -124,7 +122,6 @@ export function MessageBubble({
             >
               <div className="text-[14px] leading-relaxed break-words whitespace-pre-wrap">
                 {displayedText}
-                {/* ✅ CURSOR WÄHREND ANIMATION */}
                 {isTyping && (
                   <motion.span
                     animate={{ opacity: [1, 0.3, 1] }}
