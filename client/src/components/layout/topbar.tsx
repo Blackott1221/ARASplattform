@@ -41,54 +41,57 @@ export function TopBar({ currentSection, subscriptionData, user, isVisible }: To
     return user?.email?.[0]?.toUpperCase() || "U";
   };
 
-  const isPremium = subscriptionData?.plan !== 'free' && subscriptionData?.plan !== 'starter';
+  const isPremium = subscriptionData?.plan !== "free" && subscriptionData?.plan !== "starter";
 
   return (
-    <motion.div 
-      className="h-12 bg-black/40 backdrop-blur-xl border-b border-white/5 flex items-center justify-between px-4 relative"
+    <motion.div
+      className="h-12 md:h-14 w-full bg-black/60 backdrop-blur-2xl border-b border-white/5 flex items-center justify-between px-3 md:px-6 relative overflow-visible z-30 shadow-[0_8px_30px_rgba(0,0,0,0.45)]"
       initial={{ y: 0, opacity: 1 }}
-      animate={{ 
-        y: isVisible ? 0 : -48,
-        opacity: isVisible ? 1 : 0
+      animate={{
+        y: isVisible ? 0 : -56,
+        opacity: isVisible ? 1 : 0,
       }}
       transition={{ duration: 0.3, ease: "easeInOut" }}
     >
-      {/* Ultra Subtle Gradient Background */}
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#FE9100]/[0.02] to-transparent opacity-50" />
-      
-      {/* Ambient Glow Effect */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[150px] bg-[#FE9100]/5 blur-[80px] pointer-events-none" />
+      {/* Subtle main gradient */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/40 via-[#0b0b0f]/60 to-black/40" />
 
-      {/* Left Section - Greeting & Section */}
-      <div className="flex items-center space-x-4 relative z-10">
-        {/* User Greeting */}
+      {/* Ambient orange glow */}
+      <div className="pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2 w-[520px] h-[180px] bg-[#FE9100]/8 blur-[90px]" />
+
+      {/* Fine diagonal highlight */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent opacity-60" />
+
+      {/* LEFT SECTION */}
+      <div className="flex items-center gap-4 relative z-10">
+        {/* Greeting */}
         <motion.div
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1 }}
           className="flex flex-col"
         >
-          <span className="text-[10px] text-gray-500 font-medium tracking-wide leading-tight">
-            Welcome back,
+          <span className="text-[10px] text-gray-500 font-medium tracking-[0.14em] uppercase leading-tight">
+            Welcome back
           </span>
           <span className="text-xs font-semibold text-white leading-tight">
-            {user?.firstName || user?.username || 'User'} 👋
+            {user?.firstName || user?.username || "User"} 👋
           </span>
         </motion.div>
 
-        {/* Subtle Divider */}
-        <div className="w-px h-6 bg-gradient-to-b from-transparent via-white/10 to-transparent" />
+        {/* Divider */}
+        <div className="hidden sm:block w-px h-7 bg-gradient-to-b from-transparent via-white/15 to-transparent" />
 
         {/* Section Title */}
         <motion.div
-          initial={{ opacity: 0, x: -10 }}
+          initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2 }}
-          className="flex items-center space-x-1.5"
+          transition={{ delay: 0.18 }}
+          className="flex items-center gap-2"
         >
-          <div className="w-1 h-1 rounded-full bg-[#FE9100] animate-pulse" />
-          <h2 
-            className="text-xs font-bold tracking-widest"
+          <div className="w-1.5 h-1.5 rounded-full bg-[#FE9100] shadow-[0_0_10px_rgba(254,145,0,0.8)] animate-pulse" />
+          <h2
+            className="text-[11px] md:text-xs font-bold tracking-[0.25em] uppercase"
             style={{ fontFamily: "'Orbitron', sans-serif" }}
           >
             <span className="bg-gradient-to-r from-white via-gray-200 to-white bg-clip-text text-transparent">
@@ -98,19 +101,29 @@ export function TopBar({ currentSection, subscriptionData, user, isVisible }: To
         </motion.div>
       </div>
 
-      {/* Right Section - Plan & User Controls */}
-      <div className="flex items-center space-x-2 relative z-10">
-        {/* Premium Plan Badge - CLICKABLE zu /billing */}
+      {/* RIGHT SECTION */}
+      <div className="flex items-center gap-2 md:gap-3 relative z-20">
+        {/* Usage Widget – extra z-index so Overlay stets sichtbar */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: -4 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="relative z-40"
+        >
+          <UsageWidget />
+        </motion.div>
+
+        {/* Plan Badge → /billing */}
         <motion.button
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
+          type="button"
+          initial={{ opacity: 0, scale: 0.95, y: -4 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          onClick={() => window.location.href = '/billing'}
+          onClick={() => (window.location.href = "/billing")}
           className="relative group cursor-pointer"
         >
-          {/* Animated Border */}
           {isPremium && (
-            <div className="absolute -inset-[1px] rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div className="absolute -inset-[1.5px] rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               <motion.div
                 className="w-full h-full rounded-md"
                 animate={{
@@ -131,51 +144,52 @@ export function TopBar({ currentSection, subscriptionData, user, isVisible }: To
             </div>
           )}
 
-          <div className={`relative flex items-center space-x-1.5 px-2 py-1 rounded-md backdrop-blur-sm transition-all duration-300 ${
-            isPremium 
-              ? 'bg-gradient-to-r from-[#FE9100]/10 to-[#a34e00]/10 border border-[#FE9100]/20 group-hover:from-[#FE9100]/15 group-hover:to-[#a34e00]/15'
-              : 'bg-white/5 border border-white/10 hover:bg-white/10'
-          }`}>
+          <div
+            className={`relative flex items-center gap-1.5 px-2.5 py-1 rounded-md backdrop-blur-md transition-all duration-300 text-[10px] tracking-[0.16em] uppercase ${
+              isPremium
+                ? "bg-gradient-to-r from-[#FE9100]/12 to-[#a34e00]/10 border border-[#FE9100]/30 group-hover:from-[#FE9100]/18 group-hover:to-[#a34e00]/16 shadow-[0_0_18px_rgba(254,145,0,0.35)]"
+                : "bg-white/4 border border-white/10 hover:bg-white/8"
+            }`}
+          >
             {isPremium ? (
               <motion.div
-                animate={{ 
-                  rotate: [0, 5, 0, -5, 0],
-                  scale: [1, 1.1, 1]
+                animate={{
+                  rotate: [0, 4, 0, -4, 0],
+                  scale: [1, 1.06, 1],
                 }}
-                transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                transition={{ duration: 2.4, repeat: Infinity, repeatDelay: 3 }}
+                className="flex items-center justify-center"
               >
                 <Crown className="w-3 h-3 text-[#FE9100]" />
               </motion.div>
             ) : (
-              <Sparkles className="w-3 h-3 text-gray-500" />
+              <Sparkles className="w-3 h-3 text-gray-400" />
             )}
-            <span className={`text-[10px] font-semibold tracking-wider ${
-              isPremium ? 'text-[#FE9100]' : 'text-gray-400'
-            }`}>
-              {subscriptionData?.status === "trial" || subscriptionData?.status === "trialing" 
-                ? "TRIAL" 
-                : subscriptionData?.plan 
-                  ? subscriptionData.plan.toUpperCase()
-                  : 'FREE'
-              }
+
+            <span className={isPremium ? "text-[#FE9100] font-semibold" : "text-gray-300 font-medium"}>
+              {subscriptionData?.status === "trial" || subscriptionData?.status === "trialing"
+                ? "TRIAL"
+                : subscriptionData?.plan
+                ? subscriptionData.plan.toUpperCase()
+                : "FREE"}
             </span>
           </div>
         </motion.button>
 
-        {/* User Profile Button */}
+        {/* User Profile */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.4 }}
+          initial={{ opacity: 0, scale: 0.95, y: -4 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
           className="relative group"
         >
-          {/* Hover Glow */}
-          <div className="absolute -inset-[1px] rounded-md bg-gradient-to-r from-[#FE9100]/0 via-[#FE9100]/20 to-[#FE9100]/0 opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-300" />
-          
-          <button className="relative flex items-center space-x-2 bg-white/5 backdrop-blur-sm px-2 py-1 rounded-md border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all duration-300 group">
-            {/* Avatar with Premium Ring */}
+          <div className="pointer-events-none absolute -inset-[1px] rounded-lg bg-gradient-to-r from-[#FE9100]/0 via-[#FE9100]/18 to-[#FE9100]/0 opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-300" />
+
+          <button
+            type="button"
+            className="relative flex items-center gap-2 bg-white/4 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10 hover:bg-white/8 hover:border-white/25 transition-all duration-300"
+          >
             <div className="relative">
-              {/* Animated Ring for Premium Users */}
               {isPremium && (
                 <motion.div
                   className="absolute -inset-[2px] rounded-full"
@@ -187,13 +201,13 @@ export function TopBar({ currentSection, subscriptionData, user, isVisible }: To
                     ],
                     rotate: [0, 360],
                   }}
-                  transition={{ 
-                    background: { duration: 3, repeat: Infinity },
-                    rotate: { duration: 8, repeat: Infinity, ease: "linear" }
+                  transition={{
+                    background: { duration: 3.2, repeat: Infinity },
+                    rotate: { duration: 9, repeat: Infinity, ease: "linear" },
                   }}
                 />
               )}
-              <Avatar className="w-6 h-6 relative border-2 border-black">
+              <Avatar className="w-7 h-7 relative border-2 border-black/80 shadow-[0_0_12px_rgba(0,0,0,0.8)]">
                 <AvatarImage src={user?.profileImageUrl || undefined} />
                 <AvatarFallback className="bg-gradient-to-br from-[#FE9100] to-[#a34e00] text-white text-[9px] font-bold">
                   {getUserInitials(user)}
@@ -201,66 +215,55 @@ export function TopBar({ currentSection, subscriptionData, user, isVisible }: To
               </Avatar>
             </div>
 
-            {/* User Name */}
-            <div className="flex flex-col items-start">
-              <span className="text-[10px] font-semibold text-white leading-tight">
-                {user?.firstName || user?.username || 'User'}
+            <div className="hidden sm:flex flex-col items-start leading-tight">
+              <span className="text-[10px] font-semibold text-white truncate max-w-[120px]">
+                {user?.firstName || user?.username || "User"}
               </span>
-              <span className="text-[9px] text-gray-500 leading-tight">
-                {user?.email?.split('@')[0] || 'user'}
+              <span className="text-[9px] text-gray-400 truncate max-w-[120px]">
+                {user?.email?.split("@")[0] || "user"}
               </span>
             </div>
 
-            {/* Dropdown Icon */}
-            <ChevronDown className="w-2.5 h-2.5 text-gray-400 group-hover:text-gray-300 transition-colors" />
+            <ChevronDown className="w-2.5 h-2.5 text-gray-400 group-hover:text-gray-200 transition-colors" />
           </button>
         </motion.div>
 
-        {/* Usage Widget */}
+        {/* Logout */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
+          initial={{ opacity: 0, scale: 0.95, y: -4 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-        >
-          <UsageWidget />
-        </motion.div>
-
-        {/* Logout Button */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.5 }}
         >
           <Button
             variant="ghost"
             size="sm"
             onClick={async () => {
               try {
-                await fetch('/api/logout', { method: 'POST', credentials: 'include' });
-                window.location.href = '/auth';
+                await fetch("/api/logout", { method: "POST", credentials: "include" });
+                window.location.href = "/auth";
               } catch (error) {
-                console.error('Logout failed:', error);
-                window.location.href = '/auth';
+                console.error("Logout failed:", error);
+                window.location.href = "/auth";
               }
             }}
-            className="w-7 h-7 rounded-md bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/30 text-gray-400 hover:text-red-400 transition-all duration-300 p-0 group"
+            className="w-7 h-7 rounded-md bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/40 text-gray-300 hover:text-red-400 transition-all duration-300 p-0 group"
           >
             <LogOut className="w-3 h-3 group-hover:scale-110 transition-transform" />
           </Button>
         </motion.div>
       </div>
 
-      {/* Bottom Glow Line */}
-      <div className="absolute bottom-0 left-0 right-0 h-px">
-        <motion.div 
-          className="h-full bg-gradient-to-r from-transparent via-[#FE9100]/30 to-transparent"
+      {/* Bottom animated glow line */}
+      <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-[1px]">
+        <motion.div
+          className="h-full bg-gradient-to-r from-transparent via-[#FE9100]/40 to-transparent"
           animate={{
-            opacity: [0.3, 0.6, 0.3],
+            opacity: [0.25, 0.7, 0.25],
           }}
           transition={{
-            duration: 3,
+            duration: 3.2,
             repeat: Infinity,
-            ease: "easeInOut"
+            ease: "easeInOut",
           }}
         />
       </div>
