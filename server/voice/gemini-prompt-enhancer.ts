@@ -35,7 +35,7 @@ export async function enhanceCallWithGemini(
     }
     
     const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const rawPrompt = `
     Du bist ein intelligenter "Call-Vorbereiter" für ARAS AI, die menschlichste KI-Assistenz der Welt.
