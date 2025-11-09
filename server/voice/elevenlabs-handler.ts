@@ -61,15 +61,40 @@ export async function makeHumanCall(callContext: EnhancedCallContext) {
     };
 
   } catch (error: any) {
-    logger.error('[ARAS-VOICE] ElevenLabs Anruf-Fehler!', { 
-      error: error.response?.data || error.message,
-      status: error.response?.status 
-    });
+    const errorDetails = {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message,
+      url: error.config?.url,
+      agentId: process.env.ELEVENLABS_AGENT_ID,
+      phoneNumberId: process.env.ELEVENLABS_PHONE_NUMBER_ID
+    };
+    
+    logger.error('[ARAS-VOICE] ElevenLabs Anruf-Fehler!', errorDetails);
+    
+    // Prüfe verschiedene Fehlerszenarien
+    if (error.response?.status === 404) {
+      throw new Error(
+        `ElevenLabs Endpoint nicht gefunden. \n` +
+        `Mögliche Ursachen:\n` +
+        `1. Agent ID ist falsch oder existiert nicht\n` +
+        `2. Phone Number ID ist nicht mit Twilio verknüpft\n` +
+        `3. Twilio Integration ist nicht aktiviert in ElevenLabs Dashboard\n` +
+        `4. API Key hat keine Berechtigung für Telefonie\n\n` +
+        `Bitte prüfe in deinem ElevenLabs Dashboard: https://elevenlabs.io/app/conversational-ai`
+      );
+    }
+    
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      throw new Error('ElevenLabs API Key ist ungültig oder hat keine Telefonie-Berechtigung');
+    }
+    
     throw new Error(
       error.response?.data?.detail?.message || 
       error.response?.data?.detail ||
       error.message || 
-      'Failed to initiate call at ElevenLabs'
+      'Unbekannter Fehler beim Anruf-Versuch'
     );
   }
 }
