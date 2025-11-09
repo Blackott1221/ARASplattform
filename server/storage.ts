@@ -977,6 +977,59 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(callLogs.createdAt))
       .limit(50);
   }
+  
+  // Phonebook/Contacts Methods
+  async getUserContacts(userId: string) {
+    // Return unique contacts from call_logs
+    const logs = await db
+      .select()
+      .from(callLogs)
+      .where(eq(callLogs.userId, userId))
+      .orderBy(desc(callLogs.createdAt));
+    
+    const uniqueContacts = new Map();
+    logs.forEach((log: any) => {
+      if (log.phoneNumber && !uniqueContacts.has(log.phoneNumber)) {
+        uniqueContacts.set(log.phoneNumber, {
+          name: log.phoneNumber,
+          phoneNumber: log.phoneNumber,
+          lastCall: log.createdAt
+        });
+      }
+    });
+    return Array.from(uniqueContacts.values());
+  }
+  
+  async findContactByName(userId: string, name: string) {
+    const contacts = await this.getUserContacts(userId);
+    return contacts.find((c: any) => c.name.toLowerCase() === name.toLowerCase()) || null;
+  }
+  
+  async createContact(userId: string, name: string, phoneNumber: string) {
+    // Since we don't have a contacts table yet, just return the data
+    return { name, phoneNumber, userId };
+  }
+  
+  async getCallHistoryByPhone(userId: string, phoneNumber: string) {
+    return await db
+      .select()
+      .from(callLogs)
+      .where(eq(callLogs.userId, userId))
+      .where(eq(callLogs.phoneNumber, phoneNumber))
+      .orderBy(desc(callLogs.createdAt))
+      .limit(10);
+  }
+  
+  async getPlatformStats() {
+    // Implement platform-wide stats
+    const totalUsers = await db.select().from(users);
+    const totalCalls = await db.select().from(callLogs);
+    return {
+      totalUsers: totalUsers.length,
+      totalCalls: totalCalls.length,
+      totalMessages: 0
+    };
+  }
 
 }
 
@@ -1764,70 +1817,67 @@ export class MemStorage implements IStorage {
     interactions.push({ ...interaction, timestamp: new Date() });
     this.callInteractions.set(callId, interactions);
   }
-
-  // ==================== ADMIN METHODS ====================
   
-  async getAllUsers() {
-    const query = `
-      SELECT id, username, email, subscription_plan, subscription_status, created_at
-      FROM users
-      ORDER BY created_at DESC
-    `;
-    const result = await this.db.query(query);
-    return result.rows;
+  // Voice Task operations (stub implementations for MemStorage)
+  async createVoiceTask(data: any): Promise<any> {
+    return { id: Date.now(), ...data };
   }
-
-  async upgradeUserToPro(userId: string) {
-    const query = `
-      UPDATE users
-      SET subscription_plan = 'pro',
-          subscription_status = 'active',
-          updated_at = NOW()
-      WHERE id = $1
-      RETURNING id, username, email, subscription_plan, subscription_status
-    `;
-    const result = await this.db.query(query, [userId]);
-    return result.rows[0];
+  
+  async getVoiceTaskById(id: number): Promise<any | null> {
+    return null;
   }
-
-  async downgradeUserToFree(userId: string) {
-    const query = `
-      UPDATE users
-      SET subscription_plan = 'free',
-          subscription_status = 'active',
-          updated_at = NOW()
-      WHERE id = $1
-      RETURNING id, username, email, subscription_plan, subscription_status
-    `;
-    const result = await this.db.query(query, [userId]);
-    return result.rows[0];
+  
+  async getVoiceTasksByUser(userId: string): Promise<any[]> {
+    return [];
   }
-
-  async getPlatformStats() {
-    const statsQuery = `
-      SELECT
-        COUNT(*) as total_users,
-        COUNT(*) FILTER (WHERE subscription_plan = 'free') as free_users,
-        COUNT(*) FILTER (WHERE subscription_plan = 'pro') as pro_users,
-        COUNT(*) FILTER (WHERE subscription_plan = 'enterprise') as enterprise_users
-      FROM users
-    `;
-    const callsQuery = `
-      SELECT COUNT(*) as total_calls FROM call_logs
-    `;
-    
-    const [stats, calls] = await Promise.all([
-      this.db.query(statsQuery),
-      this.db.query(callsQuery)
-    ]);
-    
+  
+  async updateVoiceTask(id: number, updates: any): Promise<any> {
+    return { id, ...updates };
+  }
+  
+  async deleteVoiceTask(id: number): Promise<void> {
+    // Stub
+  }
+  
+  // Retell call log methods (stub implementations)
+  async saveCallLog(data: any): Promise<void> {
+    // Stub
+  }
+  
+  async getCallLogByRetellId(retellCallId: string, userId: string): Promise<any> {
+    return null;
+  }
+  
+  async getUserCallLogs(userId: string): Promise<any[]> {
+    return this.callLogs.get(userId) || [];
+  }
+  
+  // Phonebook/Contacts Methods (stub implementations)
+  async getUserContacts(userId: string): Promise<any[]> {
+    return [];
+  }
+  
+  async findContactByName(userId: string, name: string): Promise<any | null> {
+    return null;
+  }
+  
+  async createContact(userId: string, name: string, phoneNumber: string): Promise<any> {
+    return { name, phoneNumber, userId };
+  }
+  
+  async getCallHistoryByPhone(userId: string, phoneNumber: string): Promise<any[]> {
+    return [];
+  }
+  
+  async getPlatformStats(): Promise<any> {
     return {
-      ...stats.rows[0],
-      ...calls.rows[0]
+      totalUsers: this.users.size,
+      totalCalls: 0,
+      totalMessages: 0
     };
   }
-
 }
+
 
 // Use database storage for persistent data
 export const storage = new DatabaseStorage();
