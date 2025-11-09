@@ -2,62 +2,82 @@ import axios from 'axios';
 import { logger } from '../logger';
 import { EnhancedCallContext } from './gemini-prompt-enhancer';
 
-// ARAS Neural Voice System - ElevenLabs Agents Platform Integration
+// ARAS Neural Voice System - ElevenLabs Twilio Integration
 export async function makeHumanCall(callContext: EnhancedCallContext) {
   try {
-    logger.info('[ARAS-VOICE] Initialisiere Neural Voice System...', { 
+    logger.info('[ARAS-VOICE] Initialisiere Telefon-Anruf...', { 
       to: callContext.phoneNumber,
       purpose: callContext.purpose 
     });
     
-    // Validiere API Keys
-    if (!process.env.ELEVENLABS_API_KEY || !process.env.ELEVENLABS_AGENT_ID) {
-      throw new Error('ElevenLabs API Keys fehlen! (API_KEY, AGENT_ID erforderlich)');
+    // Validiere ALLE benötigten API Keys
+    if (!process.env.ELEVENLABS_API_KEY) {
+      throw new Error('ELEVENLABS_API_KEY fehlt in Environment Variables!');
+    }
+    if (!process.env.ELEVENLABS_AGENT_ID) {
+      throw new Error('ELEVENLABS_AGENT_ID fehlt in Environment Variables!');
+    }
+    if (!process.env.ELEVENLABS_PHONE_NUMBER_ID) {
+      throw new Error('ELEVENLABS_PHONE_NUMBER_ID fehlt in Environment Variables!');
     }
 
-    // Nutze Twilio Integration für Outbound Calls
-    // Da der direkte phone_call endpoint deprecated ist
+    // Verwende den KORREKTEN Twilio Outbound Call Endpoint
+    const apiUrl = 'https://api.elevenlabs.io/v1/convai/twilio/outbound-call';
+    
+    logger.info('[ARAS-VOICE] Calling ElevenLabs API...', {
+      url: apiUrl,
+      agent_id: process.env.ELEVENLABS_AGENT_ID,
+      phone_number_id: process.env.ELEVENLABS_PHONE_NUMBER_ID,
+      to_number: callContext.phoneNumber
+    });
+    
     const response = await axios.post(
-      `https://api.elevenlabs.io/v1/convai/agents/${process.env.ELEVENLABS_AGENT_ID}/conversation`,
+      apiUrl,
       {
-        // Erstelle eine neue Conversation mit dem Agent
-        conversation_config_override: {
-          agent: {
-            prompt: {
-              prompt: callContext.detailsForAI
-            },
-            first_message: `Hallo ${callContext.contactName}, ich bin ARAS, der persönliche Assistent von ${callContext.userName}.`,
-            language: "de"
-          }
-        },
+        agent_id: process.env.ELEVENLABS_AGENT_ID,
+        agent_phone_number_id: process.env.ELEVENLABS_PHONE_NUMBER_ID,
+        to_number: callContext.phoneNumber,
         
-        // Zusätzliche Metadaten
-        custom_llm_data: {
-          user_name: callContext.userName,
-          contact_name: callContext.contactName,
-          purpose: callContext.purpose,
-          phone_number: callContext.phoneNumber
+        // Override den Agent-Prompt mit unserem generierten Kontext
+        conversation_initiation_client_data: {
+          conversation_config_override: {
+            agent: {
+              prompt: {
+                prompt: callContext.detailsForAI
+              },
+              first_message: `Guten Tag, hier spricht ARAS, der persönliche Assistent von ${callContext.userName}.`,
+              language: "de"
+            }
+          },
+          // Dynamische Variablen für den Kontext
+          dynamic_variables: {
+            user_name: callContext.userName,
+            contact_name: callContext.contactName,
+            purpose: callContext.purpose
+          }
         }
       },
       {
         headers: {
-          'xi-api-key': process.env.ELEVENLABS_API_KEY!,
+          'xi-api-key': process.env.ELEVENLABS_API_KEY,
           'Content-Type': 'application/json'
         },
         timeout: 30000
       }
     );
 
-    logger.info('[ARAS-VOICE] Anruf erfolgreich gestartet!', { 
-      callId: response.data.call_id, 
-      status: response.data.status 
+    logger.info('[ARAS-VOICE] Anruf erfolgreich initiiert!', { 
+      success: response.data.success,
+      conversation_id: response.data.conversation_id,
+      callSid: response.data.callSid,
+      message: response.data.message
     });
 
     return {
-      success: true,
-      callId: response.data.call_id,
-      status: response.data.status,
-      message: `ARAS AI ruft ${callContext.contactName} an...`
+      success: response.data.success || true,
+      callId: response.data.conversation_id || response.data.callSid,
+      status: response.data.success ? 'initiated' : 'pending',
+      message: response.data.message || `ARAS AI ruft ${callContext.contactName} an...`
     };
 
   } catch (error: any) {
@@ -67,34 +87,49 @@ export async function makeHumanCall(callContext: EnhancedCallContext) {
       data: error.response?.data,
       message: error.message,
       url: error.config?.url,
+      method: error.config?.method,
+      requestData: error.config?.data,
       agentId: process.env.ELEVENLABS_AGENT_ID,
       phoneNumberId: process.env.ELEVENLABS_PHONE_NUMBER_ID
     };
     
-    logger.error('[ARAS-VOICE] ElevenLabs Anruf-Fehler!', errorDetails);
+    logger.error('[ARAS-VOICE] ElevenLabs API Fehler!', errorDetails);
     
-    // Prüfe verschiedene Fehlerszenarien
+    // Detaillierte Fehleranalyse
     if (error.response?.status === 404) {
       throw new Error(
-        `ElevenLabs Endpoint nicht gefunden. \n` +
-        `Mögliche Ursachen:\n` +
-        `1. Agent ID ist falsch oder existiert nicht\n` +
-        `2. Phone Number ID ist nicht mit Twilio verknüpft\n` +
-        `3. Twilio Integration ist nicht aktiviert in ElevenLabs Dashboard\n` +
-        `4. API Key hat keine Berechtigung für Telefonie\n\n` +
-        `Bitte prüfe in deinem ElevenLabs Dashboard: https://elevenlabs.io/app/conversational-ai`
+        `ElevenLabs 404: Ressource nicht gefunden.\n` +
+        `Agent ID: ${process.env.ELEVENLABS_AGENT_ID}\n` +
+        `Phone Number ID: ${process.env.ELEVENLABS_PHONE_NUMBER_ID}\n\n` +
+        `Prüfe bitte:\n` +
+        `1. Ist die Agent ID korrekt?\n` +
+        `2. Ist die Phone Number ID mit diesem Agent verbunden?\n` +
+        `3. Ist Twilio Integration im ElevenLabs Dashboard aktiviert?\n` +
+        `4. Hat dein API Key Telefonie-Berechtigungen?`
       );
     }
     
     if (error.response?.status === 401 || error.response?.status === 403) {
-      throw new Error('ElevenLabs API Key ist ungültig oder hat keine Telefonie-Berechtigung');
+      throw new Error(
+        `ElevenLabs Authentifizierung fehlgeschlagen (${error.response.status}).\n` +
+        `Prüfe deinen API Key in den Environment Variables.`
+      );
     }
     
+    if (error.response?.status === 422) {
+      throw new Error(
+        `ElevenLabs Validierungsfehler: ${JSON.stringify(error.response.data)}\n` +
+        `Die Request-Parameter sind ungültig.`
+      );
+    }
+    
+    // Allgemeiner Fehler
     throw new Error(
       error.response?.data?.detail?.message || 
       error.response?.data?.detail ||
+      error.response?.data?.message ||
       error.message || 
-      'Unbekannter Fehler beim Anruf-Versuch'
+      'Unbekannter ElevenLabs API Fehler'
     );
   }
 }
