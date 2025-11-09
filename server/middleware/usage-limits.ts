@@ -11,7 +11,7 @@ export async function checkCallLimit(req: any, res: Response, next: NextFunction
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const user = await storage.getUserById(userId);
+    const user = await storage.getUser(userId);
     
     if (!user) {
       return res.status(404).json({ error: "User not found" });
@@ -51,7 +51,7 @@ export async function checkMessageLimit(req: any, res: Response, next: NextFunct
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const user = await storage.getUserById(userId);
+    const user = await storage.getUser(userId);
     
     if (!user) {
       return res.status(404).json({ error: "User not found" });
