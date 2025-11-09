@@ -49,11 +49,15 @@ export async function makeHumanCall(callContext: EnhancedCallContext) {
               language: "de"
             }
           },
-          // Dynamische Variablen für den Kontext
+          // Dynamische Variablen für ElevenLabs Agent
+          // Diese können im System Prompt mit {{variable_name}} verwendet werden
           dynamic_variables: {
-            user_name: callContext.userName,
-            contact_name: callContext.contactName,
-            purpose: callContext.purpose
+            user_name: callContext.userName,           // {{user_name}} = "ADMIN" / "Manuel"
+            contact_name: callContext.contactName,     // {{contact_name}} = "Justin Schwarzott"
+            purpose: callContext.purpose,               // {{purpose}} = "Terminverschiebung"
+            original_message: callContext.originalMessage || "Kein spezifischer Auftrag",  // Die ORIGINAL Nachricht vom User
+            call_reason: callContext.purpose,           // Nochmal für Klarheit
+            phone_number: callContext.phoneNumber       // Falls benötigt im Gespräch
           }
         }
       },

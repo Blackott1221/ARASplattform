@@ -20,6 +20,7 @@ export interface EnhancedCallContext {
   userName: string;
   purpose: string; // z.B. "Terminverschiebung (Restaurant)"
   detailsForAI: string; // Der super-menschliche Prompt
+  originalMessage: string; // Die ORIGINAL Nachricht vom User für Dynamic Variables
 }
 
 export async function enhanceCallWithGemini(
@@ -41,7 +42,8 @@ export async function enhanceCallWithGemini(
       phoneNumber: input.phoneNumber,
       userName: context.userName,
       purpose,
-      detailsForAI
+      detailsForAI,
+      originalMessage: input.message  // Speichere die Original-Nachricht
     };
   } catch (error: any) {
     logger.error('[ARAS-BRAIN] Fehler bei Kontext-Generierung', { error: error.message });
@@ -52,7 +54,8 @@ export async function enhanceCallWithGemini(
       phoneNumber: input.phoneNumber,
       userName: context.userName,
       purpose: "Anruf",
-      detailsForAI: `Du bist ARAS, der persönliche Assistent von ${context.userName}. Du rufst ${input.contactName} an. Dein Auftrag: ${input.message}. Sei extrem höflich, menschlich und natürlich. Verwende "ähm" und Pausen für mehr Natürlichkeit.`
+      detailsForAI: `Du bist ARAS, der persönliche Assistent von ${context.userName}. Du rufst ${input.contactName} an. Dein Auftrag: ${input.message}. Sei extrem höflich, menschlich und natürlich. Verwende "ähm" und Pausen für mehr Natürlichkeit.`,
+      originalMessage: input.message  // Speichere die Original-Nachricht auch im Fallback
     };
   }
 }
