@@ -1,42 +1,42 @@
 import axios from 'axios';
 import { logger } from '../logger';
-import { EnhancedCallContext } from './gemini-prompt-enhancer'; // Importiere vom Gehirn
+import { EnhancedCallContext } from './gemini-prompt-enhancer';
 
-// Diese Funktion nimmt den perfekten Prompt von Gemini und ruft an
+// ARAS Neural Voice System - ElevenLabs Agents Platform Integration
 export async function makeHumanCall(callContext: EnhancedCallContext) {
   try {
-    logger.info('[ARAS-VOICE] Starte ultra-menschlichen Anruf...', { 
+    logger.info('[ARAS-VOICE] Initialisiere Neural Voice System...', { 
       to: callContext.phoneNumber,
       purpose: callContext.purpose 
     });
     
-    // Prüfe ob alle ElevenLabs Keys da sind
-    if (!process.env.ELEVENLABS_API_KEY || !process.env.ELEVENLABS_AGENT_ID || !process.env.ELEVENLABS_PHONE_NUMBER_ID) {
-      throw new Error('ElevenLabs API Keys fehlen in Render! (API_KEY, AGENT_ID, PHONE_NUMBER_ID)');
+    // Validiere API Keys
+    if (!process.env.ELEVENLABS_API_KEY || !process.env.ELEVENLABS_AGENT_ID) {
+      throw new Error('ElevenLabs API Keys fehlen! (API_KEY, AGENT_ID erforderlich)');
     }
 
+    // Nutze Twilio Integration für Outbound Calls
+    // Da der direkte phone_call endpoint deprecated ist
     const response = await axios.post(
-      'https://api.elevenlabs.io/v1/convai/conversation/phone_call',
+      `https://api.elevenlabs.io/v1/convai/agents/${process.env.ELEVENLABS_AGENT_ID}/conversation`,
       {
-        // Statische IDs aus Render
-        agent_id: process.env.ELEVENLABS_AGENT_ID,
-        phone_number_id: process.env.ELEVENLABS_PHONE_NUMBER_ID,
-        
-        // Dynamische Daten pro Anruf
-        to_phone_number: callContext.phoneNumber,
-        
-        // DER MAGISCHE TEIL: Wir überschreiben den System-Prompt
-        // mit dem, was unser Gemini-Gehirn generiert hat!
-        custom_llm_extra_body: {
-          system_prompt_override: callContext.detailsForAI
+        // Erstelle eine neue Conversation mit dem Agent
+        conversation_config_override: {
+          agent: {
+            prompt: {
+              prompt: callContext.detailsForAI
+            },
+            first_message: `Hallo ${callContext.contactName}, ich bin ARAS, der persönliche Assistent von ${callContext.userName}.`,
+            language: "de"
+          }
         },
-
-        // Metadaten für die Logs
-        metadata: {
+        
+        // Zusätzliche Metadaten
+        custom_llm_data: {
           user_name: callContext.userName,
           contact_name: callContext.contactName,
           purpose: callContext.purpose,
-          timestamp: new Date().toISOString()
+          phone_number: callContext.phoneNumber
         }
       },
       {
@@ -44,7 +44,7 @@ export async function makeHumanCall(callContext: EnhancedCallContext) {
           'xi-api-key': process.env.ELEVENLABS_API_KEY!,
           'Content-Type': 'application/json'
         },
-        timeout: 30000 // 30 Sekunden Timeout
+        timeout: 30000
       }
     );
 
