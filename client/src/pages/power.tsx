@@ -77,7 +77,7 @@ export default function Power() {
     voiceCallsUsed: 0,
     aiMessagesLimit: 100,
     voiceCallsLimit: 10,
-    renewalDate: new Date(),
+    renewalDate: new Date().toISOString(),
     hasPaymentMethod: false,
     requiresPaymentSetup: false,
     isTrialActive: false,
@@ -707,6 +707,7 @@ export default function Power() {
                     ))}
                   </div>
                 </motion.div>
+              </motion.div>
 
               {/* Right Column: Results & Status */}
               <motion.div 
