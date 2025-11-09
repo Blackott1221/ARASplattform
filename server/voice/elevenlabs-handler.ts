@@ -38,19 +38,10 @@ export async function makeHumanCall(callContext: EnhancedCallContext) {
         agent_phone_number_id: process.env.ELEVENLABS_PHONE_NUMBER_ID,
         to_number: callContext.phoneNumber,
         
-        // Override den Agent-Prompt mit unserem generierten Kontext
+        // Nutze NUR Dynamic Variables - behalte ElevenLabs Dashboard Config
         conversation_initiation_client_data: {
-          conversation_config_override: {
-            agent: {
-              prompt: {
-                prompt: callContext.detailsForAI
-              },
-              first_message: `Guten Tag, hier spricht ARAS, der persönliche Assistent von ${callContext.userName}.`,
-              language: "de"
-            }
-          },
-          // Dynamische Variablen für ElevenLabs Agent
-          // Diese können im System Prompt mit {{variable_name}} verwendet werden
+          // KEIN conversation_config_override! Behalte die Dashboard-Konfiguration!
+          // Nur Dynamic Variables übergeben
           dynamic_variables: {
             user_name: callContext.userName,           // {{user_name}} = "ADMIN" / "Manuel"
             contact_name: callContext.contactName,     // {{contact_name}} = "Justin Schwarzott"
