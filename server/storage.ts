@@ -911,24 +911,47 @@ export class DatabaseStorage implements IStorage {
   async saveCallLog(data: {
     userId: string;
     phoneNumber: string;
-    retellCallId: string;
     status: string;
+    // Neue flexible Felder
+    provider?: string;           // 'aras-neural-voice (elevenlabs)'
+    callId?: string;             // ElevenLabs conversation_id
+    purpose?: string;            // 'Terminverschiebung'
+    details?: string;            // Original message vom User
+    contactName?: string;        // Name des Angerufenen
+    originalMessage?: string;    // Die exakte Eingabe
+    // Legacy Retell Felder (optional)
+    retellCallId?: string;
     duration?: number | null;
     transcript?: string | null;
     customPrompt?: string | null;
     recordingUrl?: string | null;
     metadata?: any;
   }) {
+    // Sammle alle wichtigen Daten für metadata
+    const enrichedMetadata = {
+      ...(data.metadata || {}),
+      provider: data.provider || 'unknown',
+      callId: data.callId,
+      purpose: data.purpose,
+      details: data.details,
+      contactName: data.contactName,
+      originalMessage: data.originalMessage,
+      timestamp: new Date().toISOString(),
+      // System info
+      systemVersion: 'ARAS AI v2.0',
+      voiceSystem: 'Neural Voice (Gemini + ElevenLabs)'
+    };
+
     await db.insert(callLogs).values({
       userId: data.userId,
       phoneNumber: data.phoneNumber,
-      retellCallId: data.retellCallId,
+      retellCallId: data.callId || data.retellCallId || null, // Nutze callId als ID
       status: data.status,
       duration: data.duration,
       transcript: data.transcript,
-      customPrompt: data.customPrompt,
+      customPrompt: data.customPrompt || data.originalMessage || null,
       recordingUrl: data.recordingUrl,
-      metadata: data.metadata,
+      metadata: enrichedMetadata, // Speichere ALLES hier!
     });
   }
 
