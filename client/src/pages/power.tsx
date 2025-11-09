@@ -338,98 +338,59 @@ export default function Power() {
         
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-7xl mx-auto px-6 py-8">
-            {/* ARAS CI Hero Section */}
+            {/* Header Section */}
             <motion.div 
-              initial={{ opacity: 0, y: 20 }} 
+              initial={{ opacity: 0, y: -20 }} 
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
               className="text-center mb-12"
             >
-              {/* ARAS AI Logo with Premium Gradient Animation */}
+              {/* POWER Title with Animated Gradient - NO TEXT BELOW */}
               <motion.h1 
-                className="text-7xl font-bold mb-4 relative"
+                className="text-6xl font-black mb-8"
                 style={{ fontFamily: 'Orbitron, sans-serif' }}
                 initial={{ scale: 0.95 }}
                 animate={{ scale: 1 }}
                 transition={{ duration: 0.5 }}
               >
-                <span
-                  className="relative inline-block"
-                  style={{
-                    color: '#e9d7c4',
-                    textShadow: '0 2px 4px rgba(0, 0, 0, 0.5)',
+                <motion.span
+                  className="inline-block"
+                  animate={{
+                    backgroundImage: [
+                      'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
+                      'linear-gradient(90deg, #FE9100 0%, #a34e00 25%, #e9d7c4 50%, #a34e00 75%, #FE9100 100%)',
+                      'linear-gradient(90deg, #a34e00 0%, #e9d7c4 25%, #FE9100 50%, #e9d7c4 75%, #a34e00 100%)',
+                      'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
+                    ],
+                    backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
                   }}
-                >
-                  <motion.span
-                    className="absolute inset-0"
-                    animate={{
-                      backgroundImage: [
-                        'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
-                        'linear-gradient(90deg, #FE9100 0%, #a34e00 25%, #e9d7c4 50%, #a34e00 75%, #FE9100 100%)',
-                        'linear-gradient(90deg, #a34e00 0%, #e9d7c4 25%, #FE9100 50%, #e9d7c4 75%, #a34e00 100%)',
-                        'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
-                      ],
-                      backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
-                    }}
-                    transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
-                    style={{
-                      backgroundSize: '300% 100%',
-                      backgroundClip: 'text',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                    }}
-                  >
-                    POWER
-                  </motion.span>
-                  <span style={{ opacity: 0 }}>POWER</span>
-                </span>
-              </motion.h1>
-              
-              {/* Typewriter Animation */}
-              <motion.div 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }} 
-                transition={{ delay: 0.3 }}
-                className="flex items-center justify-center gap-2 text-lg text-gray-500 mb-6"
-              >
-                <span>ARAS AI</span>
-                <span 
-                  className="font-medium min-w-[280px] text-left"
+                  transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
                   style={{
-                    background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
-                    backgroundSize: '200% auto',
+                    backgroundSize: '300% 100%',
                     backgroundClip: 'text',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                   }}
                 >
-                  {displayText}
-                  <motion.span
-                    animate={{ opacity: [1, 0] }}
-                    transition={{ duration: 0.8, repeat: Infinity }}
-                    className="inline-block w-[3px] h-[20px] bg-[#FE9100] ml-1 align-middle"
-                  />
-                </span>
-              </motion.div>
+                  POWER
+                </motion.span>
+              </motion.h1>
               
               {/* Status Bar */}
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="inline-flex items-center gap-4 px-6 py-3 rounded-full bg-white/5 border border-white/10"
+                transition={{ delay: 0.3 }}
+                className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-white/5 border border-white/10 text-xs"
               >
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-sm text-gray-400">System Online</span>
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-gray-400">System Online</span>
                 </div>
-                <div className="w-px h-4 bg-white/20" />
-                <div className="flex items-center gap-2">
-                  <PhoneCall className="w-4 h-4 text-[#FE9100]" />
-                  <span className="text-sm text-gray-400">
-                    {subscriptionData.voiceCallsUsed || 0} / {subscriptionData.voiceCallsLimit || '∞'} Anrufe
-                  </span>
-                </div>
+                <div className="w-px h-3 bg-white/20" />
+                <span className="text-gray-400">
+                  {subscriptionData.voiceCallsUsed || 0} / {subscriptionData.voiceCallsLimit || 100} Anrufe
+                </span>
               </motion.div>
             </motion.div>
 
@@ -574,20 +535,40 @@ export default function Power() {
                         </div>
                       </div>
 
-                      {/* Call Button */}
-                      <motion.button
-                        onClick={makeCall}
-                        disabled={loading || !phoneNumber || !contactName || !message || !!phoneError}
-                        whileHover={{ scale: !loading && phoneNumber && contactName && message && !phoneError ? 1.02 : 1 }}
-                        whileTap={{ scale: !loading && phoneNumber && contactName && message && !phoneError ? 0.98 : 1 }}
-                        className={`w-full py-3 rounded-lg font-medium transition-all ${
-                          loading || !phoneNumber || !contactName || !message || phoneError
-                            ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                            : 'bg-gradient-to-r from-[#FE9100] to-orange-600 text-white hover:shadow-lg hover:shadow-[#FE9100]/20'
-                        }`}
-                      >
-                        {loading ? 'Anruf wird gestartet...' : 'Anruf starten'}
-                      </motion.button>
+                      {/* Call Button - Round with Animated Border */}
+                      <motion.div className="relative w-full">
+                        {/* Animated border */}
+                        <motion.div
+                          className="absolute inset-0 rounded-full"
+                          animate={{
+                            background: [
+                              'linear-gradient(0deg, #FE9100, #e9d7c4, #a34e00, #FE9100)',
+                              'linear-gradient(90deg, #e9d7c4, #a34e00, #FE9100, #e9d7c4)',
+                              'linear-gradient(180deg, #a34e00, #FE9100, #e9d7c4, #a34e00)',
+                              'linear-gradient(270deg, #FE9100, #e9d7c4, #a34e00, #FE9100)',
+                            ],
+                          }}
+                          transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                          style={{ padding: '2px' }}
+                        >
+                          <motion.button
+                            onClick={makeCall}
+                            disabled={loading || !phoneNumber || !contactName || !message || !!phoneError}
+                            whileHover={{ scale: !loading && phoneNumber && contactName && message && !phoneError ? 1.02 : 1 }}
+                            whileTap={{ scale: !loading && phoneNumber && contactName && message && !phoneError ? 0.98 : 1 }}
+                            className={`w-full py-4 rounded-full font-semibold text-base transition-all ${
+                              loading || !phoneNumber || !contactName || !message || phoneError
+                                ? 'bg-black/60 text-gray-500 cursor-not-allowed'
+                                : 'bg-transparent text-white hover:bg-[#FE9100]/10'
+                            }`}
+                            style={{
+                              backdropFilter: 'blur(10px)',
+                            }}
+                          >
+                            {loading ? 'Anruf wird gestartet...' : 'Jetzt anrufen lassen'}
+                          </motion.button>
+                        </motion.div>
+                      </motion.div>
                     </div>
                   </div>
                 </div>

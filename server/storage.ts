@@ -1014,8 +1014,10 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(callLogs)
-      .where(eq(callLogs.userId, userId))
-      .where(eq(callLogs.phoneNumber, phoneNumber))
+      .where(and(
+        eq(callLogs.userId, userId),
+        eq(callLogs.phoneNumber, phoneNumber)
+      ))
       .orderBy(desc(callLogs.createdAt))
       .limit(10);
   }
