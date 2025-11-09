@@ -76,7 +76,12 @@ export default function Power() {
     aiMessagesUsed: 0,
     voiceCallsUsed: 0,
     aiMessagesLimit: 100,
-    voiceCallsLimit: 10
+    voiceCallsLimit: 10,
+    renewalDate: new Date(),
+    hasPaymentMethod: false,
+    requiresPaymentSetup: false,
+    isTrialActive: false,
+    canUpgrade: false
   };
 
   const handleSectionChange = (section: string) => {
@@ -362,13 +367,76 @@ export default function Power() {
                   <PhoneCall className="w-4 h-4 text-[#FE9100]" />
                   <span className="text-sm text-gray-400">
                     {subscriptionData.voiceCallsUsed || 0} / {subscriptionData.voiceCallsLimit || '∞'} Anrufe
+                  </span>
+                </div>
+              </motion.div>
+            </motion.div>
+
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+              {/* Left Column: Smart Call Form */}
+              <motion.div 
+                initial={{ opacity: 0, x: -20 }} 
+                animate={{ opacity: 1, x: 0 }} 
+                transition={{ delay: 0.2 }}
+                className="space-y-6"
+              >
+                {/* Form Card with ARAS CI Design */}
+                <div className="relative group">
+                  {/* Premium Glow Effect */}
+                  <div className="absolute -inset-1 bg-gradient-to-r from-[#FE9100]/20 via-transparent to-[#FE9100]/20 rounded-2xl blur-2xl opacity-0 group-hover:opacity-100 transition-all duration-700" />
+                  
+                  <div className="relative bg-gradient-to-br from-black/40 via-black/30 to-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 hover:border-[#FE9100]/20 transition-all">
+                    {/* Header with Status */}
+                    <div className="flex items-center justify-between mb-8">
+                      <div className="flex items-center gap-4">
+                        <motion.div 
+                          className="relative"
+                          animate={{ 
+                            rotate: [0, 5, -5, 0],
+                          }}
+                          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                         >
-                          <Radio className="w-3 h-3 text-green-500 animate-pulse" />
-                          <span className="text-xs font-medium text-green-400">
-                            {callStatus === 'ringing' ? 'Klingelt' : callStatus === 'connected' ? 'Verbunden' : 'Beendet'}
-                          </span>
+                          <div className="absolute inset-0 bg-[#FE9100] blur-lg opacity-50" />
+                          <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-[#FE9100] to-orange-600 flex items-center justify-center shadow-lg">
+                            <PhoneCall className="w-7 h-7 text-white" />
+                          </div>
                         </motion.div>
-                      )}
+                        <div>
+                          <h2 className="text-2xl font-bold text-white">Smart Voice Call</h2>
+                          <p className="text-sm text-gray-400">ARAS Neural Engine</p>
+                        </div>
+                      </div>
+                      
+                      {/* Call Status Indicator */}
+                      <AnimatePresence>
+                        {callStatus !== 'idle' && (
+                          <motion.div 
+                            initial={{ scale: 0, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0, opacity: 0 }}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full ${
+                              callStatus === 'processing' ? 'bg-yellow-500/20 border border-yellow-500/30' :
+                              callStatus === 'ringing' ? 'bg-blue-500/20 border border-blue-500/30' :
+                              callStatus === 'connected' ? 'bg-green-500/20 border border-green-500/30' :
+                              'bg-gray-500/20 border border-gray-500/30'
+                            }`}
+                          >
+                            <div className={`w-2 h-2 rounded-full animate-pulse ${
+                              callStatus === 'processing' ? 'bg-yellow-500' :
+                              callStatus === 'ringing' ? 'bg-blue-500' :
+                              callStatus === 'connected' ? 'bg-green-500' :
+                              'bg-gray-500'
+                            }`} />
+                            <span className="text-xs font-medium text-white">
+                              {callStatus === 'processing' ? 'Verarbeitet...' :
+                               callStatus === 'ringing' ? 'Klingelt...' :
+                               callStatus === 'connected' ? `Verbunden ${formatCallDuration(callDuration)}` :
+                               'Beendet'}
+                            </span>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
 
                     {/* Form Fields */}
@@ -879,7 +947,7 @@ export default function Power() {
                                 </div>
                               </div>
                               <p className="text-sm text-gray-300 leading-relaxed">
-                                {result.summary?.transcript || `ARAS AI: "Guten Tag ${contactName}, ich rufe im Auftrag von ${user?.firstName || 'unserem Kunden'} an. ${message}"`}
+                                {result.summary?.transcript || `ARAS AI: "Guten Tag ${contactName}, ich rufe im Auftrag von ${(user as any)?.firstName || 'unserem Kunden'} an. ${message}"`}
                               </p>
                             </div>
                             
@@ -1009,70 +1077,7 @@ export default function Power() {
         </div>
       </div>
 
-      <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-    </div>
-  );
-}                                </div>
-                                <p className="text-xs text-gray-500 mt-3">
-                                  ℹ️ Aufnahme wird nach Anruf-Ende automatisch verfügbar
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </div>
-                  ) : result && !result.success ? (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="relative group"
-                    >
-                      <div className="absolute -inset-[1px] bg-gradient-to-r from-red-500/50 to-pink-500/50 rounded-2xl blur-xl" />
-                      <div className="relative bg-gradient-to-br from-black/80 via-black/60 to-black/80 backdrop-blur-2xl border border-red-500/20 rounded-2xl p-8">
-                        <div className="flex items-center gap-4 mb-4">
-                          <div className="w-14 h-14 rounded-xl bg-red-500/20 ring-2 ring-red-500/30 flex items-center justify-center">
-                            <XCircle className="w-7 h-7 text-red-400" />
-                          </div>
-                          <div>
-                            <h3 className="text-2xl font-bold text-white">Fehler</h3>
-                            <p className="text-gray-400">Versuch es erneut</p>
-                          </div>
-                        </div>
-                        <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
-                          <p className="text-red-400 text-sm">{result.error}</p>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="bg-gradient-to-br from-black/40 via-black/30 to-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-16 flex flex-col items-center justify-center text-center min-h-[500px]"
-                    >
-                      <motion.div
-                        animate={{ 
-                          scale: [1, 1.1, 1],
-                          rotate: [0, 5, -5, 0]
-                        }}
-                        transition={{ duration: 4, repeat: Infinity }}
-                        className="w-24 h-24 rounded-full bg-[#FE9100]/20 flex items-center justify-center mb-6 ring-4 ring-[#FE9100]/10"
-                      >
-                        <Phone className="w-12 h-12 text-[#FE9100]" />
-                      </motion.div>
-                      <h3 className="text-2xl font-bold text-white mb-3">Bereit für deinen Call?</h3>
-                      <p className="text-gray-400 max-w-sm">
-                        Gib Kontaktdaten ein und starte einen KI-gesteuerten Anruf mit ARAS Neural Voice
-                      </p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            </div>
-          </div>
-        </div>
-      </div>
-
+      {/* Load ARAS Font */}
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
     </div>
   );
