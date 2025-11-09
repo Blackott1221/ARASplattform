@@ -1,89 +1,38 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Phone, Loader2, CheckCircle2, XCircle, MessageSquare, Clock, User, Mic, FileText, Sparkles } from "lucide-react";
+import { Phone, Loader2, CheckCircle2, XCircle, MessageSquare, Clock, User, Sparkles, BrainCircuit } from "lucide-react";
 
 export default function VoiceCalls() {
+  const [contactName, setContactName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [customPrompt, setCustomPrompt] = useState("");
+  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
-  const [transcript, setTranscript] = useState<string | null>(null);
-  const [loadingTranscript, setLoadingTranscript] = useState(false);
-  const [transcriptError, setTranscriptError] = useState(false);
-
-  const fetchTranscript = async (callId: string, attempt = 1) => {
-    if (attempt === 1) setLoadingTranscript(true);
-    setTranscriptError(false);
-    
-    try {
-      const response = await fetch(`/api/voice/calls/${callId}/transcript`);
-      const data = await response.json();
-      
-      if (data.success && data.transcript) {
-        setTranscript(data.transcript);
-        setLoadingTranscript(false);
-      } else if (attempt < 10) {
-        setTimeout(() => fetchTranscript(callId, attempt + 1), 5000);
-      } else {
-        setTranscriptError(true);
-        setLoadingTranscript(false);
-      }
-    } catch (error) {
-      console.error('Failed to fetch transcript:', error);
-      if (attempt < 10) {
-        setTimeout(() => fetchTranscript(callId, attempt + 1), 5000);
-      } else {
-        setTranscriptError(true);
-        setLoadingTranscript(false);
-      }
-    }
-  };
 
   const makeCall = async () => {
-    if (!phoneNumber) return;
+    if (!phoneNumber || !contactName || !message) return;
     
     setLoading(true);
     setResult(null);
-    setTranscript(null);
-    setTranscriptError(false);
     
     try {
-      if (customPrompt.trim()) {
-        const taskRes = await fetch("/api/voice/tasks", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            taskName: "Quick Call",
-            taskPrompt: customPrompt,
-            phoneNumber 
-          })
-        });
-        const taskData = await taskRes.json();
-        
-        const execRes = await fetch("/api/voice/tasks/" + taskData.task.id + "/execute", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phoneNumber, taskPrompt: customPrompt })
-        });
-        const data = await execRes.json();
-        setResult(data);
-        if (data.call && data.call.call_id) {
-          fetchTranscript(data.call.call_id);
-        }
-      } else {
-        const response = await fetch("/api/voice/retell/call", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phoneNumber })
-        });
-        const data = await response.json();
-        setResult(data);
-        if (data.call && data.call.call_id) {
-          fetchTranscript(data.call.call_id);
-        }
-      }
-    } catch (error) {
-      setResult({ success: false, message: "Call failed" });
+      const response = await fetch("/api/aras-voice/smart-call", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          name: contactName,
+          phoneNumber,
+          message
+        })
+      });
+      
+      const data = await response.json();
+      setResult(data);
+    } catch (error: any) {
+      setResult({ 
+        success: false, 
+        error: error.message || "Anruf fehlgeschlagen" 
+      });
     } finally {
       setLoading(false);
     }
@@ -99,11 +48,11 @@ export default function VoiceCalls() {
             </div>
             <div>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-white via-gray-100 to-gray-300 bg-clip-text text-transparent">
-                ARAS Voice AI
+                ARAS Neural Voice
               </h1>
               <p className="text-gray-400 flex items-center gap-2 mt-1">
-                <Sparkles className="w-4 h-4 text-[#fe9100]" />
-                Powered by Retell AI
+                <BrainCircuit className="w-4 h-4 text-[#fe9100]" />
+                Ultra-menschliche KI-Anrufe
               </p>
             </div>
           </div>
@@ -117,8 +66,8 @@ export default function VoiceCalls() {
                   <Phone className="w-6 h-6 text-[#fe9100]" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white">Neuer Anruf</h2>
-                  <p className="text-sm text-gray-400">Starte einen KI-gesteuerten Call</p>
+                  <h2 className="text-xl font-bold text-white">Smart Call</h2>
+                  <p className="text-sm text-gray-400">ARAS AI Neural Voice System</p>
                 </div>
               </div>
 
@@ -126,13 +75,27 @@ export default function VoiceCalls() {
                 <div>
                   <label className="block text-sm font-medium mb-2 text-gray-300 flex items-center gap-2">
                     <User className="w-4 h-4 text-[#fe9100]" />
+                    Kontaktname *
+                  </label>
+                  <input
+                    type="text"
+                    value={contactName}
+                    onChange={(e) => setContactName(e.target.value)}
+                    placeholder="z.B. Restaurant Bella Italia"
+                    className="w-full px-4 py-3.5 bg-black/50 border border-gray-700/50 rounded-xl focus:border-[#fe9100] focus:ring-2 focus:ring-[#fe9100]/20 focus:outline-none transition-all text-lg text-white placeholder-gray-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2 text-gray-300 flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-[#fe9100]" />
                     Telefonnummer *
                   </label>
                   <input
                     type="tel"
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="+4917661119320"
+                    placeholder="+49 176 611 19320"
                     className="w-full px-4 py-3.5 bg-black/50 border border-gray-700/50 rounded-xl focus:border-[#fe9100] focus:ring-2 focus:ring-[#fe9100]/20 focus:outline-none transition-all text-lg text-white placeholder-gray-500"
                   />
                 </div>
@@ -140,35 +103,35 @@ export default function VoiceCalls() {
                 <div>
                   <label className="block text-sm font-medium mb-2 text-gray-300 flex items-center gap-2">
                     <MessageSquare className="w-4 h-4 text-[#fe9100]" />
-                    Was soll ARAS sagen? (Optional)
+                    Was soll ARAS AI sagen? *
                   </label>
                   <textarea
-                    value={customPrompt}
-                    onChange={(e) => setCustomPrompt(e.target.value)}
-                    placeholder="Bestätige die Buchung und gib die Referenznummer durch"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="z.B. Verschiebe meine Reservierung auf morgen 18:00 Uhr"
                     rows={4}
                     className="w-full px-4 py-3 bg-black/50 border border-gray-700/50 rounded-xl focus:border-[#fe9100] focus:ring-2 focus:ring-[#fe9100]/20 focus:outline-none transition-all resize-none text-white placeholder-gray-500"
                   />
                   <p className="text-xs text-gray-500 mt-2 flex items-center gap-1.5">
-                    <Sparkles className="w-3 h-3" />
-                    Lass das Feld leer für einen Standard-Anruf oder gib ARAS spezifische Anweisungen
+                    <BrainCircuit className="w-3 h-3" />
+                    ARAS AI analysiert deine Nachricht und erstellt einen perfekt menschlichen Anruf
                   </p>
                 </div>
 
                 <button
                   onClick={makeCall}
-                  disabled={loading || !phoneNumber}
+                  disabled={loading || !phoneNumber || !contactName || !message}
                   className="w-full py-4 bg-gradient-to-r from-[#fe9100] to-orange-600 rounded-xl font-semibold text-lg hover:shadow-lg hover:shadow-[#fe9100]/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 text-white hover:scale-[1.02] active:scale-[0.98]"
                 >
                   {loading ? (
                     <>
                       <Loader2 className="w-6 h-6 animate-spin" />
-                      <span>Rufe an...</span>
+                      <span>ARAS AI ruft an...</span>
                     </>
                   ) : (
                     <>
                       <Phone className="w-6 h-6" />
-                      <span>{customPrompt ? "Mit Custom Prompt anrufen" : "Jetzt anrufen"}</span>
+                      <span>Jetzt anrufen</span>
                     </>
                   )}
                 </button>
@@ -177,15 +140,21 @@ export default function VoiceCalls() {
 
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mt-6 p-6 bg-gradient-to-br from-gray-900/50 to-gray-950/50 backdrop-blur-xl border border-gray-800/50 rounded-2xl">
               <h3 className="font-semibold mb-3 text-[#fe9100] flex items-center gap-2">
-                <Sparkles className="w-4 h-4" />
-                Beispiele für Custom Prompts
+                <BrainCircuit className="w-4 h-4" />
+                Beispiele
               </h3>
               <ul className="text-sm text-gray-400 space-y-2">
                 <li className="flex items-start gap-2"><span className="text-[#fe9100] mt-0.5">•</span><span>"Erinnere an den Termin morgen um 10 Uhr"</span></li>
-                <li className="flex items-start gap-2"><span className="text-[#fe9100] mt-0.5">•</span><span>"Sag dass das Essen verschoben wird auf Freitag 19 Uhr"</span></li>
-                <li className="flex items-start gap-2"><span className="text-[#fe9100] mt-0.5">•</span><span>"Frag ob die Person noch Interesse am Angebot hat"</span></li>
-                <li className="flex items-start gap-2"><span className="text-[#fe9100] mt-0.5">•</span><span>"Bestätige die Buchung und gib die Referenznummer durch"</span></li>
+                <li className="flex items-start gap-2"><span className="text-[#fe9100] mt-0.5">•</span><span>"Verschiebe meine Reservierung auf Freitag 19:00 Uhr"</span></li>
+                <li className="flex items-start gap-2"><span className="text-[#fe9100] mt-0.5">•</span><span>"Frage ob sie noch Interesse am Angebot haben"</span></li>
+                <li className="flex items-start gap-2"><span className="text-[#fe9100] mt-0.5">•</span><span>"Bestätige die Buchung mit Referenznummer"</span></li>
               </ul>
+              <div className="mt-4 pt-4 border-t border-gray-700/50">
+                <p className="text-xs text-gray-500 flex items-start gap-2">
+                  <Sparkles className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                  <span>ARAS AI nutzt intelligente Kontext-Analyse um jeden Anruf perfekt menschlich zu gestalten</span>
+                </p>
+              </div>
             </motion.div>
           </motion.div>
 
@@ -203,93 +172,49 @@ export default function VoiceCalls() {
                     </div>
                   </div>
                   
-                  {result.call && (
+                  {result.callId && (
                     <div className="space-y-3">
                       <div className="flex items-center gap-3 p-3 bg-black/30 rounded-lg">
-                        <FileText className="w-4 h-4 text-gray-400" />
+                        <Phone className="w-4 h-4 text-gray-400" />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs text-gray-400">Call ID</p>
-                          <p className="text-sm text-white font-mono truncate">{result.call.call_id}</p>
+                          <p className="text-sm text-white font-mono truncate">{result.callId}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3 p-3 bg-black/30 rounded-lg">
                         <Clock className="w-4 h-4 text-gray-400" />
                         <div>
                           <p className="text-xs text-gray-400">Status</p>
-                          <p className="text-sm text-green-500 font-medium">{result.call.call_status}</p>
+                          <p className="text-sm text-green-500 font-medium">{result.status || 'initiated'}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3 p-3 bg-black/30 rounded-lg">
-                        <Mic className="w-4 h-4 text-gray-400" />
+                        <BrainCircuit className="w-4 h-4 text-gray-400" />
                         <div>
-                          <p className="text-xs text-gray-400">Agent</p>
-                          <p className="text-sm text-[#fe9100] font-medium">ARAS AI</p>
+                          <p className="text-xs text-gray-400">System</p>
+                          <p className="text-sm text-[#fe9100] font-medium">ARAS Neural Voice</p>
                         </div>
                       </div>
-                      {customPrompt && (
+                      {result.message && (
                         <div className="mt-4 p-4 bg-gradient-to-br from-[#fe9100]/10 to-orange-600/10 border border-[#fe9100]/30 rounded-xl">
                           <p className="text-xs text-gray-400 mb-2 flex items-center gap-1.5">
                             <MessageSquare className="w-3 h-3" />
-                            Custom Prompt
+                            System Response
                           </p>
-                          <p className="text-sm text-white leading-relaxed">{customPrompt}</p>
+                          <p className="text-sm text-white leading-relaxed">{result.message}</p>
                         </div>
                       )}
                     </div>
                   )}
                   
-                  {result.message && !result.success && (
+                  {result.error && (
                     <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
-                      <p className="text-red-400 text-sm">{result.message}</p>
+                      <p className="text-red-400 text-sm">{result.error}</p>
                     </div>
                   )}
                 </motion.div>
               )}
 
-              {result && result.success && (
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-gradient-to-br from-gray-900/80 to-gray-950/80 backdrop-blur-xl border border-gray-800/50 rounded-3xl p-8 shadow-2xl">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center ring-2 ring-purple-500/30">
-                      <FileText className="w-6 h-6 text-purple-400" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-white">Gesprächs-Transkript</h3>
-                      <p className="text-sm text-gray-400">Live-Konversation</p>
-                    </div>
-                  </div>
-
-                  <div className="min-h-[200px]">
-                    {loadingTranscript && !transcript && (
-                      <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-                        <Loader2 className="w-8 h-8 animate-spin mb-3 text-[#fe9100]" />
-                        <p className="text-sm">Transkript wird geladen...</p>
-                        <p className="text-xs text-gray-500 mt-1">Dies kann bis zu 50 Sekunden dauern</p>
-                      </div>
-                    )}
-
-                    {transcript && (
-                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-6 bg-black/30 rounded-xl border border-gray-700/50">
-                        <pre className="text-sm text-gray-200 whitespace-pre-wrap font-mono leading-relaxed">{transcript}</pre>
-                      </motion.div>
-                    )}
-
-                    {transcriptError && !transcript && (
-                      <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-                        <XCircle className="w-8 h-8 mb-3 text-red-500" />
-                        <p className="text-sm">Transkript konnte nicht geladen werden</p>
-                        <p className="text-xs text-gray-500 mt-1">Der Call war möglicherweise zu kurz</p>
-                      </div>
-                    )}
-
-                    {!loadingTranscript && !transcript && !transcriptError && (
-                      <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-                        <FileText className="w-8 h-8 mb-3 text-gray-600" />
-                        <p className="text-sm">Warte auf Transkript...</p>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              )}
             </AnimatePresence>
           </motion.div>
         </div>
