@@ -172,6 +172,7 @@ export default function Power() {
       const response = await fetch("/api/aras-voice/smart-call", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ 
           name: contactName,
           phoneNumber,
