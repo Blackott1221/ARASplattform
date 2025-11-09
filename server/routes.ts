@@ -786,7 +786,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       logger.info('[RETELL] Importing SDK...');
       const Retell = (await import('retell-sdk')).default;
       logger.info('[RETELL] Creating client...');
-      const retellClient = new Retell({ apiKey: process.env.RETELL_API_KEY });
+      const retellClient = new Retell({ apiKey: process.env.RETELL_API_KEY || '' });
       
       logger.info('[RETELL] Making call to:', phoneNumber);
       const call = await retellClient.call.createPhoneCall({
@@ -835,7 +835,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       logger.info('[TASK] Executing with custom prompt:', taskPrompt);
       
       const Retell = (await import('retell-sdk')).default;
-      const retellClient = new Retell({ apiKey: process.env.RETELL_API_KEY });
+      const retellClient = new Retell({ apiKey: process.env.RETELL_API_KEY || '' });
       
       const call = await retellClient.call.createPhoneCall({
         from_number: process.env.RETELL_PHONE_NUMBER || '+41445054333',
@@ -1354,8 +1354,8 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         calls: {
           used: user.voiceCallsUsed || 0,
           limit: planLimits.calls,
-          remaining: planLimits.calls === -1
-            ? -1
+          remaining: planLimits.calls >= 20000
+            ? Infinity
             : Math.max(0, planLimits.calls - (user.voiceCallsUsed || 0)),
         },
         messages: {
@@ -1382,12 +1382,69 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   });
 
 
-// ========================================================
-// ARAS AI CORE - v2.0 NEURAL VOICE SYSTEM (FIXED V2)
-// Intelligente Middleware (Gemini) + Menschliche Stimme (ElevenLabs)
-// Diese Route ersetzt die alte, tote '/api/calls'
-// ========================================================
-app.post('/api/aras-voice/smart-call', requireAuth, checkCallLimit, async (req: any, res) => {
+  // ========================================================
+  // USER PHONEBOOK / CONTACTS
+  // ========================================================
+  app.get('/api/user/contacts', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const contacts = await storage.getUserContacts(userId);
+      res.json(contacts);
+    } catch (error) {
+      console.error('Error fetching contacts:', error);
+      res.status(500).json({ message: 'Failed to fetch contacts' });
+    }
+  });
+
+  app.get('/api/user/contacts/search', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { name } = req.query;
+      if (!name) {
+        return res.json({ found: false });
+      }
+      const contact = await storage.findContactByName(userId, name as string);
+      res.json(contact ? { found: true, contact } : { found: false });
+    } catch (error) {
+      console.error('Error searching contact:', error);
+      res.status(500).json({ message: 'Failed to search contact' });
+    }
+  });
+
+  app.post('/api/user/contacts', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { name, phoneNumber } = req.body;
+      if (!name || !phoneNumber) {
+        return res.status(400).json({ message: 'Name and phone number required' });
+      }
+      const contact = await storage.createContact(userId, name, phoneNumber);
+      res.json(contact);
+    } catch (error) {
+      console.error('Error creating contact:', error);
+      res.status(500).json({ message: 'Failed to create contact' });
+    }
+  });
+
+  // Get call history for a specific contact
+  app.get('/api/user/call-history/:phoneNumber', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { phoneNumber } = req.params;
+      const history = await storage.getCallHistoryByPhone(userId, phoneNumber);
+      res.json(history);
+    } catch (error) {
+      console.error('Error fetching call history:', error);
+      res.status(500).json({ message: 'Failed to fetch call history' });
+    }
+  });
+
+  // ========================================================
+  // POWER PAGE / SMART CALLS - Neue Funktion
+  // Intelligente Middleware (Gemini) + Menschliche Stimme (ElevenLabs)
+  // Diese Route ersetzt die alte, tote '/api/calls'
+  // ========================================================
+  app.post('/api/aras-voice/smart-call', requireAuth, checkCallLimit, async (req: any, res) => {
   try {
     const userId = req.session.userId;
     

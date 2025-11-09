@@ -1,10 +1,12 @@
-import { useState, useEffect, useRef } from "react";
-import { Sidebar } from "@/components/layout/sidebar";
-import { TopBar } from "@/components/layout/topbar";
+import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from "framer-motion";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Sidebar } from '@/components/layout/sidebar';
+import { TopBar } from '@/components/layout/topbar';
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
+import { formatDistanceToNow } from 'date-fns';
+import { de } from 'date-fns/locale';
 import { 
   Phone, Loader2, CheckCircle2, XCircle, MessageSquare, Clock, User, 
   Sparkles, Zap, BrainCircuit, Download, Play, Pause, Volume2, FileText, 
@@ -24,12 +26,18 @@ const ANIMATED_TEXTS = [
 ];
 
 const EXAMPLE_PROMPTS = [
-  { icon: "📅", text: "Erinnere an den Termin morgen um 10 Uhr" },
-  { icon: "✅", text: "Bestätige die Buchung mit Referenznummer" },
-  { icon: "🔄", text: "Verschiebe die Reservierung auf Freitag" },
-  { icon: "📞", text: "Vereinbare einen Rückruftermin" },
-  { icon: "💬", text: "Hole Kundenfeedback zum Service ein" },
-  { icon: "🎯", text: "Qualifiziere den Lead für das Sales-Team" }
+  { 
+    text: 'Biete meine Dienstleistung/Produkt an', 
+    detail: 'Beschreibe es bitte so konkret wie möglich, ich entwickle daraus ein super Gespräch und biete dein Produkt oder Dienstleistung an'
+  },
+  { 
+    text: 'Lade den Bewerber ein',
+    detail: null 
+  },
+  { 
+    text: 'Frage nach ob er mein Angebot erhalten hat', 
+    detail: 'Falls Angebotsnummer/Rechnungsnummer vorhanden bitte eintragen'
+  },
 ];
 
 const validatePhoneNumber = (phone: string): boolean => {
@@ -49,6 +57,8 @@ export default function Power() {
   const [contactName, setContactName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [message, setMessage] = useState("");
+  const [showSaveContact, setShowSaveContact] = useState(false);
+  const [callHistory, setCallHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [phoneError, setPhoneError] = useState("");
@@ -76,13 +86,63 @@ export default function Power() {
     aiMessagesUsed: 0,
     voiceCallsUsed: 0,
     aiMessagesLimit: 100,
-    voiceCallsLimit: 10,
+    voiceCallsLimit: 100, // Fixed to show correct limit
     renewalDate: new Date().toISOString(),
     hasPaymentMethod: false,
     requiresPaymentSetup: false,
     isTrialActive: false,
     canUpgrade: false
   };
+
+  // Check if contact exists in database
+  const checkContact = async (name: string) => {
+    if (!name) return;
+    try {
+      const response = await fetch(`/api/user/contacts/search?name=${encodeURIComponent(name)}`, {
+        credentials: 'include'
+      });
+      const data = await response.json();
+      if (data.found && data.contact) {
+        setPhoneNumber(data.contact.phoneNumber);
+        setShowSaveContact(false);
+      } else {
+        setShowSaveContact(true);
+      }
+    } catch (error) {
+      console.error('Error checking contact:', error);
+    }
+  };
+
+  // Save new contact
+  const saveContact = async () => {
+    if (!contactName || !phoneNumber) return;
+    try {
+      await fetch('/api/user/contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name: contactName, phoneNumber })
+      });
+      setShowSaveContact(false);
+      toast({ title: 'Kontakt gespeichert', description: `${contactName} wurde zu Ihrem Telefonbuch hinzugefügt` });
+    } catch (error) {
+      toast({ title: 'Fehler', description: 'Kontakt konnte nicht gespeichert werden', variant: 'destructive' });
+    }
+  };
+
+  // Fetch call history when phone number changes
+  useEffect(() => {
+    if (phoneNumber && validatePhoneNumber(phoneNumber)) {
+      fetch(`/api/user/call-history/${encodeURIComponent(phoneNumber)}`, {
+        credentials: 'include'
+      })
+      .then(res => res.json())
+      .then(data => setCallHistory(data || []))
+      .catch(console.error);
+    } else {
+      setCallHistory([]);
+    }
+  }, [phoneNumber]);
 
   const handleSectionChange = (section: string) => {
     if (section !== "power") {
@@ -373,707 +433,226 @@ export default function Power() {
               </motion.div>
             </motion.div>
 
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-              {/* Left Column: Smart Call Form */}
+            {/* Main Content */}
+            <div className="flex flex-col items-center">
+              {/* Call Form - Narrow and Clean */}
               <motion.div 
-                initial={{ opacity: 0, x: -20 }} 
-                animate={{ opacity: 1, x: 0 }} 
-                transition={{ delay: 0.2 }}
-                className="space-y-6"
+                initial={{ opacity: 0, y: 20 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                transition={{ delay: 0.4 }}
+                className="w-full max-w-md"
               >
-                {/* Form Card with ARAS CI Design */}
-                <div className="relative group">
-                  {/* Premium Glow Effect */}
-                  <div className="absolute -inset-1 bg-gradient-to-r from-[#FE9100]/20 via-transparent to-[#FE9100]/20 rounded-2xl blur-2xl opacity-0 group-hover:opacity-100 transition-all duration-700" />
+                <div className="relative">
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-[#FE9100]/10 to-[#FE9100]/10 rounded-lg blur-lg opacity-50" />
                   
-                  <div className="relative bg-gradient-to-br from-black/40 via-black/30 to-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 hover:border-[#FE9100]/20 transition-all">
-                    {/* Header with Status */}
-                    <div className="flex items-center justify-between mb-8">
-                      <div className="flex items-center gap-4">
-                        <motion.div 
-                          className="relative"
-                          animate={{ 
-                            rotate: [0, 5, -5, 0],
+                  <div className="relative bg-black/60 backdrop-blur-xl border border-white/10 rounded-lg p-8">
+                    {/* Title */}
+                    <div className="text-center mb-8">
+                      <h2 className="text-2xl font-bold mb-2">
+                        <motion.span
+                          animate={{
+                            backgroundImage: [
+                              'linear-gradient(90deg, #e9d7c4 0%, #FE9100 50%, #e9d7c4 100%)',
+                              'linear-gradient(90deg, #FE9100 0%, #e9d7c4 50%, #FE9100 100%)',
+                            ],
+                            backgroundPosition: ['0% 50%', '100% 50%'],
                           }}
-                          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                          transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                          style={{
+                            backgroundSize: '200% 100%',
+                            backgroundClip: 'text',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                          }}
                         >
-                          <div className="absolute inset-0 bg-[#FE9100] blur-lg opacity-50" />
-                          <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-[#FE9100] to-orange-600 flex items-center justify-center shadow-lg">
-                            <PhoneCall className="w-7 h-7 text-white" />
-                          </div>
-                        </motion.div>
-                        <div>
-                          <h2 className="text-2xl font-bold text-white">Smart Voice Call</h2>
-                          <p className="text-sm text-gray-400">ARAS Neural Engine</p>
-                        </div>
-                      </div>
-                      
-                      {/* Call Status Indicator */}
-                      <AnimatePresence>
-                        {callStatus !== 'idle' && (
-                          <motion.div 
-                            initial={{ scale: 0, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0, opacity: 0 }}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-full ${
-                              callStatus === 'processing' ? 'bg-yellow-500/20 border border-yellow-500/30' :
-                              callStatus === 'ringing' ? 'bg-blue-500/20 border border-blue-500/30' :
-                              callStatus === 'connected' ? 'bg-green-500/20 border border-green-500/30' :
-                              'bg-gray-500/20 border border-gray-500/30'
-                            }`}
-                          >
-                            <div className={`w-2 h-2 rounded-full animate-pulse ${
+                          ARAS AI
+                        </motion.span>
+                      </h2>
+                      <p className="text-sm text-gray-500">ARAS Core PRO 1.0</p>
+                    </div>
+
+                    {/* Call Status */}
+                    <AnimatePresence>
+                      {callStatus !== 'idle' && (
+                        <motion.div 
+                          initial={{ scale: 0, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0, opacity: 0 }}
+                          className="mb-6 text-center"
+                        >
+                          <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs ${
+                            callStatus === 'processing' ? 'bg-yellow-500/20 text-yellow-400' :
+                            callStatus === 'ringing' ? 'bg-blue-500/20 text-blue-400' :
+                            callStatus === 'connected' ? 'bg-green-500/20 text-green-400' :
+                            'bg-gray-500/20 text-gray-400'
+                          }`}>
+                            <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${
                               callStatus === 'processing' ? 'bg-yellow-500' :
                               callStatus === 'ringing' ? 'bg-blue-500' :
                               callStatus === 'connected' ? 'bg-green-500' :
                               'bg-gray-500'
                             }`} />
-                            <span className="text-xs font-medium text-white">
-                              {callStatus === 'processing' ? 'Verarbeitet...' :
-                               callStatus === 'ringing' ? 'Klingelt...' :
-                               callStatus === 'connected' ? `Verbunden ${formatCallDuration(callDuration)}` :
-                               'Beendet'}
-                            </span>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
+                            {callStatus === 'processing' ? 'Verarbeitet...' :
+                             callStatus === 'ringing' ? 'Klingelt...' :
+                             callStatus === 'connected' ? `Verbunden ${formatCallDuration(callDuration)}` :
+                             'Beendet'}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
                     {/* Form Fields */}
                     <div className="space-y-6">
-                      {/* Contact Name Field */}
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3 }}
-                      >
-                        <label className="block text-sm font-medium mb-3 text-gray-300 flex items-center gap-2">
-                          <User className="w-4 h-4 text-[#FE9100]" />
-                          Kontaktname
-                          <span className="text-red-400">*</span>
+                      {/* Contact Name */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Mit wem möchten Sie telefonieren?*
                         </label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            value={contactName}
-                            onChange={(e) => setContactName(e.target.value)}
-                            placeholder="z.B. Max Mustermann"
-                            required
-                            className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-xl focus:border-[#FE9100]/50 focus:bg-white/10 focus:outline-none transition-all text-white placeholder-gray-600 hover:border-white/20"
-                          />
-                          <AnimatePresence>
-                            {contactName && (
-                              <motion.div 
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                exit={{ scale: 0 }}
-                                className="absolute right-4 top-1/2 -translate-y-1/2"
-                              >
-                                <CheckCircle2 className="w-5 h-5 text-green-500" />
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                      </motion.div>
-
-                      {/* Phone Number Field */}
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.4 }}
-                      >
-                        <label className="block text-sm font-medium mb-3 text-gray-300 flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-[#FE9100]" />
-                          Telefonnummer
-                          <span className="text-red-400">*</span>
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="tel"
-                            value={phoneNumber}
-                            onChange={(e) => handlePhoneChange(e.target.value)}
-                            placeholder="+4917661119320"
-                            required
-                            className={`w-full px-5 py-4 bg-white/5 border rounded-xl focus:bg-white/10 focus:outline-none transition-all text-white placeholder-gray-600 hover:border-white/20 ${
-                              phoneError ? 'border-red-500/50 focus:border-red-500' : 'border-white/10 focus:border-[#FE9100]/50'
-                            }`}
-                          />
-                          <AnimatePresence>
-                            {phoneNumber && !phoneError && (
-                              <motion.div 
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                exit={{ scale: 0 }}
-                                className="absolute right-4 top-1/2 -translate-y-1/2"
-                              >
-                                <CheckCircle2 className="w-5 h-5 text-green-500" />
-                              </motion.div>
-                            )}
-                            {phoneError && (
-                              <motion.div 
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                exit={{ scale: 0 }}
-                                className="absolute right-4 top-1/2 -translate-y-1/2"
-                              >
-                                <AlertCircle className="w-5 h-5 text-red-500" />
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                        <AnimatePresence>
-                          {phoneError && (
-                            <motion.p 
-                              initial={{ opacity: 0, y: -5 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -5 }}
-                              className="text-xs text-red-400 mt-2 flex items-center gap-1"
-                            >
-                              <AlertCircle className="w-3 h-3" />
-                              {phoneError}
-                            </motion.p>
-                          )}
-                        </AnimatePresence>
-                      </motion.div>
-
-                      {/* Message Field with Animated Placeholder */}
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.5 }}
-                      >
-                        <label className="block text-sm font-medium mb-3 text-gray-300 flex items-center gap-2">
-                          <MessageSquare className="w-4 h-4 text-[#FE9100]" />
-                          Was soll ARAS sagen?
-                          <span className="text-red-400">*</span>
-                          <motion.span 
-                            className="ml-auto text-xs text-[#FE9100]"
-                            animate={{ opacity: [0.5, 1, 0.5] }}
-                            transition={{ duration: 2, repeat: Infinity }}
+                        <input
+                          type="text"
+                          value={contactName}
+                          onChange={(e) => {
+                            setContactName(e.target.value);
+                            checkContact(e.target.value);
+                          }}
+                          className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:border-[#FE9100]/50 focus:outline-none transition-colors"
+                          placeholder="Name eingeben..."
+                        />
+                        {showSaveContact && contactName && (
+                          <motion.button
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            onClick={saveContact}
+                            className="mt-2 text-xs text-[#FE9100] hover:text-[#FE9100]/80 transition-colors"
                           >
-                            Sei so detailliert wie möglich!
-                          </motion.span>
-                        </label>
-                        <div className="relative">
-                          <textarea
-                            ref={textareaRef}
-                            value={message}
-                            onChange={(e) => setMessage(e.target.value)}
-                            placeholder={`${EXAMPLE_PROMPTS[placeholderIndex].icon} ${EXAMPLE_PROMPTS[placeholderIndex].text}`}
-                            required
-                            className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-xl focus:border-[#FE9100]/50 focus:bg-white/10 focus:outline-none transition-all resize-none text-white placeholder-gray-600 hover:border-white/20 min-h-[120px]"
-                          />
-                          <AnimatePresence>
-                            {message && (
-                              <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                className="absolute bottom-3 right-3"
-                              >
-                                <span className="text-xs text-gray-500">{message.length} Zeichen</span>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                        <motion.p 
-                          className="text-xs text-gray-500 mt-2 flex items-center gap-1.5"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 0.6 }}
-                        >
-                          <BrainCircuit className="w-3 h-3 text-[#FE9100]" />
-                          ARAS AI optimiert deine Nachricht mit GPT-4
-                        </motion.p>
-                      </motion.div>
+                            + Kontakt speichern
+                          </motion.button>
+                        )}
+                      </div>
 
-                      {/* Premium Call Button */}
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.6 }}
+                      {/* Phone Number */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Telefonnummer bitte*
+                        </label>
+                        <input
+                          type="tel"
+                          value={phoneNumber}
+                          onChange={(e) => {
+                            const formatted = formatPhoneInput(e.target.value);
+                            setPhoneNumber(formatted);
+                            if (formatted && !validatePhoneNumber(formatted)) {
+                              setPhoneError("Format: +4917661119320 (ohne Leerzeichen)");
+                            } else {
+                              setPhoneError("");
+                            }
+                          }}
+                          className={`w-full px-4 py-3 bg-black/40 border rounded-lg text-white placeholder-gray-500 focus:outline-none transition-colors ${
+                            phoneError ? 'border-red-500/50 focus:border-red-500' : 'border-white/10 focus:border-[#FE9100]/50'
+                          }`}
+                          placeholder="+49..."
+                        />
+                        {phoneError && (
+                          <p className="mt-1 text-xs text-red-400">{phoneError}</p>
+                        )}
+                      </div>
+
+                      {/* Message */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          Was darf ARAS AI in Ihren Namen ausrichten?*
+                        </label>
+                        <textarea
+                          value={message}
+                          onChange={(e) => setMessage(e.target.value)}
+                          className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:border-[#FE9100]/50 focus:outline-none transition-colors resize-none"
+                          rows={4}
+                          placeholder="Nachricht eingeben..."
+                        />
+                        <div className="mt-2 text-xs text-gray-500 text-right">
+                          {message.length} / 500
+                        </div>
+                      </div>
+
+                      {/* Call Button */}
+                      <motion.button
+                        onClick={makeCall}
+                        disabled={loading || !phoneNumber || !contactName || !message || !!phoneError}
+                        whileHover={{ scale: !loading && phoneNumber && contactName && message && !phoneError ? 1.02 : 1 }}
+                        whileTap={{ scale: !loading && phoneNumber && contactName && message && !phoneError ? 0.98 : 1 }}
+                        className={`w-full py-3 rounded-lg font-medium transition-all ${
+                          loading || !phoneNumber || !contactName || !message || phoneError
+                            ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                            : 'bg-gradient-to-r from-[#FE9100] to-orange-600 text-white hover:shadow-lg hover:shadow-[#FE9100]/20'
+                        }`}
                       >
-                        <motion.button
-                          onClick={makeCall}
-                          disabled={loading || !phoneNumber || !contactName || !message || !!phoneError}
-                          whileHover={{ scale: !loading && phoneNumber && contactName && message && !phoneError ? 1.01 : 1 }}
-                          whileTap={{ scale: !loading && phoneNumber && contactName && message && !phoneError ? 0.99 : 1 }}
-                          className="w-full relative overflow-hidden group"
-                        >
-                          {/* Animated gradient background */}
-                          <motion.div 
-                            className="absolute inset-0 bg-gradient-to-r from-[#FE9100] via-orange-500 to-[#FE9100]"
-                            animate={{
-                              backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
-                            }}
-                            transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                            style={{
-                              backgroundSize: '200% 100%',
-                            }}
-                          />
-                          
-                          {/* Button content */}
-                          <div className={`relative py-5 px-8 font-bold text-lg text-white flex items-center justify-center gap-3 transition-all ${
-                            loading || !phoneNumber || !contactName || !message || phoneError ? 'opacity-60' : ''
-                          }`}>
-                            {loading ? (
-                              <>
-                                <motion.div
-                                  animate={{ rotate: 360 }}
-                                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                >
-                                  <Loader2 className="w-5 h-5" />
-                                </motion.div>
-                                <span>Verbindung wird hergestellt...</span>
-                              </>
-                            ) : (
-                              <>
-                                <PhoneCall className="w-5 h-5" />
-                                <span>Jetzt anrufen lassen</span>
-                                <Sparkles className="w-4 h-4" />
-                              </>
-                            )}
-                          </div>
-                        </motion.button>
-                      
-                          
-                        {/* Call Duration Display */}
-                        <AnimatePresence>
-                          {callStatus === 'connected' && (
-                            <motion.div
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: 'auto' }}
-                              exit={{ opacity: 0, height: 0 }}
-                              className="mt-4 p-4 bg-green-500/10 border border-green-500/30 rounded-xl"
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                                  <span className="text-sm text-green-400 font-medium">Live-Verbindung</span>
-                                </div>
-                                <span className="text-sm text-gray-400 font-mono">
-                                  {formatCallDuration(callDuration)}
-                                </span>
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </motion.div>
+                        {loading ? 'Anruf wird gestartet...' : 'Anruf starten'}
+                      </motion.button>
                     </div>
                   </div>
                 </div>
+              </motion.div>
 
-                {/* Example Prompts - Premium Cards */}
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                  className="space-y-3"
+              {/* Example Prompts */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6 }}
+                className="w-full max-w-md mt-8"
+              >
+                <h3 className="text-sm font-medium text-gray-400 mb-4">Häufige Gespräche:</h3>
+                <div className="space-y-2">
+                  {EXAMPLE_PROMPTS.map((example, index) => (
+                    <motion.button
+                      key={index}
+                      onClick={() => setMessage(example.text)}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.7 + index * 0.1 }}
+                      whileHover={{ x: 4 }}
+                      className="w-full text-left p-3 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-[#FE9100]/20 rounded-lg transition-all"
+                    >
+                      <p className="text-sm text-gray-300">{example.text}</p>
+                      {example.detail && (
+                        <p className="text-xs text-gray-500 mt-1">{example.detail}</p>
+                      )}
+                    </motion.button>
+                  ))}
+                </div>
+              </motion.div>
+
+              {/* Call History */}
+              {callHistory.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.8 }}
+                  className="w-full max-w-md mt-8"
                 >
-                  <h3 className="text-sm font-medium text-gray-400 flex items-center gap-2 mb-4">
-                    <Sparkles className="w-4 h-4 text-[#FE9100]" />
-                    Beispiel-Anrufe
-                  </h3>
-                  
-                  {/* Smooth rotating examples */}
-                  <div className="grid grid-cols-1 gap-3">
-                    {EXAMPLE_PROMPTS.slice(0, 3).map((example, index) => (
-                      <motion.button
+                  <h3 className="text-sm font-medium text-gray-400 mb-4">Anrufverlauf:</h3>
+                  <div className="space-y-2">
+                    {callHistory.slice(0, 3).map((call, index) => (
+                      <motion.div
                         key={index}
-                        onClick={() => setMessage(example.text)}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.5 + index * 0.1 }}
-                        whileHover={{ x: 4 }}
-                        className="group relative overflow-hidden"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.9 + index * 0.1 }}
+                        className="p-3 bg-white/5 border border-white/10 rounded-lg"
                       >
-                        <div className="absolute inset-0 bg-gradient-to-r from-[#FE9100]/0 via-[#FE9100]/5 to-[#FE9100]/0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <div className="relative flex items-start gap-3 p-4 bg-white/5 hover:bg-white/10 rounded-xl border border-white/5 hover:border-[#FE9100]/20 transition-all text-left">
-                          <span className="text-2xl">{example.icon}</span>
-                          <div className="flex-1">
-                            <p className="text-sm text-gray-300 group-hover:text-white transition-colors">
-                              {example.text}
-                            </p>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="text-sm text-white">{call.contactName || call.phoneNumber}</p>
+                            <p className="text-xs text-gray-500 mt-1">{call.message?.substring(0, 50)}...</p>
                           </div>
-                          <motion.div 
-                            className="opacity-0 group-hover:opacity-100 transition-opacity"
-                            initial={{ rotate: -90 }}
-                            whileHover={{ rotate: 0 }}
-                          >
-                            <Zap className="w-4 h-4 text-[#FE9100]" />
-                          </motion.div>
+                          <p className="text-xs text-gray-500">
+                            {formatDistanceToNow(new Date(call.createdAt), { addSuffix: true, locale: de })}
+                          </p>
                         </div>
-                      </motion.button>
+                      </motion.div>
                     ))}
                   </div>
                 </motion.div>
-              </motion.div>
-
-              {/* Right Column: Results & Status */}
-              <motion.div 
-                initial={{ opacity: 0, x: 20 }} 
-                animate={{ opacity: 1, x: 0 }} 
-                transition={{ delay: 0.3 }}
-                className="space-y-6"
-              >
-                <AnimatePresence mode="wait">
-                  {/* Active Call Status */}
-                  {(callStatus === 'processing' || callStatus === 'ringing' || callStatus === 'connected') && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      className="relative"
-                    >
-                      <div className="absolute -inset-1 bg-gradient-to-r from-blue-500/20 via-[#FE9100]/20 to-blue-500/20 rounded-2xl blur-2xl" />
-                      <div className="relative bg-gradient-to-br from-black/40 via-black/30 to-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
-                        <div className="flex flex-col items-center text-center space-y-6">
-                          {/* Animated Phone Icon */}
-                          <motion.div
-                            className="relative"
-                            animate={{
-                              scale: callStatus === 'connected' ? [1, 1.1, 1] : [1, 1.05, 1],
-                              rotate: callStatus === 'ringing' ? [0, 10, -10, 0] : 0
-                            }}
-                            transition={{ duration: 2, repeat: Infinity }}
-                          >
-                            <div className="absolute inset-0 bg-[#FE9100] blur-3xl opacity-30" />
-                            <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-[#FE9100] to-orange-600 flex items-center justify-center">
-                              {callStatus === 'processing' ? (
-                                <Loader2 className="w-10 h-10 text-white animate-spin" />
-                              ) : callStatus === 'ringing' ? (
-                                <PhoneCall className="w-10 h-10 text-white" />
-                              ) : (
-                                <Mic className="w-10 h-10 text-white" />
-                              )}
-                            </div>
-                            {callStatus === 'connected' && (
-                              <motion.div
-                                className="absolute -inset-2"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: [0, 1, 0] }}
-                                transition={{ duration: 1.5, repeat: Infinity }}
-                              >
-                                <div className="w-full h-full rounded-full border-2 border-[#FE9100]" />
-                              </motion.div>
-                            )}
-                          </motion.div>
-                          
-                          <div>
-                            <h3 className="text-2xl font-bold text-white mb-2">
-                              {callStatus === 'processing' ? 'Wird vorbereitet...' :
-                               callStatus === 'ringing' ? 'Klingelt bei ' + contactName :
-                               'Im Gespräch mit ' + contactName}
-                            </h3>
-                            <p className="text-gray-400">
-                              {callStatus === 'processing' ? 'ARAS AI analysiert den Kontext' :
-                               callStatus === 'ringing' ? 'Warte auf Annahme...' :
-                               'ARAS AI führt das Gespräch'}
-                            </p>
-                          </div>
-                          
-                          {/* Live Waveform Animation */}
-                          {callStatus === 'connected' && (
-                            <div className="w-full h-16 flex items-center justify-center gap-1">
-                              {[...Array(20)].map((_, i) => (
-                                <motion.div
-                                  key={i}
-                                  className="w-1 bg-gradient-to-t from-[#FE9100] to-orange-400 rounded-full"
-                                  animate={{
-                                    height: [16, 32 + Math.random() * 32, 16]
-                                  }}
-                                  transition={{
-                                    duration: 0.5 + Math.random() * 0.5,
-                                    repeat: Infinity,
-                                    delay: i * 0.05
-                                  }}
-                                />
-                              ))}
-                            </div>
-                          )}
-                          
-                          {callStatus === 'connected' && (
-                            <div className="flex items-center gap-2 px-4 py-2 bg-green-500/20 border border-green-500/30 rounded-full">
-                              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                              <span className="text-sm font-medium text-green-400">
-                                Live • {formatCallDuration(callDuration)}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                  
-                  {/* Call Ended - Show Results */}
-                  {result && result.success && callStatus === 'ended' ? (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="space-y-6"
-                    >
-                      {/* Success Header Card */}
-                      <div className="relative">
-                        <div className="absolute -inset-1 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-2xl blur-xl" />
-                        <div className="relative bg-gradient-to-br from-black/40 via-black/30 to-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                              <motion.div 
-                                className="relative"
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                transition={{ type: "spring", bounce: 0.5 }}
-                              >
-                                <div className="absolute inset-0 bg-green-500 blur-lg opacity-50" />
-                                <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
-                                  <CheckCircle2 className="w-6 h-6 text-white" />
-                                </div>
-                              </motion.div>
-                              <div>
-                                <h3 className="text-xl font-bold text-white">Anruf beendet</h3>
-                                <p className="text-sm text-gray-400">Dauer: {formatCallDuration(callDuration)}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {[...Array(5)].map((_, i) => (
-                                <Star 
-                                  key={i}
-                                  className="w-4 h-4 text-yellow-500 fill-yellow-500" 
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Audio Player Card */}
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                        className="relative"
-                      >
-                        <div className="absolute -inset-1 bg-gradient-to-r from-[#FE9100]/20 via-transparent to-[#FE9100]/20 rounded-2xl blur-xl" />
-                        <div className="relative bg-gradient-to-br from-black/40 via-black/30 to-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-[#FE9100]/20 flex items-center justify-center">
-                                <Volume2 className="w-5 h-5 text-[#FE9100]" />
-                              </div>
-                              <div>
-                                <h4 className="text-white font-medium">Gesprächsaufnahme</h4>
-                                <p className="text-xs text-gray-500">{formatCallDuration(result.summary?.duration || callDuration)}</p>
-                              </div>
-                            </div>
-                            <button className="p-2 hover:bg-white/10 rounded-lg transition-colors group">
-                              <Download className="w-4 h-4 text-gray-400 group-hover:text-[#FE9100]" />
-                            </button>
-                          </div>
-                          
-                          {/* Waveform Visualization */}
-                          <div className="mb-4 h-16 bg-black/30 rounded-lg p-3 flex items-center gap-[2px]">
-                            {[...Array(60)].map((_, i) => (
-                              <motion.div
-                                key={i}
-                                className="flex-1 bg-gradient-to-t from-[#FE9100]/60 to-[#FE9100] rounded-full"
-                                initial={{ height: 4 }}
-                                animate={{ 
-                                  height: audioPlaying ? [4, 8 + Math.random() * 24, 4] : 4 + Math.random() * 8
-                                }}
-                                transition={{
-                                  duration: audioPlaying ? 0.3 : 0,
-                                  repeat: audioPlaying ? Infinity : 0,
-                                  delay: audioPlaying ? i * 0.01 : 0
-                                }}
-                              />
-                            ))}
-                          </div>
-                          
-                          {/* Audio Controls */}
-                          <div className="flex items-center gap-3">
-                            <motion.button 
-                              onClick={() => setAudioPlaying(!audioPlaying)}
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.95 }}
-                              className="w-12 h-12 rounded-full bg-gradient-to-br from-[#FE9100] to-orange-600 flex items-center justify-center shadow-lg hover:shadow-[#FE9100]/50"
-                            >
-                              {audioPlaying ? (
-                                <Pause className="w-5 h-5 text-white" />
-                              ) : (
-                                <Play className="w-5 h-5 text-white ml-1" />
-                              )}
-                            </motion.button>
-                            <div className="flex-1">
-                              <div className="h-1 bg-white/10 rounded-full overflow-hidden">
-                                <motion.div 
-                                  className="h-full bg-gradient-to-r from-[#FE9100] to-orange-600"
-                                  initial={{ width: '0%' }}
-                                  animate={{ width: audioPlaying ? '100%' : '0%' }}
-                                  transition={{ duration: audioPlaying ? 30 : 0 }}
-                                />
-                              </div>
-                            </div>
-                            <span className="text-xs text-gray-500 font-mono min-w-[45px]">
-                              {audioPlaying ? '00:12' : '00:00'}
-                            </span>
-                          </div>
-                        </div>
-                      </motion.div>
-
-                      
-                      {/* Call Summary Card */}
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="relative"
-                      >
-                        <div className="absolute -inset-1 bg-gradient-to-r from-purple-500/20 via-transparent to-purple-500/20 rounded-2xl blur-xl" />
-                        <div className="relative bg-gradient-to-br from-black/40 via-black/30 to-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-6">
-                          <div className="flex items-center gap-3 mb-6">
-                            <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                              <FileText className="w-5 h-5 text-purple-400" />
-                            </div>
-                            <h4 className="text-lg font-bold text-white">Gesprächszusammenfassung</h4>
-                          </div>
-                          
-                          <div className="space-y-4">
-                            {/* Transcript */}
-                            <div className="p-4 bg-white/5 rounded-xl border border-white/5">
-                              <div className="flex items-center justify-between mb-3">
-                                <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Transkript</p>
-                                <div className="flex items-center gap-1">
-                                  <div className="w-2 h-2 rounded-full bg-green-500" />
-                                  <span className="text-xs text-green-400">Erfolgreich</span>
-                                </div>
-                              </div>
-                              <p className="text-sm text-gray-300 leading-relaxed">
-                                {result.summary?.transcript || `ARAS AI: "Guten Tag ${contactName}, ich rufe im Auftrag von ${(user as any)?.firstName || 'unserem Kunden'} an. ${message}"`}
-                              </p>
-                            </div>
-                            
-                            {/* Sentiment & Next Steps */}
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="p-3 bg-white/5 rounded-lg border border-white/5">
-                                <p className="text-xs font-medium text-gray-400 mb-1">Stimmung</p>
-                                <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 rounded-full bg-green-500" />
-                                  <p className="text-sm text-white capitalize">
-                                    {result.summary?.sentiment || 'Positiv'}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="p-3 bg-white/5 rounded-lg border border-white/5">
-                                <p className="text-xs font-medium text-gray-400 mb-1">Erfolgsrate</p>
-                                <p className="text-sm text-white">98%</p>
-                              </div>
-                            </div>
-                            
-                            {/* Next Steps */}
-                            <div className="p-4 bg-[#FE9100]/10 rounded-xl border border-[#FE9100]/30">
-                              <p className="text-xs font-medium text-[#FE9100] mb-2 uppercase tracking-wider">Nächste Schritte</p>
-                              <p className="text-sm text-gray-300">
-                                {result.summary?.nextSteps || 'Termin wurde bestätigt. Follow-up Email wird automatisch versendet.'}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    </motion.div>
-                  ) : result && !result.success ? (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="relative"
-                    >
-                      <div className="absolute -inset-1 bg-gradient-to-r from-red-500/20 via-transparent to-red-500/20 rounded-2xl blur-xl" />
-                      <div className="relative bg-gradient-to-br from-black/40 via-black/30 to-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8">
-                        <div className="flex flex-col items-center text-center space-y-4">
-                          <motion.div
-                            initial={{ rotate: 0 }}
-                            animate={{ rotate: [0, 10, -10, 0] }}
-                            transition={{ duration: 0.5 }}
-                            className="relative"
-                          >
-                            <div className="absolute inset-0 bg-red-500 blur-2xl opacity-30" />
-                            <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center">
-                              <XCircle className="w-8 h-8 text-white" />
-                            </div>
-                          </motion.div>
-                          <div>
-                            <h3 className="text-xl font-bold text-white mb-2">Anruf fehlgeschlagen</h3>
-                            <p className="text-gray-400 text-sm">Bitte versuche es erneut</p>
-                          </div>
-                          <div className="w-full p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
-                            <p className="text-red-300 text-sm leading-relaxed">{result.error}</p>
-                          </div>
-                          <motion.button
-                            onClick={() => setResult(null)}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            className="px-6 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white text-sm font-medium transition-all"
-                          >
-                            Zurück
-                          </motion.button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="relative h-full min-h-[600px] flex items-center justify-center"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-br from-black/40 via-black/30 to-black/40 backdrop-blur-xl border border-white/10 rounded-2xl" />
-                      <div className="relative z-10 flex flex-col items-center text-center p-12">
-                        <motion.div
-                          className="relative mb-8"
-                          animate={{ 
-                            y: [0, -10, 0]
-                          }}
-                          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-                        >
-                          <div className="absolute inset-0 bg-[#FE9100] blur-3xl opacity-20" />
-                          <div className="relative w-32 h-32 rounded-3xl bg-gradient-to-br from-[#FE9100]/20 to-orange-600/20 flex items-center justify-center border border-[#FE9100]/30">
-                            <PhoneCall className="w-16 h-16 text-[#FE9100]" />
-                          </div>
-                          <motion.div
-                            className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-green-500 flex items-center justify-center"
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ delay: 0.5, type: "spring" }}
-                          >
-                            <Sparkles className="w-4 h-4 text-white" />
-                          </motion.div>
-                        </motion.div>
-                        
-                        <h3 className="text-2xl font-bold text-white mb-3">
-                          Bereit für deinen Smart Call?
-                        </h3>
-                        <p className="text-gray-400 max-w-md leading-relaxed">
-                          Fülle die Felder aus und lass ARAS AI mit fortschrittlicher Neural Voice Technologie für dich anrufen
-                        </p>
-                        
-                        <div className="mt-8 flex items-center gap-6 text-sm text-gray-500">
-                          <div className="flex items-center gap-2">
-                            <CheckCircle2 className="w-4 h-4 text-green-500" />
-                            <span>100% Menschlich</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Zap className="w-4 h-4 text-[#FE9100]" />
-                            <span>KI-optimiert</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Activity className="w-4 h-4 text-blue-500" />
-                            <span>Echtzeit</span>
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
+              )}
             </div>
           </div>
         </div>
@@ -1083,4 +662,4 @@ export default function Power() {
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
     </div>
   );
-}
+} 

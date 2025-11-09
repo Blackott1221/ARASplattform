@@ -6,7 +6,6 @@ import {
   chatSessions,
   voiceAgents,
   voiceTasks,
-  voiceTasks,
   callLogs,
   subscriptionPlans,
   usageTracking,
@@ -42,6 +41,9 @@ async function hashPassword(password: string) {
 }
 
 export interface IStorage {
+  // Platform statistics
+  getPlatformStats(): Promise<any>;
+  
   // User operations
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
