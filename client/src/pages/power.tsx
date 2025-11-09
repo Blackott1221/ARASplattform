@@ -1,16 +1,16 @@
 import { useState, useEffect, useRef } from "react";
-import { Sidebar } from "[/components/layout/sidebar";](cci:4://file:///components/layout/sidebar";:0:0-0:0)
-import { TopBar } from "[/components/layout/topbar";](cci:4://file:///components/layout/topbar";:0:0-0:0)
-import { useAuth } from "[/hooks/useAuth";](cci:4://file:///hooks/useAuth";:0:0-0:0)
-import { useToast } from "[/hooks/use-toast";](cci:4://file:///hooks/use-toast";:0:0-0:0)
-import { useQuery } from "[tanstack/react-query";](cci:4://file://tanstack/react-query";:0:0-0:0)
+import { Sidebar } from "@/components/layout/sidebar";
+import { TopBar } from "@/components/layout/topbar";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Phone, Loader2, CheckCircle2, XCircle, MessageSquare, Clock, User, 
   Sparkles, Zap, BrainCircuit, Download, Play, Pause, Volume2, FileText, 
   TrendingUp, Activity, Radio 
 } from "lucide-react";
-import type { SubscriptionResponse } from "[shared/schema";](cci:4://file://shared/schema";:0:0-0:0)
+import type { SubscriptionResponse } from "@shared/schema";
 
 const EXAMPLE_PROMPTS = [
   "Erinnere an den Termin morgen um 10 Uhr",
@@ -181,7 +181,7 @@ export default function Power() {
         <TopBar 
           currentSection="power" 
           subscriptionData={subscriptionData}
-          user={user as import("[shared/schema").User}](cci:4://file://shared/schema").User}:0:0-0:0)
+          user={user as import("@shared/schema").User}
           isVisible={true}
         />
         
@@ -568,4 +568,32 @@ export default function Power() {
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="bg-gradient-to-br from-black/40 via-black/30 to-black/40 backdrop-blur-xl border border-white*
+                      className="bg-gradient-to-br from-black/40 via-black/30 to-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-16 flex flex-col items-center justify-center text-center min-h-[500px]"
+                    >
+                      <motion.div
+                        animate={{ 
+                          scale: [1, 1.1, 1],
+                          rotate: [0, 5, -5, 0]
+                        }}
+                        transition={{ duration: 4, repeat: Infinity }}
+                        className="w-24 h-24 rounded-full bg-[#FE9100]/20 flex items-center justify-center mb-6 ring-4 ring-[#FE9100]/10"
+                      >
+                        <Phone className="w-12 h-12 text-[#FE9100]" />
+                      </motion.div>
+                      <h3 className="text-2xl font-bold text-white mb-3">Bereit für deinen Call?</h3>
+                      <p className="text-gray-400 max-w-sm">
+                        Gib Kontaktdaten ein und starte einen KI-gesteuerten Anruf mit ARAS Neural Voice
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    </div>
+  );
+}
