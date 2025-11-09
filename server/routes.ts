@@ -1471,6 +1471,74 @@ app.post('/api/aras-voice/smart-call', requireAuth, checkCallLimit, async (req: 
     // 2. Hole Nutzer-Kontext aus der Datenbank (z.B. "Manuel")
     const user = await storage.getUser(userId);
     if (!user) {
+
+// ========================================================
+// ARAS AI CORE - v2.0 NEURAL VOICE SYSTEM (FIXED)
+// Intelligente Middleware (Gemini) + Menschliche Stimme (ElevenLabs)
+// Diese Route ersetzt die alte, tote '/api/calls'
+// ========================================================
+app.post('/api/aras-voice/smart-call', requireAuth, checkCallLimit, async (req: any, res) => {
+  try {
+    const userId = req.session.userId;
+    
+    // 1. Hole Rohdaten vom Frontend (call-form.tsx)
+    const { name, phoneNumber, message } = req.body;
+    if (!name || !phoneNumber || !message) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Name, Telefonnummer und Anliegen werden benötigt.' 
+      });
+    }
+
+    // 2. Hole Nutzer-Kontext aus der Datenbank (z.B. "Manuel")
+    const user = await storage.getUser(userId);
+    if (!user) {
+      // 4401 ist ein guter Code für "Session abgelaufen"
+      return res.status(4401).json({ success: false, error: 'Nutzer nicht gefunden oder Session abgelaufen' });
+    }
+    
+    logger.info('[SMART-CALL] Starte Anruf-Vorbereitung...', { userId, contact: name });
+
+    // 3. Rufe das 'Gehirn' auf (Gemini)
+    const { enhanceCallWithGemini } = await import('./voice/gemini-prompt-enhancer');
+    const enhancedContext = await enhanceCallWithGemini(
+      { contactName: name, phoneNumber, message },
+      { userName: user.firstName || user.username || 'mein Kunde' }
+    );
+
+    // 4. Rufe den 'Mund' auf (ElevenLabs)
+    const { makeHumanCall } = await import('./voice/elevenlabs-handler');
+    const callResult = await makeHumanCall(enhancedContext);
+
+    // 5. Speichere den Anruf in der Datenbank
+    await storage.trackUsage(userId, 'voice_call', `Smart Call an ${name}: ${enhancedContext.purpose}`);
+    await storage.saveCallLog({
+      userId,
+      phoneNumber,
+      status: callResult.status || 'initiated',
+      provider: 'aras-neural-voice (elevenlabs)',
+      callId: callResult.callId,
+      purpose: enhancedContext.purpose,
+      details: message // Speichere die rohe User-Nachricht
+    });
+
+    // 6. Sende Erfolg an das Frontend
+    res.json({
+      success: true,
+      message: callResult.message,
+      callId: callResult.callId,
+      status: callResult.status
+    });
+
+  } catch (error: any) {
+    logger.error('[SMART-CALL] Kompletter Anruf-Fehler!', { error: error.message });
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Ein unbekannter Fehler ist aufgetreten' 
+    });
+  }
+});
+
       return res.status(4401).json({ success: false, error: 'Nutzer nicht gefunden oder Session abgelaufen' });
     }
     
