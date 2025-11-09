@@ -33,35 +33,34 @@ export function CallForm() {
     },
   });
 
-  // Real call initiation with backend integration
+  // ARAS AI Smart Call - Gemini + ElevenLabs Integration
   const initiateCall = useMutation({
-    mutationFn: async (callData: any) => {
-      const response = await apiRequest("POST", "/api/calls", callData);
+    mutationFn: async (callData: CallFormData) => {
+      const response = await apiRequest("POST", "/api/aras-voice/smart-call", {
+        name: callData.name,
+        phoneNumber: callData.phoneNumber,
+        message: callData.message
+      });
       return response.json();
     },
     onSuccess: (data) => {
       toast({
-        title: "Call Initiated",
-        description: `Call started to ${data.phoneNumber}`,
+        title: "🎯 ARAS AI ruft an!",
+        description: data.message || `Anruf an ${form.getValues('name')} wird getätigt...`,
       });
       form.reset();
     },
     onError: (error: any) => {
       toast({
-        title: "Call Failed",
-        description: error.message || "Failed to initiate call",
+        title: "Anruf fehlgeschlagen",
+        description: error.message || "Bitte versuche es erneut",
         variant: "destructive",
       });
     },
   });
 
   const onSubmit = async (data: CallFormData) => {
-    await initiateCall.mutateAsync({
-      phoneNumber: data.phoneNumber,
-      message: data.message,
-      name: data.name,
-      voiceAgentId: 1, // Default to first voice agent
-    });
+    await initiateCall.mutateAsync(data);
   };
 
   return (
@@ -79,9 +78,9 @@ export function CallForm() {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Contact Name</FormLabel>
+                  <FormLabel>Kontaktname (wen rufst du an?)</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter contact name" {...field} />
+                    <Input placeholder="z.B. Restaurant Bella Italia" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -93,10 +92,10 @@ export function CallForm() {
               name="phoneNumber"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Phone Number</FormLabel>
+                  <FormLabel>Telefonnummer</FormLabel>
                   <FormControl>
                     <Input 
-                      placeholder="+1 (555) 000-0000" 
+                      placeholder="+49 176 611 19320" 
                       type="tel"
                       {...field} 
                     />
@@ -111,10 +110,10 @@ export function CallForm() {
               name="message"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Message</FormLabel>
+                  <FormLabel>Was soll ARAS AI sagen?</FormLabel>
                   <FormControl>
                     <Textarea 
-                      placeholder="Enter your message"
+                      placeholder="z.B. Verschiebe mein Abendessen auf morgen 18:00 Uhr"
                       className="resize-none"
                       rows={4}
                       {...field} 
@@ -131,7 +130,7 @@ export function CallForm() {
               disabled={initiateCall.isPending}
             >
               <Phone className="w-4 h-4 mr-2" />
-              {initiateCall.isPending ? "Initiating..." : "Call Now"}
+              {initiateCall.isPending ? "ARAS AI ruft an..." : "Jetzt anrufen"}
             </GlowButton>
           </form>
         </Form>
