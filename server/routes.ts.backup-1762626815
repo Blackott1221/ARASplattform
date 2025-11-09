@@ -471,7 +471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST chat message - ARAS AI with GPT-5 STREAMING
+  // POST chat message - ARAS AI with retry logic
   app.post('/api/chat/messages', requireAuth, async (req: any, res) => {
     try {
       const userId = req.session.userId;
@@ -503,6 +503,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestamp: new Date()
       });
       
+      // Track user message
       await storage.trackUsage(userId, 'ai_message', 'User message');
       
       const allMessages = await storage.getChatMessagesBySession(activeSessionId);
@@ -584,81 +585,68 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       }
       openaiMessages.push({ role: "user", content: currentMessage });
       
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-      
-      try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o',
-            messages: openaiMessages,
-            max_completion_tokens: 2000,
-            stream: true
-          })
-        });
-        
-        if (!response.ok) {
-          throw new Error(`OpenAI error: ${response.status}`);
-        }
-        
-        let fullMessage = '';
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-        
-        while (true) {
-          const { done, value } = await reader!.read();
-          if (done) break;
-          
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n').filter(line => line.trim() !== '');
-          
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              if (data === '[DONE]') continue;
-              
-              try {
-                const parsed = JSON.parse(data);
-                const content = parsed.choices[0]?.delta?.content || '';
-                if (content) {
-                  fullMessage += content;
-                  res.write(`data: ${JSON.stringify({ content })}\n\n`);
-                }
-              } catch (e) {}
-            }
+      let aiMessage = '';
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          if (attempt > 0) {
+            await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
           }
+          
+          const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+              model: 'gpt-5',
+              messages: openaiMessages,
+              max_completion_tokens: 2000
+            })
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`OpenAI ${response.status}: ${JSON.stringify(errorData)}`);
+          }
+          
+          logger.info('[GPT-5] Calling OpenAI API...');
+
+          const data = await response.json();
+          logger.info('[GPT-5] Raw Response:', JSON.stringify(data));
+          logger.info('[GPT-5] Choices:', data.choices);
+          logger.info('[GPT-5] Message Content:', data.choices?.[0]?.message?.content);
+
+          aiMessage = data.choices[0].message.content;
+          break;
+        } catch (error: any) {
+          if (attempt === 2) throw error;
         }
-        
-        await storage.createChatMessage({
-          sessionId: activeSessionId,
-          userId,
-          message: fullMessage,
-          isAi: true,
-          timestamp: new Date()
-        });
-        
-        await storage.trackUsage(userId, 'ai_message', 'Chat processed');
-        
-        res.write(`data: ${JSON.stringify({ done: true, sessionId: activeSessionId })}\n\n`);
-        res.end();
-        
-      } catch (error: any) {
-        logger.error("Streaming error:", error);
-        res.write(`data: ${JSON.stringify({ error: "Failed to process message" })}\n\n`);
-        res.end();
       }
+      
+      await storage.createChatMessage({
+        sessionId: activeSessionId,
+        userId,
+        message: aiMessage,
+        isAi: true,
+        timestamp: new Date()
+      });
+      
+      await storage.trackUsage(userId, 'ai_message', 'Chat processed');
+      
+      res.json({
+        message: aiMessage,
+        sessionId: activeSessionId,
+        success: true
+      });
       
     } catch (error: any) {
       logger.error("Chat error:", error);
-      if (!res.headersSent) {
-        res.status(500).json({ message: "Failed to process message" });
-      }
+      res.status(500).json({ 
+        message: error.message?.includes('429') ? 
+          "Zu viele Anfragen! Warte kurz 🚀" : 
+          "Failed to process message"
+      });
     }
   });
   app.post('/api/chat/sessions/new', requireAuth, async (req: any, res) => {
@@ -1381,72 +1369,5 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     }
   });
 
-
-// ========================================================
-// ARAS AI CORE - v2.0 NEURAL VOICE SYSTEM (FIXED V2)
-// Intelligente Middleware (Gemini) + Menschliche Stimme (ElevenLabs)
-// Diese Route ersetzt die alte, tote '/api/calls'
-// ========================================================
-app.post('/api/aras-voice/smart-call', requireAuth, checkCallLimit, async (req: any, res) => {
-  try {
-    const userId = req.session.userId;
-    
-    // 1. Hole Rohdaten vom Frontend (call-form.tsx)
-    const { name, phoneNumber, message } = req.body;
-    if (!name || !phoneNumber || !message) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Name, Telefonnummer und Anliegen werden benötigt.' 
-      });
-    }
-
-    // 2. Hole Nutzer-Kontext aus der Datenbank (z.B. "Manuel")
-    const user = await storage.getUser(userId);
-    if (!user) {
-      // 4401 ist ein guter Code für "Session abgelaufen"
-      return res.status(4401).json({ success: false, error: 'Nutzer nicht gefunden oder Session abgelaufen' });
-    }
-    
-    logger.info('[SMART-CALL] Starte Anruf-Vorbereitung...', { userId, contact: name });
-
-    // 3. Rufe das 'Gehirn' auf (Gemini)
-    const { enhanceCallWithGemini } = await import('./voice/gemini-prompt-enhancer');
-    const enhancedContext = await enhanceCallWithGemini(
-      { contactName: name, phoneNumber, message },
-      { userName: user.firstName || user.username || 'mein Kunde' }
-    );
-
-    // 4. Rufe den 'Mund' auf (ElevenLabs)
-    const { makeHumanCall } = await import('./voice/elevenlabs-handler');
-    const callResult = await makeHumanCall(enhancedContext);
-
-    // 5. Speichere den Anruf in der Datenbank
-    await storage.trackUsage(userId, 'voice_call', `Smart Call an ${name}: ${enhancedContext.purpose}`);
-    await storage.saveCallLog({
-      userId,
-      phoneNumber,
-      status: callResult.status || 'initiated',
-      provider: 'aras-neural-voice (elevenlabs)',
-      callId: callResult.callId,
-      purpose: enhancedContext.purpose,
-      details: message // Speichere die rohe User-Nachricht
-    });
-
-    // 6. Sende Erfolg an das Frontend
-    res.json({
-      success: true,
-      message: callResult.message,
-      callId: callResult.callId,
-      status: callResult.status
-    });
-
-  } catch (error: any) {
-    logger.error('[SMART-CALL] Kompletter Anruf-Fehler!', { error: error.message });
-    res.status(500).json({ 
-      success: false, 
-      error: error.message || 'Ein unbekannter Fehler ist aufgetreten' 
-    });
-  }
-});
   return httpServer;
-} 
+}
