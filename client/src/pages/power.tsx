@@ -11,7 +11,7 @@ import { de } from 'date-fns/locale';
 import { 
   Phone, Loader2, CheckCircle2, XCircle, MessageSquare, Clock, User, 
   Sparkles, Zap, BrainCircuit, Download, Play, Pause, Volume2, FileText, 
-  TrendingUp, Activity, Radio, PhoneCall, Mic, MicOff, AlertCircle, Star
+  TrendingUp, Activity, Radio, PhoneCall, Mic, MicOff, AlertCircle, Star, X
 } from "lucide-react";
 import type { SubscriptionResponse } from "@shared/schema";
 import arasLogo from "@/assets/aras_logo_1755067745303.png";
@@ -791,6 +791,161 @@ export default function Power() {
                   </div>
                 </div>
               </motion.div>
+
+              {/* Call Result Display - Audio & Transcript */}
+              {callStatus === 'ended' && result && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ delay: 0.3, duration: 0.6, ease: [0.25, 0.8, 0.25, 1] }}
+                  className="mt-8 p-8 rounded-2xl"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.05), rgba(233, 215, 196, 0.03))',
+                    border: '1px solid rgba(254, 145, 0, 0.2)',
+                    backdropFilter: 'blur(20px)',
+                    boxShadow: '0 8px 32px rgba(254, 145, 0, 0.15)'
+                  }}
+                >
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="p-3 rounded-xl"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.2), rgba(163, 78, 0, 0.2))',
+                          border: '1px solid rgba(254, 145, 0, 0.3)'
+                        }}
+                      >
+                        <Phone className="w-5 h-5 text-[#FE9100]" />
+                      </div>
+                      <div>
+                        <h3 
+                          className="text-xl font-bold"
+                          style={{
+                            fontFamily: 'Orbitron, sans-serif',
+                            background: 'linear-gradient(90deg, #FE9100, #e9d7c4)',
+                            backgroundClip: 'text',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent'
+                          }}
+                        >
+                          Anruf abgeschlossen
+                        </h3>
+                        <p className="text-sm text-gray-400 mt-1">
+                          {contactName} • {formatDistanceToNow(new Date(), { addSuffix: true, locale: de })}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => { setResult(null); setCallStatus('idle'); }}
+                      className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                    >
+                      <X className="w-5 h-5 text-gray-400 hover:text-white" />
+                    </button>
+                  </div>
+
+                  {/* Audio Player */}
+                  {result.recordingUrl && (
+                    <div className="mb-6">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Volume2 className="w-4 h-4 text-[#FE9100]" />
+                        <h4 className="text-sm font-bold text-gray-300 uppercase tracking-wider">Aufzeichnung</h4>
+                      </div>
+                      <div 
+                        className="p-4 rounded-xl"
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.03)',
+                          border: '1px solid rgba(255, 255, 255, 0.1)'
+                        }}
+                      >
+                        <audio 
+                          controls 
+                          className="w-full"
+                          style={{
+                            height: '40px',
+                            filter: 'grayscale(0.3) brightness(1.2)'
+                          }}
+                        >
+                          <source src={result.recordingUrl} type="audio/mpeg" />
+                          Dein Browser unterstützt keine Audio-Wiedergabe.
+                        </audio>
+                        <a
+                          href={result.recordingUrl}
+                          download="aras-call-recording.mp3"
+                          className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-[#FE9100] hover:text-[#e9d7c4] transition-colors"
+                        >
+                          <Download className="w-4 h-4" />
+                          Aufzeichnung herunterladen
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Transcript */}
+                  {result.summary?.transcript && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <FileText className="w-4 h-4 text-[#FE9100]" />
+                        <h4 className="text-sm font-bold text-gray-300 uppercase tracking-wider">Gesprächszusammenfassung</h4>
+                      </div>
+                      <div 
+                        className="p-5 rounded-xl"
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.03)',
+                          border: '1px solid rgba(255, 255, 255, 0.1)'
+                        }}
+                      >
+                        <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
+                          {result.summary.transcript}
+                        </p>
+                        
+                        {/* Additional Info */}
+                        {(result.summary.sentiment || result.summary.nextSteps) && (
+                          <div className="mt-4 pt-4 border-t border-white/10 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {result.summary.sentiment && (
+                              <div>
+                                <p className="text-xs text-gray-500 mb-1">Stimmung</p>
+                                <p className="text-sm font-medium text-gray-200">{result.summary.sentiment}</p>
+                              </div>
+                            )}
+                            {result.summary.duration && (
+                              <div>
+                                <p className="text-xs text-gray-500 mb-1">Dauer</p>
+                                <p className="text-sm font-medium text-gray-200">{result.summary.duration} Sekunden</p>
+                              </div>
+                            )}
+                            {result.summary.nextSteps && (
+                              <div className="md:col-span-2">
+                                <p className="text-xs text-gray-500 mb-1">Nächste Schritte</p>
+                                <p className="text-sm font-medium text-gray-200">{result.summary.nextSteps}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* No Data Warning */}
+                  {!result.recordingUrl && !result.summary?.transcript && (
+                    <div 
+                      className="p-4 rounded-xl flex items-start gap-3"
+                      style={{
+                        background: 'rgba(254, 145, 0, 0.05)',
+                        border: '1px solid rgba(254, 145, 0, 0.2)'
+                      }}
+                    >
+                      <AlertCircle className="w-5 h-5 text-[#FE9100] mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-200 mb-1">Daten werden verarbeitet</p>
+                        <p className="text-xs text-gray-400 leading-relaxed">
+                          Die Aufzeichnung und Zusammenfassung werden in Kürze verfügbar sein. Dies kann einige Minuten dauern.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              )}
 
               {/* Right Side: Examples & History */}
               <motion.div
