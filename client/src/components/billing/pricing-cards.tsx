@@ -3,14 +3,15 @@ import { Badge } from "@/components/ui/badge";
 import { GlowButton } from "@/components/ui/glow-button";
 import { GradientText } from "@/components/ui/gradient-text";
 import { Button } from "@/components/ui/button";
-import { Check, CreditCard, Shield } from "lucide-react";
+import { Check, CreditCard, Shield, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { SubscriptionResponse } from "@shared/schema";
 import { loadStripe } from "@stripe/stripe-js";
+import { useQuery } from "@tanstack/react-query";
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
@@ -24,58 +25,86 @@ export function PricingCards({ subscription, onPaymentSetup, onPlanUpgrade }: Pr
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState<string | null>(null);
-  const plans = [
+  
+  // Load plans from database
+  const { data: dbPlans, isLoading: plansLoading } = useQuery({
+    queryKey: ['subscription-plans'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/subscription-plans');
+      if (!response.ok) throw new Error('Failed to fetch plans');
+      return response.json();
+    }
+  });
+
+  // Map database plans to UI format with proper pricing
+  const plans = dbPlans ? dbPlans.map((plan: any) => ({
+    id: plan.id,
+    name: plan.name,
+    price: plan.price / 100, // Convert cents to euros
+    trialMessages: 0,
+    aiMessages: plan.aiMessagesLimit,
+    voiceCalls: plan.voiceCallsLimit,
+    features: plan.features || [],
+    popular: plan.id === 'ultra', // Mark Ultra as popular
+    trialAvailable: false
+  })) : [
+    // Fallback plans if API fails
     {
-      id: "starter",
-      name: "Starter",
-      price: 29,
+      id: "free",
+      name: "ARAS Free – Discover Mode",
+      price: 0,
       trialMessages: 0,
-      aiMessages: 100,
-      voiceCalls: 10,
+      aiMessages: 10,
+      voiceCalls: 2,
       features: [
-        "100 AI messages/month",
-        "10 voice calls/month",
-        "Basic AI chat",
-        "Email support",
-        "Basic analytics",
+        "2 kostenlose Outbound Calls",
+        "10 freie Chatnachrichten",
+        "Zugriff auf die ARAS-Konsole (Basic)"
       ],
       popular: false,
       trialAvailable: false,
     },
     {
       id: "pro",
-      name: "Pro", 
-      price: 99,
+      name: "ARAS Pro – Growth Mode",
+      price: 59,
       trialMessages: 0,
       aiMessages: 500,
       voiceCalls: 100,
       features: [
-        "500 AI messages/month",
-        "100 voice calls/month",
-        "Advanced AI features",
-        "Priority support",
-        "API access",
-        "Advanced analytics",
-        "Custom integrations",
+        "100 Outbound Calls pro Monat",
+        "500 Chatnachrichten pro Monat",
+        "E-Mail-Support"
+      ],
+      popular: false,
+      trialAvailable: false,
+    },
+    {
+      id: "ultra",
+      name: "ARAS Ultra – Performance Mode",
+      price: 249,
+      trialMessages: 0,
+      aiMessages: 10000,
+      voiceCalls: 1000,
+      features: [
+        "1.000 Outbound Calls pro Monat",
+        "10.000 Chatnachrichten pro Monat",
+        "Priorisierter Support"
       ],
       popular: true,
       trialAvailable: false,
     },
     {
-      id: "enterprise",
-      name: "Enterprise",
-      price: 299,
+      id: "ultimate",
+      name: "ARAS Ultimate – Enterprise Mode",
+      price: 1990,
       trialMessages: 0,
       aiMessages: null,
-      voiceCalls: null,
+      voiceCalls: 10000,
       features: [
-        "Unlimited AI messages",
-        "Unlimited voice calls",
-        "All Pro features",
-        "24/7 support",
-        "Custom integrations",
-        "Advanced security",
-        "Dedicated account manager",
+        "10.000 Outbound Calls pro Monat",
+        "Unbegrenzte Chatnachrichten",
+        "24/7 Premium-Support"
       ],
       popular: false,
       trialAvailable: false,
@@ -89,33 +118,48 @@ export function PricingCards({ subscription, onPaymentSetup, onPlanUpgrade }: Pr
     setIsLoading(planId);
 
     try {
-
-      // Check if upgrading from current plan (only for ACTIVE subscriptions, not trial)
+      // Check if already on this plan
       if (subscription?.plan === planId && subscription?.status === "active") {
         toast({
           title: "Already Subscribed",
           description: `You're already on the ${plan.name} plan.`,
         });
+        setIsLoading(null);
         return;
       }
 
-      // Handle plan upgrade
-      if (onPlanUpgrade) {
-        onPlanUpgrade(planId);
-      } else {
-        // Use simple upgrade endpoint
-        const response = await apiRequest("POST", "/api/upgrade-plan", {
-          planId
-        });
+      // Handle free plan - direct upgrade without payment
+      if (planId === 'free') {
+        const response = await apiRequest("POST", "/api/upgrade-plan", { planId });
+        if (response.ok) {
+          toast({
+            title: "Plan Updated",
+            description: "Switched to Free plan",
+          });
+          window.location.reload();
+        }
+        setIsLoading(null);
+        return;
+      }
+
+      // For paid plans, create Stripe checkout session
+      const response = await apiRequest("POST", "/api/create-checkout-session", {
+        planId
+      });
 
         if (response.ok) {
           const data = await response.json();
-          toast({
-            title: "Plan Upgraded!",
-            description: `Successfully upgraded to ${plan.name} plan!`,
-          });
-          // Refresh page to show updated subscription
-          window.location.reload();
+          
+          // Redirect to Stripe Checkout
+          if (data.url) {
+            window.location.href = data.url;
+          } else {
+            toast({
+              title: "Plan Upgraded!",
+              description: `Successfully upgraded to ${plan.name} plan!`,
+            });
+            window.location.reload();
+          }
         } else if (response.status === 402) {
           const errorData = await response.json();
           
@@ -204,8 +248,28 @@ export function PricingCards({ subscription, onPaymentSetup, onPlanUpgrade }: Pr
     }
   };
 
+  if (plansLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {[1,2,3,4].map(i => (
+          <Card key={i} className="animate-pulse">
+            <CardHeader>
+              <div className="h-6 bg-muted rounded w-3/4 mb-2" />
+              <div className="h-8 bg-muted rounded w-1/2" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {[1,2,3].map(j => <div key={j} className="h-4 bg-muted rounded" />)}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {plans.map((plan, index) => (
         <motion.div
           key={plan.id}
@@ -213,10 +277,16 @@ export function PricingCards({ subscription, onPaymentSetup, onPlanUpgrade }: Pr
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: index * 0.1 }}
         >
-          <Card className={`relative ${plan.popular ? "border-primary" : ""} ${subscription?.plan === plan.id && subscription?.status === "active" ? "border-green-500 bg-green-50/5" : ""}`}>
+          <Card className={`relative ${plan.popular ? "border-primary shadow-lg" : ""} ${subscription?.plan === plan.id && subscription?.status === "active" ? "border-green-500 bg-green-50/5" : ""} ${plan.id === 'free' ? "border-gray-300" : ""}`}>
             {plan.popular && (
-              <div className="absolute top-0 right-0 bg-primary text-primary-foreground px-3 py-1 text-xs font-semibold rounded-bl-lg">
-                POPULAR
+              <div className="absolute top-0 right-0 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-3 py-1 text-xs font-semibold rounded-bl-lg flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                BELIEBT
+              </div>
+            )}
+            {plan.id === 'free' && (
+              <div className="absolute top-0 right-0 bg-green-600 text-white px-3 py-1 text-xs font-semibold rounded-bl-lg">
+                KOSTENLOS
               </div>
             )}
             {/* Only show CURRENT PLAN badge for PAID users (not trial users) */}
@@ -226,11 +296,11 @@ export function PricingCards({ subscription, onPaymentSetup, onPlanUpgrade }: Pr
               </div>
             )}
             <CardHeader>
-              <CardTitle className="text-lg">{plan.name}</CardTitle>
+              <CardTitle className="text-lg font-bold">{plan.name}</CardTitle>
               <div className="text-3xl font-bold">
-                ${plan.price}
+                €{plan.price}
                 <span className="text-sm text-muted-foreground font-normal">
-                  /month
+                  {plan.price === 0 ? '' : '/Monat'}
                 </span>
               </div>
               {plan.trialAvailable && subscription?.requiresPaymentSetup && (
@@ -252,7 +322,17 @@ export function PricingCards({ subscription, onPaymentSetup, onPlanUpgrade }: Pr
               
               {subscription?.plan === plan.id && subscription?.status === "active" ? (
                 <Button disabled className="w-full" variant="outline">
-                  Current Plan
+                  Aktueller Plan
+                </Button>
+              ) : plan.id === 'free' ? (
+                <Button
+                  onClick={() => handlePlanSelect(plan.id)}
+                  disabled={isLoading === plan.id || subscription?.plan === 'free'}
+                  variant="outline"
+                  className="w-full"
+                >
+                  {isLoading === plan.id ? "Wird geladen..." : 
+                   subscription?.plan === 'free' ? "Aktueller Plan" : "Zu Free wechseln"}
                 </Button>
               ) : plan.trialAvailable && subscription?.requiresPaymentSetup ? (
                 <Button
@@ -281,19 +361,19 @@ export function PricingCards({ subscription, onPaymentSetup, onPlanUpgrade }: Pr
                   {isLoading === plan.id ? (
                     <div className="flex items-center space-x-2">
                       <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                      <span>Processing...</span>
+                      <span>Wird geladen...</span>
                     </div>
                   ) : (
-                    `Upgrade to ${plan.name}`
+                    <>Jetzt upgraden</>
                   )}
                 </GlowButton>
-              ) : plan.id === "enterprise" ? (
+              ) : plan.id === "ultimate" ? (
                 <Button
                   onClick={() => handlePlanSelect(plan.id)}
                   disabled={isLoading === plan.id}
-                  className="w-full bg-purple-600 hover:bg-purple-700"
+                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
                 >
-                  {isLoading === plan.id ? "Processing..." : "Contact Sales"}
+                  {isLoading === plan.id ? "Wird geladen..." : "Jetzt upgraden"}
                 </Button>
               ) : (
                 <Button
@@ -305,10 +385,10 @@ export function PricingCards({ subscription, onPaymentSetup, onPlanUpgrade }: Pr
                   {isLoading === plan.id ? (
                     <div className="flex items-center space-x-2">
                       <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" />
-                      <span>Processing...</span>
+                      <span>Wird geladen...</span>
                     </div>
                   ) : (
-                    `Select ${plan.name}`
+                    <>Jetzt upgraden</>
                   )}
                 </Button>
               )}

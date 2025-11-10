@@ -139,7 +139,7 @@ export const callLogs = pgTable("call_logs", {
 
 // Subscription plans table
 export const subscriptionPlans = pgTable("subscription_plans", {
-  id: varchar("id").primaryKey(), // starter, professional, enterprise
+  id: varchar("id").primaryKey(), // free, pro, ultra, ultimate
   name: varchar("name").notNull(),
   price: integer("price").notNull(), // in cents
   aiMessagesLimit: integer("ai_messages_limit"), // null = unlimited
@@ -147,6 +147,8 @@ export const subscriptionPlans = pgTable("subscription_plans", {
   leadsLimit: integer("leads_limit"), // null = unlimited
   campaignsLimit: integer("campaigns_limit"), // null = unlimited
   features: text("features").array(), // array of feature names
+  stripePriceId: varchar("stripe_price_id"), // Stripe Price ID for subscription
+  stripeProductId: varchar("stripe_product_id"), // Stripe Product ID
   isActive: boolean("is_active").default(true),
 });
 

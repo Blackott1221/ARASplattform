@@ -1,6 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { db } from "./db";
+import { subscriptionPlans } from "@shared/schema";
 
 const app = express();
 app.use(express.json({ limit: "50mb" }));
@@ -39,7 +41,123 @@ app.use((req, res, next) => {
   next();
 });
 
+// Seed subscription plans on startup
+async function seedSubscriptionPlans() {
+  try {
+    const PLANS = [
+      {
+        id: "free",
+        name: "ARAS Free – Discover Mode",
+        price: 0,
+        aiMessagesLimit: 10,
+        voiceCallsLimit: 2,
+        leadsLimit: 50,
+        campaignsLimit: 1,
+        features: [
+          "2 kostenlose Outbound Calls",
+          "10 freie Chatnachrichten",
+          "Zugriff auf die ARAS-Konsole (Basic)",
+          "Basis-Statistiken zu Gesprächsdauer und Erfolgsquote",
+          "Dauerhaft kostenlos, keine Zahlungsdaten erforderlich"
+        ],
+        stripePriceId: null,
+        stripeProductId: null,
+        isActive: true
+      },
+      {
+        id: "pro",
+        name: "ARAS Pro – Growth Mode",
+        price: 5900, // €59.00
+        aiMessagesLimit: 500,
+        voiceCallsLimit: 100,
+        leadsLimit: 500,
+        campaignsLimit: 10,
+        features: [
+          "100 Outbound Calls pro Monat",
+          "500 Chatnachrichten pro Monat",
+          "Integration mit Make, Zapier oder n8n",
+          "Live-Dashboard mit Erfolgsquote und Performance-Daten",
+          "E-Mail-Support (Antwort innerhalb von 24 Stunden)"
+        ],
+        stripePriceId: process.env.STRIPE_PRICE_ID_PRO || null,
+        stripeProductId: process.env.STRIPE_PRODUCT_ID_PRO || null,
+        isActive: true
+      },
+      {
+        id: "ultra",
+        name: "ARAS Ultra – Performance Mode",
+        price: 24900, // €249.00
+        aiMessagesLimit: 10000,
+        voiceCallsLimit: 1000,
+        leadsLimit: 5000,
+        campaignsLimit: 50,
+        features: [
+          "1.000 Outbound Calls pro Monat",
+          "10.000 Chatnachrichten pro Monat",
+          "Zugriff auf das erweiterte ARAS Voice Model",
+          "Mehrbenutzerzugang (bis zu 5 Teammitglieder)",
+          "Erweiterte Analysen (Emotion, Conversion, KPI-Tracking)",
+          "Priorisierter Support (Antwort innerhalb von 6 Stunden)",
+          "Zugang zum ARAS Partner-Netzwerk"
+        ],
+        stripePriceId: process.env.STRIPE_PRICE_ID_ULTRA || null,
+        stripeProductId: process.env.STRIPE_PRODUCT_ID_ULTRA || null,
+        isActive: true
+      },
+      {
+        id: "ultimate",
+        name: "ARAS Ultimate – Enterprise Mode",
+        price: 199000, // €1990.00
+        aiMessagesLimit: null, // unlimited
+        voiceCallsLimit: 10000,
+        leadsLimit: null,
+        campaignsLimit: null,
+        features: [
+          "10.000 Outbound Calls pro Monat",
+          "Unbegrenzte Chatnachrichten",
+          "Zugriff auf das dedizierte ARAS Enterprise-LLM",
+          "API- und CRM-Integrationen (Salesforce, HubSpot, Bitrix24 u.a.)",
+          "Swiss Data Hosting – DSGVO-, ISO- und SOC2-zertifiziert",
+          "24/7 Premium-Support mit persönlichem Account Manager",
+          "Early Access zu neuen Modulen (Voice2Action, Memory, Multi-LLM)"
+        ],
+        stripePriceId: process.env.STRIPE_PRICE_ID_ULTIMATE || null,
+        stripeProductId: process.env.STRIPE_PRODUCT_ID_ULTIMATE || null,
+        isActive: true
+      }
+    ];
+
+    for (const plan of PLANS) {
+      await db
+        .insert(subscriptionPlans)
+        .values(plan)
+        .onConflictDoUpdate({
+          target: subscriptionPlans.id,
+          set: {
+            name: plan.name,
+            price: plan.price,
+            aiMessagesLimit: plan.aiMessagesLimit,
+            voiceCallsLimit: plan.voiceCallsLimit,
+            leadsLimit: plan.leadsLimit,
+            campaignsLimit: plan.campaignsLimit,
+            features: plan.features,
+            stripePriceId: plan.stripePriceId,
+            stripeProductId: plan.stripeProductId,
+            isActive: plan.isActive
+          }
+        });
+    }
+    
+    log("✅ Subscription plans seeded successfully");
+  } catch (error) {
+    log("⚠️  Error seeding plans (table may not exist yet):", error);
+  }
+}
+
 (async () => {
+  // Seed subscription plans
+  await seedSubscriptionPlans();
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

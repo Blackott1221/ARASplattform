@@ -1,19 +1,24 @@
-// Usage Limits Configuration
+// Usage Limits Configuration - ARAS AI 2025
 export const USAGE_LIMITS = {
-  starter: {
-    calls: 1,
-    messages: 5,
-    name: 'Starter'
+  free: {
+    calls: 2,
+    messages: 10,
+    name: 'ARAS Free – Discover Mode'
   },
   pro: {
     calls: 100,
     messages: 500,
-    name: 'Pro'
+    name: 'ARAS Pro – Growth Mode'
   },
-  enterprise: {
-    calls: 20000,
+  ultra: {
+    calls: 1000,
+    messages: 10000,
+    name: 'ARAS Ultra – Performance Mode'
+  },
+  ultimate: {
+    calls: 10000,
     messages: -1, // -1 = unlimited
-    name: 'Enterprise'
+    name: 'ARAS Ultimate – Enterprise Mode'
   }
 };
 
@@ -22,7 +27,7 @@ export function checkUsageLimit(
   currentUsage: number,
   limitType: 'calls' | 'messages'
 ): { allowed: boolean; limit: number; remaining: number } {
-  const limits = USAGE_LIMITS[plan as keyof typeof USAGE_LIMITS] || USAGE_LIMITS.starter;
+  const limits = USAGE_LIMITS[plan as keyof typeof USAGE_LIMITS] || USAGE_LIMITS.free;
   const limit = limits[limitType];
   
   if (limit === -1) {

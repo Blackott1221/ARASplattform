@@ -593,51 +593,53 @@ export class DatabaseStorage implements IStorage {
     const plan = await this.getSubscriptionPlan(userSub.subscriptionPlan);
     if (!plan) return { allowed: false, message: "Subscription plan not found" };
 
-    // Handle trial users - they get exactly 10 free AI messages
-    if (userSub.subscriptionStatus === 'trial' || userSub.subscriptionStatus === 'trialing') {
-      switch (type) {
-        case 'ai_message':
-          if (userSub.aiMessagesUsed >= 10) {
-            return { 
-              allowed: false, 
-              message: "🚀 You've reached your 10-message trial limit! Upgrade to continue chatting with ARAS AI.", 
-              requiresPayment: true,
-              requiresUpgrade: true
-            };
-          }
-          break;
-        case 'voice_call':
-          return { 
-            allowed: false, 
-            message: "Voice calls are not available during trial. Please upgrade to Starter plan.", 
-            requiresPayment: true 
-          };
-      }
-      return { allowed: true };
-    }
-
-    // Check subscription status for paid users
+    // Check subscription status - must be active
     if (userSub.subscriptionStatus !== 'active') {
-      return { allowed: false, message: "Subscription is not active" };
+      return { 
+        allowed: false, 
+        message: "Subscription is not active. Please check your billing status.",
+        requiresPayment: true 
+      };
     }
 
-    // Check usage limits for active paid users
+    // Check usage limits based on plan
     switch (type) {
       case 'ai_message':
-        if (plan.aiMessagesLimit && userSub.aiMessagesUsed >= plan.aiMessagesLimit) {
+        // Null means unlimited
+        if (plan.aiMessagesLimit === null || plan.aiMessagesLimit === -1) {
+          return { allowed: true };
+        }
+        
+        if (userSub.aiMessagesUsed >= plan.aiMessagesLimit) {
+          const upgradeMessage = userSub.subscriptionPlan === 'free' 
+            ? `🚀 Du hast dein kostenloses Limit von ${plan.aiMessagesLimit} Nachrichten erreicht! Upgrade auf Pro für 500 Nachrichten/Monat.`
+            : `Monatliches AI-Nachrichten-Limit (${plan.aiMessagesLimit}) erreicht. Bitte upgrade auf einen höheren Plan.`;
+          
           return { 
             allowed: false, 
-            message: `Monthly AI message limit (${plan.aiMessagesLimit}) reached. Please upgrade to a higher plan.`,
-            requiresUpgrade: true
+            message: upgradeMessage,
+            requiresUpgrade: true,
+            requiresPayment: userSub.subscriptionPlan === 'free'
           };
         }
         break;
+        
       case 'voice_call':
-        if (plan.voiceCallsLimit && userSub.voiceCallsUsed >= plan.voiceCallsLimit) {
+        // Null means unlimited
+        if (plan.voiceCallsLimit === null || plan.voiceCallsLimit === -1) {
+          return { allowed: true };
+        }
+        
+        if (userSub.voiceCallsUsed >= plan.voiceCallsLimit) {
+          const upgradeMessage = userSub.subscriptionPlan === 'free'
+            ? `📞 Du hast dein kostenloses Limit von ${plan.voiceCallsLimit} Anrufen erreicht! Upgrade auf Pro für 100 Anrufe/Monat.`
+            : `Monatliches Voice-Call-Limit (${plan.voiceCallsLimit}) erreicht. Bitte upgrade auf einen höheren Plan.`;
+          
           return { 
             allowed: false, 
-            message: `Monthly voice call limit (${plan.voiceCallsLimit}) reached. Please upgrade to a higher plan.`,
-            requiresUpgrade: true
+            message: upgradeMessage,
+            requiresUpgrade: true,
+            requiresPayment: userSub.subscriptionPlan === 'free'
           };
         }
         break;
@@ -1294,51 +1296,53 @@ export class MemStorage implements IStorage {
     const plan = await this.getSubscriptionPlan(userSub.subscriptionPlan);
     if (!plan) return { allowed: false, message: "Subscription plan not found" };
 
-    // Handle trial users - they get exactly 10 free AI messages
-    if (userSub.subscriptionStatus === 'trial' || userSub.subscriptionStatus === 'trialing') {
-      switch (type) {
-        case 'ai_message':
-          if (userSub.aiMessagesUsed >= 10) {
-            return { 
-              allowed: false, 
-              message: "🚀 You've reached your 10-message trial limit! Upgrade to continue chatting with ARAS AI.", 
-              requiresPayment: true,
-              requiresUpgrade: true
-            };
-          }
-          break;
-        case 'voice_call':
-          return { 
-            allowed: false, 
-            message: "Voice calls are not available during trial. Please upgrade to Starter plan.", 
-            requiresPayment: true 
-          };
-      }
-      return { allowed: true };
-    }
-
-    // Check subscription status for paid users
+    // Check subscription status - must be active
     if (userSub.subscriptionStatus !== 'active') {
-      return { allowed: false, message: "Subscription is not active" };
+      return { 
+        allowed: false, 
+        message: "Subscription is not active. Please check your billing status.",
+        requiresPayment: true 
+      };
     }
 
-    // Check usage limits for active paid users
+    // Check usage limits based on plan
     switch (type) {
       case 'ai_message':
-        if (plan.aiMessagesLimit && userSub.aiMessagesUsed >= plan.aiMessagesLimit) {
+        // Null means unlimited
+        if (plan.aiMessagesLimit === null || plan.aiMessagesLimit === -1) {
+          return { allowed: true };
+        }
+        
+        if (userSub.aiMessagesUsed >= plan.aiMessagesLimit) {
+          const upgradeMessage = userSub.subscriptionPlan === 'free' 
+            ? `🚀 Du hast dein kostenloses Limit von ${plan.aiMessagesLimit} Nachrichten erreicht! Upgrade auf Pro für 500 Nachrichten/Monat.`
+            : `Monatliches AI-Nachrichten-Limit (${plan.aiMessagesLimit}) erreicht. Bitte upgrade auf einen höheren Plan.`;
+          
           return { 
             allowed: false, 
-            message: `Monthly AI message limit (${plan.aiMessagesLimit}) reached. Please upgrade to a higher plan.`,
-            requiresUpgrade: true
+            message: upgradeMessage,
+            requiresUpgrade: true,
+            requiresPayment: userSub.subscriptionPlan === 'free'
           };
         }
         break;
+        
       case 'voice_call':
-        if (plan.voiceCallsLimit && userSub.voiceCallsUsed >= plan.voiceCallsLimit) {
+        // Null means unlimited
+        if (plan.voiceCallsLimit === null || plan.voiceCallsLimit === -1) {
+          return { allowed: true };
+        }
+        
+        if (userSub.voiceCallsUsed >= plan.voiceCallsLimit) {
+          const upgradeMessage = userSub.subscriptionPlan === 'free'
+            ? `📞 Du hast dein kostenloses Limit von ${plan.voiceCallsLimit} Anrufen erreicht! Upgrade auf Pro für 100 Anrufe/Monat.`
+            : `Monatliches Voice-Call-Limit (${plan.voiceCallsLimit}) erreicht. Bitte upgrade auf einen höheren Plan.`;
+          
           return { 
             allowed: false, 
-            message: `Monthly voice call limit (${plan.voiceCallsLimit}) reached. Please upgrade to a higher plan.`,
-            requiresUpgrade: true
+            message: upgradeMessage,
+            requiresUpgrade: true,
+            requiresPayment: userSub.subscriptionPlan === 'free'
           };
         }
         break;
