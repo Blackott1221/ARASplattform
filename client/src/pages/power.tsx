@@ -303,11 +303,15 @@ export default function Power() {
     } catch (error: any) {
       setResult({ success: false, error: error.message || "Anruf fehlgeschlagen" });
       setCallStatus('idle');
-      toast({
-        title: "Fehler",
-        description: error.message || "Anruf konnte nicht gestartet werden",
-        variant: "destructive"
-      });
+      
+      // Don't show generic error toast if it's a limit error (already shown)
+      if (!error.message?.includes('Limit') && !error.message?.includes('limit')) {
+        toast({
+          title: "Fehler",
+          description: error.message || "Anruf konnte nicht gestartet werden",
+          variant: "destructive"
+        });
+      }
     } finally {
       setLoading(false);
     }

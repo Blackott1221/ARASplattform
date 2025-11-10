@@ -224,11 +224,15 @@ export function ChatInterface() {
       queryClient.invalidateQueries({ queryKey: ["/api/user/usage"] });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
     },
-    onError: () => {
+    onError: (error: Error) => {
       setOptimisticMessages([]);
       setIsStreaming(false);
       setStreamingMessage('');
-      toast({ title: "Fehler", description: "Nachricht konnte nicht gesendet werden", variant: "destructive" });
+      
+      // Don't show generic error if it's a limit error (already shown)
+      if (!error.message.includes('Limit') && !error.message.includes('limit')) {
+        toast({ title: "Fehler", description: "Nachricht konnte nicht gesendet werden", variant: "destructive" });
+      }
     },
   });
   const loadChatSession = async (sessionId: string) => {

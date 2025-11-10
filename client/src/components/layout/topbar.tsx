@@ -19,16 +19,12 @@ export function TopBar({ currentSection, subscriptionData, user, isVisible }: To
         return "SPACE";
       case "power":
         return "POWER";
-      case "voice-agents":
-        return "VOICE AGENTS";
       case "leads":
-        return "RESULTS";
+        return "DASHBOARD";
       case "billing":
-        return "BILLING";
+        return "IHR PLAN";
       case "settings":
-        return "SETTINGS";
-      case "aras-mailing":
-        return "ARAS MAILING";
+        return "EINSTELLUNGEN";
       default:
         return "SPACE";
     }

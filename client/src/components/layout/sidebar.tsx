@@ -5,11 +5,8 @@ import {
   MessageCircle, 
   Phone, 
   Users, 
-  Megaphone, 
   CreditCard, 
   Settings,
-  Bot,
-  Mail,
   ChevronLeft,
   ChevronRight,
   LogOut
@@ -27,14 +24,9 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
   const navItems = [
     { id: "space", label: "SPACE", icon: MessageCircle },
     { id: "power", label: "POWER", icon: Phone },
-    { id: "voice-agents", label: "ARAS CALL", icon: Bot },
-    { id: "leads", label: "Results", icon: Users },
-    { id: "billing", label: "Billing", icon: CreditCard },
-    { id: "settings", label: "Settings", icon: Settings },
-  ];
-
-  const mailingModules = [
-    { id: "aras-mailing", label: "ARAS Mailing", icon: Mail },
+    { id: "leads", label: "DASHBOARD", icon: Users },
+    { id: "billing", label: "IHR PLAN", icon: CreditCard },
+    { id: "settings", label: "EINSTELLUNGEN", icon: Settings },
   ];
 
   return (
@@ -89,29 +81,6 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
             </motion.a>
           );
         })}
-        
-        {!isCollapsed && (
-          <>
-            {mailingModules.map((item) => {
-              const Icon = item.icon;
-              
-              return (
-                <motion.a
-                  key={item.id}
-                  href={`/app/${item.id}`}
-                  className="w-full flex items-center space-x-3 px-3 py-3 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground transition-all"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Icon className="w-5 h-5 flex-shrink-0" />
-                  <span className="font-medium text-sm">
-                    {item.label}
-                  </span>
-                </motion.a>
-              );
-            })}
-          </>
-        )}
       </nav>
       
       <div className="p-4 border-t border-border">
@@ -128,13 +97,13 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
           className={`w-full flex items-center ${isCollapsed ? 'justify-center px-3' : 'space-x-3 px-3'} py-3 rounded-lg text-muted-foreground hover:text-primary transition-all relative overflow-hidden group`}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          title={isCollapsed ? "Logout" : undefined}
+          title={isCollapsed ? "ABMELDEN" : undefined}
         >
           <motion.div
             className="absolute inset-0 bg-gradient-to-r from-primary/20 to-primary/10 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
           />
           <LogOut className="w-5 h-5 relative z-10" />
-          {!isCollapsed && <span className="relative z-10">Logout</span>}
+          {!isCollapsed && <span className="relative z-10">ABMELDEN</span>}
         </motion.button>
       </div>
     </motion.div>
