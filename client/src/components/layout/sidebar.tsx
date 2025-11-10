@@ -1,5 +1,4 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@/components/ui/button";
 import { 
   MessageCircle, 
   Phone, 
@@ -36,125 +35,104 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
   }, [isCollapsed, onToggleCollapse]);
 
   const navItems = [
-    { id: "space", label: "Space", icon: MessageCircle, gradient: "#e9d7c4, #FE9100, #a34e00" },
-    { id: "power", label: "Power", icon: Phone, gradient: "#FE9100, #e9d7c4, #a34e00" },
-    { id: "leads", label: "Dashboard", icon: LayoutDashboard, gradient: "#a34e00, #FE9100, #e9d7c4" },
-    { id: "billing", label: "Ihr Plan", icon: CreditCard, gradient: "#e9d7c4, #a34e00, #FE9100" },
-    { id: "settings", label: "Einstellungen", icon: Settings, gradient: "#FE9100, #a34e00, #e9d7c4" },
+    { id: "space", label: "Space", icon: MessageCircle },
+    { id: "power", label: "Power", icon: Phone },
+    { id: "leads", label: "Dashboard", icon: LayoutDashboard },
+    { id: "billing", label: "Ihr Plan", icon: CreditCard },
+    { id: "settings", label: "Einstellungen", icon: Settings },
   ];
 
   return (
     <motion.div 
       className="relative flex-shrink-0"
       initial={false}
-      animate={{ width: isCollapsed ? 100 : 280 }}
-      transition={{ duration: 0.4, ease: [0.25, 0.8, 0.25, 1] }}
+      animate={{ width: isCollapsed ? 72 : 220 }}
+      transition={{ duration: 0.3, ease: [0.25, 0.8, 0.25, 1] }}
     >
-      {/* Ultra-Transparent Background with Glow */}
+      {/* Clean Background */}
       <div className="absolute inset-0">
-        {/* Subtle Gradient Glow */}
-        <div 
-          className="absolute inset-0 opacity-30"
-          style={{
-            background: 'radial-gradient(circle at 50% 0%, rgba(254, 145, 0, 0.15) 0%, transparent 70%)',
-          }}
-        />
-        
-        {/* Glassmorphism Background */}
+        {/* Subtle Background */}
         <div 
           className="absolute inset-0"
           style={{
-            background: 'rgba(0, 0, 0, 0.4)',
-            backdropFilter: 'blur(40px)',
-            borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+            background: 'rgba(0, 0, 0, 0.2)',
+            backdropFilter: 'blur(20px)',
+            borderRight: '1px solid rgba(255, 255, 255, 0.05)',
           }}
         />
 
-        {/* Animated Right Border Glow */}
+        {/* Subtle Animated Border */}
         <motion.div
           className="absolute right-0 top-0 bottom-0 w-[1px]"
           style={{
-            background: 'linear-gradient(180deg, transparent, rgba(254, 145, 0, 0.5), transparent)',
+            background: 'linear-gradient(180deg, transparent, rgba(254, 145, 0, 0.15), transparent)',
             backgroundSize: '100% 200%'
           }}
           animate={{
             backgroundPosition: ['0% 0%', '0% 100%', '0% 0%']
           }}
-          transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+          transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
         />
       </div>
 
       {/* Content */}
       <div className="relative z-10 flex flex-col h-screen">
         {/* Logo Section */}
-        <div className={`flex items-center ${isCollapsed ? 'justify-center p-6' : 'justify-between p-6'} border-b border-white/5`}>
+        <div className={`flex items-center ${isCollapsed ? 'justify-center p-4' : 'justify-between px-5 py-4'}`}>
           <motion.div
             className="relative"
-            whileHover={{ scale: 1.05 }}
-            transition={{ type: "spring", stiffness: 300 }}
+            whileHover={{ scale: 1.02 }}
+            transition={{ type: "spring", stiffness: 400 }}
           >
-            {/* Logo Glow */}
-            <motion.div
-              className="absolute -inset-2 rounded-full blur-xl opacity-0 group-hover:opacity-100"
-              style={{
-                background: 'radial-gradient(circle, rgba(254, 145, 0, 0.4) 0%, transparent 70%)'
-              }}
-              animate={{
-                opacity: [0.3, 0.6, 0.3]
-              }}
-              transition={{ duration: 3, repeat: Infinity }}
-            />
             <img 
               src={arasLogo} 
               alt="ARAS AI" 
-              className={`relative ${isCollapsed ? 'w-12 h-12' : 'w-16 h-16'} transition-all duration-400 object-contain`}
+              className={`relative ${isCollapsed ? 'w-8 h-8' : 'w-10 h-10'} transition-all duration-300 object-contain`}
             />
           </motion.div>
           
           {!isCollapsed && onToggleCollapse && (
             <motion.button
               onClick={onToggleCollapse}
-              className="p-2 rounded-lg transition-all"
+              className="p-1.5 rounded-full transition-all"
               style={{
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.1)'
+                background: 'transparent',
+                border: '1px solid rgba(255, 255, 255, 0.08)'
               }}
               whileHover={{ 
-                scale: 1.1,
-                background: 'rgba(254, 145, 0, 0.1)',
-                borderColor: 'rgba(254, 145, 0, 0.3)'
+                scale: 1.05,
+                borderColor: 'rgba(254, 145, 0, 0.2)'
               }}
               whileTap={{ scale: 0.95 }}
             >
-              <ChevronLeft className="w-4 h-4 text-gray-400" />
+              <ChevronLeft className="w-3 h-3 text-gray-500" />
             </motion.button>
           )}
         </div>
 
         {/* Expand Button (when collapsed) */}
         {isCollapsed && onToggleCollapse && (
-          <div className="flex justify-center p-4">
+          <div className="flex justify-center pb-3">
             <motion.button
               onClick={onToggleCollapse}
-              className="p-2 rounded-lg transition-all"
+              className="p-1.5 rounded-full transition-all"
               style={{
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.1)'
+                background: 'transparent',
+                border: '1px solid rgba(255, 255, 255, 0.08)'
               }}
               whileHover={{ 
-                scale: 1.1,
-                background: 'rgba(254, 145, 0, 0.1)',
-                borderColor: 'rgba(254, 145, 0, 0.3)'
+                scale: 1.05,
+                borderColor: 'rgba(254, 145, 0, 0.2)'
               }}
               whileTap={{ scale: 0.95 }}
             >
-              <ChevronRight className="w-4 h-4 text-gray-400" />
+              <ChevronRight className="w-3 h-3 text-gray-500" />
             </motion.button>
           </div>
         )}
         
         {/* Navigation Items */}
-        <nav className={`flex-1 ${isCollapsed ? 'px-4 py-6' : 'px-6 py-8'} space-y-2`}>
+        <nav className={`flex-1 ${isCollapsed ? 'px-3 py-4' : 'px-4 py-4'} space-y-1.5`}>
           {navItems.map((item, index) => {
             const Icon = item.icon;
             const isActive = activeSection === item.id;
@@ -163,125 +141,80 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
             return (
               <motion.div
                 key={item.id}
-                initial={{ opacity: 0, x: -20 }}
+                initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05, duration: 0.4 }}
+                transition={{ delay: index * 0.03, duration: 0.3 }}
               >
                 <motion.a
                   href={item.id === 'space' ? '/app' : `/app/${item.id}`}
                   onMouseEnter={() => setHoveredItem(item.id)}
                   onMouseLeave={() => setHoveredItem(null)}
                   className="relative block group"
-                  whileHover={{ x: 4 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  {/* Active/Hover Glow */}
-                  {(isActive || isHovered) && (
-                    <motion.div
-                      layoutId={isActive ? "activeGlow" : "hoverGlow"}
-                      className="absolute -inset-2 rounded-2xl blur-xl opacity-40"
-                      style={{
-                        background: `linear-gradient(90deg, ${item.gradient})`
-                      }}
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                    />
-                  )}
-
-                  {/* Item Container */}
-                  <div
-                    className={`relative flex ${isCollapsed ? 'flex-col items-center justify-center p-3 space-y-1' : 'flex-row items-center px-4 py-3 space-x-4'} rounded-xl transition-all duration-300`}
+                  {/* Clean Button Container */}
+                  <motion.div
+                    className={`relative flex ${isCollapsed ? 'justify-center' : 'items-center'} ${isCollapsed ? 'p-2.5' : 'px-3 py-2'} rounded-full transition-all duration-200`}
                     style={{
-                      background: isActive 
-                        ? 'rgba(254, 145, 0, 0.15)'
+                      background: 'transparent',
+                      border: '1px solid',
+                      borderColor: isActive 
+                        ? 'rgba(254, 145, 0, 0.3)'
                         : isHovered 
-                          ? 'rgba(255, 255, 255, 0.05)' 
-                          : 'transparent',
-                      border: isActive 
-                        ? '1px solid rgba(254, 145, 0, 0.3)'
-                        : '1px solid transparent',
-                      backdropFilter: (isActive || isHovered) ? 'blur(20px)' : 'none',
-                      boxShadow: isActive 
-                        ? '0 4px 20px rgba(254, 145, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-                        : 'none'
+                          ? 'rgba(254, 145, 0, 0.15)' 
+                          : 'rgba(255, 255, 255, 0.08)',
+                    }}
+                    animate={{
+                      borderColor: isActive 
+                        ? ['rgba(254, 145, 0, 0.3)', 'rgba(233, 215, 196, 0.3)', 'rgba(163, 78, 0, 0.3)', 'rgba(254, 145, 0, 0.3)']
+                        : isHovered
+                          ? 'rgba(254, 145, 0, 0.15)'
+                          : 'rgba(255, 255, 255, 0.08)'
+                    }}
+                    transition={{
+                      borderColor: isActive 
+                        ? { duration: 6, repeat: Infinity, ease: 'linear' }
+                        : { duration: 0.2 }
                     }}
                   >
-                    {/* Icon Container */}
-                    <div className="relative flex items-center justify-center">
-                      {/* Icon Background Glow */}
-                      {isActive && (
-                        <motion.div
-                          className="absolute inset-0 rounded-lg"
-                          style={{
-                            background: `linear-gradient(135deg, ${item.gradient})`,
-                            opacity: 0.2
-                          }}
-                          animate={{
-                            scale: [1, 1.2, 1],
-                            opacity: [0.2, 0.3, 0.2]
-                          }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                        />
-                      )}
-                      
-                      <Icon 
-                        className={`relative ${isCollapsed ? 'w-7 h-7' : 'w-6 h-6'} transition-all`}
+                    {/* Icon */}
+                    <Icon 
+                      className={`${isCollapsed ? 'w-5 h-5' : 'w-4 h-4'} transition-all`}
+                      style={{
+                        color: isActive ? '#FE9100' : isHovered ? '#e9d7c4' : '#6b7280'
+                      }}
+                    />
+
+                    {/* Label - ONLY VISIBLE WHEN OPEN */}
+                    {!isCollapsed && (
+                      <motion.span
+                        className="ml-3 text-[11px] font-medium tracking-wide"
                         style={{
+                          fontFamily: 'Orbitron, sans-serif',
                           color: isActive ? '#FE9100' : isHovered ? '#e9d7c4' : '#9ca3af'
                         }}
-                      />
-                    </div>
-
-                    {/* Label with Animated Gradient - ALWAYS VISIBLE */}
-                    <motion.span
-                      className={`relative font-semibold tracking-wide ${isCollapsed ? 'text-[10px]' : 'text-sm'}`}
-                      style={{
-                        fontFamily: 'Orbitron, sans-serif',
-                        background: `linear-gradient(90deg, ${item.gradient})`,
-                        backgroundSize: '200% 100%',
-                        backgroundClip: 'text',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                      }}
-                      animate={{
-                        backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
-                      }}
-                      transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                      initial={{ opacity: 0 }}
-                      whileInView={{ opacity: 1 }}
-                    >
-                      {item.label}
-                    </motion.span>
-
-                    {/* Active Indicator */}
-                    {isActive && !isCollapsed && (
-                      <motion.div
-                        layoutId="activeIndicator"
-                        className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-l-full"
-                        style={{
-                          background: `linear-gradient(180deg, ${item.gradient})`
-                        }}
-                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                      />
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.1 }}
+                      >
+                        {item.label}
+                      </motion.span>
                     )}
 
-                    {/* Active Dot (collapsed state) */}
-                    {isActive && isCollapsed && (
+                    {/* Active Dot Indicator */}
+                    {isActive && (
                       <motion.div
-                        className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
+                        className={`absolute ${isCollapsed ? 'bottom-0.5 left-1/2 -translate-x-1/2' : 'right-2 top-1/2 -translate-y-1/2'} w-1 h-1 rounded-full`}
                         style={{
                           background: '#FE9100',
-                          boxShadow: '0 0 8px rgba(254, 145, 0, 0.8)'
                         }}
                         animate={{
-                          scale: [1, 1.5, 1],
-                          opacity: [1, 0.5, 1]
+                          opacity: [0.4, 1, 0.4]
                         }}
                         transition={{ duration: 2, repeat: Infinity }}
                       />
                     )}
-                  </div>
-
-                  {/* Tooltip for collapsed state - REMOVED since label is always visible now */}
+                  </motion.div>
                 </motion.a>
               </motion.div>
             );
@@ -289,7 +222,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
         </nav>
         
         {/* Logout Button */}
-        <div className={`${isCollapsed ? 'px-4 pb-6' : 'px-6 pb-8'} border-t border-white/5 pt-4`}>
+        <div className={`${isCollapsed ? 'px-3 pb-4' : 'px-4 pb-4'} pt-2`}>
           <motion.button
             onClick={async () => {
               try {
@@ -301,49 +234,44 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
               }
             }}
             className="relative w-full group"
-            whileHover={{ x: 4 }}
             whileTap={{ scale: 0.98 }}
+            onMouseEnter={() => setHoveredItem('logout')}
+            onMouseLeave={() => setHoveredItem(null)}
           >
-            {/* Hover Glow */}
-            <motion.div
-              className="absolute -inset-2 rounded-2xl blur-xl opacity-0 group-hover:opacity-40"
-              style={{
-                background: 'linear-gradient(90deg, #ef4444, #dc2626)'
-              }}
-            />
-
             {/* Button Container */}
-            <div
-              className={`relative flex ${isCollapsed ? 'flex-col items-center justify-center p-3 space-y-1' : 'flex-row items-center px-4 py-3 space-x-4'} rounded-xl transition-all duration-300`}
+            <motion.div
+              className={`relative flex ${isCollapsed ? 'justify-center' : 'items-center'} ${isCollapsed ? 'p-2.5' : 'px-3 py-2'} rounded-full transition-all duration-200`}
               style={{
-                background: 'rgba(239, 68, 68, 0.1)',
-                border: '1px solid rgba(239, 68, 68, 0.2)',
-                backdropFilter: 'blur(20px)'
+                background: 'transparent',
+                border: '1px solid',
+                borderColor: hoveredItem === 'logout'
+                  ? 'rgba(239, 68, 68, 0.3)'
+                  : 'rgba(239, 68, 68, 0.15)'
               }}
             >
               <LogOut 
-                className={`${isCollapsed ? 'w-7 h-7' : 'w-6 h-6'} text-red-400 transition-all`}
+                className={`${isCollapsed ? 'w-5 h-5' : 'w-4 h-4'} transition-all`}
+                style={{
+                  color: hoveredItem === 'logout' ? '#ef4444' : '#9b5a5a'
+                }}
               />
-              <motion.span
-                className={`font-semibold tracking-wide ${isCollapsed ? 'text-[10px]' : 'text-sm'}`}
-                style={{ 
-                  fontFamily: 'Orbitron, sans-serif',
-                  background: 'linear-gradient(90deg, #ef4444, #dc2626, #ef4444)',
-                  backgroundSize: '200% 100%',
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                }}
-                animate={{
-                  backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
-                }}
-                transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-              >
-                Abmelden
-              </motion.span>
-            </div>
+              
+              {/* Label - ONLY VISIBLE WHEN OPEN */}
+              {!isCollapsed && (
+                <motion.span
+                  className="ml-3 text-[11px] font-medium tracking-wide"
+                  style={{ 
+                    fontFamily: 'Orbitron, sans-serif',
+                    color: hoveredItem === 'logout' ? '#ef4444' : '#9b5a5a'
+                  }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1 }}
+                >
+                  Abmelden
+                </motion.span>
+              )}
+            </motion.div>
           </motion.button>
         </div>
       </div>
