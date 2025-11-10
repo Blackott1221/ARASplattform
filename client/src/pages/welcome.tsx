@@ -184,20 +184,13 @@ export default function Welcome() {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <GlowButton
-                  className="sm:w-auto w-full"
-                  onClick={() => window.location.href = "/app"}
-                >
-                  <span className="flex items-center space-x-2">
-                    <span>Enter ARAS AI</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </span>
-                </GlowButton>
-                
-                <Link href="/app">
-                  <button className="px-6 py-3 border border-border rounded-lg bg-card/30 hover:bg-card/50 transition-colors text-muted-foreground hover:text-primary w-full sm:w-auto">
-                    Try Demo First
-                  </button>
+                <Link href="/login">
+                  <GlowButton className="sm:w-auto w-full">
+                    <span className="flex items-center space-x-2">
+                      <span>Jetzt einloggen</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </span>
+                  </GlowButton>
                 </Link>
               </div>
 

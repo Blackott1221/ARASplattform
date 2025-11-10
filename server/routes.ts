@@ -91,6 +91,10 @@ const stripe = process.env.STRIPE_SECRET_KEY ?
   null;
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Trust proxy - required for Render.com and other reverse proxies
+  // This allows Express to trust the X-Forwarded-* headers
+  app.set('trust proxy', 1);
+  
   // Add performance monitoring middleware
   app.use(performanceMiddleware());
   
