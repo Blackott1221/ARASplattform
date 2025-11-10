@@ -587,53 +587,53 @@ export class DatabaseStorage implements IStorage {
   }
 
   async checkUsageLimit(userId: string, type: string): Promise<{ allowed: boolean; message?: string; requiresPayment?: boolean; requiresUpgrade?: boolean }> {
+    console.log(`[CHECK-LIMIT-DB] Starting check for user=${userId}, type=${type}`);
+    
     const userSub = await this.getSubscriptionStatus(userId);
-    if (!userSub) return { allowed: false, message: "Subscription not found" };
+    if (!userSub) {
+      console.log(`[CHECK-LIMIT-DB] ERROR: Subscription not found for user=${userId}`);
+      return { allowed: false, message: "Subscription not found" };
+    }
+    
+    console.log(`[CHECK-LIMIT-DB] User subscription: plan=${userSub.subscriptionPlan}, status=${userSub.subscriptionStatus}, aiUsed=${userSub.aiMessagesUsed}, voiceUsed=${userSub.voiceCallsUsed}`);
 
     const plan = await this.getSubscriptionPlan(userSub.subscriptionPlan);
-    if (!plan) return { allowed: false, message: "Subscription plan not found" };
+    if (!plan) {
+      console.log(`[CHECK-LIMIT-DB] ERROR: Plan not found: ${userSub.subscriptionPlan}`);
+      return { allowed: false, message: "Subscription plan not found" };
+    }
+    
+    console.log(`[CHECK-LIMIT-DB] Plan limits: aiLimit=${plan.aiMessagesLimit}, voiceLimit=${plan.voiceCallsLimit}`);
 
     // Check subscription status - must be active
     if (userSub.subscriptionStatus !== 'active') {
+      console.log(`[CHECK-LIMIT-DB] BLOCKED: Subscription status is '${userSub.subscriptionStatus}', not 'active'`);
       return { 
         allowed: false, 
         message: "Subscription is not active. Please check your billing status.",
         requiresPayment: true 
       };
     }
+    
+    console.log(`[CHECK-LIMIT-DB] Subscription is active, checking ${type} usage...`);
 
     // Check usage limits based on plan
     switch (type) {
       case 'ai_message':
         // Null means unlimited
         if (plan.aiMessagesLimit === null || plan.aiMessagesLimit === -1) {
+          console.log(`[CHECK-LIMIT] AI messages UNLIMITED`);
           return { allowed: true };
         }
+        
+        console.log(`[CHECK-LIMIT] AI check: used=${userSub.aiMessagesUsed}, limit=${plan.aiMessagesLimit}`);
         
         if (userSub.aiMessagesUsed >= plan.aiMessagesLimit) {
           const upgradeMessage = userSub.subscriptionPlan === 'free' 
             ? `🚀 Du hast dein kostenloses Limit von ${plan.aiMessagesLimit} Nachrichten erreicht! Upgrade auf Pro für 500 Nachrichten/Monat.`
             : `Monatliches AI-Nachrichten-Limit (${plan.aiMessagesLimit}) erreicht. Bitte upgrade auf einen höheren Plan.`;
           
-          return { 
-            allowed: false, 
-            message: upgradeMessage,
-            requiresUpgrade: true,
-            requiresPayment: userSub.subscriptionPlan === 'free'
-          };
-        }
-        break;
-        
-      case 'voice_call':
-        // Null means unlimited
-        if (plan.voiceCallsLimit === null || plan.voiceCallsLimit === -1) {
-          return { allowed: true };
-        }
-        
-        if (userSub.voiceCallsUsed >= plan.voiceCallsLimit) {
-          const upgradeMessage = userSub.subscriptionPlan === 'free'
-            ? `📞 Du hast dein kostenloses Limit von ${plan.voiceCallsLimit} Anrufen erreicht! Upgrade auf Pro für 100 Anrufe/Monat.`
-            : `Monatliches Voice-Call-Limit (${plan.voiceCallsLimit}) erreicht. Bitte upgrade auf einen höheren Plan.`;
+          console.log(`[CHECK-LIMIT] ❌ BLOCKED AI: ${userSub.aiMessagesUsed} >= ${plan.aiMessagesLimit}`);
           
           return { 
             allowed: false, 
@@ -642,9 +642,39 @@ export class DatabaseStorage implements IStorage {
             requiresPayment: userSub.subscriptionPlan === 'free'
           };
         }
+        
+        console.log(`[CHECK-LIMIT] ✅ AI ALLOWED: ${userSub.aiMessagesUsed}/${plan.aiMessagesLimit}`);
+        break;
+        
+      case 'voice_call':
+        // Null means unlimited
+        if (plan.voiceCallsLimit === null || plan.voiceCallsLimit === -1) {
+          console.log(`[CHECK-LIMIT] Voice calls UNLIMITED`);
+          return { allowed: true };
+        }
+        
+        console.log(`[CHECK-LIMIT] Voice check: used=${userSub.voiceCallsUsed}, limit=${plan.voiceCallsLimit}`);
+        
+        if (userSub.voiceCallsUsed >= plan.voiceCallsLimit) {
+          const upgradeMessage = userSub.subscriptionPlan === 'free'
+            ? `📞 Du hast dein kostenloses Limit von ${plan.voiceCallsLimit} Anrufen erreicht! Upgrade auf Pro für 100 Anrufe/Monat.`
+            : `Monatliches Voice-Call-Limit (${plan.voiceCallsLimit}) erreicht. Bitte upgrade auf einen höheren Plan.`;
+          
+          console.log(`[CHECK-LIMIT] ❌ BLOCKED Voice: ${userSub.voiceCallsUsed} >= ${plan.voiceCallsLimit}`);
+          
+          return { 
+            allowed: false, 
+            message: upgradeMessage,
+            requiresUpgrade: true,
+            requiresPayment: userSub.subscriptionPlan === 'free'
+          };
+        }
+        
+        console.log(`[CHECK-LIMIT] ✅ Voice ALLOWED: ${userSub.voiceCallsUsed}/${plan.voiceCallsLimit}`);
         break;
     }
 
+    console.log(`[CHECK-LIMIT] ✅ FINAL: ALLOWED`);
     return { allowed: true };
   }
 
@@ -1310,33 +1340,18 @@ export class MemStorage implements IStorage {
       case 'ai_message':
         // Null means unlimited
         if (plan.aiMessagesLimit === null || plan.aiMessagesLimit === -1) {
+          console.log(`[CHECK-LIMIT] AI messages UNLIMITED`);
           return { allowed: true };
         }
+        
+        console.log(`[CHECK-LIMIT] AI check: used=${userSub.aiMessagesUsed}, limit=${plan.aiMessagesLimit}`);
         
         if (userSub.aiMessagesUsed >= plan.aiMessagesLimit) {
           const upgradeMessage = userSub.subscriptionPlan === 'free' 
             ? `🚀 Du hast dein kostenloses Limit von ${plan.aiMessagesLimit} Nachrichten erreicht! Upgrade auf Pro für 500 Nachrichten/Monat.`
             : `Monatliches AI-Nachrichten-Limit (${plan.aiMessagesLimit}) erreicht. Bitte upgrade auf einen höheren Plan.`;
           
-          return { 
-            allowed: false, 
-            message: upgradeMessage,
-            requiresUpgrade: true,
-            requiresPayment: userSub.subscriptionPlan === 'free'
-          };
-        }
-        break;
-        
-      case 'voice_call':
-        // Null means unlimited
-        if (plan.voiceCallsLimit === null || plan.voiceCallsLimit === -1) {
-          return { allowed: true };
-        }
-        
-        if (userSub.voiceCallsUsed >= plan.voiceCallsLimit) {
-          const upgradeMessage = userSub.subscriptionPlan === 'free'
-            ? `📞 Du hast dein kostenloses Limit von ${plan.voiceCallsLimit} Anrufen erreicht! Upgrade auf Pro für 100 Anrufe/Monat.`
-            : `Monatliches Voice-Call-Limit (${plan.voiceCallsLimit}) erreicht. Bitte upgrade auf einen höheren Plan.`;
+          console.log(`[CHECK-LIMIT] ❌ BLOCKED AI: ${userSub.aiMessagesUsed} >= ${plan.aiMessagesLimit}`);
           
           return { 
             allowed: false, 
@@ -1345,9 +1360,39 @@ export class MemStorage implements IStorage {
             requiresPayment: userSub.subscriptionPlan === 'free'
           };
         }
+        
+        console.log(`[CHECK-LIMIT] ✅ AI ALLOWED: ${userSub.aiMessagesUsed}/${plan.aiMessagesLimit}`);
+        break;
+        
+      case 'voice_call':
+        // Null means unlimited
+        if (plan.voiceCallsLimit === null || plan.voiceCallsLimit === -1) {
+          console.log(`[CHECK-LIMIT] Voice calls UNLIMITED`);
+          return { allowed: true };
+        }
+        
+        console.log(`[CHECK-LIMIT] Voice check: used=${userSub.voiceCallsUsed}, limit=${plan.voiceCallsLimit}`);
+        
+        if (userSub.voiceCallsUsed >= plan.voiceCallsLimit) {
+          const upgradeMessage = userSub.subscriptionPlan === 'free'
+            ? `📞 Du hast dein kostenloses Limit von ${plan.voiceCallsLimit} Anrufen erreicht! Upgrade auf Pro für 100 Anrufe/Monat.`
+            : `Monatliches Voice-Call-Limit (${plan.voiceCallsLimit}) erreicht. Bitte upgrade auf einen höheren Plan.`;
+          
+          console.log(`[CHECK-LIMIT] ❌ BLOCKED Voice: ${userSub.voiceCallsUsed} >= ${plan.voiceCallsLimit}`);
+          
+          return { 
+            allowed: false, 
+            message: upgradeMessage,
+            requiresUpgrade: true,
+            requiresPayment: userSub.subscriptionPlan === 'free'
+          };
+        }
+        
+        console.log(`[CHECK-LIMIT] ✅ Voice ALLOWED: ${userSub.voiceCallsUsed}/${plan.voiceCallsLimit}`);
         break;
     }
 
+    console.log(`[CHECK-LIMIT] ✅ FINAL: ALLOWED`);
     return { allowed: true };
   }
 

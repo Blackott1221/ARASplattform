@@ -159,7 +159,8 @@ async function seedSubscriptionPlans() {
   await seedSubscriptionPlans();
   
   // Add migration endpoint (temporary - can be removed after migration)
-  app.post('/api/admin/migrate-plans-now', async (req: any, res) => {
+  // Support both GET and POST since browsers default to GET
+  const migrationHandler = async (req: any, res: Response) => {
     try {
       log('[ADMIN] Starting plan migration...');
       
@@ -212,7 +213,11 @@ async function seedSubscriptionPlans() {
         details: error.message 
       });
     }
-  });
+  };
+  
+  // Register for both GET and POST
+  app.get('/api/admin/migrate-plans-now', migrationHandler);
+  app.post('/api/admin/migrate-plans-now', migrationHandler);
   
   const server = await registerRoutes(app);
 

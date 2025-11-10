@@ -209,8 +209,11 @@ export function ChatInterface() {
       if (data?.sessionId) setCurrentSessionId(data.sessionId);
       setUploadedFiles([]);
       
+      // Refresh all usage-related data
       queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/subscription"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user/usage"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
     },
     onError: () => {
       setOptimisticMessages([]);

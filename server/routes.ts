@@ -777,14 +777,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userName = user?.firstName || user?.username || 'Justin';
       
       // Check if user has reached their AI message limit
+      logger.info(`[LIMIT-CHECK] Checking AI message limit for user ${userId}`);
       const limitCheck = await storage.checkUsageLimit(userId, 'ai_message');
+      logger.info(`[LIMIT-CHECK] Result: allowed=${limitCheck.allowed}, message=${limitCheck.message}`);
+      
       if (!limitCheck.allowed) {
+        logger.warn(`[LIMIT-CHECK] BLOCKING user ${userId} - ${limitCheck.message}`);
         return res.status(403).json({
           error: limitCheck.message || 'AI message limit reached',
           requiresUpgrade: limitCheck.requiresUpgrade,
           requiresPayment: limitCheck.requiresPayment
         });
       }
+      
+      logger.info(`[LIMIT-CHECK] ALLOWED - User ${userId} can send message`);
       
       let activeSessionId = sessionId;
       if (!activeSessionId) {

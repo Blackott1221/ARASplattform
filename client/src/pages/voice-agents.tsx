@@ -210,6 +210,10 @@ export default function VoiceAgents() {
         if (data.call && data.call.call_id) {
           fetchTranscript(data.call.call_id);
         }
+        
+        // Refresh usage data after successful call
+        queryClient.invalidateQueries({ queryKey: ["/api/user/subscription"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/user/usage"] });
       }
     } catch (error) {
       setResult({ success: false, message: "Call failed" });
