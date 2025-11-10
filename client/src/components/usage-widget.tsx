@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Phone, MessageSquare, TrendingUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 
 interface UsageData {
   calls: { used: number; limit: number; remaining: number };
@@ -10,23 +11,21 @@ interface UsageData {
 }
 
 export default function UsageWidget() {
-  const [usage, setUsage] = useState<UsageData | null>(null);
   const [showDetails, setShowDetails] = useState(false);
 
-  useEffect(() => {
-    fetchUsage();
-  }, []);
-
-  const fetchUsage = async () => {
-    try {
+  // Use React Query for automatic updates when queries are invalidated
+  const { data: usageData } = useQuery<{ success: boolean; usage: UsageData }>({
+    queryKey: ["/api/user/usage"],
+    queryFn: async () => {
       const res = await fetch("/api/user/usage");
-      const data = await res.json();
-      if (data.success) setUsage(data.usage);
-    } catch (error) {
-      console.error("Failed to fetch usage:", error);
-    }
-  };
+      if (!res.ok) throw new Error("Failed to fetch usage");
+      return res.json();
+    },
+    refetchInterval: 30000, // Auto-refresh every 30 seconds
+    refetchOnWindowFocus: true,
+  });
 
+  const usage = usageData?.usage;
   if (!usage) return null;
 
   const callsPercent = usage.calls.limit === -1 ? 0 : (usage.calls.used / usage.calls.limit) * 100;
