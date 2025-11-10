@@ -219,6 +219,57 @@ async function seedSubscriptionPlans() {
   app.get('/api/admin/migrate-plans-now', migrationHandler);
   app.post('/api/admin/migrate-plans-now', migrationHandler);
   
+  // Delete old subscription plans from database
+  const deleteOldPlansHandler = async (req: any, res: Response) => {
+    try {
+      log('[ADMIN] Deleting old subscription plans...');
+      
+      // Check which old plans exist
+      const oldPlans = await client`
+        SELECT id, name, price 
+        FROM subscription_plans 
+        WHERE id IN ('starter', 'professional', 'enterprise')
+      `;
+      
+      log(`[ADMIN] Found ${oldPlans.length} old plans to delete:`, oldPlans.map((p: any) => p.id));
+      
+      if (oldPlans.length === 0) {
+        return res.json({
+          success: true,
+          message: 'No old plans to delete',
+          deletedPlans: []
+        });
+      }
+      
+      // Delete the old plans
+      const result = await client`
+        DELETE FROM subscription_plans
+        WHERE id IN ('starter', 'professional', 'enterprise')
+        RETURNING id, name
+      `;
+      
+      log(`[ADMIN] Successfully deleted ${result.length} old plans`);
+      
+      res.json({
+        success: true,
+        message: `Successfully deleted ${result.length} old subscription plans`,
+        deletedPlans: result.map((p: any) => ({
+          id: p.id,
+          name: p.name
+        }))
+      });
+    } catch (error: any) {
+      log('[ADMIN] Error deleting old plans:', error);
+      res.status(500).json({ 
+        error: 'Failed to delete old plans',
+        details: error.message 
+      });
+    }
+  };
+  
+  app.get('/api/admin/delete-old-plans', deleteOldPlansHandler);
+  app.post('/api/admin/delete-old-plans', deleteOldPlansHandler);
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
