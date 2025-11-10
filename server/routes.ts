@@ -1371,6 +1371,57 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     }
   });
 
+  // Migrate users from old plans to new plans
+  app.post('/api/admin/migrate-plans', requireAdmin, async (req: any, res) => {
+    try {
+      logger.info('[ADMIN] Starting plan migration...');
+      
+      // Migration map: old plan -> new plan
+      const planMigration: Record<string, string> = {
+        'starter': 'free',
+        'enterprise': 'ultimate',
+        // pro stays pro, but we'll update it too
+      };
+      
+      // Get all users with old plans
+      const usersToMigrate = await client`
+        SELECT id, username, subscription_plan
+        FROM users
+        WHERE subscription_plan IN ('starter', 'enterprise')
+      `;
+      
+      logger.info(`[ADMIN] Found ${usersToMigrate.length} users to migrate`);
+      
+      let migratedCount = 0;
+      for (const user of usersToMigrate) {
+        const newPlan = planMigration[user.subscription_plan] || 'free';
+        
+        await client`
+          UPDATE users
+          SET subscription_plan = ${newPlan},
+              updated_at = NOW()
+          WHERE id = ${user.id}
+        `;
+        
+        logger.info(`[ADMIN] Migrated user ${user.username} from ${user.subscription_plan} to ${newPlan}`);
+        migratedCount++;
+      }
+      
+      res.json({
+        success: true,
+        message: `Successfully migrated ${migratedCount} users`,
+        migrations: usersToMigrate.map((u: any) => ({
+          username: u.username,
+          from: u.subscription_plan,
+          to: planMigration[u.subscription_plan] || 'free'
+        }))
+      });
+    } catch (error: any) {
+      logger.error('[ADMIN] Error migrating plans:', error);
+      res.status(500).json({ error: 'Failed to migrate plans' });
+    }
+  });
+
   // Reset user password
   app.post('/api/admin/users/:userId/reset-password', requireAdmin, async (req: any, res) => {
     try {

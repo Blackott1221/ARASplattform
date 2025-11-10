@@ -15,19 +15,25 @@ export function CurrentPlan({ user, subscription }: CurrentPlanProps) {
   
   const getPlanDetails = (plan: string) => {
     switch (plan) {
+      case "free":
+        return { name: "ARAS Free – Discover Mode", price: 0, aiMessages: 10, voiceCalls: 2 };
       case "pro":
-        return { name: "Pro Plan", price: 99, aiMessages: 500, voiceCalls: 100 };
-      case "enterprise":
-        return { name: "Enterprise Plan", price: 299, aiMessages: null, voiceCalls: null };
+        return { name: "ARAS Pro – Growth Mode", price: 59, aiMessages: 500, voiceCalls: 100 };
+      case "ultra":
+        return { name: "ARAS Ultra – Performance Mode", price: 249, aiMessages: 10000, voiceCalls: 1000 };
+      case "ultimate":
+        return { name: "ARAS Ultimate – Enterprise Mode", price: 1990, aiMessages: null, voiceCalls: 10000 };
+      // Legacy fallback for old plans - redirect to free
+      case "starter":
       default:
-        return { name: "Starter Plan", price: 29, aiMessages: 100, voiceCalls: 10 };
+        return { name: "ARAS Free – Discover Mode", price: 0, aiMessages: 10, voiceCalls: 2 };
     }
   };
 
   // Get plan details, but override for trial users
   const planDetails = isTrialUser 
     ? { name: "Free Trial", price: 0, aiMessages: 10, voiceCalls: 0 }
-    : getPlanDetails(subscription?.plan || "starter");
+    : getPlanDetails(subscription?.plan || "free");
 
   // Enhanced trial message tracking
   const trialMessagesRemaining = isTrialUser ? (subscription?.trialMessagesRemaining || 0) : 0;
@@ -77,8 +83,8 @@ export function CurrentPlan({ user, subscription }: CurrentPlanProps) {
                   </div>
                 ) : (
                   <div>
-                    <p className="text-2xl font-bold">${planDetails.price}</p>
-                    <p className="text-sm text-muted-foreground">per month</p>
+                    <p className="text-2xl font-bold">€{planDetails.price}</p>
+                    <p className="text-sm text-muted-foreground">{planDetails.price === 0 ? '' : 'per month'}</p>
                   </div>
                 )}
               </div>

@@ -215,12 +215,18 @@ export function PaymentSetup({ isOpen, onClose, onSuccess, selectedPlan }: Payme
   // Get plan details based on selectedPlan
   const getPlanDetails = (planId?: string | null) => {
     switch (planId) {
+      case 'free':
+        return { name: 'ARAS Free – Discover Mode', price: 0, description: '10 AI messages • 2 voice calls/month' };
       case 'pro':
-        return { name: 'Pro Plan', price: 99, description: '500 AI messages • 100 voice calls/month' };
-      case 'enterprise':
-        return { name: 'Enterprise Plan', price: 299, description: 'Unlimited AI messages • Unlimited voice calls' };
+        return { name: 'ARAS Pro – Growth Mode', price: 59, description: '500 AI messages • 100 voice calls/month' };
+      case 'ultra':
+        return { name: 'ARAS Ultra – Performance Mode', price: 249, description: '10.000 AI messages • 1.000 voice calls/month' };
+      case 'ultimate':
+        return { name: 'ARAS Ultimate – Enterprise Mode', price: 1990, description: 'Unbegrenzte AI messages • 10.000 voice calls/month' };
+      // Legacy fallback
+      case 'starter':
       default:
-        return { name: 'Starter Plan', price: 29, description: '100 AI messages • 10 voice calls/month' };
+        return { name: 'ARAS Free – Discover Mode', price: 0, description: '10 AI messages • 2 voice calls/month' };
     }
   };
 
