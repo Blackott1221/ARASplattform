@@ -49,69 +49,7 @@ export function PricingCards({ subscription, onPaymentSetup, onPlanUpgrade }: Pr
     trialAvailable: false,
     stripePriceId: plan.stripePriceId, // Include Stripe info
     available: plan.id === 'free' || !!plan.stripePriceId // Available if free or has Stripe config
-  })) : [
-    // Fallback plans if API fails
-    {
-      id: "free",
-      name: "ARAS Free – Discover Mode",
-      price: 0,
-      trialMessages: 0,
-      aiMessages: 10,
-      voiceCalls: 2,
-      features: [
-        "2 kostenlose Outbound Calls",
-        "10 freie Chatnachrichten",
-        "Zugriff auf die ARAS-Konsole (Basic)"
-      ],
-      popular: false,
-      trialAvailable: false,
-    },
-    {
-      id: "pro",
-      name: "ARAS Pro – Growth Mode",
-      price: 59,
-      trialMessages: 0,
-      aiMessages: 500,
-      voiceCalls: 100,
-      features: [
-        "100 Outbound Calls pro Monat",
-        "500 Chatnachrichten pro Monat",
-        "E-Mail-Support"
-      ],
-      popular: false,
-      trialAvailable: false,
-    },
-    {
-      id: "ultra",
-      name: "ARAS Ultra – Performance Mode",
-      price: 249,
-      trialMessages: 0,
-      aiMessages: 10000,
-      voiceCalls: 1000,
-      features: [
-        "1.000 Outbound Calls pro Monat",
-        "10.000 Chatnachrichten pro Monat",
-        "Priorisierter Support"
-      ],
-      popular: true,
-      trialAvailable: false,
-    },
-    {
-      id: "ultimate",
-      name: "ARAS Ultimate – Enterprise Mode",
-      price: 1990,
-      trialMessages: 0,
-      aiMessages: null,
-      voiceCalls: 10000,
-      features: [
-        "10.000 Outbound Calls pro Monat",
-        "Unbegrenzte Chatnachrichten",
-        "24/7 Premium-Support"
-      ],
-      popular: false,
-      trialAvailable: false,
-    },
-  ];
+  })) : [];
 
   const handlePlanSelect = async (planId: string) => {
     const plan = plans.find((p: any) => p.id === planId);

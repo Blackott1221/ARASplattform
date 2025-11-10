@@ -158,6 +158,37 @@ async function seedSubscriptionPlans() {
   // Seed subscription plans
   await seedSubscriptionPlans();
   
+  // Add migration endpoint (temporary - can be removed after migration)
+  app.post('/api/admin/migrate-plans-now', async (req: any, res) => {
+    try {
+      log('[ADMIN] Starting plan migration...');
+      
+      const result = await client`
+        UPDATE users
+        SET subscription_plan = 
+          CASE subscription_plan
+            WHEN 'starter' THEN 'free'
+            WHEN 'enterprise' THEN 'ultimate'
+            ELSE subscription_plan
+          END,
+          updated_at = NOW()
+        WHERE subscription_plan IN ('starter', 'enterprise')
+        RETURNING username, subscription_plan
+      `;
+      
+      log(`[ADMIN] Migrated ${result.length} users`);
+      
+      res.json({
+        success: true,
+        message: `Successfully migrated ${result.length} users`,
+        users: result
+      });
+    } catch (error: any) {
+      log('[ADMIN] Error migrating plans:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
