@@ -149,7 +149,7 @@ async function seedSubscriptionPlans() {
     }
     
     log("✅ Subscription plans seeded successfully");
-  } catch (error) {
+  } catch (error: any) {
     log("⚠️  Error seeding plans (table may not exist yet):", error);
   }
 }

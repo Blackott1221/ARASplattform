@@ -199,9 +199,6 @@ export const voiceTasks = pgTable("voice_tasks", {
 export type VoiceTask = typeof voiceTasks.$inferSelect;
 export type InsertVoiceTask = typeof voiceTasks.$inferInsert;
 
-export type VoiceTask = typeof voiceTasks.$inferSelect;
-export type InsertVoiceTask = typeof voiceTasks.$inferInsert;
-
 // Subscription response types
 export type SubscriptionResponse = {
   plan: string;

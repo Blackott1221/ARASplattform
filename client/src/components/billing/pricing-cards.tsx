@@ -112,7 +112,7 @@ export function PricingCards({ subscription, onPaymentSetup, onPlanUpgrade }: Pr
   ];
 
   const handlePlanSelect = async (planId: string) => {
-    const plan = plans.find(p => p.id === planId);
+    const plan = plans.find((p: any) => p.id === planId);
     if (!plan) return;
 
     setIsLoading(planId);
@@ -235,7 +235,6 @@ export function PricingCards({ subscription, onPaymentSetup, onPlanUpgrade }: Pr
             variant: "destructive",
           });
         }
-      }
     } catch (error: any) {
       console.error('Plan selection error:', error);
       toast({
@@ -270,7 +269,7 @@ export function PricingCards({ subscription, onPaymentSetup, onPlanUpgrade }: Pr
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      {plans.map((plan, index) => (
+      {plans.map((plan: any, index: number) => (
         <motion.div
           key={plan.id}
           initial={{ opacity: 0, y: 20 }}
@@ -312,7 +311,7 @@ export function PricingCards({ subscription, onPaymentSetup, onPlanUpgrade }: Pr
             </CardHeader>
             <CardContent>
               <ul className="space-y-2 mb-6">
-                {plan.features.map((feature, i) => (
+                {plan.features.map((feature: string, i: number) => (
                   <li key={i} className="flex items-center space-x-2">
                     <Check className="w-4 h-4 text-green-400" />
                     <span className="text-sm">{feature}</span>
