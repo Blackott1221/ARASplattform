@@ -72,14 +72,47 @@ export default function Signup() {
 
     setIsLoading(true);
     
-    // Simulate signup process for wireframe
-    setTimeout(() => {
+    try {
+      // Create username from email
+      const username = email.split('@')[0] + '_' + Math.random().toString(36).substr(2, 4);
+      
+      const response = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          username,
+          password,
+          email,
+          firstName,
+          lastName
+        })
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Registration failed');
+      }
+      
+      const user = await response.json();
+      
       toast({
-        title: "Account Created",
+        title: "Account Created! 🎉",
         description: "Welcome to ARAS AI! Your account has been created successfully.",
       });
-      setLocation("/welcome"); // Show welcome page first
-    }, 2000);
+      
+      // Redirect to welcome page after successful signup
+      setLocation("/welcome");
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      toast({
+        title: "Signup Failed",
+        description: error.message || "An error occurred during signup. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

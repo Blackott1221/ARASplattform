@@ -58,6 +58,7 @@ function Router() {
           {/* Unauthenticated - show auth page */}
           <Route path="/" component={AuthPage} />
           {/* Redirect protected routes to auth */}
+          <Route path="/app" component={AuthPage} />
           <Route path="/space" component={AuthPage} />
           <Route path="/power" component={AuthPage} />
           <Route path="/voice-agents" component={AuthPage} />

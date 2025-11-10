@@ -78,7 +78,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
       {/* Content */}
       <div className="relative z-10 flex flex-col h-screen">
         {/* Logo Section */}
-        <div className={`flex items-center ${isCollapsed ? 'justify-center p-4' : 'justify-between px-5 py-4'}`}>
+        <div className={`flex items-center ${isCollapsed ? 'justify-center p-5' : 'justify-between px-5 py-5'}`}>
           <motion.div
             className="relative"
             whileHover={{ scale: 1.02 }}
@@ -87,7 +87,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
             <img 
               src={arasLogo} 
               alt="ARAS AI" 
-              className={`relative ${isCollapsed ? 'w-8 h-8' : 'w-10 h-10'} transition-all duration-300 object-contain`}
+              className={`relative ${isCollapsed ? 'w-10 h-10' : 'w-12 h-12'} transition-all duration-300 object-contain`}
             />
           </motion.div>
           
@@ -112,7 +112,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
 
         {/* Expand Button (when collapsed) */}
         {isCollapsed && onToggleCollapse && (
-          <div className="flex justify-center pb-3">
+          <div className="flex justify-center pb-4">
             <motion.button
               onClick={onToggleCollapse}
               className="p-1.5 rounded-full transition-all"
@@ -131,98 +131,124 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
           </div>
         )}
         
-        {/* Navigation Items */}
-        <nav className={`flex-1 ${isCollapsed ? 'px-3 py-4' : 'px-4 py-4'} space-y-1.5`}>
-          {navItems.map((item, index) => {
-            const Icon = item.icon;
-            const isActive = activeSection === item.id;
-            const isHovered = hoveredItem === item.id;
-            
-            return (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.03, duration: 0.3 }}
-              >
-                <motion.a
-                  href={item.id === 'space' ? '/app' : `/app/${item.id}`}
-                  onMouseEnter={() => setHoveredItem(item.id)}
-                  onMouseLeave={() => setHoveredItem(null)}
-                  className="relative block group"
-                  whileTap={{ scale: 0.98 }}
+        {/* Navigation Items - More Centered */}
+        <nav className={`flex-1 flex flex-col justify-center ${isCollapsed ? 'px-3' : 'px-4'} -mt-16`}>
+          <div className="space-y-3">
+            {navItems.map((item, index) => {
+              const Icon = item.icon;
+              const isActive = activeSection === item.id;
+              const isHovered = hoveredItem === item.id;
+              
+              return (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.03, duration: 0.3 }}
                 >
-                  {/* Clean Button Container */}
-                  <motion.div
-                    className={`relative flex ${isCollapsed ? 'justify-center' : 'items-center'} ${isCollapsed ? 'p-2.5' : 'px-3 py-2'} rounded-full transition-all duration-200`}
-                    style={{
-                      background: 'transparent',
-                      border: '1px solid',
-                      borderColor: isActive 
-                        ? 'rgba(254, 145, 0, 0.3)'
-                        : isHovered 
-                          ? 'rgba(254, 145, 0, 0.15)' 
-                          : 'rgba(255, 255, 255, 0.08)',
-                    }}
-                    animate={{
-                      borderColor: isActive 
-                        ? ['rgba(254, 145, 0, 0.3)', 'rgba(233, 215, 196, 0.3)', 'rgba(163, 78, 0, 0.3)', 'rgba(254, 145, 0, 0.3)']
-                        : isHovered
-                          ? 'rgba(254, 145, 0, 0.15)'
-                          : 'rgba(255, 255, 255, 0.08)'
-                    }}
-                    transition={{
-                      borderColor: isActive 
-                        ? { duration: 6, repeat: Infinity, ease: 'linear' }
-                        : { duration: 0.2 }
-                    }}
+                  <motion.a
+                    href={item.id === 'space' ? '/app' : `/app/${item.id}`}
+                    onMouseEnter={() => setHoveredItem(item.id)}
+                    onMouseLeave={() => setHoveredItem(null)}
+                    className="relative block group"
+                    whileTap={{ scale: 0.98 }}
                   >
-                    {/* Icon */}
-                    <Icon 
-                      className={`${isCollapsed ? 'w-5 h-5' : 'w-4 h-4'} transition-all`}
-                      style={{
-                        color: isActive ? '#FE9100' : isHovered ? '#e9d7c4' : '#6b7280'
-                      }}
-                    />
+                    {/* Wave Border Animation Container */}
+                    <div className="absolute inset-0 rounded-full overflow-hidden">
+                      {/* Fluid Wave Border */}
+                      {(isActive || isHovered) && (
+                        <motion.div
+                          className="absolute inset-0 rounded-full"
+                          style={{
+                            background: isActive
+                              ? `linear-gradient(90deg, 
+                                  transparent 0%, 
+                                  rgba(254, 145, 0, 0.3) 25%, 
+                                  rgba(233, 215, 196, 0.3) 50%, 
+                                  rgba(163, 78, 0, 0.3) 75%, 
+                                  transparent 100%)`
+                              : `linear-gradient(90deg, 
+                                  transparent 0%, 
+                                  rgba(254, 145, 0, 0.15) 50%, 
+                                  transparent 100%)`,
+                            backgroundSize: '200% 100%',
+                            padding: '1px',
+                          }}
+                          animate={{
+                            backgroundPosition: isActive || isHovered 
+                              ? ['200% 0%', '-200% 0%']
+                              : '0% 0%'
+                          }}
+                          transition={{
+                            backgroundPosition: {
+                              duration: isActive ? 2 : 1.5,
+                              repeat: Infinity,
+                              ease: 'linear'
+                            }
+                          }}
+                        >
+                          {/* Inner transparent background */}
+                          <div className="absolute inset-[1px] rounded-full bg-[#0f0f0f]" />
+                        </motion.div>
+                      )}
+                      
+                      {/* Default border when not active/hovered */}
+                      {!isActive && !isHovered && (
+                        <div className="absolute inset-0 rounded-full border border-white/[0.08]" />
+                      )}
+                    </div>
 
-                    {/* Label - ONLY VISIBLE WHEN OPEN */}
-                    {!isCollapsed && (
-                      <motion.span
-                        className="ml-3 text-[11px] font-medium tracking-wide"
+                    {/* Button Content */}
+                    <div
+                      className={`relative flex ${isCollapsed ? 'justify-center' : 'items-center'} ${isCollapsed ? 'p-2.5' : 'px-3 py-2'} rounded-full`}
+                    >
+                      {/* Icon */}
+                      <Icon 
+                        className={`${isCollapsed ? 'w-5 h-5' : 'w-4 h-4'} transition-all`}
                         style={{
-                          fontFamily: 'Orbitron, sans-serif',
-                          color: isActive ? '#FE9100' : isHovered ? '#e9d7c4' : '#9ca3af'
+                          color: isActive ? '#FE9100' : isHovered ? '#e9d7c4' : '#6b7280'
                         }}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.1 }}
-                      >
-                        {item.label}
-                      </motion.span>
-                    )}
-
-                    {/* Active Dot Indicator */}
-                    {isActive && (
-                      <motion.div
-                        className={`absolute ${isCollapsed ? 'bottom-0.5 left-1/2 -translate-x-1/2' : 'right-2 top-1/2 -translate-y-1/2'} w-1 h-1 rounded-full`}
-                        style={{
-                          background: '#FE9100',
-                        }}
-                        animate={{
-                          opacity: [0.4, 1, 0.4]
-                        }}
-                        transition={{ duration: 2, repeat: Infinity }}
                       />
-                    )}
-                  </motion.div>
-                </motion.a>
-              </motion.div>
-            );
-          })}
+
+                      {/* Label - ONLY VISIBLE WHEN OPEN */}
+                      {!isCollapsed && (
+                        <motion.span
+                          className="ml-3 text-[11px] font-medium tracking-wide"
+                          style={{
+                            fontFamily: 'Orbitron, sans-serif',
+                            color: isActive ? '#FE9100' : isHovered ? '#e9d7c4' : '#9ca3af'
+                          }}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.1 }}
+                        >
+                          {item.label}
+                        </motion.span>
+                      )}
+
+                      {/* Active Dot Indicator */}
+                      {isActive && (
+                        <motion.div
+                          className={`absolute ${isCollapsed ? 'bottom-0.5 left-1/2 -translate-x-1/2' : 'right-2 top-1/2 -translate-y-1/2'} w-1 h-1 rounded-full`}
+                          style={{
+                            background: '#FE9100',
+                          }}
+                          animate={{
+                            opacity: [0.4, 1, 0.4]
+                          }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                        />
+                      )}
+                    </div>
+                  </motion.a>
+                </motion.div>
+              );
+            })}
+          </div>
         </nav>
         
-        {/* Logout Button */}
-        <div className={`${isCollapsed ? 'px-3 pb-4' : 'px-4 pb-4'} pt-2`}>
+        {/* Logout Button - More Spacing */}
+        <div className={`${isCollapsed ? 'px-3 pb-8' : 'px-4 pb-8'} pt-4`}>
           <motion.button
             onClick={async () => {
               try {
