@@ -5,6 +5,7 @@ import { Sidebar } from '@/components/layout/sidebar';
 import { TopBar } from '@/components/layout/topbar';
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { 
@@ -231,6 +232,36 @@ export default function Power() {
           message
         })
       });
+
+      // Check for limit reached (403)
+      if (!response.ok && response.status === 403) {
+        const errorData = await response.json();
+        const errorMessage = errorData.error || errorData.message || "Voice call limit reached";
+        
+        setCallStatus('idle');
+        setResult({ 
+          success: false, 
+          error: errorMessage
+        });
+        
+        // Show prominent error toast with upgrade button
+        toast({
+          title: "Anruf-Limit erreicht! 📞❌",
+          description: errorMessage,
+          variant: "destructive",
+          duration: 15000,
+          action: (
+            <ToastAction 
+              altText="Jetzt upgraden" 
+              onClick={() => window.location.href = '/billing'}
+            >
+              Jetzt upgraden 🚀
+            </ToastAction>
+          )
+        });
+        
+        return;
+      }
 
       const data = await response.json();
 

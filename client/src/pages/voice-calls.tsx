@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Phone, Loader2, CheckCircle2, XCircle, MessageSquare, Clock, User, Sparkles, BrainCircuit } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 
 export default function VoiceCalls() {
+  const { toast } = useToast();
   const [contactName, setContactName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [message, setMessage] = useState("");
@@ -25,6 +28,35 @@ export default function VoiceCalls() {
           message
         })
       });
+      
+      // Check for limit reached (403)
+      if (!response.ok && response.status === 403) {
+        const errorData = await response.json();
+        const errorMessage = errorData.error || errorData.message || "Voice call limit reached";
+        
+        setResult({ 
+          success: false, 
+          error: errorMessage
+        });
+        
+        // Show prominent error toast with upgrade button
+        toast({
+          title: "Anruf-Limit erreicht! 📞❌",
+          description: errorMessage,
+          variant: "destructive",
+          duration: 15000,
+          action: (
+            <ToastAction 
+              altText="Jetzt upgraden" 
+              onClick={() => window.location.href = '/billing'}
+            >
+              Jetzt upgraden 🚀
+            </ToastAction>
+          )
+        });
+        
+        return;
+      }
       
       const data = await response.json();
       setResult(data);

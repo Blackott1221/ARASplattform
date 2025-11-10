@@ -4,6 +4,7 @@ import { MessageBubble } from "./message-bubble";
 import { Send, Mic, MicOff, Plus, MessageSquare, X, Menu, Paperclip, File, Image as ImageIcon, FileText, Clock, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -150,12 +151,20 @@ export function ChatInterface() {
           const errorData = await response.json();
           const errorMessage = errorData.error || errorData.message || 'Limit reached';
           
-          // Show error toast with upgrade message
+          // Show error toast with upgrade button
           toast({
             title: "Limit erreicht! ❌",
             description: errorMessage,
             variant: "destructive",
-            duration: 10000 // Show for 10 seconds
+            duration: 15000, // Show for 15 seconds
+            action: (
+              <ToastAction 
+                altText="Jetzt upgraden" 
+                onClick={() => window.location.href = '/billing'}
+              >
+                Jetzt upgraden 🚀
+              </ToastAction>
+            )
           });
           
           setIsStreaming(false);

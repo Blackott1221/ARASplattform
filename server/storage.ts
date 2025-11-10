@@ -637,8 +637,8 @@ export class DatabaseStorage implements IStorage {
         
         if (userSub.aiMessagesUsed >= plan.aiMessagesLimit) {
           const upgradeMessage = userSub.subscriptionPlan === 'free' 
-            ? `🚀 Du hast dein kostenloses Limit von ${plan.aiMessagesLimit} Nachrichten erreicht! Upgrade auf Pro für 500 Nachrichten/Monat.`
-            : `Monatliches AI-Nachrichten-Limit (${plan.aiMessagesLimit}) erreicht. Bitte upgrade auf einen höheren Plan.`;
+            ? `💬 Du hast dein kostenloses Limit von ${plan.aiMessagesLimit} AI-Nachrichten erreicht! Upgrade jetzt auf Pro und erhalte 500 Nachrichten pro Monat. 🚀`
+            : `💬 Du hast dein Limit von ${plan.aiMessagesLimit} AI-Nachrichten erreicht. Upgrade auf einen höheren Plan für mehr Nachrichten! 🚀`;
           
           console.log(`[CHECK-LIMIT] ❌ BLOCKED AI: ${userSub.aiMessagesUsed} >= ${plan.aiMessagesLimit}`);
           
@@ -664,8 +664,8 @@ export class DatabaseStorage implements IStorage {
         
         if (userSub.voiceCallsUsed >= plan.voiceCallsLimit) {
           const upgradeMessage = userSub.subscriptionPlan === 'free'
-            ? `📞 Du hast dein kostenloses Limit von ${plan.voiceCallsLimit} Anrufen erreicht! Upgrade auf Pro für 100 Anrufe/Monat.`
-            : `Monatliches Voice-Call-Limit (${plan.voiceCallsLimit}) erreicht. Bitte upgrade auf einen höheren Plan.`;
+            ? `📞 Du hast dein kostenloses Limit von ${plan.voiceCallsLimit} Anrufen erreicht! Upgrade jetzt auf Pro und erhalte 100 Anrufe pro Monat. 🚀`
+            : `📞 Du hast dein Limit von ${plan.voiceCallsLimit} Anrufen erreicht. Upgrade auf einen höheren Plan für mehr Anrufe! 🚀`;
           
           console.log(`[CHECK-LIMIT] ❌ BLOCKED Voice: ${userSub.voiceCallsUsed} >= ${plan.voiceCallsLimit}`);
           
@@ -1355,16 +1355,15 @@ export class MemStorage implements IStorage {
         
         if (userSub.aiMessagesUsed >= plan.aiMessagesLimit) {
           const upgradeMessage = userSub.subscriptionPlan === 'free' 
-            ? `🚀 Du hast dein kostenloses Limit von ${plan.aiMessagesLimit} Nachrichten erreicht! Upgrade auf Pro für 500 Nachrichten/Monat.`
-            : `Monatliches AI-Nachrichten-Limit (${plan.aiMessagesLimit}) erreicht. Bitte upgrade auf einen höheren Plan.`;
+            ? `💬 Du hast dein kostenloses Limit von ${plan.aiMessagesLimit} AI-Nachrichten erreicht! Upgrade jetzt auf Pro und erhalte 500 Nachrichten pro Monat. 🚀`
+            : `💬 Du hast dein Limit von ${plan.aiMessagesLimit} AI-Nachrichten erreicht. Upgrade auf einen höheren Plan für mehr Nachrichten! 🚀`;
           
           console.log(`[CHECK-LIMIT] ❌ BLOCKED AI: ${userSub.aiMessagesUsed} >= ${plan.aiMessagesLimit}`);
           
           return { 
             allowed: false, 
             message: upgradeMessage,
-            requiresUpgrade: true,
-            requiresPayment: userSub.subscriptionPlan === 'free'
+            requiresUpgrade: true 
           };
         }
         
@@ -1382,16 +1381,15 @@ export class MemStorage implements IStorage {
         
         if (userSub.voiceCallsUsed >= plan.voiceCallsLimit) {
           const upgradeMessage = userSub.subscriptionPlan === 'free'
-            ? `📞 Du hast dein kostenloses Limit von ${plan.voiceCallsLimit} Anrufen erreicht! Upgrade auf Pro für 100 Anrufe/Monat.`
-            : `Monatliches Voice-Call-Limit (${plan.voiceCallsLimit}) erreicht. Bitte upgrade auf einen höheren Plan.`;
+            ? `📞 Du hast dein kostenloses Limit von ${plan.voiceCallsLimit} Anrufen erreicht! Upgrade jetzt auf Pro und erhalte 100 Anrufe pro Monat. 🚀`
+            : `📞 Du hast dein Limit von ${plan.voiceCallsLimit} Anrufen erreicht. Upgrade auf einen höheren Plan für mehr Anrufe! 🚀`;
           
           console.log(`[CHECK-LIMIT] ❌ BLOCKED Voice: ${userSub.voiceCallsUsed} >= ${plan.voiceCallsLimit}`);
           
           return { 
             allowed: false, 
             message: upgradeMessage,
-            requiresUpgrade: true,
-            requiresPayment: userSub.subscriptionPlan === 'free'
+            requiresUpgrade: true 
           };
         }
         

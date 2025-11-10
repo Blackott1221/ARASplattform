@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { Phone, Loader2, CheckCircle2, XCircle, MessageSquare, Clock, User, FileText, Sparkles, Zap, ChevronDown, ChevronUp } from "lucide-react";
 import type { SubscriptionResponse } from "@shared/schema";
@@ -48,6 +49,7 @@ const PHONE_EXAMPLES = [
 export default function VoiceAgents() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { user } = useAuth();
+  const { toast } = useToast();
   
   const [phoneNumber, setPhoneNumber] = useState("");
   const [customPrompt, setCustomPrompt] = useState("");
@@ -188,11 +190,15 @@ export default function VoiceAgents() {
               title: "Voice Call Limit erreicht! 📞❌",
               description: errorMessage,
               variant: "destructive",
-              duration: 10000,
-              action: errorData.requiresUpgrade ? {
-                altText: "Upgrade",
-                onClick: () => window.location.href = '/billing'
-              } : undefined
+              duration: 15000,
+              action: errorData.requiresUpgrade ? (
+                <ToastAction 
+                  altText="Jetzt upgraden" 
+                  onClick={() => window.location.href = '/billing'}
+                >
+                  Jetzt upgraden 🚀
+                </ToastAction>
+              ) : undefined
             });
             
             // Refresh usage data to show correct limits
