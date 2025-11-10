@@ -1813,6 +1813,146 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   // Intelligente Middleware (Gemini) + Menschliche Stimme (ElevenLabs)
   // Diese Route ersetzt die alte, tote '/api/calls'
   // ========================================================
+  // ElevenLabs Webhook - Empfängt Call-Updates mit HMAC-Verification
+  app.post('/api/elevenlabs/webhook', express.raw({ type: 'application/json' }), async (req: any, res) => {
+    try {
+      // HMAC Signature Verification für Sicherheit
+      const signature = req.headers['x-elevenlabs-signature'] || req.headers['elevenlabs-signature'];
+      const webhookSecret = process.env.ELEVENLABS_WEBHOOK_SECRET;
+      
+      if (webhookSecret && signature) {
+        const crypto = await import('crypto');
+        const body = req.body.toString('utf8');
+        const hmac = crypto.createHmac('sha256', webhookSecret);
+        hmac.update(body);
+        const expectedSignature = hmac.digest('hex');
+        
+        // Vergleiche Signaturen
+        if (signature !== expectedSignature) {
+          logger.warn('[ELEVENLABS-WEBHOOK] Invalid signature - possible security threat!');
+          return res.status(401).json({ error: 'Invalid signature' });
+        }
+        logger.info('[ELEVENLABS-WEBHOOK] Signature verified ✓');
+      }
+      
+      // Parse Body
+      const webhookData = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      
+      logger.info('[ELEVENLABS-WEBHOOK] Received webhook', { 
+        eventType: webhookData.event_type,
+        conversationId: webhookData.conversation_id 
+      });
+      
+      const { 
+        event_type, 
+        conversation_id, 
+        transcript, 
+        recording_url, 
+        audio_url,
+        call_status, 
+        status,
+        error,
+        metadata 
+      } = webhookData;
+      
+      // Handle verschiedene Event-Typen
+      switch (event_type) {
+        case 'conversation.transcript':
+          logger.info('[ELEVENLABS-WEBHOOK] Transcript received', {
+            conversationId: conversation_id,
+            transcriptLength: transcript?.length
+          });
+          // TODO: Speichere Transcript in DB
+          // await storage.updateCallLog(conversation_id, { transcript });
+          break;
+          
+        case 'conversation.audio':
+          logger.info('[ELEVENLABS-WEBHOOK] Audio received', {
+            conversationId: conversation_id,
+            audioUrl: audio_url || recording_url
+          });
+          // TODO: Speichere Audio URL in DB
+          // await storage.updateCallLog(conversation_id, { recordingUrl: audio_url || recording_url });
+          break;
+          
+        case 'conversation.ended':
+        case 'conversation.completed':
+          logger.info('[ELEVENLABS-WEBHOOK] Call completed', {
+            conversationId: conversation_id,
+            status: call_status || status
+          });
+          // TODO: Update Call-Status in DB
+          // await storage.updateCallLog(conversation_id, { 
+          //   status: 'completed',
+          //   transcript,
+          //   recordingUrl: audio_url || recording_url 
+          // });
+          break;
+          
+        case 'call.initiation.failed':
+        case 'conversation.failed':
+          logger.error('[ELEVENLABS-WEBHOOK] Call failed', {
+            conversationId: conversation_id,
+            error: error,
+            status: call_status || status
+          });
+          // TODO: Markiere Call als failed in DB
+          // await storage.updateCallLog(conversation_id, { 
+          //   status: 'failed',
+          //   error: error 
+          // });
+          break;
+          
+        default:
+          logger.info('[ELEVENLABS-WEBHOOK] Unknown event type', { event_type });
+      }
+      
+      res.status(200).json({ received: true });
+    } catch (error: any) {
+      logger.error('[ELEVENLABS-WEBHOOK] Error processing webhook', { 
+        error: error.message,
+        stack: error.stack 
+      });
+      res.status(500).json({ error: 'Webhook processing failed' });
+    }
+  });
+  
+  // Get call details by conversation_id
+  app.get('/api/aras-voice/call-status/:conversationId', requireAuth, async (req: any, res) => {
+    try {
+      const { conversationId } = req.params;
+      
+      // Poll ElevenLabs API for call status
+      const response = await axios.get(
+        `https://api.elevenlabs.io/v1/convai/conversations/${conversationId}`,
+        {
+          headers: {
+            'xi-api-key': process.env.ELEVENLABS_API_KEY
+          }
+        }
+      );
+      
+      const callData = response.data;
+      
+      res.json({
+        success: true,
+        conversationId: callData.conversation_id,
+        status: callData.status,
+        transcript: callData.transcript,
+        recordingUrl: callData.recording_url,
+        startTime: callData.start_time,
+        endTime: callData.end_time,
+        duration: callData.duration_seconds
+      });
+    } catch (error: any) {
+      logger.error('[CALL-STATUS] Error fetching call status', { error: error.message });
+      res.status(500).json({ 
+        success: false,
+        error: 'Failed to fetch call status' 
+      });
+    }
+  });
+
   app.post('/api/aras-voice/smart-call', requireAuth, checkCallLimit, async (req: any, res) => {
   try {
     const userId = req.session.userId;
