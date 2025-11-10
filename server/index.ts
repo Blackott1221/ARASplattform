@@ -1,7 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { db } from "./db";
+import { db, client } from "./db";
 import { subscriptionPlans } from "@shared/schema";
 
 const app = express();
@@ -163,6 +163,24 @@ async function seedSubscriptionPlans() {
     try {
       log('[ADMIN] Starting plan migration...');
       
+      // First, check how many users need migration
+      const usersToMigrate = await client`
+        SELECT id, username, subscription_plan 
+        FROM users 
+        WHERE subscription_plan IN ('starter', 'enterprise')
+      `;
+      
+      log(`[ADMIN] Found ${usersToMigrate.length} users to migrate`);
+      
+      if (usersToMigrate.length === 0) {
+        return res.json({
+          success: true,
+          message: 'No users need migration',
+          users: []
+        });
+      }
+      
+      // Perform the migration
       const result = await client`
         UPDATE users
         SET subscription_plan = 
@@ -173,19 +191,26 @@ async function seedSubscriptionPlans() {
           END,
           updated_at = NOW()
         WHERE subscription_plan IN ('starter', 'enterprise')
-        RETURNING username, subscription_plan
+        RETURNING id, username, subscription_plan
       `;
       
-      log(`[ADMIN] Migrated ${result.length} users`);
+      log(`[ADMIN] Successfully migrated ${result.length} users`);
       
       res.json({
         success: true,
-        message: `Successfully migrated ${result.length} users`,
-        users: result
+        message: `Successfully migrated ${result.length} users from old plans to new plans`,
+        users: result.map((u: any) => ({
+          id: u.id,
+          username: u.username,
+          newPlan: u.subscription_plan
+        }))
       });
     } catch (error: any) {
       log('[ADMIN] Error migrating plans:', error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ 
+        error: 'Migration failed',
+        details: error.message 
+      });
     }
   });
   

@@ -3,6 +3,8 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { Phone, Loader2, CheckCircle2, XCircle, MessageSquare, Clock, User, FileText, Sparkles, Zap, ChevronDown, ChevronUp } from "lucide-react";
 import type { SubscriptionResponse } from "@shared/schema";
@@ -61,15 +63,21 @@ export default function VoiceAgents() {
   const { data: userSubscription } = useQuery<SubscriptionResponse>({
     queryKey: ["/api/user/subscription"],
     enabled: !!user,
+    retry: false,
   });
-  
-  const subscriptionData = userSubscription || {
-    plan: 'starter',
+
+  const subscriptionData: SubscriptionResponse = userSubscription || {
+    plan: 'free',
     status: 'active',
     aiMessagesUsed: 0,
     voiceCallsUsed: 0,
-    aiMessagesLimit: 100,
-    voiceCallsLimit: 10
+    aiMessagesLimit: 10,
+    voiceCallsLimit: 2,
+    renewalDate: null,
+    hasPaymentMethod: false,
+    requiresPaymentSetup: false,
+    isTrialActive: false,
+    canUpgrade: true
   };
 
   const handleSectionChange = (section: string) => {
@@ -162,6 +170,41 @@ export default function VoiceAgents() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ phoneNumber })
         });
+        
+        // Check for limit reached (403)
+        if (!response.ok) {
+          if (response.status === 403) {
+            const errorData = await response.json();
+            const errorMessage = errorData.error || errorData.message || "Voice call limit reached";
+            
+            setResult({ 
+              success: false, 
+              message: errorMessage,
+              requiresUpgrade: errorData.requiresUpgrade
+            });
+            
+            // Show prominent error message
+            toast({
+              title: "Voice Call Limit erreicht! 📞❌",
+              description: errorMessage,
+              variant: "destructive",
+              duration: 10000,
+              action: errorData.requiresUpgrade ? {
+                altText: "Upgrade",
+                onClick: () => window.location.href = '/billing'
+              } : undefined
+            });
+            
+            // Refresh usage data to show correct limits
+            queryClient.invalidateQueries({ queryKey: ["/api/user/usage"] });
+            return;
+          }
+          
+          const data = await response.json();
+          setResult({ success: false, message: data.message || "Call failed" });
+          return;
+        }
+        
         const data = await response.json();
         setResult(data);
         if (data.call && data.call.call_id) {

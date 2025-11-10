@@ -145,6 +145,26 @@ export function ChatInterface() {
       });
 
       if (!response.ok) {
+        // Handle limit reached errors
+        if (response.status === 403) {
+          const errorData = await response.json();
+          const errorMessage = errorData.error || errorData.message || 'Limit reached';
+          
+          // Show error toast with upgrade message
+          toast({
+            title: "Limit erreicht! ❌",
+            description: errorMessage,
+            variant: "destructive",
+            duration: 10000 // Show for 10 seconds
+          });
+          
+          setIsStreaming(false);
+          setStreamingMessage('');
+          
+          // Return early - don't process the message
+          throw new Error(errorMessage);
+        }
+        
         throw new Error('Failed to send message');
       }
 
@@ -616,7 +636,7 @@ export function ChatInterface() {
                     onReaction={() => {}}
                     onSpeak={() => {}}
                     isSpeaking={false}
-                    isNew={isNewAiMessage}
+                    isNew={!!isNewAiMessage}
                   />
                 );
               })}

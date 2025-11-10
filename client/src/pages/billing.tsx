@@ -35,17 +35,17 @@ export default function Billing() {
   }
 
   const subscriptionData: SubscriptionResponse = userSubscription || {
-    plan: 'starter',
-    status: 'trialing', // Changed from 'trial_pending' to match other components
+    plan: 'free',  // Changed from 'starter' to 'free'
+    status: 'active', // Free plan is always active
     aiMessagesUsed: 0,
     voiceCallsUsed: 0,
-    aiMessagesLimit: 100,
-    voiceCallsLimit: 10,
+    aiMessagesLimit: 10,  // Free plan: 10 messages
+    voiceCallsLimit: 2,   // Free plan: 2 calls
     renewalDate: null,
     trialMessagesUsed: 0,
     trialEndDate: null,
     hasPaymentMethod: false,
-    requiresPaymentSetup: true,
+    requiresPaymentSetup: false, // Free plan doesn't need payment
     isTrialActive: false,
     canUpgrade: true
   };
@@ -236,6 +236,7 @@ export default function Billing() {
           currentSection="billing" 
           subscriptionData={subscriptionData}
           user={user as User}
+          isVisible={true}
         />
         <div className="flex-1 p-6 overflow-y-auto">
           <CurrentPlan user={user} subscription={subscriptionData} />
