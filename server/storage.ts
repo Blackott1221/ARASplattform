@@ -1274,9 +1274,10 @@ export class MemStorage implements IStorage {
 
   async getAllSubscriptionPlans(): Promise<any[]> {
     return [
-      await this.getSubscriptionPlan('starter'),
-      await this.getSubscriptionPlan('professional'), 
-      await this.getSubscriptionPlan('enterprise'),
+      await this.getSubscriptionPlan('free'),
+      await this.getSubscriptionPlan('pro'),
+      await this.getSubscriptionPlan('ultra'),
+      await this.getSubscriptionPlan('ultimate'),
     ];
   }
 

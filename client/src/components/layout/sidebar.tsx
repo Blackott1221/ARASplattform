@@ -11,7 +11,7 @@ import {
   LogOut,
   LayoutDashboard
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import arasLogo from "@/assets/aras_logo_1755067745303.png";
 
 interface SidebarProps {
@@ -23,6 +23,17 @@ interface SidebarProps {
 
 export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, onToggleCollapse }: SidebarProps) {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+
+  // Auto-collapse after 4 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (onToggleCollapse && !isCollapsed) {
+        onToggleCollapse();
+      }
+    }, 4000);
+
+    return () => clearTimeout(timer);
+  }, [isCollapsed, onToggleCollapse]);
 
   const navItems = [
     { id: "space", label: "Space", icon: MessageCircle, gradient: "from-[#e9d7c4] via-[#FE9100] to-[#a34e00]" },
@@ -36,7 +47,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
     <motion.div 
       className="relative flex-shrink-0"
       initial={false}
-      animate={{ width: isCollapsed ? 88 : 280 }}
+      animate={{ width: isCollapsed ? 100 : 280 }}
       transition={{ duration: 0.4, ease: [0.25, 0.8, 0.25, 1] }}
     >
       {/* Ultra-Transparent Background with Glow */}
@@ -178,7 +189,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
 
                   {/* Item Container */}
                   <div
-                    className={`relative flex items-center ${isCollapsed ? 'justify-center p-4' : 'px-4 py-3 space-x-4'} rounded-xl transition-all duration-300`}
+                    className={`relative flex ${isCollapsed ? 'flex-col items-center justify-center p-3 space-y-1' : 'flex-row items-center px-4 py-3 space-x-4'} rounded-xl transition-all duration-300`}
                     style={{
                       background: isActive 
                         ? 'rgba(254, 145, 0, 0.15)'
@@ -220,41 +231,33 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
                       />
                     </div>
 
-                    {/* Label with Animated Gradient */}
-                    {!isCollapsed && (
+                    {/* Label with Animated Gradient - ALWAYS VISIBLE */}
+                    <motion.span
+                      className={`relative font-semibold tracking-wide ${isCollapsed ? 'text-[10px]' : 'text-sm'}`}
+                      style={{
+                        fontFamily: 'Orbitron, sans-serif'
+                      }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.2 }}
+                    >
                       <motion.span
-                        className="relative font-semibold text-sm tracking-wide"
+                        className="inline-block"
                         style={{
-                          fontFamily: 'Orbitron, sans-serif'
+                          background: `linear-gradient(90deg, ${item.gradient.split(' ').slice(1).join(' ')})`,
+                          backgroundSize: '200% 100%',
+                          backgroundClip: 'text',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
                         }}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.2 }}
+                        animate={{
+                          backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                        }}
+                        transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
                       >
-                        {isActive ? (
-                          <motion.span
-                            className="inline-block"
-                            style={{
-                              background: `linear-gradient(90deg, ${item.gradient.split(' ').slice(1).join(' ')})`,
-                              backgroundSize: '200% 100%',
-                              backgroundClip: 'text',
-                              WebkitBackgroundClip: 'text',
-                              WebkitTextFillColor: 'transparent',
-                            }}
-                            animate={{
-                              backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
-                            }}
-                            transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                          >
-                            {item.label}
-                          </motion.span>
-                        ) : (
-                          <span className="text-gray-400 group-hover:text-gray-200 transition-colors">
-                            {item.label}
-                          </span>
-                        )}
+                        {item.label}
                       </motion.span>
-                    )}
+                    </motion.span>
 
                     {/* Active Indicator */}
                     {isActive && !isCollapsed && (
@@ -285,43 +288,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
                     )}
                   </div>
 
-                  {/* Tooltip for collapsed state */}
-                  {isCollapsed && isHovered && (
-                    <motion.div
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -10 }}
-                      className="absolute left-full ml-4 top-1/2 -translate-y-1/2 px-3 py-2 rounded-lg whitespace-nowrap pointer-events-none z-50"
-                      style={{
-                        background: 'rgba(0, 0, 0, 0.9)',
-                        backdropFilter: 'blur(20px)',
-                        border: '1px solid rgba(254, 145, 0, 0.3)',
-                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
-                      }}
-                    >
-                      <span 
-                        className="text-sm font-semibold"
-                        style={{
-                          fontFamily: 'Orbitron, sans-serif',
-                          background: `linear-gradient(90deg, ${item.gradient.split(' ').slice(1).join(' ')})`,
-                          backgroundClip: 'text',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent',
-                        }}
-                      >
-                        {item.label}
-                      </span>
-                      {/* Tooltip Arrow */}
-                      <div 
-                        className="absolute right-full top-1/2 -translate-y-1/2 w-0 h-0"
-                        style={{
-                          borderTop: '6px solid transparent',
-                          borderBottom: '6px solid transparent',
-                          borderRight: '6px solid rgba(254, 145, 0, 0.3)'
-                        }}
-                      />
-                    </motion.div>
-                  )}
+                  {/* Tooltip for collapsed state - REMOVED since label is always visible now */}
                 </motion.a>
               </motion.div>
             );
@@ -354,7 +321,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
 
             {/* Button Container */}
             <div
-              className={`relative flex items-center ${isCollapsed ? 'justify-center p-4' : 'px-4 py-3 space-x-4'} rounded-xl transition-all duration-300`}
+              className={`relative flex ${isCollapsed ? 'flex-col items-center justify-center p-3 space-y-1' : 'flex-row items-center px-4 py-3 space-x-4'} rounded-xl transition-all duration-300`}
               style={{
                 background: 'rgba(239, 68, 68, 0.1)',
                 border: '1px solid rgba(239, 68, 68, 0.2)',
@@ -364,17 +331,25 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
               <LogOut 
                 className={`${isCollapsed ? 'w-7 h-7' : 'w-6 h-6'} text-red-400 transition-all`}
               />
-              {!isCollapsed && (
-                <motion.span
-                  className="font-semibold text-sm text-red-400 tracking-wide"
-                  style={{ fontFamily: 'Orbitron, sans-serif' }}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                >
-                  Abmelden
-                </motion.span>
-              )}
+              <motion.span
+                className={`font-semibold tracking-wide ${isCollapsed ? 'text-[10px]' : 'text-sm'}`}
+                style={{ 
+                  fontFamily: 'Orbitron, sans-serif',
+                  background: 'linear-gradient(90deg, #ef4444, #dc2626, #ef4444)',
+                  backgroundSize: '200% 100%',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
+                animate={{
+                  backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+              >
+                Abmelden
+              </motion.span>
             </div>
           </motion.button>
         </div>
