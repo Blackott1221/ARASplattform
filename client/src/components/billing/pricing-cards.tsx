@@ -46,7 +46,9 @@ export function PricingCards({ subscription, onPaymentSetup, onPlanUpgrade }: Pr
     voiceCalls: plan.voiceCallsLimit,
     features: plan.features || [],
     popular: plan.id === 'ultra', // Mark Ultra as popular
-    trialAvailable: false
+    trialAvailable: false,
+    stripePriceId: plan.stripePriceId, // Include Stripe info
+    available: plan.id === 'free' || !!plan.stripePriceId // Available if free or has Stripe config
   })) : [
     // Fallback plans if API fails
     {
@@ -138,6 +140,17 @@ export function PricingCards({ subscription, onPaymentSetup, onPlanUpgrade }: Pr
           });
           window.location.reload();
         }
+        setIsLoading(null);
+        return;
+      }
+
+      // Check if plan is available for purchase
+      if (!plan.available && planId !== 'free') {
+        toast({
+          title: "Noch nicht verfügbar",
+          description: "Dieser Plan wird bald verfügbar sein. Stripe-Konfiguration steht aus.",
+          variant: "default"
+        });
         setIsLoading(null);
         return;
       }
@@ -332,6 +345,14 @@ export function PricingCards({ subscription, onPaymentSetup, onPlanUpgrade }: Pr
                 >
                   {isLoading === plan.id ? "Wird geladen..." : 
                    subscription?.plan === 'free' ? "Aktueller Plan" : "Zu Free wechseln"}
+                </Button>
+              ) : !plan.available ? (
+                <Button
+                  disabled
+                  variant="outline"
+                  className="w-full opacity-60"
+                >
+                  Bald verfügbar
                 </Button>
               ) : plan.trialAvailable && subscription?.requiresPaymentSetup ? (
                 <Button

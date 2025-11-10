@@ -1,6 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
 import { storage } from "../storage";
-import { checkUsageLimit } from "../usage-limits";
 import { logger } from "../logger";
 
 export async function checkCallLimit(req: any, res: Response, next: NextFunction) {
@@ -17,25 +16,20 @@ export async function checkCallLimit(req: any, res: Response, next: NextFunction
       return res.status(404).json({ error: "User not found" });
     }
 
-    const { allowed, limit, remaining } = checkUsageLimit(
-      user.subscriptionPlan || 'starter',
-      user.voiceCallsUsed || 0,
-      'calls'
-    );
+    // Use new storage.checkUsageLimit method
+    const limitCheck = await storage.checkUsageLimit(userId, 'voice_call');
 
-    if (!allowed && user.subscriptionPlan !== 'pro' && user.subscriptionPlan !== 'enterprise') {
-      logger.warn(`[LIMIT] User ${user.username} reached call limit (${limit})`);
+    if (!limitCheck.allowed) {
+      logger.warn(`[LIMIT] User ${user.username} reached voice call limit`);
       return res.status(403).json({
-        error: "Call limit reached",
-        message: `You have reached your call limit of ${limit} calls. Please upgrade to continue.`,
-        limit,
-        used: user.voiceCallsUsed,
+        error: "Voice call limit reached",
+        message: limitCheck.message || "You have reached your voice call limit. Please upgrade to continue.",
+        requiresUpgrade: limitCheck.requiresUpgrade,
+        requiresPayment: limitCheck.requiresPayment,
         plan: user.subscriptionPlan
       });
     }
 
-    // Add limit info to request
-    req.usageInfo = { allowed, limit, remaining };
     next();
   } catch (error) {
     logger.error("[LIMIT] Error checking call limit:", error);
@@ -57,25 +51,20 @@ export async function checkMessageLimit(req: any, res: Response, next: NextFunct
       return res.status(404).json({ error: "User not found" });
     }
 
-    const { allowed, limit, remaining } = checkUsageLimit(
-      user.subscriptionPlan || 'starter',
-      user.aiMessagesUsed || 0,
-      'messages'
-    );
+    // Use new storage.checkUsageLimit method
+    const limitCheck = await storage.checkUsageLimit(userId, 'ai_message');
 
-    if (!allowed && user.subscriptionPlan !== 'pro' && user.subscriptionPlan !== 'enterprise') {
-      logger.warn(`[LIMIT] User ${user.username} reached message limit (${limit})`);
+    if (!limitCheck.allowed) {
+      logger.warn(`[LIMIT] User ${user.username} reached AI message limit`);
       return res.status(403).json({
-        error: "Message limit reached",
-        message: `You have reached your message limit of ${limit} messages. Please upgrade to continue.`,
-        limit,
-        used: user.aiMessagesUsed,
+        error: "AI message limit reached",
+        message: limitCheck.message || "You have reached your AI message limit. Please upgrade to continue.",
+        requiresUpgrade: limitCheck.requiresUpgrade,
+        requiresPayment: limitCheck.requiresPayment,
         plan: user.subscriptionPlan
       });
     }
 
-    // Add limit info to request
-    req.usageInfo = { allowed, limit, remaining };
     next();
   } catch (error) {
     logger.error("[LIMIT] Error checking message limit:", error);

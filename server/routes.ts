@@ -776,6 +776,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(userId);
       const userName = user?.firstName || user?.username || 'Justin';
       
+      // Check if user has reached their AI message limit
+      const limitCheck = await storage.checkUsageLimit(userId, 'ai_message');
+      if (!limitCheck.allowed) {
+        return res.status(403).json({
+          error: limitCheck.message || 'AI message limit reached',
+          requiresUpgrade: limitCheck.requiresUpgrade,
+          requiresPayment: limitCheck.requiresPayment
+        });
+      }
+      
       let activeSessionId = sessionId;
       if (!activeSessionId) {
         const activeSession = await storage.getActiveSession(userId);
