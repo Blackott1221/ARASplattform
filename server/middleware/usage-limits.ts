@@ -22,8 +22,8 @@ export async function checkCallLimit(req: any, res: Response, next: NextFunction
     if (!limitCheck.allowed) {
       logger.warn(`[LIMIT] User ${user.username} reached voice call limit`);
       return res.status(403).json({
-        error: "Voice call limit reached",
-        message: limitCheck.message || "You have reached your voice call limit. Please upgrade to continue.",
+        error: limitCheck.message || "Voice call limit reached",
+        message: limitCheck.message,
         requiresUpgrade: limitCheck.requiresUpgrade,
         requiresPayment: limitCheck.requiresPayment,
         plan: user.subscriptionPlan
@@ -57,8 +57,8 @@ export async function checkMessageLimit(req: any, res: Response, next: NextFunct
     if (!limitCheck.allowed) {
       logger.warn(`[LIMIT] User ${user.username} reached AI message limit`);
       return res.status(403).json({
-        error: "AI message limit reached",
-        message: limitCheck.message || "You have reached your AI message limit. Please upgrade to continue.",
+        error: limitCheck.message || "AI message limit reached",
+        message: limitCheck.message,
         requiresUpgrade: limitCheck.requiresUpgrade,
         requiresPayment: limitCheck.requiresPayment,
         plan: user.subscriptionPlan

@@ -1,14 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Crown, LogOut, Sparkles, ChevronDown } from "lucide-react";
+import { Crown, LogOut, Sparkles, User } from "lucide-react";
 import { motion } from "framer-motion";
-import type { User, SubscriptionResponse } from "@shared/schema";
+import type { User as UserType, SubscriptionResponse } from "@shared/schema";
 import UsageWidget from "@/components/usage-widget";
 
 interface TopBarProps {
   currentSection: string;
   subscriptionData?: SubscriptionResponse;
-  user: User | null;
+  user: UserType | null;
   isVisible: boolean;
 }
 
@@ -16,21 +16,21 @@ export function TopBar({ currentSection, subscriptionData, user, isVisible }: To
   const getSectionTitle = (section: string) => {
     switch (section) {
       case "space":
-        return "SPACE";
+        return "Space";
       case "power":
-        return "POWER";
+        return "Power";
       case "leads":
-        return "DASHBOARD";
+        return "Dashboard";
       case "billing":
-        return "IHR PLAN";
+        return "Ihr Plan";
       case "settings":
-        return "EINSTELLUNGEN";
+        return "Einstellungen";
       default:
-        return "SPACE";
+        return "Space";
     }
   };
 
-  const getUserInitials = (user: User | null) => {
+  const getUserInitials = (user: UserType | null) => {
     if (user?.firstName && user?.lastName) {
       return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
     }
@@ -41,228 +41,284 @@ export function TopBar({ currentSection, subscriptionData, user, isVisible }: To
 
   return (
     <motion.div
-      className="h-12 md:h-14 w-full bg-black/60 backdrop-blur-2xl border-b border-white/5 flex items-center justify-between px-3 md:px-6 relative overflow-visible z-30 shadow-[0_8px_30px_rgba(0,0,0,0.45)]"
+      className="h-16 w-full relative overflow-hidden z-40"
       initial={{ y: 0, opacity: 1 }}
       animate={{
-        y: isVisible ? 0 : -56,
+        y: isVisible ? 0 : -64,
         opacity: isVisible ? 1 : 0,
       }}
-      transition={{ duration: 0.3, ease: "easeInOut" }}
+      transition={{ duration: 0.4, ease: [0.25, 0.8, 0.25, 1] }}
     >
-      {/* Subtle main gradient */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/40 via-[#0b0b0f]/60 to-black/40" />
+      {/* Ultra-transparent background with blur */}
+      <div 
+        className="absolute inset-0"
+        style={{
+          background: 'rgba(0, 0, 0, 0.5)',
+          backdropFilter: 'blur(40px)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)'
+        }}
+      />
 
-      {/* Ambient orange glow */}
-      <div className="pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2 w-[520px] h-[180px] bg-[#FE9100]/8 blur-[90px]" />
+      {/* Subtle radial glow */}
+      <div 
+        className="absolute inset-0 opacity-20"
+        style={{
+          background: 'radial-gradient(circle at 50% 0%, rgba(254, 145, 0, 0.12) 0%, transparent 70%)',
+        }}
+      />
 
-      {/* Fine diagonal highlight */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent opacity-60" />
+      {/* Animated bottom border glow */}
+      <motion.div
+        className="absolute bottom-0 left-0 right-0 h-[1px]"
+        style={{
+          background: 'linear-gradient(90deg, transparent, rgba(254, 145, 0, 0.5), transparent)',
+          backgroundSize: '200% 100%'
+        }}
+        animate={{
+          backgroundPosition: ['0% 50%', '200% 50%', '0% 50%']
+        }}
+        transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
+      />
 
-      {/* LEFT SECTION */}
-      <div className="flex items-center gap-4 relative z-10">
-        {/* Greeting */}
+      {/* Content Container */}
+      <div className="relative h-full flex items-center justify-between px-8 z-10">
+        {/* LEFT: Section Title */}
         <motion.div
-          initial={{ opacity: 0, x: -10 }}
+          initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.1 }}
-          className="flex flex-col"
+          transition={{ delay: 0.1, duration: 0.6 }}
+          className="flex items-center gap-4"
         >
-          <span className="text-[10px] text-gray-500 font-medium tracking-[0.14em] uppercase leading-tight">
-            Welcome back
-          </span>
-          <span className="text-xs font-semibold text-white leading-tight">
-            {user?.firstName || user?.username || "User"} 👋
-          </span>
-        </motion.div>
+          {/* Active indicator dot */}
+          <motion.div
+            className="w-2 h-2 rounded-full"
+            style={{
+              background: '#FE9100',
+              boxShadow: '0 0 12px rgba(254, 145, 0, 0.8)'
+            }}
+            animate={{
+              scale: [1, 1.3, 1],
+              opacity: [1, 0.6, 1]
+            }}
+            transition={{ duration: 2, repeat: Infinity }}
+          />
 
-        {/* Divider */}
-        <div className="hidden sm:block w-px h-7 bg-gradient-to-b from-transparent via-white/15 to-transparent" />
-
-        {/* Section Title */}
-        <motion.div
-          initial={{ opacity: 0, x: -8 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.18 }}
-          className="flex items-center gap-2"
-        >
-          <div className="w-1.5 h-1.5 rounded-full bg-[#FE9100] shadow-[0_0_10px_rgba(254,145,0,0.8)] animate-pulse" />
-          <h2
-            className="text-[11px] md:text-xs font-bold tracking-[0.25em] uppercase"
-            style={{ fontFamily: "'Orbitron', sans-serif" }}
+          {/* Section title with animated gradient */}
+          <motion.h1
+            className="text-2xl font-black tracking-tight"
+            style={{
+              fontFamily: 'Orbitron, sans-serif',
+              background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
+              backgroundSize: '200% 100%',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+            animate={{
+              backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+            }}
+            transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
           >
-            <span className="bg-gradient-to-r from-white via-gray-200 to-white bg-clip-text text-transparent">
-              {getSectionTitle(currentSection)}
-            </span>
-          </h2>
-        </motion.div>
-      </div>
-
-      {/* RIGHT SECTION */}
-      <div className="flex items-center gap-2 md:gap-3 relative z-20">
-        {/* Usage Widget – extra z-index so Overlay stets sichtbar */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: -4 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          className="relative z-40"
-        >
-          <UsageWidget />
+            {getSectionTitle(currentSection)}
+          </motion.h1>
         </motion.div>
 
-        {/* Plan Badge → /billing */}
-        <motion.button
-          type="button"
-          initial={{ opacity: 0, scale: 0.95, y: -4 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          onClick={() => (window.location.href = "/billing")}
-          className="relative group cursor-pointer"
-        >
-          {isPremium && (
-            <div className="absolute -inset-[1.5px] rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        {/* RIGHT: User Controls */}
+        <div className="flex items-center gap-3">
+          {/* Usage Widget */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+          >
+            <UsageWidget />
+          </motion.div>
+
+          {/* Plan Badge */}
+          <motion.button
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.3, duration: 0.5 }}
+            onClick={() => (window.location.href = "/app/billing")}
+            className="relative group"
+          >
+            {/* Animated border for premium */}
+            {isPremium && (
               <motion.div
-                className="w-full h-full rounded-md"
-                animate={{
-                  background: [
-                    "linear-gradient(90deg, #FE9100 0%, #a34e00 50%, #FE9100 100%)",
-                    "linear-gradient(90deg, #a34e00 0%, #FE9100 50%, #a34e00 100%)",
-                    "linear-gradient(90deg, #FE9100 0%, #a34e00 50%, #FE9100 100%)",
-                  ],
-                }}
-                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                className="absolute -inset-[1px] rounded-xl opacity-75"
                 style={{
-                  padding: "1px",
-                  WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                  WebkitMaskComposite: "xor",
-                  maskComposite: "exclude",
+                  background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
+                  backgroundSize: '300% 100%'
                 }}
-              />
-            </div>
-          )}
-
-          <div
-            className={`relative flex items-center gap-1.5 px-2.5 py-1 rounded-md backdrop-blur-md transition-all duration-300 text-[10px] tracking-[0.16em] uppercase ${
-              isPremium
-                ? "bg-gradient-to-r from-[#FE9100]/12 to-[#a34e00]/10 border border-[#FE9100]/30 group-hover:from-[#FE9100]/18 group-hover:to-[#a34e00]/16 shadow-[0_0_18px_rgba(254,145,0,0.35)]"
-                : "bg-white/4 border border-white/10 hover:bg-white/8"
-            }`}
-          >
-            {isPremium ? (
-              <motion.div
                 animate={{
-                  rotate: [0, 4, 0, -4, 0],
-                  scale: [1, 1.06, 1],
+                  backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
                 }}
-                transition={{ duration: 2.4, repeat: Infinity, repeatDelay: 3 }}
-                className="flex items-center justify-center"
-              >
-                <Crown className="w-3 h-3 text-[#FE9100]" />
-              </motion.div>
-            ) : (
-              <Sparkles className="w-3 h-3 text-gray-400" />
+                transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+              />
             )}
 
-            <span className={isPremium ? "text-[#FE9100] font-semibold" : "text-gray-300 font-medium"}>
-              {subscriptionData?.status === "trial" || subscriptionData?.status === "trialing"
-                ? "TRIAL"
-                : subscriptionData?.plan
-                ? subscriptionData.plan.toUpperCase()
-                : "FREE"}
-            </span>
-          </div>
-        </motion.button>
-
-        {/* User Profile */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: -4 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ delay: 0.35 }}
-          className="relative group"
-        >
-          <div className="pointer-events-none absolute -inset-[1px] rounded-lg bg-gradient-to-r from-[#FE9100]/0 via-[#FE9100]/18 to-[#FE9100]/0 opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-300" />
-
-          <button
-            type="button"
-            className="relative flex items-center gap-2 bg-white/4 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10 hover:bg-white/8 hover:border-white/25 transition-all duration-300"
-          >
-            <div className="relative">
-              {isPremium && (
+            {/* Button container */}
+            <div
+              className="relative flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-300"
+              style={{
+                background: isPremium 
+                  ? 'rgba(254, 145, 0, 0.15)'
+                  : 'rgba(255, 255, 255, 0.05)',
+                border: isPremium
+                  ? '1px solid rgba(254, 145, 0, 0.3)'
+                  : '1px solid rgba(255, 255, 255, 0.1)',
+                backdropFilter: 'blur(20px)',
+                boxShadow: isPremium 
+                  ? '0 4px 20px rgba(254, 145, 0, 0.25)'
+                  : 'none'
+              }}
+            >
+              {isPremium ? (
                 <motion.div
-                  className="absolute -inset-[2px] rounded-full"
                   animate={{
-                    background: [
-                      "linear-gradient(0deg, #FE9100, #a34e00)",
-                      "linear-gradient(180deg, #a34e00, #FE9100)",
-                      "linear-gradient(360deg, #FE9100, #a34e00)",
-                    ],
-                    rotate: [0, 360],
+                    rotate: [0, 5, 0, -5, 0],
+                    scale: [1, 1.1, 1]
                   }}
-                  transition={{
-                    background: { duration: 3.2, repeat: Infinity },
-                    rotate: { duration: 9, repeat: Infinity, ease: "linear" },
-                  }}
-                />
+                  transition={{ duration: 3, repeat: Infinity }}
+                >
+                  <Crown className="w-4 h-4 text-[#FE9100]" />
+                </motion.div>
+              ) : (
+                <Sparkles className="w-4 h-4 text-gray-400" />
               )}
-              <Avatar className="w-7 h-7 relative border-2 border-black/80 shadow-[0_0_12px_rgba(0,0,0,0.8)]">
-                <AvatarImage src={user?.profileImageUrl || undefined} />
-                <AvatarFallback className="bg-gradient-to-br from-[#FE9100] to-[#a34e00] text-white text-[9px] font-bold">
-                  {getUserInitials(user)}
-                </AvatarFallback>
-              </Avatar>
-            </div>
 
-            <div className="hidden sm:flex flex-col items-start leading-tight">
-              <span className="text-[10px] font-semibold text-white truncate max-w-[120px]">
-                {user?.firstName || user?.username || "User"}
-              </span>
-              <span className="text-[9px] text-gray-400 truncate max-w-[120px]">
-                {user?.email?.split("@")[0] || "user"}
+              <span 
+                className="text-sm font-bold tracking-wide"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  color: isPremium ? '#FE9100' : '#9ca3af'
+                }}
+              >
+                {subscriptionData?.plan?.toUpperCase() || 'FREE'}
               </span>
             </div>
+          </motion.button>
 
-            <ChevronDown className="w-2.5 h-2.5 text-gray-400 group-hover:text-gray-200 transition-colors" />
-          </button>
-        </motion.div>
-
-        {/* Logout */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: -4 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={async () => {
-              try {
-                await fetch("/api/logout", { method: "POST", credentials: "include" });
-                window.location.href = "/auth";
-              } catch (error) {
-                console.error("Logout failed:", error);
-                window.location.href = "/auth";
-              }
-            }}
-            className="w-7 h-7 rounded-md bg-white/5 hover:bg-red-500/10 border border-white/10 hover:border-red-500/40 text-gray-300 hover:text-red-400 transition-all duration-300 p-0 group"
+          {/* User Avatar */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.4, duration: 0.5 }}
+            className="relative group"
           >
-            <LogOut className="w-3 h-3 group-hover:scale-110 transition-transform" />
-          </Button>
-        </motion.div>
+            {/* Hover glow */}
+            <motion.div
+              className="absolute -inset-2 rounded-full blur-xl opacity-0 group-hover:opacity-60 transition-opacity duration-300"
+              style={{
+                background: 'radial-gradient(circle, rgba(254, 145, 0, 0.4) 0%, transparent 70%)'
+              }}
+            />
+
+            {/* Avatar button */}
+            <button
+              className="relative flex items-center gap-3 px-4 py-2 rounded-xl transition-all duration-300"
+              style={{
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                backdropFilter: 'blur(20px)'
+              }}
+            >
+              {/* Avatar with premium ring */}
+              <div className="relative">
+                {isPremium && (
+                  <motion.div
+                    className="absolute -inset-[3px] rounded-full"
+                    style={{
+                      background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
+                      backgroundSize: '200% 100%'
+                    }}
+                    animate={{
+                      backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
+                      rotate: [0, 360]
+                    }}
+                    transition={{
+                      backgroundPosition: { duration: 3, repeat: Infinity, ease: 'linear' },
+                      rotate: { duration: 8, repeat: Infinity, ease: 'linear' }
+                    }}
+                  />
+                )}
+                <Avatar 
+                  className="w-10 h-10 relative"
+                  style={{
+                    border: '2px solid rgba(0, 0, 0, 0.8)',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)'
+                  }}
+                >
+                  <AvatarImage src={user?.profileImageUrl || undefined} />
+                  <AvatarFallback 
+                    className="text-white text-xs font-bold"
+                    style={{
+                      background: 'linear-gradient(135deg, #FE9100, #a34e00)'
+                    }}
+                  >
+                    {getUserInitials(user)}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+
+              {/* User info */}
+              <div className="hidden md:flex flex-col items-start">
+                <span 
+                  className="text-sm font-semibold text-white leading-tight"
+                  style={{ fontFamily: 'Orbitron, sans-serif' }}
+                >
+                  {user?.firstName || user?.username || "User"}
+                </span>
+                <span className="text-xs text-gray-500 leading-tight">
+                  {user?.email?.split("@")[0] || "user"}
+                </span>
+              </div>
+            </button>
+          </motion.div>
+
+          {/* Logout Button */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.5, duration: 0.5 }}
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                try {
+                  await fetch("/api/logout", { method: "POST", credentials: "include" });
+                  window.location.href = "/auth";
+                } catch (error) {
+                  console.error("Logout failed:", error);
+                  window.location.href = "/auth";
+                }
+              }}
+              className="relative w-10 h-10 rounded-xl group p-0 transition-all duration-300"
+              style={{
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                backdropFilter: 'blur(20px)'
+              }}
+            >
+              {/* Hover glow */}
+              <motion.div
+                className="absolute -inset-2 rounded-xl blur-xl opacity-0 group-hover:opacity-60 transition-opacity duration-300"
+                style={{
+                  background: 'linear-gradient(90deg, #ef4444, #dc2626)'
+                }}
+              />
+              <LogOut className="w-4 h-4 text-red-400 relative z-10 group-hover:scale-110 transition-transform" />
+            </Button>
+          </motion.div>
+        </div>
       </div>
 
-      {/* Bottom animated glow line */}
-      <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-[1px]">
-        <motion.div
-          className="h-full bg-gradient-to-r from-transparent via-[#FE9100]/40 to-transparent"
-          animate={{
-            opacity: [0.25, 0.7, 0.25],
-          }}
-          transition={{
-            duration: 3.2,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-      </div>
+      {/* Orbitron Font */}
+      <link 
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" 
+        rel="stylesheet" 
+      />
     </motion.div>
   );
 }

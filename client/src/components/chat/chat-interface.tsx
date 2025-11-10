@@ -169,9 +169,10 @@ export function ChatInterface() {
           
           setIsStreaming(false);
           setStreamingMessage('');
+          setOptimisticMessages([]);
           
-          // Return early - don't process the message
-          throw new Error(errorMessage);
+          // Return null to prevent onError from showing generic toast
+          return null;
         }
         
         throw new Error('Failed to send message');

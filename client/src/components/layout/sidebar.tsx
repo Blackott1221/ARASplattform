@@ -36,11 +36,11 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
   }, [isCollapsed, onToggleCollapse]);
 
   const navItems = [
-    { id: "space", label: "Space", icon: MessageCircle, gradient: "from-[#e9d7c4] via-[#FE9100] to-[#a34e00]" },
-    { id: "power", label: "Power", icon: Phone, gradient: "from-[#FE9100] via-[#e9d7c4] to-[#a34e00]" },
-    { id: "leads", label: "Dashboard", icon: LayoutDashboard, gradient: "from-[#a34e00] via-[#FE9100] to-[#e9d7c4]" },
-    { id: "billing", label: "Ihr Plan", icon: CreditCard, gradient: "from-[#e9d7c4] via-[#a34e00] to-[#FE9100]" },
-    { id: "settings", label: "Einstellungen", icon: Settings, gradient: "from-[#FE9100] via-[#a34e00] to-[#e9d7c4]" },
+    { id: "space", label: "Space", icon: MessageCircle, gradient: "#e9d7c4, #FE9100, #a34e00" },
+    { id: "power", label: "Power", icon: Phone, gradient: "#FE9100, #e9d7c4, #a34e00" },
+    { id: "leads", label: "Dashboard", icon: LayoutDashboard, gradient: "#a34e00, #FE9100, #e9d7c4" },
+    { id: "billing", label: "Ihr Plan", icon: CreditCard, gradient: "#e9d7c4, #a34e00, #FE9100" },
+    { id: "settings", label: "Einstellungen", icon: Settings, gradient: "#FE9100, #a34e00, #e9d7c4" },
   ];
 
   return (
@@ -181,7 +181,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
                       layoutId={isActive ? "activeGlow" : "hoverGlow"}
                       className="absolute -inset-2 rounded-2xl blur-xl opacity-40"
                       style={{
-                        background: `linear-gradient(90deg, ${item.gradient.split(' ').slice(1).join(' ')})`
+                        background: `linear-gradient(90deg, ${item.gradient})`
                       }}
                       transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                     />
@@ -212,7 +212,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
                         <motion.div
                           className="absolute inset-0 rounded-lg"
                           style={{
-                            background: `linear-gradient(135deg, ${item.gradient.split(' ').slice(1).join(' ')})`,
+                            background: `linear-gradient(135deg, ${item.gradient})`,
                             opacity: 0.2
                           }}
                           animate={{
@@ -235,28 +235,21 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
                     <motion.span
                       className={`relative font-semibold tracking-wide ${isCollapsed ? 'text-[10px]' : 'text-sm'}`}
                       style={{
-                        fontFamily: 'Orbitron, sans-serif'
+                        fontFamily: 'Orbitron, sans-serif',
+                        background: `linear-gradient(90deg, ${item.gradient})`,
+                        backgroundSize: '200% 100%',
+                        backgroundClip: 'text',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
                       }}
+                      animate={{
+                        backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                      }}
+                      transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
                       initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.2 }}
+                      whileInView={{ opacity: 1 }}
                     >
-                      <motion.span
-                        className="inline-block"
-                        style={{
-                          background: `linear-gradient(90deg, ${item.gradient.split(' ').slice(1).join(' ')})`,
-                          backgroundSize: '200% 100%',
-                          backgroundClip: 'text',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent',
-                        }}
-                        animate={{
-                          backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
-                        }}
-                        transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                      >
-                        {item.label}
-                      </motion.span>
+                      {item.label}
                     </motion.span>
 
                     {/* Active Indicator */}
@@ -265,7 +258,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
                         layoutId="activeIndicator"
                         className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-l-full"
                         style={{
-                          background: `linear-gradient(180deg, ${item.gradient.split(' ').slice(1).join(' ')})`
+                          background: `linear-gradient(180deg, ${item.gradient})`
                         }}
                         transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                       />
