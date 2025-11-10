@@ -792,6 +792,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       logger.info(`[LIMIT-CHECK] ALLOWED - User ${userId} can send message`);
       
+      // WICHTIG: Tracking SOFORT nach Limit-Check um Race Conditions zu verhindern
+      logger.info(`[CHAT] Tracking usage BEFORE processing to prevent race condition`);
+      await storage.trackUsage(userId, 'ai_message', 'User message');
+      
       let activeSessionId = sessionId;
       if (!activeSessionId) {
         const activeSession = await storage.getActiveSession(userId);
@@ -814,8 +818,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isAi: false,
         timestamp: new Date()
       });
-      
-      await storage.trackUsage(userId, 'ai_message', 'User message');
       
       const allMessages = await storage.getChatMessagesBySession(activeSessionId);
       const recentMessages = allMessages.slice(-30);
@@ -1829,36 +1831,52 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     
     logger.info('[SMART-CALL] Starte Anruf-Vorbereitung...', { userId, contact: name });
 
-    // 3. Rufe das 'Gehirn' auf (Gemini)
-    const { enhanceCallWithGemini } = await import('./voice/gemini-prompt-enhancer');
-    const enhancedContext = await enhanceCallWithGemini(
-      { contactName: name, phoneNumber, message },
-      { userName: user.firstName || user.username || 'mein Kunde' }
-    );
+    // 2.5 WICHTIG: Erhöhe Counter SOFORT um Race Conditions zu verhindern
+    // Wenn der Call fehlschlägt, machen wir Rollback
+    logger.info('[SMART-CALL] Tracking usage BEFORE call to prevent race condition');
+    await storage.trackUsage(userId, 'voice_call', `Smart Call an ${name}: ${message}`);
+    
+    let callSuccessful = false;
+    let enhancedContext: any;
 
-    // 4. Rufe den 'Mund' auf (ElevenLabs)
-    const { makeHumanCall } = await import('./voice/elevenlabs-handler');
-    const callResult = await makeHumanCall(enhancedContext);
+    try {
+      // 3. Rufe das 'Gehirn' auf (Gemini)
+      const { enhanceCallWithGemini } = await import('./voice/gemini-prompt-enhancer');
+      enhancedContext = await enhanceCallWithGemini(
+        { contactName: name, phoneNumber, message },
+        { userName: user.firstName || user.username || 'mein Kunde' }
+      );
 
-    // 5. Speichere den Anruf in der Datenbank
-    await storage.trackUsage(userId, 'voice_call', `Smart Call an ${name}: ${enhancedContext.purpose}`);
-    await storage.saveCallLog({
-      userId,
-      phoneNumber,
-      status: callResult.status || 'initiated',
-      provider: 'aras-neural-voice (elevenlabs)',
-      callId: callResult.callId,
-      purpose: enhancedContext.purpose,
-      details: message // Speichere die rohe User-Nachricht
-    });
+      // 4. Rufe den 'Mund' auf (ElevenLabs)
+      const { makeHumanCall } = await import('./voice/elevenlabs-handler');
+      const callResult = await makeHumanCall(enhancedContext);
+      
+      callSuccessful = true;
+      // 5. Speichere den Call in der Datenbank
+      await storage.saveCallLog({
+        userId,
+        phoneNumber,
+        status: callResult.status || 'initiated',
+        provider: 'aras-neural-voice (elevenlabs)',
+        callId: callResult.callId,
+        purpose: enhancedContext.purpose,
+        details: message
+      });
 
-    // 6. Sende Erfolg an das Frontend
-    res.json({
-      success: true,
-      message: callResult.message,
-      callId: callResult.callId,
-      status: callResult.status
-    });
+      // 6. Sende Erfolg an das Frontend
+      res.json({
+        success: true,
+        message: callResult.message,
+        callId: callResult.callId,
+        status: callResult.status
+      });
+      
+    } catch (callError: any) {
+      // Rollback: Reduziere Counter wieder da Call fehlgeschlagen ist
+      logger.error('[SMART-CALL] Call failed, rolling back usage counter', { error: callError.message });
+      await storage.trackUsage(userId, 'voice_call', `ROLLBACK: Failed call to ${name}`, -1);
+      throw callError;
+    }
 
   } catch (error: any) {
     logger.error('[SMART-CALL] Kompletter Anruf-Fehler!', { error: error.message });

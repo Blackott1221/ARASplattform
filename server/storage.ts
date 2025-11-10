@@ -561,22 +561,27 @@ export class DatabaseStorage implements IStorage {
       .orderBy(subscriptionPlans.price);
   }
 
-  async trackUsage(userId: string, type: string, description?: string): Promise<void> {
-    await db.insert(usageTracking).values({
-      userId,
-      type,
-      description,
-    });
+  async trackUsage(userId: string, type: string, description?: string, amount: number = 1): Promise<void> {
+    // Only log positive usage (not rollbacks)
+    if (amount > 0) {
+      await db.insert(usageTracking).values({
+        userId,
+        type,
+        description,
+      });
+    }
 
     // Update user usage counters
     const updateData: any = { updatedAt: new Date() };
     
+    console.log(`[TRACK-USAGE] userId=${userId}, type=${type}, amount=${amount}`);
+    
     switch (type) {
       case 'ai_message':
-        updateData.aiMessagesUsed = sql`${users.aiMessagesUsed} + 1`;
+        updateData.aiMessagesUsed = sql`GREATEST(0, ${users.aiMessagesUsed} + ${amount})`;
         break;
       case 'voice_call':
-        updateData.voiceCallsUsed = sql`${users.voiceCallsUsed} + 1`;
+        updateData.voiceCallsUsed = sql`GREATEST(0, ${users.voiceCallsUsed} + ${amount})`;
         break;
     }
 
@@ -584,6 +589,8 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set(updateData)
       .where(eq(users.id, userId));
+      
+    console.log(`[TRACK-USAGE] Counter updated successfully`);
   }
 
   async checkUsageLimit(userId: string, type: string): Promise<{ allowed: boolean; message?: string; requiresPayment?: boolean; requiresUpgrade?: boolean }> {
