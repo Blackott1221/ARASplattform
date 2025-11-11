@@ -233,37 +233,46 @@ export default function Power() {
         })
       });
 
-      // Check for limit reached (403)
-      if (!response.ok && response.status === 403) {
-        const errorData = await response.json();
-        const errorMessage = errorData.error || errorData.message || "Voice call limit reached";
+      const data = await response.json();
+      
+      // Check for ANY error response
+      if (!response.ok) {
+        const errorMessage = data.error || data.message || `Fehler: ${response.status}`;
         
         setCallStatus('idle');
         setResult({ 
           success: false, 
           error: errorMessage
         });
+        setLoading(false);
         
-        // Show prominent error toast with upgrade button
-        toast({
-          title: "Anruf-Limit erreicht! 📞❌",
-          description: errorMessage,
-          variant: "destructive",
-          duration: 15000,
-          action: (
-            <ToastAction 
-              altText="Jetzt upgraden" 
-              onClick={() => window.location.href = '/billing'}
-            >
-              Jetzt upgraden 🚀
-            </ToastAction>
-          )
-        });
+        // Check if it's a limit error (403 or specific message)
+        if (response.status === 403 || errorMessage.toLowerCase().includes('limit')) {
+          toast({
+            title: "❌ Anruf-Limit erreicht!",
+            description: errorMessage + " - Upgraden Sie jetzt für unbegrenzte Anrufe!",
+            variant: "destructive",
+            duration: 20000,
+            action: (
+              <ToastAction 
+                altText="Jetzt upgraden" 
+                onClick={() => window.location.href = '/billing'}
+              >
+                Jetzt upgraden 🚀
+              </ToastAction>
+            )
+          });
+        } else {
+          toast({
+            title: "❌ Fehler",
+            description: errorMessage,
+            variant: "destructive",
+            duration: 10000
+          });
+        }
         
         return;
       }
-
-      const data = await response.json();
 
       if (data.success) {
         setTimeout(() => setCallStatus('connected'), 3000);
