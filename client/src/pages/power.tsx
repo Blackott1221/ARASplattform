@@ -235,9 +235,19 @@ export default function Power() {
 
       const data = await response.json();
       
+      // 🔍 DEBUG: Log response details
+      console.log('[POWER-DEBUG] Response status:', response.status);
+      console.log('[POWER-DEBUG] Response ok:', response.ok);
+      console.log('[POWER-DEBUG] Response data:', data);
+      
       // Check for ANY error response
       if (!response.ok) {
         const errorMessage = data.error || data.message || `Fehler: ${response.status}`;
+        
+        console.log('[POWER-DEBUG] ❌ ERROR DETECTED!');
+        console.log('[POWER-DEBUG] Error message:', errorMessage);
+        console.log('[POWER-DEBUG] Is 403?', response.status === 403);
+        console.log('[POWER-DEBUG] Contains "limit"?', errorMessage.toLowerCase().includes('limit'));
         
         setCallStatus('idle');
         setResult({ 
@@ -248,6 +258,7 @@ export default function Power() {
         
         // Check if it's a limit error (403 or specific message)
         if (response.status === 403 || errorMessage.toLowerCase().includes('limit')) {
+          console.log('[POWER-DEBUG] 🚨 SHOWING LIMIT TOAST NOW!');
           toast({
             title: "❌ Anruf-Limit erreicht!",
             description: errorMessage + " - Upgraden Sie jetzt für unbegrenzte Anrufe!",
@@ -262,6 +273,7 @@ export default function Power() {
               </ToastAction>
             )
           });
+          console.log('[POWER-DEBUG] ✅ Toast called successfully');
         } else {
           toast({
             title: "❌ Fehler",
