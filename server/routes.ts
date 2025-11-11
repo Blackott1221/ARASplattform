@@ -1707,32 +1707,33 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const plan = (user.subscriptionPlan || 'starter') as 'starter' | 'pro' | 'enterprise';
+    const plan = user.subscriptionPlan || 'free';
 
-    const limits = {
-      starter: { calls: 1, messages: 5 },
-      pro: { calls: 100, messages: 500 },
-      enterprise: { calls: 20000, messages: -1 },
-    } as const;
+    // Fetch limits from subscription_plans table
+    const [planData] = await client`
+      SELECT 
+        voice_calls_limit AS "voiceCallsLimit",
+        ai_messages_limit AS "aiMessagesLimit"
+      FROM subscription_plans
+      WHERE id = ${plan}
+    `;
 
-    const planLimits = limits[plan] || limits.starter;
+    // Fallback to free plan limits if plan not found
+    const voiceCallsLimit = planData?.voiceCallsLimit ?? 2;
+    const aiMessagesLimit = planData?.aiMessagesLimit ?? 10;
 
     res.json({
       success: true,
       usage: {
         calls: {
           used: user.voiceCallsUsed || 0,
-          limit: planLimits.calls,
-          remaining: planLimits.calls >= 20000
-            ? Infinity
-            : Math.max(0, planLimits.calls - (user.voiceCallsUsed || 0)),
+          limit: voiceCallsLimit,
+          remaining: Math.max(0, voiceCallsLimit - (user.voiceCallsUsed || 0)),
         },
         messages: {
           used: user.aiMessagesUsed || 0,
-          limit: planLimits.messages,
-          remaining: planLimits.messages === -1
-            ? -1
-            : Math.max(0, planLimits.messages - (user.aiMessagesUsed || 0)),
+          limit: aiMessagesLimit,
+          remaining: Math.max(0, aiMessagesLimit - (user.aiMessagesUsed || 0)),
         },
         plan,
         planName: plan.charAt(0).toUpperCase() + plan.slice(1),
