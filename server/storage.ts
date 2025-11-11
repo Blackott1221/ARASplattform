@@ -1233,39 +1233,50 @@ export class MemStorage implements IStorage {
   }
 
   async getSubscriptionPlan(planId: string): Promise<any> {
-    // Mock subscription plans
+    // Mock subscription plans - only the 4 actual plans
     const plans = {
-      starter: {
-        id: 'starter',
-        name: 'Starter',
-        price: 2900,
+      free: {
+        id: 'free',
+        name: 'Free',
+        price: 0,
+        aiMessagesLimit: 10,
+        voiceCallsLimit: 2,
+        leadsLimit: 100,
+        campaignsLimit: 1,
+        features: ['10 AI Messages', '2 Voice Calls', '100 Leads', '1 Campaign'],
+        isActive: true,
+      },
+      pro: {
+        id: 'pro',
+        name: 'PRO',
+        price: 4900, // €49
         aiMessagesLimit: 100,
-        voiceCallsLimit: 10,
-        leadsLimit: 500,
-        campaignsLimit: 5,
-        features: ['AI Chat', 'Voice Calls', 'Lead Management'],
+        voiceCallsLimit: 100,
+        leadsLimit: 1000,
+        campaignsLimit: 10,
+        features: ['100 AI Messages', '100 Voice Calls', '1,000 Leads', '10 Campaigns', 'Priority Support'],
         isActive: true,
       },
-      professional: {
-        id: 'professional',
-        name: 'Professional', 
-        price: 9900,
-        aiMessagesLimit: 500,
-        voiceCallsLimit: 50,
-        leadsLimit: 2500,
-        campaignsLimit: 25,
-        features: ['AI Chat', 'Voice Calls', 'Lead Management', 'Analytics'],
+      ultra: {
+        id: 'ultra',
+        name: 'ULTRA',
+        price: 9900, // €99
+        aiMessagesLimit: 1000,
+        voiceCallsLimit: 1000,
+        leadsLimit: 10000,
+        campaignsLimit: 50,
+        features: ['1,000 AI Messages', '1,000 Voice Calls', '10,000 Leads', '50 Campaigns', 'Priority Support', 'Advanced Analytics'],
         isActive: true,
       },
-      enterprise: {
-        id: 'enterprise',
-        name: 'Enterprise',
-        price: 29900,
-        aiMessagesLimit: null, // unlimited
-        voiceCallsLimit: null, // unlimited
-        leadsLimit: null, // unlimited
-        campaignsLimit: null, // unlimited
-        features: ['AI Chat', 'Voice Calls', 'Lead Management', 'Analytics', 'Priority Support'],
+      ultimate: {
+        id: 'ultimate',
+        name: 'ULTIMATE',
+        price: 19900, // €199
+        aiMessagesLimit: 20000,
+        voiceCallsLimit: 20000,
+        leadsLimit: 100000,
+        campaignsLimit: 200,
+        features: ['20,000 AI Messages', '20,000 Voice Calls', '100,000 Leads', '200 Campaigns', 'Dedicated Account Manager', 'Custom Integrations', 'White Label Options'],
         isActive: true,
       },
     };

@@ -5,7 +5,7 @@ export function EarlyAccessBanner() {
   const bannerText = "ARAS AI® – Early Access Phase  •  Unsere Plattform ist ab sofort live und befindet sich aktuell in der finalen Entwicklungsphase  •  Während dieser Testphase kann es vereinzelt zu kurzfristigen Ausfällen oder Anpassungen kommen  •  Der offizielle Marktstart erfolgt am 01. Januar 2026  •  Wir danken allen Testkunden für ihr wertvolles Feedback und ihre Unterstützung auf dem Weg zum Launch  •  ";
 
   return (
-    <div className="relative w-full h-8 overflow-hidden z-50">
+    <div className="relative w-full h-10 overflow-hidden z-50">
       {/* Background with gradient */}
       <div 
         className="absolute inset-0"
@@ -49,7 +49,7 @@ export function EarlyAccessBanner() {
               {bannerText.split('•').map((segment, index) => (
                 <div key={`${iteration}-${index}`} className="flex items-center">
                   <span 
-                    className="text-xs font-medium tracking-wide px-6"
+                    className="text-sm font-medium tracking-wide px-6"
                     style={{
                       fontFamily: 'Orbitron, sans-serif',
                       background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
@@ -63,7 +63,7 @@ export function EarlyAccessBanner() {
                   </span>
                   {index < bannerText.split('•').length - 1 && (
                     <div 
-                      className="w-1 h-1 rounded-full mx-2"
+                      className="w-1.5 h-1.5 rounded-full mx-2"
                       style={{
                         background: '#FE9100',
                         boxShadow: '0 0 8px rgba(254, 145, 0, 0.6)'
