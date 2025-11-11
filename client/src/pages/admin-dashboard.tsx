@@ -11,6 +11,11 @@ interface User {
   created_at: string;
   ai_messages_used?: number;
   voice_calls_used?: number;
+  voice_calls_limit?: number;
+  ai_messages_limit?: number;
+  last_login?: string;
+  total_spent?: number;
+  stripe_customer_id?: string;
 }
 
 interface ChatMessage {
@@ -58,7 +63,7 @@ interface CallLog {
 }
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<"overview" | "users" | "chats" | "calls" | "leads" | "campaigns">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "users" | "chats" | "calls" | "leads" | "campaigns" | "analytics" | "system">("overview");
   const [users, setUsers] = useState<User[]>([]);
   const [chats, setChats] = useState<ChatMessage[]>([]);
   const [calls, setCalls] = useState<CallLog[]>([]);
@@ -73,8 +78,11 @@ export default function AdminDashboard() {
   const [showDeleteModal, setShowDeleteModal] = useState<User | null>(null);
   const [showChatModal, setShowChatModal] = useState<ChatMessage | null>(null);
   const [showCallModal, setShowCallModal] = useState<CallLog | null>(null);
+  const [showUserDetailsModal, setShowUserDetailsModal] = useState<User | null>(null);
+  const [userDetails, setUserDetails] = useState<any>(null);
   const [newPassword, setNewPassword] = useState("");
-  const [newUser, setNewUser] = useState({ username: "", email: "", password: "", subscription_plan: "starter" });
+  const [newUser, setNewUser] = useState({ username: "", email: "", password: "", subscription_plan: "free" });
+  const [selectedPlan, setSelectedPlan] = useState<string>("free");
 
   useEffect(() => {
     fetchAllData();
@@ -100,7 +108,15 @@ export default function AdminDashboard() {
         campaignsRes.json()
       ]);
       
-      if (usersData.success) setUsers(usersData.users);
+      if (usersData.success) {
+        // Enhance user data with additional calculations
+        const enhancedUsers = usersData.users.map((user: User) => ({
+          ...user,
+          usage_percentage: user.voice_calls_limit ? 
+            Math.round((user.voice_calls_used || 0) / user.voice_calls_limit * 100) : 0
+        }));
+        setUsers(enhancedUsers);
+      }
       if (statsData.success) setStats(statsData.stats);
       if (chatsData.success) setChats(chatsData.messages);
       if (callsData.success) setCalls(callsData.calls);
@@ -110,6 +126,18 @@ export default function AdminDashboard() {
       console.error("Failed to fetch admin data:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUserDetails = async (userId: string) => {
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/details`);
+      const data = await res.json();
+      if (data.success) {
+        setUserDetails(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch user details:", error);
     }
   };
 
@@ -134,10 +162,14 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleUpgrade = async (userId: string) => {
+  const handleUpgrade = async (userId: string, plan: string) => {
     setActionLoading(userId);
     try {
-      await fetch(`/api/admin/users/${userId}/upgrade`, { method: "POST" });
+      await fetch(`/api/admin/users/${userId}/upgrade`, { 
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan })
+      });
       await fetchAllData();
     } finally {
       setActionLoading(null);
@@ -152,6 +184,43 @@ export default function AdminDashboard() {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const handleResetUsage = async (userId: string) => {
+    setActionLoading(userId);
+    try {
+      await fetch(`/api/admin/users/${userId}/reset-usage`, { method: "POST" });
+      await fetchAllData();
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const exportData = (type: string) => {
+    let data = [];
+    let filename = '';
+    
+    switch(type) {
+      case 'users':
+        data = users;
+        filename = 'aras-users-export.json';
+        break;
+      case 'calls':
+        data = calls;
+        filename = 'aras-calls-export.json';
+        break;
+      case 'chats':
+        data = chats;
+        filename = 'aras-chats-export.json';
+        break;
+    }
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
   };
 
   const handleResetPassword = async () => {

@@ -1280,27 +1280,33 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     }
   });
 
-  // Upgrade user to PRO
+  // Upgrade user to specific plan
   app.post('/api/admin/users/:userId/upgrade', requireAdmin, async (req: any, res) => {
     try {
       const { userId } = req.params;
+      const { plan } = req.body;
+      const targetPlan = plan || 'pro';
+      
       const [user] = await client`
         UPDATE users
-        SET subscription_plan = 'pro',
-            subscription_status = 'active',
-            updated_at = NOW()
+        SET subscription_plan = ${targetPlan},
+            subscription_status = 'active'
         WHERE id = ${userId}
-        RETURNING id, username, email, subscription_plan, subscription_status
-      `;
+        RETURNING id, username, subscription_plan`;
       
       if (!user) {
         return res.status(404).json({ error: 'User not found' });
       }
+
+      logger.info('[ADMIN] User upgraded', { userId, username: user.username, plan: targetPlan });
       
-      logger.info(`[ADMIN] User ${userId} upgraded to PRO by ${req.session.username}`);
-      res.json({ success: true, user });
-    } catch (error) {
-      logger.error('Error upgrading user:', error);
+      res.json({
+        success: true,
+        message: `User ${user.username} upgraded to ${targetPlan}`,
+        user
+      });
+    } catch (error: any) {
+      logger.error('[ADMIN] Upgrade failed', { error: error.message });
       res.status(500).json({ error: 'Failed to upgrade user' });
     }
   });
@@ -1330,56 +1336,95 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     }
   });
 
-  // Get platform statistics
-  app.get('/api/admin/stats', requireAdmin, async (req: any, res) => {
-    try {
-      const results = await Promise.all([
-        client`SELECT
-          COUNT(*) as total_users,
-          COUNT(*) FILTER (WHERE subscription_plan = 'free') as free_users,
-          COUNT(*) FILTER (WHERE subscription_plan = 'pro') as pro_users,
-          COUNT(*) FILTER (WHERE subscription_plan = 'enterprise') as enterprise_users
-        FROM users`,
-        client`SELECT COUNT(*) as total_calls FROM call_logs`
-      ]);
-      const stats = {
-        ...results[0][0],
-        ...results[1][0]
-      };
-      res.json({ success: true, stats });
-    } catch (error) {
-      logger.error('Error fetching stats:', error);
-      res.status(500).json({ error: 'Failed to fetch statistics' });
-    }
-  });
-
-
-
-  // Get detailed user data
+  // Get detailed user data with full history
   app.get('/api/admin/users/:userId/details', requireAdmin, async (req: any, res) => {
     try {
       const { userId } = req.params;
       
-      // Get user with all data
-      const [userResult, callsResult, messagesResult] = await Promise.all([
-        client`SELECT * FROM users WHERE id = ${userId}`,
-        client`SELECT * FROM call_logs WHERE user_id = ${userId} ORDER BY created_at DESC LIMIT 50`,
-        client`SELECT COUNT(*) as total_messages FROM chat_messages WHERE user_id = ${userId}`
-      ]);
+      const [user] = await client`
+        SELECT * FROM users WHERE id = ${userId}`;
       
-      if (userResult.length === 0) {
+      if (!user) {
         return res.status(404).json({ error: 'User not found' });
       }
+
+      // Get user statistics
+      const [stats] = await client`
+        SELECT 
+          COUNT(DISTINCT cs.id) as total_chats,
+          COUNT(DISTINCT cm.id) as total_messages,
+          COUNT(DISTINCT cl.id) as total_calls
+        FROM users u
+        LEFT JOIN chat_sessions cs ON cs.user_id = u.id
+        LEFT JOIN chat_messages cm ON cm.user_id = u.id
+        LEFT JOIN call_logs cl ON cl.user_id = u.id
+        WHERE u.id = ${userId}
+        GROUP BY u.id`;
+
+      // Get recent messages
+      const recentMessages = await client`
+        SELECT cm.*, cs.title 
+        FROM chat_messages cm
+        LEFT JOIN chat_sessions cs ON cs.id = cm.session_id
+        WHERE cm.user_id = ${userId}
+        ORDER BY cm.created_at DESC
+        LIMIT 10`;
+
+      // Get recent calls
+      const recentCalls = await client`
+        SELECT * FROM call_logs
+        WHERE user_id = ${userId}
+        ORDER BY created_at DESC
+        LIMIT 10`;
+
+      // Get subscription history
+      const subscriptionHistory = await client`
+        SELECT * FROM usage_tracking
+        WHERE user_id = ${userId}
+        ORDER BY created_at DESC
+        LIMIT 20`;
+
+      res.json({
+        success: true,
+        user,
+        stats: stats || { total_chats: 0, total_messages: 0, total_calls: 0 },
+        recentMessages,
+        recentCalls,
+        subscriptionHistory
+      });
+    } catch (error: any) {
+      logger.error('[ADMIN] Get user details failed', { error: error.message });
+      res.status(500).json({ error: 'Failed to get user details' });
+    }
+  });
+  
+  // Reset user usage counters
+  app.post('/api/admin/users/:userId/reset-usage', requireAdmin, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      
+      const [user] = await client`
+        UPDATE users
+        SET ai_messages_used = 0,
+            voice_calls_used = 0,
+            monthly_reset_date = NOW()
+        WHERE id = ${userId}
+        RETURNING id, username`;
+      
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      logger.info('[ADMIN] User usage reset', { userId, username: user.username });
       
       res.json({
         success: true,
-        user: userResult[0],
-        calls: callsResult,
-        messageCount: messagesResult[0]?.total_messages || 0
+        message: `Usage reset for ${user.username}`,
+        user
       });
-    } catch (error) {
-      logger.error('Error fetching user details:', error);
-      res.status(500).json({ error: 'Failed to fetch user details' });
+    } catch (error: any) {
+      logger.error('[ADMIN] Reset usage failed', { error: error.message });
+      res.status(500).json({ error: 'Failed to reset usage' });
     }
   });
 
