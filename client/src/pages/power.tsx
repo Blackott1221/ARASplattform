@@ -1116,5 +1116,6 @@ export default function Power() {
       `}</style>
     </div>
     <Toaster />
-  </>;
+  </>
+);
 }
