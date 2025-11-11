@@ -3,14 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent } from "@/components/ui/card";
-import { GradientText } from "@/components/ui/gradient-text";
-import { GlowButton } from "@/components/ui/glow-button";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { motion } from "framer-motion";
-import { Bot, Users, Phone, Mail, ArrowRight } from "lucide-react";
-import { Link } from "wouter";
+import { motion, AnimatePresence } from "framer-motion";
 import arasLogo from "@/assets/aras_logo_1755067745303.png";
 
 export default function Auth() {
@@ -26,30 +21,11 @@ export default function Auth() {
   const { isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
 
-  // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
       window.location.href = "/";
     }
   }, [isAuthenticated]);
-
-  const features = [
-    {
-      icon: <Bot className="w-5 h-5" />,
-      title: "AI-Powered Voice Agents",
-      delay: 0,
-    },
-    {
-      icon: <Users className="w-5 h-5" />,
-      title: "Smart Lead Generation",
-      delay: 0.2,
-    },
-    {
-      icon: <Phone className="w-5 h-5" />,
-      title: "Automated Campaigns",
-      delay: 0.4,
-    },
-  ];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,8 +33,8 @@ export default function Auth() {
     if (isSignUp) {
       if (password !== confirmPassword) {
         toast({
-          title: "Error",
-          description: "Passwords do not match",
+          title: "Fehler",
+          description: "Passwörter stimmen nicht überein",
           variant: "destructive",
         });
         return;
@@ -66,196 +42,435 @@ export default function Auth() {
       
       if (!agreeToTerms) {
         toast({
-          title: "Error",
-          description: "Please agree to the terms and conditions",
+          title: "Fehler",
+          description: "Bitte akzeptieren Sie die Nutzungsbedingungen",
           variant: "destructive",
         });
         return;
       }
     }
 
-    // Redirect to Replit Auth
     window.location.href = "/api/login";
-  };
-
-  const handleForgotPassword = () => {
-    toast({
-      title: "Password Reset",
-      description: "Password reset functionality will be available soon.",
-    });
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        >
+          <img src={arasLogo} alt="Loading" className="w-16 h-16 object-contain" />
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex bg-background">
-      {/* Left Panel - Dynamic Content */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-background via-card to-background"></div>
-        <div className="relative z-10 p-12 flex flex-col justify-center">
-          <div className="space-y-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="text-4xl font-orbitron font-bold"
-            >
-              <GradientText>ARAS AI</GradientText>
-            </motion.div>
-            
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-lg text-muted-foreground"
-            >
-              The future of AI-powered sales automation
-            </motion.div>
-            
-            <div className="space-y-4 mt-8">
-              {features.map((feature, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: feature.delay }}
-                  className="bg-card/50 p-4 rounded-lg border border-border slide-in-left"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse-glow"></div>
-                    <span className="text-muted-foreground">{feature.title}</span>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+    <div className="min-h-screen flex bg-black relative overflow-hidden">
+      {/* Premium Animated Background */}
+      <div className="absolute inset-0">
+        {/* Base gradient */}
+        <div 
+          className="absolute inset-0 opacity-40"
+          style={{
+            background: 'radial-gradient(circle at 20% 30%, rgba(254, 145, 0, 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 70%, rgba(163, 78, 0, 0.12) 0%, transparent 50%), radial-gradient(circle at 50% 50%, rgba(233, 215, 196, 0.08) 0%, transparent 70%)'
+          }}
+        />
+        
+        {/* Animated gradient orbs */}
+        <motion.div
+          className="absolute top-0 left-0 w-96 h-96 rounded-full blur-3xl"
+          style={{
+            background: 'radial-gradient(circle, rgba(254, 145, 0, 0.2) 0%, transparent 70%)'
+          }}
+          animate={{
+            x: [0, 100, 0],
+            y: [0, 150, 0],
+            scale: [1, 1.2, 1]
+          }}
+          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+        />
+        
+        <motion.div
+          className="absolute bottom-0 right-0 w-96 h-96 rounded-full blur-3xl"
+          style={{
+            background: 'radial-gradient(circle, rgba(163, 78, 0, 0.15) 0%, transparent 70%)'
+          }}
+          animate={{
+            x: [0, -100, 0],
+            y: [0, -150, 0],
+            scale: [1, 1.3, 1]
+          }}
+          transition={{ duration: 25, repeat: Infinity, ease: "easeInOut" }}
+        />
+      </div>
 
+      {/* LEFT SIDE: Hero Content */}
+      <div className="hidden lg:flex lg:w-[58%] relative z-10">
+        <div className="w-full h-full flex flex-col justify-center px-20 py-16">
+          {/* Logo */}
+          <motion.div
+            initial={{ opacity: 0, y: -30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="mb-16"
+          >
+            <img src={arasLogo} alt="ARAS AI" className="w-20 h-20 object-contain mb-6" />
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.8 }}
-              className="mt-8 pt-8 border-t border-border"
+              className="inline-block"
+              style={{
+                background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
+                backgroundSize: '200% 100%',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+              animate={{
+                backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+              }}
+              transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
             >
-              <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                <Link href="/demo" className="hover:text-primary transition-colors">
-                  <span className="flex items-center space-x-1">
-                    <span>Try Demo</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </span>
-                </Link>
-                <span>•</span>
-                <span>No credit card required</span>
-              </div>
+              <h1 
+                className="text-6xl font-black tracking-tight"
+                style={{ fontFamily: 'Orbitron, sans-serif' }}
+              >
+                ARAS AI
+              </h1>
             </motion.div>
-          </div>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="text-gray-500 text-sm mt-2 tracking-widest"
+              style={{ fontFamily: 'Inter, sans-serif' }}
+            >
+              Welcome to the Future of Outbound
+            </motion.p>
+          </motion.div>
+
+          {/* Main Headline */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+            className="mb-12"
+          >
+            <h2 
+              className="text-5xl font-black leading-tight mb-6"
+              style={{ fontFamily: 'Orbitron, sans-serif' }}
+            >
+              <motion.span
+                className="block"
+                style={{
+                  background: 'linear-gradient(135deg, #e9d7c4, #FE9100)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
+              >
+                THE WORLD'S MOST
+              </motion.span>
+              <motion.span
+                className="block mt-2"
+                style={{
+                  background: 'linear-gradient(135deg, #FE9100, #a34e00)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
+              >
+                HUMAN AI CALL SYSTEM
+              </motion.span>
+            </h2>
+            
+            <p 
+              className="text-gray-400 text-lg leading-relaxed max-w-2xl"
+              style={{ fontFamily: 'Inter, sans-serif' }}
+            >
+              Die Stimme, die verkauft. Die KI, die versteht. ARAS AI führt reale Gespräche — 
+              automatisiert, empathisch und grenzenlos skalierbar. Jeder Anruf ein Dialog, kein Skript. 
+              Bis zu 500 Anrufe gleichzeitig. Echtzeit. Menschlich. Effizient.
+            </p>
+          </motion.div>
+
+          {/* Early Access Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.6 }}
+            className="relative group"
+          >
+            {/* Animated border */}
+            <motion.div
+              className="absolute -inset-[2px] rounded-2xl opacity-60 group-hover:opacity-100 transition-opacity duration-500"
+              style={{
+                background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
+                backgroundSize: '300% 100%'
+              }}
+              animate={{
+                backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+              }}
+              transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+            />
+
+            <div 
+              className="relative rounded-2xl p-8"
+              style={{
+                background: 'rgba(0, 0, 0, 0.7)',
+                backdropFilter: 'blur(40px)',
+              }}
+            >
+              <div className="flex items-start gap-4 mb-6">
+                <motion.div
+                  className="w-2 h-2 rounded-full mt-2"
+                  style={{ background: '#FE9100', boxShadow: '0 0 20px rgba(254, 145, 0, 0.8)' }}
+                  animate={{
+                    scale: [1, 1.5, 1],
+                    opacity: [1, 0.5, 1]
+                  }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                />
+                <div>
+                  <h3 
+                    className="text-2xl font-bold mb-3"
+                    style={{
+                      fontFamily: 'Orbitron, sans-serif',
+                      background: 'linear-gradient(90deg, #e9d7c4, #FE9100)',
+                      backgroundClip: 'text',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                    }}
+                  >
+                    EARLY ACCESS 2025
+                  </h3>
+                  <p className="text-sm text-gray-500 mb-4" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    LIMITED RELEASE
+                  </p>
+                  
+                  <p className="text-gray-400 text-sm leading-relaxed mb-4" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    Willkommen in der exklusiven Testphase von ARAS AI. Unsere Plattform ist live, 
+                    aber befindet sich noch in der finalen Entwicklungsphase.
+                  </p>
+
+                  <div className="space-y-2 mb-6">
+                    {[
+                      'Neue Funktionen werden fortlaufend freigeschaltet',
+                      'Es kann zu kurzfristigen Systemupdates kommen',
+                      'Ihr Feedback fließt direkt in die finale Version ein'
+                    ].map((item, index) => (
+                      <motion.div
+                        key={index}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.8 + index * 0.1 }}
+                        className="flex items-start gap-3"
+                      >
+                        <div 
+                          className="w-1 h-1 rounded-full mt-2 flex-shrink-0"
+                          style={{ background: '#FE9100' }}
+                        />
+                        <span className="text-gray-500 text-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          {item}
+                        </span>
+                      </motion.div>
+                    ))}
+                  </div>
+
+                  <div className="pt-6 border-t border-white/5">
+                    <p className="text-sm text-gray-600 mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      Official Launch
+                    </p>
+                    <div className="flex items-baseline gap-2">
+                      <span 
+                        className="text-3xl font-black"
+                        style={{
+                          fontFamily: 'Orbitron, sans-serif',
+                          background: 'linear-gradient(90deg, #FE9100, #a34e00)',
+                          backgroundClip: 'text',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                        }}
+                      >
+                        01 · 01 · 2026
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      Sie sind Teil der Zukunft — bevor sie beginnt.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Footer Info */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.2 }}
+            className="mt-12 pt-8 border-t border-white/5"
+          >
+            <p className="text-xs text-gray-600 mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+              Together, we're building the next era of communication.
+            </p>
+            <p className="text-xs text-gray-700" style={{ fontFamily: 'Inter, sans-serif' }}>
+              Von Zürich in die Welt – powered by Schwarzott Group AG
+            </p>
+          </motion.div>
         </div>
       </div>
-      
-      {/* Right Panel - Authentication Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
+
+      {/* RIGHT SIDE: Auth Form */}
+      <div className="w-full lg:w-[42%] relative z-10 flex items-center justify-center p-8">
         <motion.div
-          initial={{ opacity: 0, x: 20 }}
+          initial={{ opacity: 0, x: 50 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.8, delay: 0.3 }}
           className="w-full max-w-md"
         >
-          <Card>
-            <CardContent className="p-8">
+          {/* Form Container with animated border */}
+          <div className="relative group">
+            <motion.div
+              className="absolute -inset-[1px] rounded-3xl opacity-50 group-hover:opacity-75 transition-opacity duration-500"
+              style={{
+                background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00)',
+                backgroundSize: '200% 200%'
+              }}
+              animate={{
+                backgroundPosition: ['0% 0%', '100% 100%', '0% 0%']
+              }}
+              transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
+            />
+
+            <div 
+              className="relative rounded-3xl p-10"
+              style={{
+                background: 'rgba(0, 0, 0, 0.8)',
+                backdropFilter: 'blur(40px)',
+              }}
+            >
+              {/* Form Header */}
               <div className="text-center mb-8">
-                <div className="flex justify-center mb-8">
-                  <img 
-                    src={arasLogo} 
-                    alt="ARAS AI" 
-                    className="w-24 h-24"
-                  />
-                </div>
-                <h1 className="text-2xl font-orbitron font-bold mb-2">
-                  <GradientText>
-                    {isSignUp ? "Join the Platform" : "Welcome Back"}
-                  </GradientText>
-                </h1>
-                <p className="text-muted-foreground">
+                <motion.h2
+                  className="text-3xl font-black mb-2"
+                  style={{
+                    fontFamily: 'Orbitron, sans-serif',
+                    background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00)',
+                    backgroundClip: 'text',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                  }}
+                  animate={{
+                    backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                  }}
+                  transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+                >
+                  {isSignUp ? "Account erstellen" : "Willkommen zurück"}
+                </motion.h2>
+                <p className="text-gray-500 text-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
                   {isSignUp 
-                    ? "Create your ARAS AI account" 
-                    : "Sign in to your ARAS AI account"
+                    ? "Starten Sie Ihre ARAS AI Journey" 
+                    : "Melden Sie sich an, um fortzufahren"
                   }
                 </p>
               </div>
-              
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {isSignUp && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="firstName">First Name</Label>
-                      <Input 
-                        id="firstName" 
-                        value={firstName}
-                        onChange={(e) => setFirstName(e.target.value)}
-                        placeholder="Enter first name"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="lastName">Last Name</Label>
-                      <Input 
-                        id="lastName" 
-                        value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
-                        placeholder="Enter last name"
-                        required
-                      />
-                    </div>
-                  </div>
-                )}
-                
+
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <AnimatePresence mode="wait">
+                  {isSignUp && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="grid grid-cols-2 gap-4"
+                    >
+                      <div>
+                        <Label htmlFor="firstName" className="text-gray-400 text-xs mb-2 block">
+                          Vorname
+                        </Label>
+                        <Input 
+                          id="firstName" 
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          className="h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-600 focus:border-[#FE9100]/50 rounded-xl"
+                          placeholder="Max"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="lastName" className="text-gray-400 text-xs mb-2 block">
+                          Nachname
+                        </Label>
+                        <Input 
+                          id="lastName" 
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          className="h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-600 focus:border-[#FE9100]/50 rounded-xl"
+                          placeholder="Mustermann"
+                          required
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 <div>
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email" className="text-gray-400 text-xs mb-2 block">
+                    E-Mail Adresse
+                  </Label>
                   <Input 
                     id="email" 
                     type="email" 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
+                    className="h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-600 focus:border-[#FE9100]/50 rounded-xl"
+                    placeholder="max@beispiel.de"
                     required
                   />
                 </div>
-                
+
                 <div>
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password" className="text-gray-400 text-xs mb-2 block">
+                    Passwort
+                  </Label>
                   <Input 
                     id="password" 
                     type="password" 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
+                    className="h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-600 focus:border-[#FE9100]/50 rounded-xl"
+                    placeholder="••••••••"
                     required
                   />
                 </div>
-                
-                {isSignUp && (
-                  <div>
-                    <Label htmlFor="confirmPassword">Confirm Password</Label>
-                    <Input 
-                      id="confirmPassword" 
-                      type="password" 
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Confirm your password"
-                      required
-                    />
-                  </div>
-                )}
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
+
+                <AnimatePresence mode="wait">
+                  {isSignUp && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                    >
+                      <Label htmlFor="confirmPassword" className="text-gray-400 text-xs mb-2 block">
+                        Passwort bestätigen
+                      </Label>
+                      <Input 
+                        id="confirmPassword" 
+                        type="password" 
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="h-12 bg-white/5 border-white/10 text-white placeholder:text-gray-600 focus:border-[#FE9100]/50 rounded-xl"
+                        placeholder="••••••••"
+                        required
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
                     <Checkbox 
                       id={isSignUp ? "terms" : "remember"}
                       checked={isSignUp ? agreeToTerms : rememberMe}
@@ -264,54 +479,95 @@ export default function Auth() {
                           ? setAgreeToTerms(checked as boolean)
                           : setRememberMe(checked as boolean)
                       }
+                      className="border-white/20"
                     />
-                    <Label htmlFor={isSignUp ? "terms" : "remember"} className="text-sm">
-                      {isSignUp ? "I agree to the terms and conditions" : "Remember me"}
+                    <Label 
+                      htmlFor={isSignUp ? "terms" : "remember"} 
+                      className="text-xs text-gray-500 cursor-pointer"
+                    >
+                      {isSignUp ? "AGB akzeptieren" : "Angemeldet bleiben"}
                     </Label>
                   </div>
                   {!isSignUp && (
-                    <Button 
+                    <button
                       type="button"
-                      variant="link" 
-                      className="p-0 h-auto text-primary"
-                      onClick={handleForgotPassword}
+                      className="text-xs text-[#FE9100] hover:text-[#FE9100]/80 transition-colors"
+                      onClick={() => toast({ title: "Passwort-Reset kommt bald" })}
                     >
-                      Forgot password?
-                    </Button>
+                      Passwort vergessen?
+                    </button>
                   )}
                 </div>
-                
-                <GlowButton type="submit" className="w-full">
-                  {isSignUp ? "Create Account" : "Sign In"}
-                </GlowButton>
+
+                {/* Submit Button */}
+                <motion.div className="relative pt-2">
+                  <motion.div
+                    className="absolute -inset-[2px] rounded-full opacity-75"
+                    style={{
+                      background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
+                      backgroundSize: '300% 100%',
+                      filter: 'blur(8px)'
+                    }}
+                    animate={{
+                      backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
+                      opacity: [0.5, 0.8, 0.5]
+                    }}
+                    transition={{ 
+                      backgroundPosition: { duration: 3, repeat: Infinity, ease: 'linear' },
+                      opacity: { duration: 2, repeat: Infinity }
+                    }}
+                  />
+
+                  <motion.button
+                    type="submit"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="relative w-full h-12 rounded-full font-bold text-base tracking-wide transition-all"
+                    style={{
+                      fontFamily: 'Orbitron, sans-serif',
+                      background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
+                      backgroundSize: '200% 100%',
+                      color: '#000000'
+                    }}
+                  >
+                    {isSignUp ? "Account erstellen" : "Anmelden"}
+                  </motion.button>
+                </motion.div>
               </form>
-              
-              <div className="mt-6 text-center">
-                <p className="text-muted-foreground">
-                  {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
+
+              {/* Toggle Sign Up/In */}
+              <div className="mt-8 text-center">
+                <p className="text-sm text-gray-500" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  {isSignUp ? "Bereits registriert?" : "Noch kein Account?"}{" "}
                   <button
                     type="button"
                     onClick={() => setIsSignUp(!isSignUp)}
-                    className="text-primary hover:text-primary/80 transition-colors"
+                    className="text-[#FE9100] hover:text-[#FE9100]/80 transition-colors font-semibold"
                   >
-                    {isSignUp ? "Sign in" : "Sign up"}
+                    {isSignUp ? "Anmelden" : "Registrieren"}
                   </button>
                 </p>
               </div>
+            </div>
+          </div>
 
-              {/* Mobile Demo Link */}
-              <div className="lg:hidden mt-6 pt-6 border-t border-border text-center">
-                <Link href="/demo" className="text-sm text-primary hover:text-primary/80 transition-colors">
-                  <span className="flex items-center justify-center space-x-1">
-                    <span>Try Demo</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </span>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Legal Footer */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1 }}
+            className="mt-6 text-center"
+          >
+            <p className="text-xs text-gray-700" style={{ fontFamily: 'Inter, sans-serif' }}>
+              DSGVO-konform · Swiss Hosting · SOC2 zertifiziert
+            </p>
+          </motion.div>
         </motion.div>
       </div>
+
+      {/* Fonts */}
+      <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     </div>
   );
 }
