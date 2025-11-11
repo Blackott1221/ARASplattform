@@ -6,6 +6,7 @@ import { TopBar } from '@/components/layout/topbar';
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
+import { Toaster } from "@/components/ui/toaster";
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { 
@@ -353,6 +354,7 @@ export default function Power() {
   }, []);
 
   return (
+    <>
     <div className="flex h-screen bg-black relative overflow-hidden">
       {/* Premium Background */}
       <div className="absolute inset-0 opacity-20">
@@ -1113,5 +1115,6 @@ export default function Power() {
         }
       `}</style>
     </div>
-  );
+    <Toaster />
+  </>;
 }
