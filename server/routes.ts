@@ -1936,36 +1936,40 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       
       logger.info('[ELEVENLABS-WEBHOOK] ========== WEBHOOK DATA ==========');
       logger.info('[ELEVENLABS-WEBHOOK] Full webhook data:', JSON.stringify(webhookData, null, 2));
-      logger.info('[ELEVENLABS-WEBHOOK] Event details:', { 
-        eventType: webhookData.event_type,
-        conversationId: webhookData.conversation_id,
-        hasTranscript: !!webhookData.transcript,
-        hasRecordingUrl: !!webhookData.recording_url,
-        hasAudioUrl: !!webhookData.audio_url,
-        allKeys: Object.keys(webhookData)
-      });
+      logger.info('[ELEVENLABS-WEBHOOK] Top-level keys:', Object.keys(webhookData));
+      
+      // ElevenLabs nests data in a 'data' object!
+      const payload = webhookData.data || webhookData;
+      logger.info('[ELEVENLABS-WEBHOOK] Payload keys:', Object.keys(payload));
       
       // Extract data - try different possible field names
-      const event_type = webhookData.event_type || webhookData.type;
-      const conversation_id = webhookData.conversation_id || 
-                              webhookData.call_id || 
-                              webhookData.id || 
-                              webhookData.sid || 
-                              webhookData.callSid;
-      const transcript = webhookData.transcript || webhookData.text || webhookData.transcription;
-      const recording_url = webhookData.recording_url || webhookData.recordingUrl;
-      const audio_url = webhookData.audio_url || webhookData.audioUrl || webhookData.audio;
-      const call_status = webhookData.call_status || webhookData.callStatus;
-      const status = webhookData.status;
-      const error = webhookData.error;
-      const metadata = webhookData.metadata || {};
+      const event_type = webhookData.type || webhookData.event_type || payload.type || payload.event_type;
+      const conversation_id = payload.conversation_id || 
+                              payload.call_id || 
+                              payload.id || 
+                              payload.sid || 
+                              payload.callSid ||
+                              webhookData.conversation_id;
+      const transcript = payload.transcript || payload.text || payload.transcription;
+      const recording_url = payload.recording_url || payload.recordingUrl;
+      const audio_url = payload.audio_url || payload.audioUrl || payload.audio;
+      const call_status = payload.call_status || payload.callStatus;
+      const status = payload.status;
+      const error = payload.error;
+      const metadata = payload.metadata || webhookData.metadata || {};
       
-      logger.info('[ELEVENLABS-WEBHOOK] 🔍 Extracted conversation_id:', conversation_id);
-      logger.info('[ELEVENLABS-WEBHOOK] Will search DB for retellCallId:', conversation_id);
+      logger.info('[ELEVENLABS-WEBHOOK] 🔍 Extracted data:', {
+        event_type,
+        conversation_id,
+        hasTranscript: !!transcript,
+        hasRecording: !!(recording_url || audio_url),
+        status
+      });
       
       if (!conversation_id) {
-        logger.error('[ELEVENLABS-WEBHOOK] ❌ NO CONVERSATION ID FOUND IN WEBHOOK!');
-        logger.error('[ELEVENLABS-WEBHOOK] Available fields:', Object.keys(webhookData));
+        logger.error('[ELEVENLABS-WEBHOOK] ❌ NO CONVERSATION ID FOUND!');
+        logger.error('[ELEVENLABS-WEBHOOK] Top-level fields:', Object.keys(webhookData));
+        logger.error('[ELEVENLABS-WEBHOOK] Payload fields:', Object.keys(payload));
         return res.status(200).json({ received: true, warning: 'No conversation ID found' });
       }
       
