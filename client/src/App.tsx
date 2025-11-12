@@ -83,7 +83,9 @@ function Router() {
           <Route path="/leads" component={Leads} />
           <Route path="/app/leads" component={Leads} />
           <Route path="/admin" component={AdminDashboard} />
+          <Route path="/admin-dashboard" component={AdminDashboard} />
           <Route path="/app/admin" component={AdminDashboard} />
+          <Route path="/app/admin-dashboard" component={AdminDashboard} />
           <Route path="/campaigns" component={Campaigns} />
           <Route path="/app/campaigns" component={Campaigns} />
           <Route path="/billing" component={Billing} />

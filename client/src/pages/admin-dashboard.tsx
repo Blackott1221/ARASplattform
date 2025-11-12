@@ -76,6 +76,7 @@ export default function AdminDashboard() {
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState<User | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState<User | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState<User | null>(null);
   const [showChatModal, setShowChatModal] = useState<ChatMessage | null>(null);
   const [showCallModal, setShowCallModal] = useState<CallLog | null>(null);
   const [showUserDetailsModal, setShowUserDetailsModal] = useState<User | null>(null);
@@ -165,12 +166,16 @@ export default function AdminDashboard() {
   const handleUpgrade = async (userId: string, plan: string) => {
     setActionLoading(userId);
     try {
-      await fetch(`/api/admin/users/${userId}/upgrade`, { 
+      const res = await fetch(`/api/admin/users/${userId}/upgrade`, { 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ plan })
       });
-      await fetchAllData();
+      const data = await res.json();
+      if (data.success) {
+        setShowUpgradeModal(null);
+        await fetchAllData();
+      }
     } finally {
       setActionLoading(null);
     }
@@ -197,7 +202,7 @@ export default function AdminDashboard() {
   };
 
   const exportData = (type: string) => {
-    let data = [];
+    let data: any[] = [];
     let filename = '';
     
     switch(type) {
@@ -441,20 +446,34 @@ export default function AdminDashboard() {
                         <td className="py-4 px-4 text-gray-300 text-sm">{user.voice_calls_used || 0}</td>
                         <td className="py-4 px-4">
                           <div className="flex items-center justify-center gap-2">
-                            {user.subscription_plan !== "pro" && (
-                              <button onClick={() => handleUpgrade(user.id)} disabled={actionLoading === user.id} className="p-2 bg-[#fe9100]/20 hover:bg-[#fe9100]/30 border border-[#fe9100]/30 rounded-lg transition-all group">
-                                <ArrowUpCircle className="w-4 h-4 text-[#fe9100] group-hover:scale-110 transition-transform" />
-                              </button>
-                            )}
-                            {user.subscription_plan === "pro" && (
-                              <button onClick={() => handleDowngrade(user.id)} className="p-2 bg-gray-500/20 hover:bg-gray-500/30 border border-gray-500/30 rounded-lg transition-all group">
-                                <ArrowDownCircle className="w-4 h-4 text-gray-400 group-hover:scale-110 transition-transform" />
-                              </button>
-                            )}
-                            <button onClick={() => setShowPasswordModal(user)} className="p-2 bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/30 rounded-lg transition-all group">
+                            <button 
+                              onClick={() => setShowUpgradeModal(user)} 
+                              disabled={actionLoading === user.id} 
+                              className="p-2 bg-[#fe9100]/20 hover:bg-[#fe9100]/30 border border-[#fe9100]/30 rounded-lg transition-all group"
+                              title="Plan ändern"
+                            >
+                              <ArrowUpCircle className="w-4 h-4 text-[#fe9100] group-hover:scale-110 transition-transform" />
+                            </button>
+                            <button 
+                              onClick={() => handleResetUsage(user.id)} 
+                              disabled={actionLoading === user.id}
+                              className="p-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded-lg transition-all group"
+                              title="Usage zurücksetzen"
+                            >
+                              <Activity className="w-4 h-4 text-blue-400 group-hover:scale-110 transition-transform" />
+                            </button>
+                            <button 
+                              onClick={() => setShowPasswordModal(user)} 
+                              className="p-2 bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/30 rounded-lg transition-all group"
+                              title="Passwort ändern"
+                            >
                               <Key className="w-4 h-4 text-yellow-400 group-hover:scale-110 transition-transform" />
                             </button>
-                            <button onClick={() => setShowDeleteModal(user)} className="p-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-lg transition-all group">
+                            <button 
+                              onClick={() => setShowDeleteModal(user)} 
+                              className="p-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-lg transition-all group"
+                              title="User löschen"
+                            >
                               <Trash2 className="w-4 h-4 text-red-400 group-hover:scale-110 transition-transform" />
                             </button>
                           </div>
@@ -643,6 +662,64 @@ export default function AdminDashboard() {
                 <button onClick={() => setShowCreateUser(false)} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white rounded-xl px-6 py-3 font-medium transition-colors">Abbrechen</button>
                 <button onClick={handleCreateUser} disabled={!newUser.username || !newUser.email || !newUser.password || newUser.password.length < 8 || !!actionLoading} className="flex-1 bg-gradient-to-r from-[#fe9100] to-[#ff6b00] text-white rounded-xl px-6 py-3 font-medium transition-all disabled:opacity-50">
                   {actionLoading === "create" ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Erstellen"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Upgrade Modal */}
+      <AnimatePresence>
+        {showUpgradeModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setShowUpgradeModal(null)}>
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="bg-gray-900 border border-gray-800 rounded-3xl p-8 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+              <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                <Crown className="w-6 h-6 text-[#fe9100]" />
+                Plan ändern
+              </h2>
+              <p className="text-gray-400 mb-6">User: <span className="text-white font-medium">{showUpgradeModal.username}</span></p>
+              <p className="text-gray-500 text-sm mb-4">Aktueller Plan: <span className="text-[#fe9100] font-medium">{showUpgradeModal.subscription_plan.toUpperCase()}</span></p>
+              
+              <div className="space-y-3 mb-6">
+                {['free', 'pro', 'ultra', 'ultimate'].map((plan) => (
+                  <button
+                    key={plan}
+                    onClick={() => setSelectedPlan(plan)}
+                    className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                      selectedPlan === plan
+                        ? 'border-[#fe9100] bg-[#fe9100]/10'
+                        : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-white font-bold text-lg">{plan.toUpperCase()}</p>
+                        <p className="text-gray-400 text-sm">
+                          {plan === 'free' && '50 Nachrichten, 10 Anrufe'}
+                          {plan === 'pro' && '500 Nachrichten, 100 Anrufe'}
+                          {plan === 'ultra' && '2000 Nachrichten, 500 Anrufe'}
+                          {plan === 'ultimate' && 'Unbegrenzt'}
+                        </p>
+                      </div>
+                      {selectedPlan === plan && (
+                        <div className="w-6 h-6 rounded-full bg-[#fe9100] flex items-center justify-center">
+                          <span className="text-white text-xs">✓</span>
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+              
+              <div className="flex gap-3">
+                <button onClick={() => setShowUpgradeModal(null)} className="flex-1 bg-gray-800 hover:bg-gray-700 text-white rounded-xl px-6 py-3 font-medium transition-colors">Abbrechen</button>
+                <button 
+                  onClick={() => handleUpgrade(showUpgradeModal.id, selectedPlan)} 
+                  disabled={!!actionLoading}
+                  className="flex-1 bg-gradient-to-r from-[#fe9100] to-[#ff6b00] text-white rounded-xl px-6 py-3 font-medium transition-all disabled:opacity-50"
+                >
+                  {actionLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Plan ändern'}
                 </button>
               </div>
             </motion.div>

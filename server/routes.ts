@@ -1269,7 +1269,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   app.get('/api/admin/users', requireAdmin, async (req: any, res) => {
     try {
       const users = await client`
-        SELECT id, username, email, subscription_plan, subscription_status, created_at
+        SELECT id, username, email, subscription_plan, subscription_status, created_at, ai_messages_used, voice_calls_used
         FROM users
         ORDER BY created_at DESC
       `;
@@ -1277,6 +1277,35 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     } catch (error) {
       logger.error('Error fetching users:', error);
       res.status(500).json({ error: 'Failed to fetch users' });
+    }
+  });
+
+  // Get platform statistics
+  app.get('/api/admin/stats', requireAdmin, async (req: any, res) => {
+    try {
+      const [stats] = await client`
+        SELECT 
+          COUNT(DISTINCT id) as total_users,
+          COUNT(DISTINCT CASE WHEN subscription_plan = 'pro' OR subscription_plan = 'ultra' OR subscription_plan = 'ultimate' THEN id END) as pro_users,
+          COUNT(DISTINCT CASE WHEN subscription_plan = 'free' THEN id END) as free_users,
+          SUM(ai_messages_used) as total_messages,
+          SUM(voice_calls_used) as total_calls
+        FROM users
+      `;
+      
+      res.json({ 
+        success: true, 
+        stats: {
+          total_users: stats.total_users || 0,
+          pro_users: stats.pro_users || 0,
+          free_users: stats.free_users || 0,
+          total_messages: stats.total_messages || 0,
+          total_calls: stats.total_calls || 0
+        }
+      });
+    } catch (error) {
+      logger.error('Error fetching stats:', error);
+      res.status(500).json({ error: 'Failed to fetch stats' });
     }
   });
 
@@ -1990,16 +2019,16 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       const { conversationId } = req.params;
       
       // Poll ElevenLabs API for call status
-      const response = await axios.get(
+      const response = await fetch(
         `https://api.elevenlabs.io/v1/convai/conversations/${conversationId}`,
         {
           headers: {
-            'xi-api-key': process.env.ELEVENLABS_API_KEY
+            'xi-api-key': process.env.ELEVENLABS_API_KEY || ''
           }
         }
       );
       
-      const callData = response.data;
+      const callData = await response.json();
       
       res.json({
         success: true,
