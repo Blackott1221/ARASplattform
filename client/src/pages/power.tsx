@@ -18,6 +18,7 @@ import {
   MessageSquare,
   Clock,
   Radio,
+  User,
 } from "lucide-react";
 
 import type { SubscriptionResponse } from "@shared/schema";
