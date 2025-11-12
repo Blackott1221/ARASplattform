@@ -208,7 +208,18 @@ export default function Power() {
       });
       const data = await response.json();
       
+      console.log('[SMART-CALL] ========== API RESPONSE ==========');
+      console.log('[SMART-CALL] Full response:', data);
+      console.log('[SMART-CALL] Response details:', {
+        success: data.success,
+        callId: data.callId,
+        conversationId: data.conversationId,
+        message: data.message,
+        status: data.status
+      });
+      
       if (!response.ok) {
+        console.error('[SMART-CALL] ❌ Error response:', response.status, data);
         setLoading(false);
         setCallStatus('idle');
         setResult({ success: false, error: data.error || data.message || `Fehler: ${response.status}` });
@@ -217,6 +228,9 @@ export default function Power() {
       
       if (data.success && data.callId) {
         const callId = data.callId;
+        console.log('[SMART-CALL] ✅ Call initiated successfully!');
+        console.log('[SMART-CALL] Database ID for polling:', callId);
+        console.log('[SMART-CALL] ElevenLabs conversation ID:', data.conversationId);
         
         // Update status to show call is connecting
         setCallStatus('ringing');

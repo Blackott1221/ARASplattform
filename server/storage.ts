@@ -992,7 +992,17 @@ export class DatabaseStorage implements IStorage {
       voiceSystem: 'Neural Voice (Gemini + ElevenLabs)'
     };
 
-    const [insertedLog] = await db.insert(callLogs).values({
+    logger.info('[STORAGE] ========== SAVING CALL LOG ==========');
+    logger.info('[STORAGE] Input data:', {
+      userId: data.userId,
+      phoneNumber: data.phoneNumber,
+      callId: data.callId,
+      retellCallId: data.retellCallId,
+      status: data.status,
+      provider: data.provider
+    });
+    
+    const valueToInsert = {
       userId: data.userId,
       phoneNumber: data.phoneNumber,
       retellCallId: data.callId || data.retellCallId || null, // Nutze callId als ID
@@ -1002,13 +1012,20 @@ export class DatabaseStorage implements IStorage {
       customPrompt: data.customPrompt || data.originalMessage || null,
       recordingUrl: data.recordingUrl,
       metadata: enrichedMetadata, // Speichere ALLES hier!
-    }).returning();
+    };
     
-    logger.info('[STORAGE] Call log saved', { 
-      callLogId: insertedLog?.id,
-      conversationId: data.callId,
+    logger.info('[STORAGE] 💾 SAVING TO DB with retellCallId:', valueToInsert.retellCallId);
+    
+    const [insertedLog] = await db.insert(callLogs).values(valueToInsert).returning();
+    
+    logger.info('[STORAGE] ✅ CALL LOG SAVED!', { 
+      databaseId: insertedLog?.id,
+      retellCallIdInDB: insertedLog?.retellCallId,
+      originalCallId: data.callId,
       userId: data.userId 
     });
+    logger.info('[STORAGE] 🔑 Frontend will poll with ID:', insertedLog?.id);
+    logger.info('[STORAGE] 🎯 Webhook will search with retellCallId:', insertedLog?.retellCallId);
     
     return insertedLog?.id || null;
   }

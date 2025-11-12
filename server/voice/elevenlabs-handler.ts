@@ -61,17 +61,31 @@ export async function makeHumanCall(callContext: EnhancedCallContext) {
       }
     );
 
-    logger.info('[ARAS-VOICE] Anruf erfolgreich initiiert!', { 
-      success: response.data.success,
-      conversation_id: response.data.conversation_id,
-      callSid: response.data.callSid,
-      message: response.data.message
+    logger.info('[ARAS-VOICE] ========== ELEVENLABS API RESPONSE ==========');
+    logger.info('[ARAS-VOICE] Full response data:', JSON.stringify(response.data, null, 2));
+    logger.info('[ARAS-VOICE] Response fields:', {
+      has_success: response.data.success !== undefined,
+      has_conversation_id: response.data.conversation_id !== undefined,
+      has_call_id: response.data.call_id !== undefined,
+      has_callSid: response.data.callSid !== undefined,
+      has_sid: response.data.sid !== undefined,
+      all_keys: Object.keys(response.data)
     });
-
+    
+    // Try to find the conversation ID in various possible fields
+    const conversationId = response.data.conversation_id || 
+                          response.data.call_id || 
+                          response.data.id || 
+                          response.data.callSid || 
+                          response.data.sid;
+    
+    logger.info('[ARAS-VOICE] ✅ CONVERSATION ID FOUND:', conversationId);
+    logger.info('[ARAS-VOICE] This ID will be saved in DB as retellCallId');
+    
     return {
-      success: response.data.success || true,
-      callId: response.data.conversation_id || response.data.callSid,
-      status: response.data.success ? 'initiated' : 'pending',
+      success: response.data.success !== false,
+      callId: conversationId,
+      status: 'initiated',
       message: response.data.message || `ARAS AI ruft ${callContext.contactName} an...`
     };
 

@@ -1934,9 +1934,15 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         logger.info('[ELEVENLABS-WEBHOOK] No signature verification (secret or signature missing)');
       }
       
-      logger.info('[ELEVENLABS-WEBHOOK] Received webhook', { 
+      logger.info('[ELEVENLABS-WEBHOOK] ========== WEBHOOK DATA ==========');
+      logger.info('[ELEVENLABS-WEBHOOK] Full webhook data:', JSON.stringify(webhookData, null, 2));
+      logger.info('[ELEVENLABS-WEBHOOK] Event details:', { 
         eventType: webhookData.event_type,
-        conversationId: webhookData.conversation_id 
+        conversationId: webhookData.conversation_id,
+        hasTranscript: !!webhookData.transcript,
+        hasRecordingUrl: !!webhookData.recording_url,
+        hasAudioUrl: !!webhookData.audio_url,
+        allKeys: Object.keys(webhookData)
       });
       
       const { 
@@ -1950,6 +1956,8 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         error,
         metadata 
       } = webhookData;
+      
+      logger.info('[ELEVENLABS-WEBHOOK] 🔍 Will search DB for retellCallId:', conversation_id);
       
       // Handle verschiedene Event-Typen
       switch (event_type) {
