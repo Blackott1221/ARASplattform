@@ -1945,19 +1945,29 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         allKeys: Object.keys(webhookData)
       });
       
-      const { 
-        event_type, 
-        conversation_id, 
-        transcript, 
-        recording_url, 
-        audio_url,
-        call_status, 
-        status,
-        error,
-        metadata 
-      } = webhookData;
+      // Extract data - try different possible field names
+      const event_type = webhookData.event_type || webhookData.type;
+      const conversation_id = webhookData.conversation_id || 
+                              webhookData.call_id || 
+                              webhookData.id || 
+                              webhookData.sid || 
+                              webhookData.callSid;
+      const transcript = webhookData.transcript || webhookData.text || webhookData.transcription;
+      const recording_url = webhookData.recording_url || webhookData.recordingUrl;
+      const audio_url = webhookData.audio_url || webhookData.audioUrl || webhookData.audio;
+      const call_status = webhookData.call_status || webhookData.callStatus;
+      const status = webhookData.status;
+      const error = webhookData.error;
+      const metadata = webhookData.metadata || {};
       
-      logger.info('[ELEVENLABS-WEBHOOK] 🔍 Will search DB for retellCallId:', conversation_id);
+      logger.info('[ELEVENLABS-WEBHOOK] 🔍 Extracted conversation_id:', conversation_id);
+      logger.info('[ELEVENLABS-WEBHOOK] Will search DB for retellCallId:', conversation_id);
+      
+      if (!conversation_id) {
+        logger.error('[ELEVENLABS-WEBHOOK] ❌ NO CONVERSATION ID FOUND IN WEBHOOK!');
+        logger.error('[ELEVENLABS-WEBHOOK] Available fields:', Object.keys(webhookData));
+        return res.status(200).json({ received: true, warning: 'No conversation ID found' });
+      }
       
       // Handle verschiedene Event-Typen
       switch (event_type) {
