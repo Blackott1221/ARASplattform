@@ -1016,6 +1016,66 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(callLogs.createdAt))
       .limit(50);
   }
+
+  // Update call log by conversation_id (ElevenLabs callId)
+  async updateCallLogByConversationId(conversationId: string, updates: {
+    transcript?: string;
+    recordingUrl?: string;
+    status?: string;
+    duration?: number;
+    metadata?: any;
+  }) {
+    // Find call log by retellCallId (which stores the ElevenLabs conversation_id)
+    const [existingLog] = await db
+      .select()
+      .from(callLogs)
+      .where(eq(callLogs.retellCallId, conversationId))
+      .limit(1);
+
+    if (!existingLog) {
+      logger.warn('[STORAGE] No call log found for conversation_id', { conversationId });
+      return null;
+    }
+
+    // Merge existing metadata with new data
+    const mergedMetadata = {
+      ...(existingLog.metadata || {}),
+      ...(updates.metadata || {}),
+      lastUpdated: new Date().toISOString()
+    };
+
+    // Update the record
+    await db
+      .update(callLogs)
+      .set({
+        transcript: updates.transcript || existingLog.transcript,
+        recordingUrl: updates.recordingUrl || existingLog.recordingUrl,
+        status: updates.status || existingLog.status,
+        duration: updates.duration || existingLog.duration,
+        metadata: mergedMetadata,
+        updatedAt: new Date()
+      })
+      .where(eq(callLogs.id, existingLog.id));
+
+    logger.info('[STORAGE] Call log updated successfully', { 
+      callId: existingLog.id, 
+      conversationId,
+      hasTranscript: !!updates.transcript,
+      hasRecording: !!updates.recordingUrl
+    });
+
+    return existingLog.id;
+  }
+
+  // Get single call log by conversation ID
+  async getCallLogByConversationId(conversationId: string) {
+    const [log] = await db
+      .select()
+      .from(callLogs)
+      .where(eq(callLogs.retellCallId, conversationId))
+      .limit(1);
+    return log || null;
+  }
   
   // Phonebook/Contacts Methods
   async getUserContacts(userId: string) {

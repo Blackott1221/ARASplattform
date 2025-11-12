@@ -1958,31 +1958,49 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
             conversationId: conversation_id,
             transcriptLength: transcript?.length
           });
-          // TODO: Speichere Transcript in DB
-          // await storage.updateCallLog(conversation_id, { transcript });
+          if (conversation_id && transcript) {
+            await storage.updateCallLogByConversationId(conversation_id, { 
+              transcript,
+              metadata: { transcriptReceivedAt: new Date().toISOString() }
+            });
+          }
           break;
           
         case 'conversation.audio':
-          logger.info('[ELEVENLABS-WEBHOOK] Audio received', {
+        case 'conversation.recording_ready':
+          logger.info('[ELEVENLABS-WEBHOOK] Audio/Recording received', {
             conversationId: conversation_id,
             audioUrl: audio_url || recording_url
           });
-          // TODO: Speichere Audio URL in DB
-          // await storage.updateCallLog(conversation_id, { recordingUrl: audio_url || recording_url });
+          if (conversation_id && (audio_url || recording_url)) {
+            await storage.updateCallLogByConversationId(conversation_id, { 
+              recordingUrl: audio_url || recording_url,
+              metadata: { recordingReceivedAt: new Date().toISOString() }
+            });
+          }
           break;
           
         case 'conversation.ended':
         case 'conversation.completed':
           logger.info('[ELEVENLABS-WEBHOOK] Call completed', {
             conversationId: conversation_id,
-            status: call_status || status
+            status: call_status || status,
+            hasTranscript: !!transcript,
+            hasRecording: !!(audio_url || recording_url)
           });
-          // TODO: Update Call-Status in DB
-          // await storage.updateCallLog(conversation_id, { 
-          //   status: 'completed',
-          //   transcript,
-          //   recordingUrl: audio_url || recording_url 
-          // });
+          if (conversation_id) {
+            await storage.updateCallLogByConversationId(conversation_id, { 
+              status: 'completed',
+              transcript: transcript || undefined,
+              recordingUrl: audio_url || recording_url || undefined,
+              duration: metadata?.duration_seconds || undefined,
+              metadata: { 
+                completedAt: new Date().toISOString(),
+                finalStatus: call_status || status,
+                ...metadata
+              }
+            });
+          }
           break;
           
         case 'call.initiation.failed':
@@ -1992,15 +2010,34 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
             error: error,
             status: call_status || status
           });
-          // TODO: Markiere Call als failed in DB
-          // await storage.updateCallLog(conversation_id, { 
-          //   status: 'failed',
-          //   error: error 
-          // });
+          if (conversation_id) {
+            await storage.updateCallLogByConversationId(conversation_id, { 
+              status: 'failed',
+              metadata: { 
+                failedAt: new Date().toISOString(),
+                errorMessage: error,
+                errorStatus: call_status || status
+              }
+            });
+          }
           break;
           
         default:
-          logger.info('[ELEVENLABS-WEBHOOK] Unknown event type', { event_type });
+          logger.info('[ELEVENLABS-WEBHOOK] Unknown event type', { 
+            event_type,
+            conversationId: conversation_id 
+          });
+          // Try to save any data we have
+          if (conversation_id && (transcript || audio_url || recording_url)) {
+            await storage.updateCallLogByConversationId(conversation_id, {
+              transcript: transcript || undefined,
+              recordingUrl: audio_url || recording_url || undefined,
+              metadata: { 
+                unknownEventType: event_type,
+                receivedAt: new Date().toISOString()
+              }
+            });
+          }
       }
       
       res.status(200).json({ received: true });
