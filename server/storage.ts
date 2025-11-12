@@ -28,6 +28,7 @@ import {
   type InsertTwilioSettings,
 } from "@shared/schema";
 import { db } from "./db";
+import { logger } from "./logger";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
