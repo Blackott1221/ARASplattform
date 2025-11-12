@@ -49,6 +49,7 @@ export default function Power() {
   const [showSaveContact, setShowSaveContact] = useState(false);
   const [callHistory, setCallHistory] = useState<any[]>([]);
   const [expandedCall, setExpandedCall] = useState<number | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [phoneError, setPhoneError] = useState("");
@@ -698,29 +699,62 @@ export default function Power() {
                         
                         {result.success ? (
                           <>
-                            {/* Audio Player */}
+                            {/* Audio Player with Download */}
                             {result.recordingUrl && (
                               <div className="mb-4">
-                                <div className="text-[12px] text-gray-400 mb-2">📞 Gesprächsaufzeichnung</div>
-                                <audio controls className="w-full" style={{ height: '36px' }}>
+                                <div className="text-[11px] font-medium mb-2" style={{ color: CI.goldLight }}>Aufzeichnung</div>
+                                <audio controls className="w-full mb-2" style={{ height: '36px' }}>
                                   <source src={result.recordingUrl} type="audio/mpeg" />
                                   Browser unterstützt keine Audio-Wiedergabe.
                                 </audio>
+                                <a 
+                                  href={result.recordingUrl} 
+                                  download={`Anruf_${new Date().toISOString().split('T')[0]}.mp3`}
+                                  className="inline-block text-[11px] px-3 py-1.5 rounded-lg font-medium transition-all"
+                                  style={{ 
+                                    color: CI.orange,
+                                    background: 'rgba(254,145,0,0.1)',
+                                    border: '1px solid rgba(254,145,0,0.2)'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = 'rgba(254,145,0,0.2)';
+                                    e.currentTarget.style.transform = 'translateY(-1px)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'rgba(254,145,0,0.1)';
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                  }}
+                                >
+                                  Audio herunterladen
+                                </a>
                               </div>
                             )}
                             
                             {/* Transcript */}
-                            <div>
-                              <div className="text-[12px] text-gray-400 mb-2">📝 Zusammenfassung</div>
-                              <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">
-                                {result.summary?.transcript || 'Transkript wird verarbeitet...'}
+                            {result.transcript && (
+                              <div className="mb-4">
+                                <div className="text-[11px] font-medium mb-2" style={{ color: CI.goldLight }}>Transkript</div>
+                                <div 
+                                  className="text-[12px] text-gray-300 leading-relaxed p-3 rounded-lg max-h-48 overflow-y-auto"
+                                  style={{ 
+                                    background: 'rgba(0,0,0,0.2)',
+                                    border: '1px solid rgba(255,255,255,0.05)'
+                                  }}
+                                >
+                                  <pre className="whitespace-pre-wrap font-sans">
+                                    {typeof result.transcript === 'string' 
+                                      ? result.transcript 
+                                      : JSON.stringify(result.transcript, null, 2)}
+                                  </pre>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {result.duration && (
+                              <p className="text-[11px] text-gray-500 mb-3">
+                                Dauer: {Math.floor(result.duration / 60)}:{(result.duration % 60).toString().padStart(2, '0')} Min
                               </p>
-                              {result.summary?.duration && (
-                                <p className="text-[11px] text-gray-500 mt-2">
-                                  Dauer: {result.summary.duration} Sekunden
-                                </p>
-                              )}
-                            </div>
+                            )}
                             
                             {/* Reset Button */}
                             <button
@@ -729,10 +763,12 @@ export default function Power() {
                                 setCallStatus('idle');
                                 setCallDuration(0);
                               }}
-                              className="mt-3 text-[12px] font-medium"
+                              className="text-[12px] font-medium transition-all"
                               style={{ color: CI.orange }}
+                              onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                              onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
                             >
-                              Neuer Anruf →
+                              Neuer Anruf starten
                             </button>
                           </>
                         ) : (
@@ -754,11 +790,56 @@ export default function Power() {
                     )}
                   </AnimatePresence>
 
-                  {/* Call History with Audio and Transcripts */}
+                  {/* Call History Button & Collapsible Section */}
                   {callHistory.length > 0 && (
                     <div className="mt-7">
-                      <div className="text-[12px] text-gray-400 mb-3 tracking-wide uppercase">📜 Gesprächsverlauf</div>
-                      <div className="space-y-3">
+                      {/* Toggle Button */}
+                      <button
+                        onClick={() => setShowHistory(!showHistory)}
+                        className="w-full py-3 px-4 rounded-xl font-medium text-[13px] transition-all"
+                        style={{
+                          background: showHistory 
+                            ? 'linear-gradient(135deg, rgba(254,145,0,0.15), rgba(233,215,196,0.08))' 
+                            : 'rgba(255,255,255,0.03)',
+                          border: showHistory 
+                            ? '1px solid rgba(254,145,0,0.3)' 
+                            : '1px solid rgba(255,255,255,0.08)',
+                          color: showHistory ? CI.orange : '#9ca3af'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!showHistory) {
+                            e.currentTarget.style.borderColor = 'rgba(254,145,0,0.2)';
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!showHistory) {
+                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                          }
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span>
+                            {showHistory ? 'Verlauf ausblenden' : `Gesprächsverlauf anzeigen (${callHistory.length})`}
+                          </span>
+                          <span className="text-[16px]">
+                            {showHistory ? '▴' : '▾'}
+                          </span>
+                        </div>
+                      </button>
+                      
+                      {/* Collapsible History */}
+                      <AnimatePresence>
+                        {showHistory && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.3, ease: 'easeInOut' }}
+                            className="overflow-hidden"
+                          >
+                            <div className="mt-4 space-y-3">
                         {callHistory.slice(0, 10).map((call) => (
                           <div
                             key={call.id}
@@ -813,7 +894,7 @@ export default function Power() {
                                 {/* Audio Player with Download */}
                                 {call.recordingUrl && (
                                   <div className="mt-3">
-                                    <div className="text-[11px] text-gray-400 mb-2">🎙️ Aufzeichnung</div>
+                                    <div className="text-[11px] font-medium mb-2" style={{ color: CI.goldLight }}>Aufzeichnung</div>
                                     <audio controls className="w-full mb-2" style={{ height: '32px' }}>
                                       <source src={call.recordingUrl} type="audio/mpeg" />
                                       Browser unterstützt keine Audio-Wiedergabe.
@@ -821,16 +902,22 @@ export default function Power() {
                                     <a 
                                       href={call.recordingUrl} 
                                       download={`Anruf_${call.phoneNumber}_${new Date(call.createdAt).toISOString().split('T')[0]}.mp3`}
-                                      className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded transition-colors"
+                                      className="inline-block text-[11px] px-3 py-1.5 rounded-lg font-medium transition-all"
                                       style={{ 
                                         color: CI.orange,
                                         background: 'rgba(254,145,0,0.1)',
                                         border: '1px solid rgba(254,145,0,0.2)'
                                       }}
-                                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(254,145,0,0.2)'}
-                                      onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(254,145,0,0.1)'}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = 'rgba(254,145,0,0.2)';
+                                        e.currentTarget.style.transform = 'translateY(-1px)';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'rgba(254,145,0,0.1)';
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                      }}
                                     >
-                                      ⬇ Audio herunterladen
+                                      Audio herunterladen
                                     </a>
                                   </div>
                                 )}
@@ -838,9 +925,9 @@ export default function Power() {
                                 {/* Transcript */}
                                 {call.transcript && (
                                   <div className="mt-3">
-                                    <div className="text-[11px] text-gray-400 mb-2">📝 Gesprächsverlauf</div>
+                                    <div className="text-[11px] font-medium mb-2" style={{ color: CI.goldLight }}>Transkript</div>
                                     <div 
-                                      className="text-[12px] text-gray-300 leading-relaxed p-2 rounded max-h-48 overflow-y-auto"
+                                      className="text-[12px] text-gray-300 leading-relaxed p-3 rounded-lg max-h-48 overflow-y-auto"
                                       style={{ 
                                         background: 'rgba(0,0,0,0.2)',
                                         border: '1px solid rgba(255,255,255,0.05)'
@@ -858,8 +945,8 @@ export default function Power() {
                                 {/* Purpose/Message */}
                                 {(call.customPrompt || call.metadata?.purpose) && (
                                   <div className="mt-3">
-                                    <div className="text-[11px] text-gray-400 mb-1">💬 Auftrag</div>
-                                    <p className="text-[12px] text-gray-400">
+                                    <div className="text-[11px] font-medium mb-1" style={{ color: CI.goldLight }}>Auftrag</div>
+                                    <p className="text-[12px] text-gray-400 leading-relaxed">
                                       {call.customPrompt || call.metadata?.purpose}
                                     </p>
                                   </div>
@@ -868,15 +955,18 @@ export default function Power() {
                             )}
                           </div>
                         ))}
-                      </div>
-                      
-                      {callHistory.length > 10 && (
-                        <div className="mt-3 text-center">
-                          <span className="text-[11px] text-gray-500">
-                            Zeige die letzten 10 von {callHistory.length} Anrufen
-                          </span>
-                        </div>
-                      )}
+                            </div>
+                            
+                            {callHistory.length > 10 && (
+                              <div className="mt-4 text-center">
+                                <span className="text-[11px] text-gray-500">
+                                  Zeige die letzten 10 von {callHistory.length} Anrufen
+                                </span>
+                              </div>
+                            )}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   )}
                 </div>
