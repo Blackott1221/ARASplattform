@@ -1072,15 +1072,58 @@ export class DatabaseStorage implements IStorage {
     });
     
     // Find call log by retellCallId (which stores the ElevenLabs conversation_id)
-    const [existingLog] = await db
+    let [existingLog] = await db
       .select()
       .from(callLogs)
       .where(eq(callLogs.retellCallId, conversationId))
       .limit(1);
 
+    // FALLBACK 1: If not found, try searching in metadata
     if (!existingLog) {
-      logger.warn('[STORAGE] ❌ No call log found for conversation_id', { conversationId });
-      logger.warn('[STORAGE] This means the call was not saved to DB or conversation_id does not match');
+      logger.warn('[STORAGE] No call log found by retellCallId, trying metadata search...', { conversationId });
+      
+      const logsWithMetadata = await db
+        .select()
+        .from(callLogs)
+        .where(sql`metadata->>'callId' = ${conversationId} OR metadata->>'conversationId' = ${conversationId}`);
+      
+      if (logsWithMetadata.length > 0) {
+        existingLog = logsWithMetadata[0];
+        logger.info('[STORAGE] ✅ Found call log via metadata search!');
+      }
+    }
+    
+    // FALLBACK 2: If still not found, try finding the most recent initiated call
+    if (!existingLog) {
+      logger.warn('[STORAGE] No call log found by metadata, trying latest initiated call...');
+      
+      const [latestCall] = await db
+        .select()
+        .from(callLogs)
+        .where(eq(callLogs.status, 'initiated'))
+        .orderBy(desc(callLogs.createdAt))
+        .limit(1);
+      
+      if (latestCall) {
+        const timeDiff = Date.now() - new Date(latestCall.createdAt).getTime();
+        // If call was initiated in last 5 minutes, probably it's our call
+        if (timeDiff < 5 * 60 * 1000) {
+          existingLog = latestCall;
+          logger.warn('[STORAGE] ⚠️ Using latest initiated call as fallback (created ' + Math.round(timeDiff/1000) + 's ago)');
+          
+          // Update the retellCallId for future webhook calls
+          await db
+            .update(callLogs)
+            .set({ retellCallId: conversationId })
+            .where(eq(callLogs.id, latestCall.id));
+        }
+      }
+    }
+    
+    if (!existingLog) {
+      logger.error('[STORAGE] ❌ FAILED to find call log after all fallback attempts!');
+      logger.error('[STORAGE] Conversation ID:', conversationId);
+      logger.error('[STORAGE] This webhook data will be lost!');
       return null;
     }
     

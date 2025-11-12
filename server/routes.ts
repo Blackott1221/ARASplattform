@@ -2246,21 +2246,34 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         originalMessage: message
       });
 
-      logger.info('[SMART-CALL] Call initiated successfully', {
-        callLogId,
+      logger.info('[SMART-CALL] ========== CALL FLOW COMPLETE ==========');
+      logger.info('[SMART-CALL] ElevenLabs Response:', {
         conversationId: callResult.callId,
+        status: callResult.status,
+        message: callResult.message
+      });
+      logger.info('[SMART-CALL] Database Storage:', {
+        databaseId: callLogId,
+        retellCallId: callResult.callId,
         userId,
+        phoneNumber,
         contact: name
       });
-
-      // 6. Sende Erfolg an das Frontend mit callLogId für Polling
-      res.json({
+      
+      const responseToFrontend = {
         success: true,
         message: callResult.message,
         callId: callLogId, // Database ID for polling
         conversationId: callResult.callId, // ElevenLabs conversation_id
         status: callResult.status
-      });
+      };
+      
+      logger.info('[SMART-CALL] 🚀 SENDING TO FRONTEND:', responseToFrontend);
+      logger.info('[SMART-CALL] Frontend will poll /api/aras-voice/call-details/' + callLogId);
+      logger.info('[SMART-CALL] Webhook will update via retellCallId: ' + callResult.callId);
+      
+      // 6. Sende Erfolg an das Frontend
+      res.json(responseToFrontend);
       
     } catch (callError: any) {
       // Rollback: Reduziere Counter wieder da Call fehlgeschlagen ist
