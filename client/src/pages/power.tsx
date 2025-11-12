@@ -48,6 +48,7 @@ export default function Power() {
   const [message, setMessage] = useState("");
   const [showSaveContact, setShowSaveContact] = useState(false);
   const [callHistory, setCallHistory] = useState<any[]>([]);
+  const [expandedCall, setExpandedCall] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [phoneError, setPhoneError] = useState("");
@@ -68,12 +69,35 @@ export default function Power() {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const { data: userSubscription } = useQuery<SubscriptionResponse>({
+  // Fetch call history from database
+  useEffect(() => {
+    const fetchCallHistory = async () => {
+      try {
+        const response = await fetch('/api/user/call-logs', {
+          credentials: 'include'
+        });
+        if (response.ok) {
+          const logs = await response.json();
+          setCallHistory(logs);
+        }
+      } catch (error) {
+        console.error('[CALL-HISTORY] Error fetching:', error);
+      }
+    };
+    
+    fetchCallHistory();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchCallHistory, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch subscription
+  const { data: subscription, refetch: refetchSubscription } = useQuery<SubscriptionResponse>({
     queryKey: ["/api/user/subscription"],
     enabled: !!user,
   });
 
-  const subscriptionData = userSubscription || {
+  const subscriptionData = subscription || {
     plan: 'pro',
     status: 'active',
     aiMessagesUsed: 0,
@@ -730,32 +754,129 @@ export default function Power() {
                     )}
                   </AnimatePresence>
 
-                  {/* History (clean, no icons) */}
+                  {/* Call History with Audio and Transcripts */}
                   {callHistory.length > 0 && (
                     <div className="mt-7">
-                      <div className="text-[12px] text-gray-400 mb-2 tracking-wide uppercase">Anrufverlauf</div>
-                      <div className="space-y-2.5">
-                        {callHistory.slice(0, 3).map((c, i) => (
+                      <div className="text-[12px] text-gray-400 mb-3 tracking-wide uppercase">📜 Gesprächsverlauf</div>
+                      <div className="space-y-3">
+                        {callHistory.slice(0, 10).map((call) => (
                           <div
-                            key={i}
-                            className="p-3 rounded-lg"
+                            key={call.id}
+                            className="rounded-lg overflow-hidden transition-all"
                             style={{
-                              background: 'rgba(255,255,255,0.03)',
-                              border: '1px solid rgba(255,255,255,0.08)'
+                              background: expandedCall === call.id 
+                                ? 'linear-gradient(135deg, rgba(254,145,0,0.08), rgba(233,215,196,0.05))' 
+                                : 'rgba(255,255,255,0.03)',
+                              border: expandedCall === call.id
+                                ? '1px solid rgba(254,145,0,0.3)'
+                                : '1px solid rgba(255,255,255,0.08)'
                             }}
                           >
-                            <div className="flex items-center justify-between">
-                              <div className="text-sm text-white">{c.contactName || c.phoneNumber}</div>
-                              <div className="text-[11px] text-gray-500">
-                                {formatDistanceToNow(new Date(c.createdAt), { addSuffix: true, locale: de })}
+                            {/* Header - Always visible */}
+                            <div 
+                              className="p-3 cursor-pointer hover:bg-white/5 transition-colors"
+                              onClick={() => setExpandedCall(expandedCall === call.id ? null : call.id)}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <div className="text-sm font-medium text-white">
+                                      {call.phoneNumber}
+                                    </div>
+                                    <div className="text-[11px] px-2 py-0.5 rounded-full" style={{
+                                      background: call.status === 'completed' ? 'rgba(34,197,94,0.2)' : 'rgba(107,114,128,0.2)',
+                                      color: call.status === 'completed' ? '#4ade80' : '#9ca3af'
+                                    }}>
+                                      {call.status === 'completed' ? 'Erfolgreich' : call.status}
+                                    </div>
+                                  </div>
+                                  <div className="text-[11px] text-gray-500 mt-1">
+                                    {new Date(call.createdAt).toLocaleDateString('de-DE', { 
+                                      day: '2-digit', 
+                                      month: '2-digit', 
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                    {call.duration && ` • ${Math.floor(call.duration / 60)}:${(call.duration % 60).toString().padStart(2, '0')} Min`}
+                                  </div>
+                                </div>
+                                <div className="text-[11px]" style={{ color: CI.orange }}>
+                                  {expandedCall === call.id ? '▴ Schließen' : '▾ Details'}
+                                </div>
                               </div>
                             </div>
-                            {c.message && (
-                              <div className="text-[12px] text-gray-400 mt-1 line-clamp-2">{c.message}</div>
+                            
+                            {/* Expanded Content */}
+                            {expandedCall === call.id && (
+                              <div className="px-3 pb-3 border-t border-white/5">
+                                {/* Audio Player with Download */}
+                                {call.recordingUrl && (
+                                  <div className="mt-3">
+                                    <div className="text-[11px] text-gray-400 mb-2">🎙️ Aufzeichnung</div>
+                                    <audio controls className="w-full mb-2" style={{ height: '32px' }}>
+                                      <source src={call.recordingUrl} type="audio/mpeg" />
+                                      Browser unterstützt keine Audio-Wiedergabe.
+                                    </audio>
+                                    <a 
+                                      href={call.recordingUrl} 
+                                      download={`Anruf_${call.phoneNumber}_${new Date(call.createdAt).toISOString().split('T')[0]}.mp3`}
+                                      className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded transition-colors"
+                                      style={{ 
+                                        color: CI.orange,
+                                        background: 'rgba(254,145,0,0.1)',
+                                        border: '1px solid rgba(254,145,0,0.2)'
+                                      }}
+                                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(254,145,0,0.2)'}
+                                      onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(254,145,0,0.1)'}
+                                    >
+                                      ⬇ Audio herunterladen
+                                    </a>
+                                  </div>
+                                )}
+                                
+                                {/* Transcript */}
+                                {call.transcript && (
+                                  <div className="mt-3">
+                                    <div className="text-[11px] text-gray-400 mb-2">📝 Gesprächsverlauf</div>
+                                    <div 
+                                      className="text-[12px] text-gray-300 leading-relaxed p-2 rounded max-h-48 overflow-y-auto"
+                                      style={{ 
+                                        background: 'rgba(0,0,0,0.2)',
+                                        border: '1px solid rgba(255,255,255,0.05)'
+                                      }}
+                                    >
+                                      <pre className="whitespace-pre-wrap font-sans">
+                                        {typeof call.transcript === 'string' 
+                                          ? call.transcript 
+                                          : JSON.stringify(call.transcript, null, 2)}
+                                      </pre>
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {/* Purpose/Message */}
+                                {(call.customPrompt || call.metadata?.purpose) && (
+                                  <div className="mt-3">
+                                    <div className="text-[11px] text-gray-400 mb-1">💬 Auftrag</div>
+                                    <p className="text-[12px] text-gray-400">
+                                      {call.customPrompt || call.metadata?.purpose}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
                             )}
                           </div>
                         ))}
                       </div>
+                      
+                      {callHistory.length > 10 && (
+                        <div className="mt-3 text-center">
+                          <span className="text-[11px] text-gray-500">
+                            Zeige die letzten 10 von {callHistory.length} Anrufen
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

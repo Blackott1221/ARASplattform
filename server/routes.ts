@@ -2072,6 +2072,47 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     }
   });
   
+  // Get all call logs for current user (for history display)
+  app.get('/api/user/call-logs', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      
+      logger.info('[CALL-LOGS] Fetching call history for user:', userId);
+      
+      // Get all call logs from database for this user
+      const callLogs = await storage.getUserCallLogs(userId);
+      
+      logger.info('[CALL-LOGS] Found logs:', { 
+        count: callLogs.length,
+        userId 
+      });
+      
+      // Sort by newest first and format for frontend
+      const formattedLogs = callLogs
+        .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .map((log: any) => ({
+          id: log.id,
+          phoneNumber: log.phoneNumber,
+          status: log.status,
+          transcript: log.transcript,
+          recordingUrl: log.recordingUrl,
+          duration: log.duration,
+          customPrompt: log.customPrompt,
+          metadata: log.metadata,
+          createdAt: log.createdAt
+        }));
+      
+      res.json(formattedLogs);
+    } catch (error: any) {
+      logger.error('[CALL-LOGS] Error fetching logs', { 
+        error: error.message 
+      });
+      res.status(500).json({ 
+        error: 'Failed to fetch call logs' 
+      });
+    }
+  });
+  
   // Get call details from database by callId (for frontend polling)
   app.get('/api/aras-voice/call-details/:callId', requireAuth, async (req: any, res) => {
     try {

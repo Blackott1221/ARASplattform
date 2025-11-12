@@ -1042,15 +1042,6 @@ export class DatabaseStorage implements IStorage {
     return result[0] || null;
   }
 
-  async getUserCallLogs(userId: string) {
-    return await db
-      .select()
-      .from(callLogs)
-      .where(eq(callLogs.userId, userId))
-      .orderBy(desc(callLogs.createdAt))
-      .limit(50);
-  }
-
   // Update call log by conversation_id (ElevenLabs callId)
   async updateCallLogByConversationId(conversationId: string, updates: {
     transcript?: string;
@@ -1104,7 +1095,7 @@ export class DatabaseStorage implements IStorage {
         .orderBy(desc(callLogs.createdAt))
         .limit(1);
       
-      if (latestCall) {
+      if (latestCall && latestCall.createdAt) {
         const timeDiff = Date.now() - new Date(latestCall.createdAt).getTime();
         // If call was initiated in last 5 minutes, probably it's our call
         if (timeDiff < 5 * 60 * 1000) {
@@ -1236,6 +1227,25 @@ export class DatabaseStorage implements IStorage {
       .where(eq(callLogs.id, callIdNum))
       .limit(1);
     return log || null;
+  }
+  
+  // Get all call logs for a user
+  async getUserCallLogs(userId: string) {
+    logger.info('[STORAGE] Fetching all call logs for user:', userId);
+    
+    const logs = await db
+      .select()
+      .from(callLogs)
+      .where(eq(callLogs.userId, userId))
+      .orderBy(desc(callLogs.createdAt))
+      .limit(100); // Limit to last 100 calls
+    
+    logger.info('[STORAGE] Found call logs:', { 
+      userId, 
+      count: logs.length 
+    });
+    
+    return logs;
   }
   
   // Phonebook/Contacts Methods
