@@ -57,6 +57,11 @@ export default function Power() {
   const [displayText, setDisplayText] = useState("");
   const [isTyping, setIsTyping] = useState(true);
 
+  // Call status tracking
+  const [callStatus, setCallStatus] = useState<'idle' | 'processing' | 'ringing' | 'connected' | 'ended'>('idle');
+  const [callDuration, setCallDuration] = useState(0);
+  const callTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
   // NEW (UI only, no backend): bulk campaign inputs
   const [campaignGoal, setCampaignGoal] = useState("");
   const [bulkFileName, setBulkFileName] = useState<string | null>(null);
@@ -178,7 +183,7 @@ export default function Power() {
     // UI only – keine Verarbeitung
   };
 
-  // ----------------- EXISTING CALL LOGIC – NICHT ANGEFASST -----------------
+  // ----------------- CALL LOGIC WITH POLLING -----------------
   const makeCall = async () => {
     if (!contactName || !phoneNumber || !message) {
       toast({ title: "Fehlende Angaben", description: "Bitte fülle alle Pflichtfelder aus", variant: "destructive" });
@@ -190,9 +195,11 @@ export default function Power() {
     }
     setLoading(true);
     setResult(null);
+    setCallStatus('processing');
+    setCallDuration(0);
 
-    // Minimal identisch wie bisher – nur UI drumherum angepasst
     try {
+      // Start the call
       const response = await fetch("/api/aras-voice/smart-call", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -200,17 +207,142 @@ export default function Power() {
         body: JSON.stringify({ name: contactName, phoneNumber, message })
       });
       const data = await response.json();
+      
       if (!response.ok) {
         setLoading(false);
+        setCallStatus('idle');
         setResult({ success: false, error: data.error || data.message || `Fehler: ${response.status}` });
         return;
       }
+      
+      if (data.success && data.callId) {
+        const callId = data.callId;
+        
+        // Update status to show call is connecting
+        setCallStatus('ringing');
+        toast({
+          title: "Anruf wird verbunden",
+          description: `ARAS AI ruft ${contactName} an...`
+        });
+        
+        // After 3 seconds, show as connected
+        setTimeout(() => {
+          setCallStatus('connected');
+          
+          // Start call duration timer
+          callTimerRef.current = setInterval(() => {
+            setCallDuration(prev => prev + 1);
+          }, 1000);
+        }, 3000);
+        
+        // Start polling for call details from database
+        const pollCallDetails = async () => {
+          let attempts = 0;
+          const maxAttempts = 45; // Poll for up to 3 minutes (45 * 4s)
+          
+          const pollInterval = setInterval(async () => {
+            attempts++;
+            
+            try {
+              const detailsResponse = await fetch(`/api/aras-voice/call-details/${callId}`, {
+                credentials: 'include'
+              });
+              
+              if (!detailsResponse.ok) {
+                console.error('[POLL] Error response:', detailsResponse.status);
+                if (attempts >= maxAttempts) {
+                  clearInterval(pollInterval);
+                  if (callTimerRef.current) clearInterval(callTimerRef.current);
+                  setCallStatus('ended');
+                  setResult({
+                    success: false,
+                    error: 'Anruf-Details konnten nicht abgerufen werden'
+                  });
+                }
+                return;
+              }
+              
+              const callDetails = await detailsResponse.json();
+              console.log('[POLL] Call details:', callDetails);
+              
+              // Check if we have transcript or recording
+              if (callDetails.transcript || callDetails.recordingUrl || callDetails.status === 'completed') {
+                clearInterval(pollInterval);
+                if (callTimerRef.current) clearInterval(callTimerRef.current);
+                
+                setCallStatus('ended');
+                setResult({
+                  success: true,
+                  callId: callDetails.callId,
+                  recordingUrl: callDetails.recordingUrl,
+                  summary: {
+                    transcript: callDetails.transcript || 'Gespräch erfolgreich durchgeführt. Transkript wird verarbeitet...',
+                    duration: callDetails.duration || callDuration
+                  }
+                });
+                return;
+              }
+              
+              // Stop polling after max attempts
+              if (attempts >= maxAttempts) {
+                clearInterval(pollInterval);
+                if (callTimerRef.current) clearInterval(callTimerRef.current);
+                setCallStatus('ended');
+                setResult({
+                  success: true,
+                  callId: callDetails.callId,
+                  summary: {
+                    transcript: callDetails.transcript || 'Anruf wurde durchgeführt. Details werden noch verarbeitet...',
+                    duration: callDuration
+                  }
+                });
+              }
+            } catch (pollError) {
+              console.error('[POLL] Error fetching call details:', pollError);
+              if (attempts >= maxAttempts) {
+                clearInterval(pollInterval);
+                if (callTimerRef.current) clearInterval(callTimerRef.current);
+                setCallStatus('ended');
+                setResult({
+                  success: false,
+                  error: 'Fehler beim Abrufen der Anrufdaten'
+                });
+              }
+            }
+          }, 4000); // Poll every 4 seconds
+        };
+        
+        // Start polling after 5 seconds
+        setTimeout(() => {
+          pollCallDetails();
+        }, 5000);
+      } else {
+        setCallStatus('idle');
+        setResult(data);
+      }
+      
       setLoading(false);
-      setResult({ success: true, summary: { transcript: "Gespräch erfolgreich gestartet. Details folgen." } });
     } catch (e: any) {
       setLoading(false);
+      setCallStatus('idle');
       setResult({ success: false, error: e?.message || "Anruf fehlgeschlagen" });
     }
+  };
+  
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (callTimerRef.current) {
+        clearInterval(callTimerRef.current);
+      }
+    };
+  }, []);
+  
+  // Format call duration
+  const formatCallDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   // ----------------- UI -----------------
@@ -410,47 +542,127 @@ export default function Power() {
                       <div className="mt-1 text-right text-[11px] text-gray-500">{message.length} / 500</div>
                     </div>
 
+                    {/* Call Status Display */}
+                    {callStatus !== 'idle' && (
+                      <div className="mb-4 p-3 rounded-lg text-center" style={{
+                        background: callStatus === 'processing' ? 'rgba(234,179,8,0.1)' :
+                                   callStatus === 'ringing' ? 'rgba(59,130,246,0.1)' :
+                                   callStatus === 'connected' ? 'rgba(34,197,94,0.1)' :
+                                   'rgba(107,114,128,0.1)',
+                        border: `1px solid ${callStatus === 'processing' ? 'rgba(234,179,8,0.3)' :
+                                callStatus === 'ringing' ? 'rgba(59,130,246,0.3)' :
+                                callStatus === 'connected' ? 'rgba(34,197,94,0.3)' :
+                                'rgba(107,114,128,0.3)'}`
+                      }}>
+                        <div className="text-sm font-medium" style={{
+                          color: callStatus === 'processing' ? '#fbbf24' :
+                                 callStatus === 'ringing' ? '#60a5fa' :
+                                 callStatus === 'connected' ? '#4ade80' :
+                                 '#9ca3af'
+                        }}>
+                          {callStatus === 'processing' ? 'Anruf wird vorbereitet...' :
+                           callStatus === 'ringing' ? 'Verbindung wird hergestellt...' :
+                           callStatus === 'connected' ? `Gespräch läuft: ${formatCallDuration(callDuration)}` :
+                           'Anruf beendet'}
+                        </div>
+                      </div>
+                    )}
+                    
                     {/* Call button */}
                     <div className="pt-1">
                       <button
                         onClick={makeCall}
-                        disabled={loading || !phoneNumber || !contactName || !message || !!phoneError}
+                        disabled={loading || !phoneNumber || !contactName || !message || !!phoneError || callStatus !== 'idle'}
                         className="w-full py-3 rounded-full font-semibold text-sm transition-all"
                         style={{
                           fontFamily: 'Orbitron, sans-serif',
-                          background: (loading || !phoneNumber || !contactName || !message || phoneError)
+                          background: (loading || !phoneNumber || !contactName || !message || phoneError || callStatus !== 'idle')
                             ? 'rgba(45,45,45,0.6)'
                             : `linear-gradient(90deg, ${CI.goldLight}, ${CI.orange}, ${CI.goldDark})`,
                           backgroundSize: '220% 100%',
-                          color: (loading || !phoneNumber || !contactName || !message || phoneError) ? 'rgba(170,170,170,0.6)' : '#fff'
+                          color: (loading || !phoneNumber || !contactName || !message || phoneError || callStatus !== 'idle') ? 'rgba(170,170,170,0.6)' : '#fff'
                         }}
-                        onMouseEnter={(e) => { if (!(loading || !phoneNumber || !contactName || !message || phoneError)) (e.currentTarget as HTMLButtonElement).style.backgroundPosition = '100% 50%'; }}
-                        onMouseLeave={(e) => { if (!(loading || !phoneNumber || !contactName || !message || phoneError)) (e.currentTarget as HTMLButtonElement).style.backgroundPosition = '0% 50%'; }}
+                        onMouseEnter={(e) => { if (!(loading || !phoneNumber || !contactName || !message || phoneError || callStatus !== 'idle')) (e.currentTarget as HTMLButtonElement).style.backgroundPosition = '100% 50%'; }}
+                        onMouseLeave={(e) => { if (!(loading || !phoneNumber || !contactName || !message || phoneError || callStatus !== 'idle')) (e.currentTarget as HTMLButtonElement).style.backgroundPosition = '0% 50%'; }}
                       >
-                        {loading ? 'Anruf wird gestartet…' : 'Jetzt anrufen lassen'}
+                        {callStatus === 'processing' ? 'Verarbeitung...' :
+                         callStatus === 'ringing' ? 'Wird verbunden...' :
+                         callStatus === 'connected' ? 'Gespräch läuft...' :
+                         loading ? 'Anruf wird gestartet...' : 'Jetzt anrufen lassen'}
                       </button>
                     </div>
                   </div>
 
-                  {/* Result */}
+                  {/* Result with Audio and Transcript */}
                   <AnimatePresence>
-                    {result && (
+                    {result && callStatus === 'ended' && (
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
-                        className="mt-6 rounded-xl p-4 text-sm"
+                        className="mt-6 rounded-xl p-5"
                         style={{
-                          background: 'rgba(255,255,255,0.03)',
-                          border: '1px solid rgba(255,255,255,0.10)'
+                          background: 'linear-gradient(135deg, rgba(254,145,0,0.05), rgba(233,215,196,0.03))',
+                          border: '1px solid rgba(254,145,0,0.2)'
                         }}
                       >
+                        <div className="mb-3">
+                          <h4 className="text-sm font-bold" style={{ color: CI.orange }}>Anrufergebnis</h4>
+                        </div>
+                        
                         {result.success ? (
-                          <p className="text-gray-200 leading-relaxed">
-                            {result.summary?.transcript || 'Gespräch gestartet. Details folgen.'}
-                          </p>
+                          <>
+                            {/* Audio Player */}
+                            {result.recordingUrl && (
+                              <div className="mb-4">
+                                <div className="text-[12px] text-gray-400 mb-2">📞 Gesprächsaufzeichnung</div>
+                                <audio controls className="w-full" style={{ height: '36px' }}>
+                                  <source src={result.recordingUrl} type="audio/mpeg" />
+                                  Browser unterstützt keine Audio-Wiedergabe.
+                                </audio>
+                              </div>
+                            )}
+                            
+                            {/* Transcript */}
+                            <div>
+                              <div className="text-[12px] text-gray-400 mb-2">📝 Zusammenfassung</div>
+                              <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">
+                                {result.summary?.transcript || 'Transkript wird verarbeitet...'}
+                              </p>
+                              {result.summary?.duration && (
+                                <p className="text-[11px] text-gray-500 mt-2">
+                                  Dauer: {result.summary.duration} Sekunden
+                                </p>
+                              )}
+                            </div>
+                            
+                            {/* Reset Button */}
+                            <button
+                              onClick={() => {
+                                setResult(null);
+                                setCallStatus('idle');
+                                setCallDuration(0);
+                              }}
+                              className="mt-3 text-[12px] font-medium"
+                              style={{ color: CI.orange }}
+                            >
+                              Neuer Anruf →
+                            </button>
+                          </>
                         ) : (
-                          <p className="text-red-300">{result.error || 'Fehler'}</p>
+                          <>
+                            <p className="text-red-300 text-sm">{result.error || 'Fehler beim Anruf'}</p>
+                            <button
+                              onClick={() => {
+                                setResult(null);
+                                setCallStatus('idle');
+                              }}
+                              className="mt-2 text-[12px] font-medium"
+                              style={{ color: CI.orange }}
+                            >
+                              Erneut versuchen
+                            </button>
+                          </>
                         )}
                       </motion.div>
                     )}

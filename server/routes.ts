@@ -2050,7 +2050,65 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     }
   });
   
-  // Get call details by conversation_id
+  // Get call details from database by callId (for frontend polling)
+  app.get('/api/aras-voice/call-details/:callId', requireAuth, async (req: any, res) => {
+    try {
+      const { callId } = req.params;
+      const userId = req.session.userId;
+      
+      logger.info('[CALL-DETAILS] Fetching call details', { callId, userId });
+      
+      // Get call log from database
+      const callLog = await storage.getCallLog(callId);
+      
+      if (!callLog) {
+        logger.warn('[CALL-DETAILS] Call log not found', { callId });
+        return res.status(404).json({ 
+          success: false, 
+          error: 'Call log not found' 
+        });
+      }
+      
+      // Verify user owns this call
+      if (callLog.userId !== userId) {
+        logger.warn('[CALL-DETAILS] Unauthorized access attempt', { callId, userId, ownerId: callLog.userId });
+        return res.status(403).json({ 
+          success: false, 
+          error: 'Unauthorized' 
+        });
+      }
+      
+      logger.info('[CALL-DETAILS] Returning call details', { 
+        callId, 
+        hasTranscript: !!callLog.transcript,
+        hasRecording: !!callLog.recordingUrl,
+        status: callLog.status
+      });
+      
+      res.json({
+        success: true,
+        callId: callLog.id,
+        conversationId: callLog.retellCallId,
+        status: callLog.status,
+        transcript: callLog.transcript,
+        recordingUrl: callLog.recordingUrl,
+        duration: callLog.duration,
+        metadata: callLog.metadata,
+        createdAt: callLog.createdAt
+      });
+    } catch (error: any) {
+      logger.error('[CALL-DETAILS] Error fetching call details', { 
+        error: error.message,
+        stack: error.stack 
+      });
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to fetch call details' 
+      });
+    }
+  });
+  
+  // Legacy: Get call details by conversation_id (polls ElevenLabs API)
   app.get('/api/aras-voice/call-status/:conversationId', requireAuth, async (req: any, res) => {
     try {
       const { conversationId } = req.params;
@@ -2130,21 +2188,31 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       
       callSuccessful = true;
       // 5. Speichere den Call in der Datenbank
-      await storage.saveCallLog({
+      const callLogId = await storage.saveCallLog({
         userId,
         phoneNumber,
         status: callResult.status || 'initiated',
         provider: 'aras-neural-voice (elevenlabs)',
-        callId: callResult.callId,
+        callId: callResult.callId, // ElevenLabs conversation_id
         purpose: enhancedContext.purpose,
-        details: message
+        details: message,
+        contactName: name,
+        originalMessage: message
       });
 
-      // 6. Sende Erfolg an das Frontend
+      logger.info('[SMART-CALL] Call initiated successfully', {
+        callLogId,
+        conversationId: callResult.callId,
+        userId,
+        contact: name
+      });
+
+      // 6. Sende Erfolg an das Frontend mit callLogId für Polling
       res.json({
         success: true,
         message: callResult.message,
-        callId: callResult.callId,
+        callId: callLogId, // Database ID for polling
+        conversationId: callResult.callId, // ElevenLabs conversation_id
         status: callResult.status
       });
       

@@ -144,14 +144,22 @@ export interface IStorage {
   saveCallLog(data: {
     userId: string;
     phoneNumber: string;
-    retellCallId: string;
     status: string;
+    // New flexible fields
+    provider?: string;
+    callId?: string;
+    purpose?: string;
+    details?: string;
+    contactName?: string;
+    originalMessage?: string;
+    // Legacy Retell fields (optional)
+    retellCallId?: string;
     duration?: number | null;
     transcript?: string | null;
     customPrompt?: string | null;
     recordingUrl?: string | null;
     metadata?: any;
-  }): Promise<void>;
+  }): Promise<number | null>;
   getCallLogByRetellId(retellCallId: string, userId: string): Promise<any>;
   getUserCallLogs(userId: string): Promise<any[]>;
 }
@@ -984,7 +992,7 @@ export class DatabaseStorage implements IStorage {
       voiceSystem: 'Neural Voice (Gemini + ElevenLabs)'
     };
 
-    await db.insert(callLogs).values({
+    const [insertedLog] = await db.insert(callLogs).values({
       userId: data.userId,
       phoneNumber: data.phoneNumber,
       retellCallId: data.callId || data.retellCallId || null, // Nutze callId als ID
@@ -994,7 +1002,15 @@ export class DatabaseStorage implements IStorage {
       customPrompt: data.customPrompt || data.originalMessage || null,
       recordingUrl: data.recordingUrl,
       metadata: enrichedMetadata, // Speichere ALLES hier!
+    }).returning();
+    
+    logger.info('[STORAGE] Call log saved', { 
+      callLogId: insertedLog?.id,
+      conversationId: data.callId,
+      userId: data.userId 
     });
+    
+    return insertedLog?.id || null;
   }
 
   async getCallLogByRetellId(retellCallId: string, userId: string) {
@@ -1074,6 +1090,22 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(callLogs)
       .where(eq(callLogs.retellCallId, conversationId))
+      .limit(1);
+    return log || null;
+  }
+  
+  // Get single call log by ID
+  async getCallLog(callId: string) {
+    const callIdNum = parseInt(callId, 10);
+    if (isNaN(callIdNum)) {
+      logger.warn('[STORAGE] Invalid callId format', { callId });
+      return null;
+    }
+    
+    const [log] = await db
+      .select()
+      .from(callLogs)
+      .where(eq(callLogs.id, callIdNum))
       .limit(1);
     return log || null;
   }
@@ -1969,8 +2001,9 @@ export class MemStorage implements IStorage {
   }
   
   // Retell call log methods (stub implementations)
-  async saveCallLog(data: any): Promise<void> {
-    // Stub
+  async saveCallLog(data: any): Promise<number | null> {
+    // Stub implementation for in-memory storage
+    return Math.floor(Math.random() * 10000); // Return mock ID
   }
   
   async getCallLogByRetellId(retellCallId: string, userId: string): Promise<any> {
