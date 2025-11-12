@@ -1127,11 +1127,36 @@ export class DatabaseStorage implements IStorage {
       return null;
     }
     
+    // Normalize transcript - it might be a string, array, or object
+    const normalizeTranscript = (transcript: any): string | null => {
+      if (!transcript) return null;
+      if (typeof transcript === 'string') return transcript;
+      if (Array.isArray(transcript)) {
+        // If it's an array of message objects, join them
+        return transcript.map((item: any) => {
+          if (typeof item === 'string') return item;
+          if (item.text) return item.text;
+          if (item.message) return item.message;
+          return JSON.stringify(item);
+        }).join('\n');
+      }
+      // If it's an object, try to extract text or stringify it
+      if (transcript.text) return transcript.text;
+      if (transcript.messages) return normalizeTranscript(transcript.messages);
+      return JSON.stringify(transcript);
+    };
+    
+    const safeSubstring = (text: any, len: number = 50): string => {
+      if (!text) return 'null';
+      const str = typeof text === 'string' ? text : JSON.stringify(text);
+      return str.length > len ? `${str.substring(0, len)}...` : str;
+    };
+    
     logger.info('[STORAGE] ✅ Found existing call log', {
       id: existingLog.id,
       userId: existingLog.userId,
       currentStatus: existingLog.status,
-      currentTranscript: existingLog.transcript ? `${existingLog.transcript.substring(0, 50)}...` : 'null',
+      currentTranscript: safeSubstring(existingLog.transcript),
       currentRecording: existingLog.recordingUrl || 'null'
     });
 
@@ -1142,8 +1167,19 @@ export class DatabaseStorage implements IStorage {
       lastUpdated: new Date().toISOString()
     };
     
+    // Normalize the incoming transcript
+    const normalizedTranscript = updates.transcript 
+      ? normalizeTranscript(updates.transcript) 
+      : existingLog.transcript;
+    
+    logger.info('[STORAGE] 🔄 Transcript processing:', {
+      incomingType: typeof updates.transcript,
+      incomingIsArray: Array.isArray(updates.transcript),
+      normalized: safeSubstring(normalizedTranscript, 100)
+    });
+    
     const updatedData = {
-      transcript: updates.transcript || existingLog.transcript,
+      transcript: normalizedTranscript,
       recordingUrl: updates.recordingUrl || existingLog.recordingUrl,
       status: updates.status || existingLog.status,
       duration: updates.duration || existingLog.duration,
@@ -1153,7 +1189,7 @@ export class DatabaseStorage implements IStorage {
     
     logger.info('[STORAGE] 💾 About to save to database:', {
       callId: existingLog.id,
-      newTranscript: updatedData.transcript ? `${updatedData.transcript.substring(0, 50)}...` : 'null',
+      newTranscript: safeSubstring(updatedData.transcript, 100),
       newRecording: updatedData.recordingUrl || 'null',
       newStatus: updatedData.status,
       newDuration: updatedData.duration
