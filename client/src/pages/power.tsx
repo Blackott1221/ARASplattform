@@ -238,21 +238,30 @@ export default function Power() {
         // Start polling for call details from database
         const pollCallDetails = async () => {
           let attempts = 0;
-          const maxAttempts = 45; // Poll for up to 3 minutes (45 * 4s)
+          const maxAttempts = 30; // Poll for up to 2 minutes (30 * 4s)
+          
+          console.log('[POLL] Starting poll for callId:', callId);
           
           const pollInterval = setInterval(async () => {
             attempts++;
+            console.log(`[POLL] Attempt ${attempts}/${maxAttempts} - Fetching call details...`);
             
             try {
               const detailsResponse = await fetch(`/api/aras-voice/call-details/${callId}`, {
                 credentials: 'include'
               });
               
+              console.log('[POLL] Response status:', detailsResponse.status);
+              
               if (!detailsResponse.ok) {
                 console.error('[POLL] Error response:', detailsResponse.status);
                 if (attempts >= maxAttempts) {
+                  console.log('[POLL] Max attempts reached, stopping...');
                   clearInterval(pollInterval);
-                  if (callTimerRef.current) clearInterval(callTimerRef.current);
+                  if (callTimerRef.current) {
+                    clearInterval(callTimerRef.current);
+                    callTimerRef.current = null;
+                  }
                   setCallStatus('ended');
                   setResult({
                     success: false,
@@ -263,20 +272,31 @@ export default function Power() {
               }
               
               const callDetails = await detailsResponse.json();
-              console.log('[POLL] Call details:', callDetails);
+              console.log('[POLL] Call details received:', {
+                hasTranscript: !!callDetails.transcript,
+                hasRecording: !!callDetails.recordingUrl,
+                status: callDetails.status,
+                fullData: callDetails
+              });
               
-              // Check if we have transcript or recording
-              if (callDetails.transcript || callDetails.recordingUrl || callDetails.status === 'completed') {
+              // Check if we have transcript or recording or completed status
+              const hasData = callDetails.transcript || callDetails.recordingUrl || callDetails.status === 'completed';
+              
+              if (hasData) {
+                console.log('[POLL] Data found! Stopping poll and displaying results.');
                 clearInterval(pollInterval);
-                if (callTimerRef.current) clearInterval(callTimerRef.current);
+                if (callTimerRef.current) {
+                  clearInterval(callTimerRef.current);
+                  callTimerRef.current = null;
+                }
                 
                 setCallStatus('ended');
                 setResult({
                   success: true,
                   callId: callDetails.callId,
-                  recordingUrl: callDetails.recordingUrl,
+                  recordingUrl: callDetails.recordingUrl || null,
                   summary: {
-                    transcript: callDetails.transcript || 'Gespräch erfolgreich durchgeführt. Transkript wird verarbeitet...',
+                    transcript: callDetails.transcript || 'Gespräch wurde durchgeführt. Transkript wird noch verarbeitet...',
                     duration: callDetails.duration || callDuration
                   }
                 });
@@ -285,14 +305,18 @@ export default function Power() {
               
               // Stop polling after max attempts
               if (attempts >= maxAttempts) {
+                console.log('[POLL] Max attempts reached without data, showing partial result...');
                 clearInterval(pollInterval);
-                if (callTimerRef.current) clearInterval(callTimerRef.current);
+                if (callTimerRef.current) {
+                  clearInterval(callTimerRef.current);
+                  callTimerRef.current = null;
+                }
                 setCallStatus('ended');
                 setResult({
                   success: true,
                   callId: callDetails.callId,
                   summary: {
-                    transcript: callDetails.transcript || 'Anruf wurde durchgeführt. Details werden noch verarbeitet...',
+                    transcript: 'Anruf wurde durchgeführt. Die Aufzeichnung wird noch verarbeitet. Bitte schauen Sie später im Anrufverlauf nach.',
                     duration: callDuration
                   }
                 });
@@ -300,8 +324,12 @@ export default function Power() {
             } catch (pollError) {
               console.error('[POLL] Error fetching call details:', pollError);
               if (attempts >= maxAttempts) {
+                console.log('[POLL] Max attempts reached after error, stopping...');
                 clearInterval(pollInterval);
-                if (callTimerRef.current) clearInterval(callTimerRef.current);
+                if (callTimerRef.current) {
+                  clearInterval(callTimerRef.current);
+                  callTimerRef.current = null;
+                }
                 setCallStatus('ended');
                 setResult({
                   success: false,
@@ -310,6 +338,26 @@ export default function Power() {
               }
             }
           }, 4000); // Poll every 4 seconds
+          
+          // Safety timeout: Force stop after 2.5 minutes no matter what
+          setTimeout(() => {
+            console.log('[POLL] Safety timeout reached, forcing stop...');
+            clearInterval(pollInterval);
+            if (callTimerRef.current) {
+              clearInterval(callTimerRef.current);
+              callTimerRef.current = null;
+            }
+            if (callStatus !== 'ended') {
+              setCallStatus('ended');
+              setResult({
+                success: true,
+                summary: {
+                  transcript: 'Anruf beendet. Details werden verarbeitet.',
+                  duration: callDuration
+                }
+              });
+            }
+          }, 150000); // 2.5 minutes safety timeout
         };
         
         // Start polling after 5 seconds

@@ -1042,6 +1042,18 @@ export class DatabaseStorage implements IStorage {
     duration?: number;
     metadata?: any;
   }) {
+    logger.info('[STORAGE] ===== UPDATING CALL LOG =====', {
+      conversationId,
+      updates: {
+        hasTranscript: !!updates.transcript,
+        transcriptLength: updates.transcript?.length || 0,
+        hasRecording: !!updates.recordingUrl,
+        recordingUrl: updates.recordingUrl || 'null',
+        status: updates.status || 'null',
+        duration: updates.duration || 'null'
+      }
+    });
+    
     // Find call log by retellCallId (which stores the ElevenLabs conversation_id)
     const [existingLog] = await db
       .select()
@@ -1050,9 +1062,18 @@ export class DatabaseStorage implements IStorage {
       .limit(1);
 
     if (!existingLog) {
-      logger.warn('[STORAGE] No call log found for conversation_id', { conversationId });
+      logger.warn('[STORAGE] ❌ No call log found for conversation_id', { conversationId });
+      logger.warn('[STORAGE] This means the call was not saved to DB or conversation_id does not match');
       return null;
     }
+    
+    logger.info('[STORAGE] ✅ Found existing call log', {
+      id: existingLog.id,
+      userId: existingLog.userId,
+      currentStatus: existingLog.status,
+      currentTranscript: existingLog.transcript ? `${existingLog.transcript.substring(0, 50)}...` : 'null',
+      currentRecording: existingLog.recordingUrl || 'null'
+    });
 
     // Merge existing metadata with new data
     const mergedMetadata = {
@@ -1060,25 +1081,36 @@ export class DatabaseStorage implements IStorage {
       ...(updates.metadata || {}),
       lastUpdated: new Date().toISOString()
     };
+    
+    const updatedData = {
+      transcript: updates.transcript || existingLog.transcript,
+      recordingUrl: updates.recordingUrl || existingLog.recordingUrl,
+      status: updates.status || existingLog.status,
+      duration: updates.duration || existingLog.duration,
+      metadata: mergedMetadata,
+      updatedAt: new Date()
+    };
+    
+    logger.info('[STORAGE] 💾 About to save to database:', {
+      callId: existingLog.id,
+      newTranscript: updatedData.transcript ? `${updatedData.transcript.substring(0, 50)}...` : 'null',
+      newRecording: updatedData.recordingUrl || 'null',
+      newStatus: updatedData.status,
+      newDuration: updatedData.duration
+    });
 
     // Update the record
     await db
       .update(callLogs)
-      .set({
-        transcript: updates.transcript || existingLog.transcript,
-        recordingUrl: updates.recordingUrl || existingLog.recordingUrl,
-        status: updates.status || existingLog.status,
-        duration: updates.duration || existingLog.duration,
-        metadata: mergedMetadata,
-        updatedAt: new Date()
-      })
+      .set(updatedData)
       .where(eq(callLogs.id, existingLog.id));
 
-    logger.info('[STORAGE] Call log updated successfully', { 
+    logger.info('[STORAGE] ✅ Call log UPDATED SUCCESSFULLY in database!', { 
       callId: existingLog.id, 
       conversationId,
-      hasTranscript: !!updates.transcript,
-      hasRecording: !!updates.recordingUrl
+      hasTranscript: !!updatedData.transcript,
+      hasRecording: !!updatedData.recordingUrl,
+      status: updatedData.status
     });
 
     return existingLog.id;

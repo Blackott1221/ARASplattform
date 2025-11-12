@@ -2056,36 +2056,56 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       const { callId } = req.params;
       const userId = req.session.userId;
       
-      logger.info('[CALL-DETAILS] Fetching call details', { callId, userId });
+      logger.info('[CALL-DETAILS] ===== FETCHING CALL DETAILS =====', { 
+        callId, 
+        userId,
+        timestamp: new Date().toISOString()
+      });
       
       // Get call log from database
       const callLog = await storage.getCallLog(callId);
       
       if (!callLog) {
-        logger.warn('[CALL-DETAILS] Call log not found', { callId });
+        logger.warn('[CALL-DETAILS] ❌ Call log NOT FOUND in database', { callId });
         return res.status(404).json({ 
           success: false, 
           error: 'Call log not found' 
         });
       }
       
+      logger.info('[CALL-DETAILS] ✅ Call log FOUND', {
+        id: callLog.id,
+        userId: callLog.userId,
+        phoneNumber: callLog.phoneNumber,
+        status: callLog.status,
+        retellCallId: callLog.retellCallId
+      });
+      
       // Verify user owns this call
       if (callLog.userId !== userId) {
-        logger.warn('[CALL-DETAILS] Unauthorized access attempt', { callId, userId, ownerId: callLog.userId });
+        logger.warn('[CALL-DETAILS] ⛔ Unauthorized access attempt', { 
+          callId, 
+          requestUserId: userId, 
+          ownerId: callLog.userId 
+        });
         return res.status(403).json({ 
           success: false, 
           error: 'Unauthorized' 
         });
       }
       
-      logger.info('[CALL-DETAILS] Returning call details', { 
+      logger.info('[CALL-DETAILS] 📊 Call data status:', { 
         callId, 
         hasTranscript: !!callLog.transcript,
+        transcriptLength: callLog.transcript?.length || 0,
         hasRecording: !!callLog.recordingUrl,
-        status: callLog.status
+        recordingUrl: callLog.recordingUrl || 'null',
+        status: callLog.status,
+        duration: callLog.duration || 'null',
+        metadata: callLog.metadata || 'null'
       });
       
-      res.json({
+      const responseData = {
         success: true,
         callId: callLog.id,
         conversationId: callLog.retellCallId,
@@ -2095,9 +2115,17 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         duration: callLog.duration,
         metadata: callLog.metadata,
         createdAt: callLog.createdAt
+      };
+      
+      logger.info('[CALL-DETAILS] ✅ Sending response to frontend', {
+        hasTranscript: !!responseData.transcript,
+        hasRecording: !!responseData.recordingUrl,
+        status: responseData.status
       });
+      
+      res.json(responseData);
     } catch (error: any) {
-      logger.error('[CALL-DETAILS] Error fetching call details', { 
+      logger.error('[CALL-DETAILS] ❌ ERROR fetching call details', { 
         error: error.message,
         stack: error.stack 
       });
