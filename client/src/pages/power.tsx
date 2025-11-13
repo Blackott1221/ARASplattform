@@ -324,11 +324,11 @@ export default function Power() {
                 recordingUrlType: typeof callDetails.recordingUrl
               });
               
-              // Check if we have transcript or recording or completed status
-              const hasData = callDetails.transcript || callDetails.recordingUrl || callDetails.status === 'completed';
+              // Wait for BOTH recording AND transcript, OR completed status as fallback
+              const hasCompleteData = (callDetails.recordingUrl && callDetails.transcript) || callDetails.status === 'completed';
               
-              if (hasData) {
-                console.log('[POLL] Data found! Stopping poll and displaying results.');
+              if (hasCompleteData) {
+                console.log('[POLL] ✅ Complete data found! Audio + Transcript ready. Stopping poll.');
                 clearInterval(pollInterval);
                 if (callTimerRef.current) {
                   clearInterval(callTimerRef.current);
