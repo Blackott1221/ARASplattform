@@ -2179,7 +2179,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
           const parsed = typeof cleanedTranscript === 'string' ? JSON.parse(cleanedTranscript) : cleanedTranscript;
           
           if (Array.isArray(parsed)) {
-            logger.info('[CALL-DETAILS] 📋 Parsing transcript array with', parsed.length, 'turns');
+            logger.info(`[CALL-DETAILS] 📋 Parsing transcript array with ${parsed.length} turns`);
             
             // Extract only the message content from each turn
             const conversationText = parsed
