@@ -2179,24 +2179,37 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
           const parsed = typeof cleanedTranscript === 'string' ? JSON.parse(cleanedTranscript) : cleanedTranscript;
           
           if (Array.isArray(parsed)) {
+            logger.info('[CALL-DETAILS] 📋 Parsing transcript array with', parsed.length, 'turns');
+            
             // Extract only the message content from each turn
             const conversationText = parsed
-              .filter((turn: any) => turn.message)
+              .filter((turn: any) => {
+                // Skip empty messages
+                if (!turn.message) return false;
+                // Skip interrupted messages that are just "..."
+                if (turn.interrupted && turn.message.trim() === '...') return false;
+                // Skip agent metadata without real content
+                if (turn.message.trim().length === 0) return false;
+                return true;
+              })
               .map((turn: any) => {
                 const role = turn.role === 'agent' ? 'ARAS AI' : 'Kunde';
+                // Use original_message if available (contains full message before interruption)
                 const message = turn.original_message || turn.message;
-                return `${role}: ${message}`;
+                return `${role}: ${message.trim()}`;
               })
               .join('\n\n');
             
             if (conversationText) {
-              logger.info('[CALL-DETAILS] 📡 Cleaned transcript from array format');
+              logger.info('[CALL-DETAILS] ✅ Cleaned transcript from array format');
               cleanedTranscript = conversationText;
+            } else {
+              logger.warn('[CALL-DETAILS] ⚠️ Transcript array resulted in empty text');
             }
           }
         } catch (e) {
           // If parsing fails, keep original
-          logger.warn('[CALL-DETAILS] ⚠️ Could not parse transcript as JSON');
+          logger.warn('[CALL-DETAILS] ⚠️ Could not parse transcript as JSON:', e);
         }
       }
       

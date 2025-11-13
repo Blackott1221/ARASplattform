@@ -743,7 +743,7 @@ export default function Power() {
                                 </audio>
                                 <a 
                                   href={result.recordingUrl} 
-                                  download={`Anruf_${new Date().toISOString().split('T')[0]}.mp3`}
+                                  download={`ARAS_Anruf_${new Date().toISOString().split('T')[0]}_${Date.now()}.mp3`}
                                   className="inline-block text-[11px] px-3 py-1.5 rounded-lg font-medium transition-all"
                                   style={{ 
                                     color: CI.orange,
@@ -782,12 +782,23 @@ export default function Power() {
                                 >
                                   <pre className="whitespace-pre-wrap font-sans">
                                     {(() => {
-                                      let cleanTranscript = typeof result.transcript === 'string' 
-                                        ? result.transcript 
-                                        : JSON.stringify(result.transcript, null, 2);
-                                      // Remove JSON metadata from transcript
-                                      cleanTranscript = cleanTranscript.split('{"role":')[0].trim();
-                                      return cleanTranscript || result.transcript;
+                                      // Handle transcript that might be string or array
+                                      if (typeof result.transcript === 'string') {
+                                        // Already cleaned by backend
+                                        return result.transcript;
+                                      } else if (Array.isArray(result.transcript)) {
+                                        // Parse array format (fallback if backend didn't clean)
+                                        return result.transcript
+                                          .filter((turn: any) => turn.message && turn.message.trim() !== '...')
+                                          .map((turn: any) => {
+                                            const role = turn.role === 'agent' ? 'ARAS AI' : 'Kunde';
+                                            const message = turn.original_message || turn.message;
+                                            return `${role}: ${message.trim()}`;
+                                          })
+                                          .join('\n\n');
+                                      } else {
+                                        return JSON.stringify(result.transcript, null, 2);
+                                      }
                                     })()}
                                   </pre>
                                 </div>
@@ -946,7 +957,7 @@ export default function Power() {
                                     </audio>
                                     <a 
                                       href={call.recordingUrl} 
-                                      download={`Anruf_${call.phoneNumber}_${new Date(call.createdAt).toISOString().split('T')[0]}.mp3`}
+                                      download={`ARAS_Anruf_${call.phoneNumber}_${new Date(call.createdAt).toISOString().split('T')[0]}.mp3`}
                                       className="inline-block text-[11px] px-3 py-1.5 rounded-lg font-medium transition-all"
                                       style={{ 
                                         color: CI.orange,
@@ -985,12 +996,23 @@ export default function Power() {
                                     >
                                       <pre className="whitespace-pre-wrap font-sans">
                                         {(() => {
-                                          let cleanTranscript = typeof call.transcript === 'string' 
-                                            ? call.transcript 
-                                            : JSON.stringify(call.transcript, null, 2);
-                                          // Remove JSON metadata from transcript
-                                          cleanTranscript = cleanTranscript.split('{"role":')[0].trim();
-                                          return cleanTranscript || call.transcript;
+                                          // Handle transcript that might be string or array
+                                          if (typeof call.transcript === 'string') {
+                                            // Already cleaned by backend
+                                            return call.transcript;
+                                          } else if (Array.isArray(call.transcript)) {
+                                            // Parse array format (fallback if backend didn't clean)
+                                            return call.transcript
+                                              .filter((turn: any) => turn.message && turn.message.trim() !== '...')
+                                              .map((turn: any) => {
+                                                const role = turn.role === 'agent' ? 'ARAS AI' : 'Kunde';
+                                                const message = turn.original_message || turn.message;
+                                                return `${role}: ${message.trim()}`;
+                                              })
+                                              .join('\n\n');
+                                          } else {
+                                            return JSON.stringify(call.transcript, null, 2);
+                                          }
                                         })()}
                                       </pre>
                                     </div>
