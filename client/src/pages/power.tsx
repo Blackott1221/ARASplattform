@@ -327,7 +327,7 @@ export default function Power() {
               // Show results when transcript is available (even if audio pending)
               const hasTranscript = !!callDetails.transcript;
               const hasAudio = !!callDetails.recordingUrl;
-              const isCompleted = callDetails.status === 'completed';
+              const isCompleted = callDetails.status === 'completed' || callDetails.status === 'done';
               
               // Show results as soon as we have transcript
               if (hasTranscript) {
@@ -781,9 +781,14 @@ export default function Power() {
                                   }}
                                 >
                                   <pre className="whitespace-pre-wrap font-sans">
-                                    {typeof result.transcript === 'string' 
-                                      ? result.transcript 
-                                      : JSON.stringify(result.transcript, null, 2)}
+                                    {(() => {
+                                      let cleanTranscript = typeof result.transcript === 'string' 
+                                        ? result.transcript 
+                                        : JSON.stringify(result.transcript, null, 2);
+                                      // Remove JSON metadata from transcript
+                                      cleanTranscript = cleanTranscript.split('{"role":')[0].trim();
+                                      return cleanTranscript || result.transcript;
+                                    })()}
                                   </pre>
                                 </div>
                               </div>
@@ -979,9 +984,14 @@ export default function Power() {
                                       }}
                                     >
                                       <pre className="whitespace-pre-wrap font-sans">
-                                        {typeof call.transcript === 'string' 
-                                          ? call.transcript 
-                                          : JSON.stringify(call.transcript, null, 2)}
+                                        {(() => {
+                                          let cleanTranscript = typeof call.transcript === 'string' 
+                                            ? call.transcript 
+                                            : JSON.stringify(call.transcript, null, 2);
+                                          // Remove JSON metadata from transcript
+                                          cleanTranscript = cleanTranscript.split('{"role":')[0].trim();
+                                          return cleanTranscript || call.transcript;
+                                        })()}
                                       </pre>
                                     </div>
                                   </div>

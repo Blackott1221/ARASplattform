@@ -2188,19 +2188,35 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
           
           if (elevenLabsResponse.ok) {
             const elevenLabsData = await elevenLabsResponse.json();
-            logger.info('[CALL-DETAILS] ✅ ElevenLabs API response:', {
+            logger.info('[CALL-DETAILS] ✅ ElevenLabs API full response:', JSON.stringify(elevenLabsData, null, 2));
+            logger.info('[CALL-DETAILS] 📋 ElevenLabs API summary:', {
               hasRecording: !!elevenLabsData.recording_url,
               hasTranscript: !!elevenLabsData.transcript,
               status: elevenLabsData.status,
-              duration: elevenLabsData.duration_seconds
+              duration: elevenLabsData.duration_seconds,
+              availableFields: Object.keys(elevenLabsData)
             });
+            
+            // Clean transcript - remove JSON metadata
+            let cleanedTranscript = elevenLabsData.transcript;
+            if (cleanedTranscript && typeof cleanedTranscript === 'string') {
+              const jsonIndex = cleanedTranscript.indexOf('{"role":');
+              if (jsonIndex > 0) {
+                cleanedTranscript = cleanedTranscript.substring(0, jsonIndex).trim();
+              }
+            }
             
             // Update database with fresh data from ElevenLabs
             const updateData: any = {};
             if (elevenLabsData.recording_url) updateData.recordingUrl = elevenLabsData.recording_url;
-            if (elevenLabsData.transcript && !callLog.transcript) updateData.transcript = elevenLabsData.transcript;
+            if (cleanedTranscript && !callLog.transcript) updateData.transcript = cleanedTranscript;
             if (elevenLabsData.duration_seconds && !callLog.duration) updateData.duration = elevenLabsData.duration_seconds;
-            if (elevenLabsData.status) updateData.status = elevenLabsData.status;
+            // Normalize status: "done" -> "completed"
+            if (elevenLabsData.status === 'done') {
+              updateData.status = 'completed';
+            } else if (elevenLabsData.status) {
+              updateData.status = elevenLabsData.status;
+            }
             
             if (Object.keys(updateData).length > 0) {
               logger.info('[CALL-DETAILS] 💾 Updating database with ElevenLabs data:', updateData);
