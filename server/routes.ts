@@ -2168,16 +2168,66 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         metadata: callLog.metadata || 'null'
       });
       
+      // FALLBACK: If recording URL is missing but we have conversationId, query ElevenLabs API directly
+      let finalCallData = { ...callLog };
+      
+      if (!callLog.recordingUrl && callLog.retellCallId) {
+        logger.info('[CALL-DETAILS] 🔄 Recording missing, querying ElevenLabs API as fallback...', {
+          conversationId: callLog.retellCallId
+        });
+        
+        try {
+          const elevenLabsResponse = await fetch(
+            `https://api.elevenlabs.io/v1/convai/conversations/${callLog.retellCallId}`,
+            {
+              headers: {
+                'xi-api-key': process.env.ELEVENLABS_API_KEY || ''
+              }
+            }
+          );
+          
+          if (elevenLabsResponse.ok) {
+            const elevenLabsData = await elevenLabsResponse.json();
+            logger.info('[CALL-DETAILS] ✅ ElevenLabs API response:', {
+              hasRecording: !!elevenLabsData.recording_url,
+              hasTranscript: !!elevenLabsData.transcript,
+              status: elevenLabsData.status,
+              duration: elevenLabsData.duration_seconds
+            });
+            
+            // Update database with fresh data from ElevenLabs
+            const updateData: any = {};
+            if (elevenLabsData.recording_url) updateData.recordingUrl = elevenLabsData.recording_url;
+            if (elevenLabsData.transcript && !callLog.transcript) updateData.transcript = elevenLabsData.transcript;
+            if (elevenLabsData.duration_seconds && !callLog.duration) updateData.duration = elevenLabsData.duration_seconds;
+            if (elevenLabsData.status) updateData.status = elevenLabsData.status;
+            
+            if (Object.keys(updateData).length > 0) {
+              logger.info('[CALL-DETAILS] 💾 Updating database with ElevenLabs data:', updateData);
+              await storage.updateCallLogByConversationId(callLog.retellCallId, updateData);
+              
+              // Merge updates into final data
+              finalCallData = { ...callLog, ...updateData };
+            }
+          } else {
+            logger.warn('[CALL-DETAILS] ⚠️ ElevenLabs API returned error:', elevenLabsResponse.status);
+          }
+        } catch (apiError: any) {
+          logger.error('[CALL-DETAILS] ❌ Error querying ElevenLabs API:', apiError.message);
+          // Continue with DB data even if API fails
+        }
+      }
+      
       const responseData = {
         success: true,
-        callId: callLog.id,
-        conversationId: callLog.retellCallId,
-        status: callLog.status,
-        transcript: callLog.transcript,
-        recordingUrl: callLog.recordingUrl,
-        duration: callLog.duration,
-        metadata: callLog.metadata,
-        createdAt: callLog.createdAt
+        callId: finalCallData.id,
+        conversationId: finalCallData.retellCallId,
+        status: finalCallData.status,
+        transcript: finalCallData.transcript,
+        recordingUrl: finalCallData.recordingUrl,
+        duration: finalCallData.duration,
+        metadata: finalCallData.metadata,
+        createdAt: finalCallData.createdAt
       };
       
       logger.info('[CALL-DETAILS] ✅ Sending response to frontend', {

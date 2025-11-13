@@ -324,33 +324,34 @@ export default function Power() {
                 recordingUrlType: typeof callDetails.recordingUrl
               });
               
-              // Wait for BOTH recording AND transcript, OR completed status as fallback
-              const hasCompleteData = (callDetails.recordingUrl && callDetails.transcript) || callDetails.status === 'completed';
+              // Show results when transcript is available (even if audio pending)
+              const hasTranscript = !!callDetails.transcript;
+              const hasAudio = !!callDetails.recordingUrl;
+              const isCompleted = callDetails.status === 'completed';
               
-              if (hasCompleteData) {
-                console.log('[POLL] ✅ Complete data found! Audio + Transcript ready. Stopping poll.');
-                clearInterval(pollInterval);
+              // Show results as soon as we have transcript
+              if (hasTranscript) {
+                // Stop the timer and show UI
                 if (callTimerRef.current) {
                   clearInterval(callTimerRef.current);
                   callTimerRef.current = null;
                 }
-                
                 setCallStatus('ended');
-                console.log('[POLL] 🎯 Setting result with:', {
-                  recordingUrl: callDetails.recordingUrl,
-                  transcript: callDetails.transcript?.substring(0, 50),
-                  duration: callDetails.duration
+                
+                console.log('[POLL] 📋 Transcript available, showing results:', {
+                  hasAudio,
+                  isCompleted,
+                  willContinuePolling: !hasAudio && !isCompleted
                 });
                 
+                // Set or update result
                 setResult({
                   success: true,
                   callId: callDetails.callId,
                   recordingUrl: callDetails.recordingUrl || null,
-                  transcript: callDetails.transcript || 'Gespräch wurde durchgeführt. Transkript wird noch verarbeitet...',
+                  transcript: callDetails.transcript,
                   duration: callDetails.duration || callDuration
                 });
-                
-                console.log('[POLL] ✅ Result state set, should trigger render');
                 
                 // Refresh call history
                 try {
@@ -362,6 +363,15 @@ export default function Power() {
                   }
                 } catch (e) {
                   console.error('[POLL] Failed to refresh history:', e);
+                }
+                
+                // Stop polling if we have audio OR call is completed
+                if (hasAudio || isCompleted) {
+                  console.log('[POLL] ✅ Complete! Stopping poll.');
+                  clearInterval(pollInterval);
+                  return;
+                } else {
+                  console.log('[POLL] ⏳ Audio pending, continuing poll for audio...');
                 }
               }
               
