@@ -2214,12 +2214,15 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         willTriggerFallback: !hasValidRecordingUrl && !!callLog.retellCallId
       });
       
+      // If no recording URL in DB but call is completed, use proxy endpoint
       if (!hasValidRecordingUrl && callLog.retellCallId) {
-        logger.info('[CALL-DETAILS] 🔄 Recording missing, querying ElevenLabs API as fallback...', {
-          conversationId: callLog.retellCallId
+        logger.info('[CALL-DETAILS] 🔄 No recording URL in DB, checking if audio is available from ElevenLabs...', {
+          conversationId: callLog.retellCallId,
+          status: callLog.status
         });
         
         try {
+          // Check ElevenLabs API for conversation status and metadata
           const elevenLabsResponse = await fetch(
             `https://api.elevenlabs.io/v1/convai/conversations/${callLog.retellCallId}`,
             {
@@ -2231,49 +2234,64 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
           
           if (elevenLabsResponse.ok) {
             const elevenLabsData = await elevenLabsResponse.json();
-            logger.info('[CALL-DETAILS] ✅ ElevenLabs API full response:', JSON.stringify(elevenLabsData, null, 2));
-            logger.info('[CALL-DETAILS] 📋 ElevenLabs API summary:', {
-              hasRecording: !!elevenLabsData.recording_url,
-              hasTranscript: !!elevenLabsData.transcript,
+            logger.info('[CALL-DETAILS] ✅ ElevenLabs conversation metadata:', {
               status: elevenLabsData.status,
+              hasTranscript: !!elevenLabsData.transcript,
               duration: elevenLabsData.duration_seconds,
+              analysis: elevenLabsData.analysis,
               availableFields: Object.keys(elevenLabsData)
             });
             
-            // Clean transcript - remove JSON metadata
-            let cleanedTranscript = elevenLabsData.transcript;
-            if (cleanedTranscript && typeof cleanedTranscript === 'string') {
-              const jsonIndex = cleanedTranscript.indexOf('{"role":');
-              if (jsonIndex > 0) {
-                cleanedTranscript = cleanedTranscript.substring(0, jsonIndex).trim();
+            // Update database with metadata from ElevenLabs
+            const updateData: any = {};
+            
+            // Clean transcript if available
+            if (elevenLabsData.transcript && !callLog.transcript) {
+              let cleanedTranscript = elevenLabsData.transcript;
+              if (typeof cleanedTranscript === 'string') {
+                const jsonIndex = cleanedTranscript.indexOf('{"role":');
+                if (jsonIndex > 0) {
+                  cleanedTranscript = cleanedTranscript.substring(0, jsonIndex).trim();
+                }
               }
+              updateData.transcript = cleanedTranscript;
             }
             
-            // Update database with fresh data from ElevenLabs
-            const updateData: any = {};
-            if (elevenLabsData.recording_url) updateData.recordingUrl = elevenLabsData.recording_url;
-            if (cleanedTranscript && !callLog.transcript) updateData.transcript = cleanedTranscript;
-            if (elevenLabsData.duration_seconds && !callLog.duration) updateData.duration = elevenLabsData.duration_seconds;
-            // Normalize status: "done" -> "completed"
+            if (elevenLabsData.duration_seconds && !callLog.duration) {
+              updateData.duration = elevenLabsData.duration_seconds;
+            }
+            
+            // Normalize status
             if (elevenLabsData.status === 'done') {
               updateData.status = 'completed';
-            } else if (elevenLabsData.status) {
+            } else if (elevenLabsData.status && elevenLabsData.status !== callLog.status) {
               updateData.status = elevenLabsData.status;
             }
             
+            // If call is completed/done, generate proxy URL for audio
+            if (elevenLabsData.status === 'done' || elevenLabsData.status === 'completed' || callLog.status === 'completed') {
+              // Use our proxy endpoint to stream audio from ElevenLabs
+              const proxyAudioUrl = `/api/aras-voice/audio/${callLog.retellCallId}`;
+              updateData.recordingUrl = proxyAudioUrl;
+              logger.info('[CALL-DETAILS] 🎙️ Generating proxy audio URL:', proxyAudioUrl);
+            }
+            
             if (Object.keys(updateData).length > 0) {
-              logger.info('[CALL-DETAILS] 💾 Updating database with ElevenLabs data:', updateData);
+              logger.info('[CALL-DETAILS] 💾 Updating database with ElevenLabs metadata:', updateData);
               await storage.updateCallLogByConversationId(callLog.retellCallId, updateData);
-              
-              // Merge updates into final data
               finalCallData = { ...callLog, ...updateData };
             }
           } else {
-            logger.warn('[CALL-DETAILS] ⚠️ ElevenLabs API returned error:', elevenLabsResponse.status);
+            logger.warn('[CALL-DETAILS] ⚠️ ElevenLabs API error:', {
+              status: elevenLabsResponse.status,
+              statusText: elevenLabsResponse.statusText
+            });
           }
         } catch (apiError: any) {
-          logger.error('[CALL-DETAILS] ❌ Error querying ElevenLabs API:', apiError.message);
-          // Continue with DB data even if API fails
+          logger.error('[CALL-DETAILS] ❌ Error querying ElevenLabs API:', {
+            error: apiError.message,
+            conversationId: callLog.retellCallId
+          });
         }
       }
       
@@ -2304,6 +2322,90 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       res.status(500).json({ 
         success: false, 
         error: 'Failed to fetch call details' 
+      });
+    }
+  });
+  
+  // Audio proxy endpoint - streams audio from ElevenLabs on-demand
+  app.get('/api/aras-voice/audio/:conversationId', requireAuth, async (req: any, res) => {
+    try {
+      const { conversationId } = req.params;
+      const userId = req.session.userId;
+      
+      logger.info('[AUDIO-PROXY] 🎙️ Audio request received:', { 
+        conversationId, 
+        userId 
+      });
+      
+      // Verify user owns this conversation
+      const callLog = await storage.getCallLogByConversationId(conversationId);
+      if (!callLog) {
+        logger.warn('[AUDIO-PROXY] ❌ Call log not found:', conversationId);
+        return res.status(404).json({ error: 'Call not found' });
+      }
+      
+      if (callLog.userId !== userId) {
+        logger.warn('[AUDIO-PROXY] ⛔ Unauthorized audio access:', {
+          conversationId,
+          requestUserId: userId,
+          ownerId: callLog.userId
+        });
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+      
+      logger.info('[AUDIO-PROXY] ✅ Authorization passed, fetching audio from ElevenLabs...');
+      
+      // Fetch audio from ElevenLabs
+      const audioResponse = await fetch(
+        `https://api.elevenlabs.io/v1/convai/conversations/${conversationId}/audio`,
+        {
+          headers: {
+            'xi-api-key': process.env.ELEVENLABS_API_KEY || ''
+          }
+        }
+      );
+      
+      if (!audioResponse.ok) {
+        logger.error('[AUDIO-PROXY] ❌ ElevenLabs audio API error:', {
+          status: audioResponse.status,
+          statusText: audioResponse.statusText,
+          conversationId
+        });
+        return res.status(audioResponse.status).json({ 
+          error: `Failed to fetch audio: ${audioResponse.statusText}` 
+        });
+      }
+      
+      logger.info('[AUDIO-PROXY] 📡 Streaming audio to client:', {
+        conversationId,
+        contentType: audioResponse.headers.get('content-type'),
+        contentLength: audioResponse.headers.get('content-length')
+      });
+      
+      // Set appropriate headers for audio streaming
+      const contentType = audioResponse.headers.get('content-type') || 'audio/mpeg';
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+      
+      const contentLength = audioResponse.headers.get('content-length');
+      if (contentLength) {
+        res.setHeader('Content-Length', contentLength);
+      }
+      
+      // Stream audio data to client
+      const audioBuffer = await audioResponse.arrayBuffer();
+      res.send(Buffer.from(audioBuffer));
+      
+      logger.info('[AUDIO-PROXY] ✅ Audio streamed successfully:', conversationId);
+    } catch (error: any) {
+      logger.error('[AUDIO-PROXY] ❌ Error streaming audio:', {
+        error: error.message,
+        stack: error.stack,
+        conversationId: req.params.conversationId
+      });
+      res.status(500).json({ 
+        error: 'Failed to stream audio' 
       });
     }
   });
