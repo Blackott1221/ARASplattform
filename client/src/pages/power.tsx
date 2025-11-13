@@ -314,8 +314,14 @@ export default function Power() {
               console.log('[POLL] Call details received:', {
                 hasTranscript: !!callDetails.transcript,
                 hasRecording: !!callDetails.recordingUrl,
+                recordingUrl: callDetails.recordingUrl,
                 status: callDetails.status,
                 fullData: callDetails
+              });
+              console.log('[POLL] 🎙️ AUDIO CHECK:', {
+                hasRecordingUrl: !!callDetails.recordingUrl,
+                recordingUrlValue: callDetails.recordingUrl,
+                recordingUrlType: typeof callDetails.recordingUrl
               });
               
               // Check if we have transcript or recording or completed status
@@ -330,16 +336,33 @@ export default function Power() {
                 }
                 
                 setCallStatus('ended');
+                console.log('[POLL] 🎯 Setting result with:', {
+                  recordingUrl: callDetails.recordingUrl,
+                  transcript: callDetails.transcript?.substring(0, 50),
+                  duration: callDetails.duration
+                });
+                
                 setResult({
                   success: true,
                   callId: callDetails.callId,
                   recordingUrl: callDetails.recordingUrl || null,
-                  summary: {
-                    transcript: callDetails.transcript || 'Gespräch wurde durchgeführt. Transkript wird noch verarbeitet...',
-                    duration: callDetails.duration || callDuration
-                  }
+                  transcript: callDetails.transcript || 'Gespräch wurde durchgeführt. Transkript wird noch verarbeitet...',
+                  duration: callDetails.duration || callDuration
                 });
-                return;
+                
+                console.log('[POLL] ✅ Result state set, should trigger render');
+                
+                // Refresh call history
+                try {
+                  const historyResponse = await fetch('/api/user/call-logs', { credentials: 'include' });
+                  if (historyResponse.ok) {
+                    const logs = await historyResponse.json();
+                    console.log('[POLL] 📜 History refreshed:', logs.length, 'calls');
+                    setCallHistory(logs);
+                  }
+                } catch (e) {
+                  console.error('[POLL] Failed to refresh history:', e);
+                }
               }
               
               // Stop polling after max attempts
@@ -700,11 +723,12 @@ export default function Power() {
                         {result.success ? (
                           <>
                             {/* Audio Player with Download */}
-                            {result.recordingUrl && (
+                            {result.recordingUrl ? (
                               <div className="mb-4">
                                 <div className="text-[11px] font-medium mb-2" style={{ color: CI.goldLight }}>Aufzeichnung</div>
                                 <audio controls className="w-full mb-2" style={{ height: '36px' }}>
                                   <source src={result.recordingUrl} type="audio/mpeg" />
+                                  <source src={result.recordingUrl} type="audio/wav" />
                                   Browser unterstützt keine Audio-Wiedergabe.
                                 </audio>
                                 <a 
@@ -728,6 +752,10 @@ export default function Power() {
                                   Audio herunterladen
                                 </a>
                               </div>
+                            ) : (
+                              <div className="mb-4 p-3 rounded-lg text-center" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                <p className="text-[11px] text-gray-500">Audio wird noch verarbeitet...</p>
+                              </div>
                             )}
                             
                             {/* Transcript */}
@@ -735,10 +763,11 @@ export default function Power() {
                               <div className="mb-4">
                                 <div className="text-[11px] font-medium mb-2" style={{ color: CI.goldLight }}>Transkript</div>
                                 <div 
-                                  className="text-[12px] text-gray-300 leading-relaxed p-3 rounded-lg max-h-48 overflow-y-auto"
+                                  className="text-[12px] text-gray-300 leading-relaxed p-3 rounded-lg overflow-y-auto"
                                   style={{ 
                                     background: 'rgba(0,0,0,0.2)',
-                                    border: '1px solid rgba(255,255,255,0.05)'
+                                    border: '1px solid rgba(255,255,255,0.05)',
+                                    maxHeight: '400px'
                                   }}
                                 >
                                   <pre className="whitespace-pre-wrap font-sans">
@@ -892,11 +921,12 @@ export default function Power() {
                             {expandedCall === call.id && (
                               <div className="px-3 pb-3 border-t border-white/5">
                                 {/* Audio Player with Download */}
-                                {call.recordingUrl && (
+                                {call.recordingUrl ? (
                                   <div className="mt-3">
                                     <div className="text-[11px] font-medium mb-2" style={{ color: CI.goldLight }}>Aufzeichnung</div>
                                     <audio controls className="w-full mb-2" style={{ height: '32px' }}>
                                       <source src={call.recordingUrl} type="audio/mpeg" />
+                                      <source src={call.recordingUrl} type="audio/wav" />
                                       Browser unterstützt keine Audio-Wiedergabe.
                                     </audio>
                                     <a 
@@ -920,6 +950,10 @@ export default function Power() {
                                       Audio herunterladen
                                     </a>
                                   </div>
+                                ) : (
+                                  <div className="mt-3 p-3 rounded-lg text-center" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                    <p className="text-[11px] text-gray-500">Audio wird noch verarbeitet...</p>
+                                  </div>
                                 )}
                                 
                                 {/* Transcript */}
@@ -927,10 +961,11 @@ export default function Power() {
                                   <div className="mt-3">
                                     <div className="text-[11px] font-medium mb-2" style={{ color: CI.goldLight }}>Transkript</div>
                                     <div 
-                                      className="text-[12px] text-gray-300 leading-relaxed p-3 rounded-lg max-h-48 overflow-y-auto"
+                                      className="text-[12px] text-gray-300 leading-relaxed p-3 rounded-lg overflow-y-auto"
                                       style={{ 
                                         background: 'rgba(0,0,0,0.2)',
-                                        border: '1px solid rgba(255,255,255,0.05)'
+                                        border: '1px solid rgba(255,255,255,0.05)',
+                                        maxHeight: '400px'
                                       }}
                                     >
                                       <pre className="whitespace-pre-wrap font-sans">
