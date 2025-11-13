@@ -2161,17 +2161,60 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         callId, 
         hasTranscript: !!callLog.transcript,
         transcriptLength: callLog.transcript?.length || 0,
+        transcriptType: typeof callLog.transcript,
         hasRecording: !!callLog.recordingUrl,
-        recordingUrl: callLog.recordingUrl || 'null',
+        recordingUrl: callLog.recordingUrl,
+        recordingUrlType: typeof callLog.recordingUrl,
+        recordingUrlValue: JSON.stringify(callLog.recordingUrl),
         status: callLog.status,
         duration: callLog.duration || 'null',
         metadata: callLog.metadata || 'null'
       });
       
-      // FALLBACK: If recording URL is missing but we have conversationId, query ElevenLabs API directly
-      let finalCallData = { ...callLog };
+      // Clean and parse transcript if it's an array
+      let cleanedTranscript = callLog.transcript;
+      if (cleanedTranscript) {
+        try {
+          // Try parsing if it's a JSON string
+          const parsed = typeof cleanedTranscript === 'string' ? JSON.parse(cleanedTranscript) : cleanedTranscript;
+          
+          if (Array.isArray(parsed)) {
+            // Extract only the message content from each turn
+            const conversationText = parsed
+              .filter((turn: any) => turn.message)
+              .map((turn: any) => {
+                const role = turn.role === 'agent' ? 'ARAS AI' : 'Kunde';
+                const message = turn.original_message || turn.message;
+                return `${role}: ${message}`;
+              })
+              .join('\n\n');
+            
+            if (conversationText) {
+              logger.info('[CALL-DETAILS] 📡 Cleaned transcript from array format');
+              cleanedTranscript = conversationText;
+            }
+          }
+        } catch (e) {
+          // If parsing fails, keep original
+          logger.warn('[CALL-DETAILS] ⚠️ Could not parse transcript as JSON');
+        }
+      }
       
-      if (!callLog.recordingUrl && callLog.retellCallId) {
+      // FALLBACK: If recording URL is missing/empty but we have conversationId, query ElevenLabs API directly
+      let finalCallData = { ...callLog, transcript: cleanedTranscript };
+      
+      // Check for missing or invalid recordingUrl (null, undefined, empty string, empty object)
+      const hasValidRecordingUrl = callLog.recordingUrl && 
+                                   typeof callLog.recordingUrl === 'string' && 
+                                   callLog.recordingUrl.trim().length > 0 &&
+                                   callLog.recordingUrl.startsWith('http');
+      
+      logger.info('[CALL-DETAILS] 🔍 Recording URL validation:', {
+        hasValidRecordingUrl,
+        willTriggerFallback: !hasValidRecordingUrl && !!callLog.retellCallId
+      });
+      
+      if (!hasValidRecordingUrl && callLog.retellCallId) {
         logger.info('[CALL-DETAILS] 🔄 Recording missing, querying ElevenLabs API as fallback...', {
           conversationId: callLog.retellCallId
         });
