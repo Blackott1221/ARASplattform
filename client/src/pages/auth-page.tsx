@@ -124,9 +124,9 @@ export default function AuthPage() {
     registerData.password.length > 0 && registerData.password.length < 6;
 
   return (
-    <div className="min-h-screen bg-[#050607] text-white relative overflow-y-auto">
+    <div className="min-h-screen bg-[#050607] text-white relative">
       {/* Background */}
-      <div className="pointer-events-none fixed inset-0">
+      <div className="pointer-events-none fixed inset-0 -z-10">
         <div
           className="absolute inset-0 opacity-40"
           style={{
@@ -143,7 +143,7 @@ export default function AuthPage() {
         />
       </div>
 
-      <div className="relative w-full max-w-5xl mx-auto px-6 py-10 md:py-16 flex flex-col items-center">
+      <div className="relative w-full max-w-5xl mx-auto px-6 py-10 md:py-16 pb-20 flex flex-col items-center">
         {/* Top badge */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -707,7 +707,7 @@ export default function AuthPage() {
         </motion.div>
 
         {/* Footer */}
-        <div className="mb-6 text-center text-[10px] md:text-[11px] text-zinc-500">
+        <div className="mt-8 mb-10 text-center text-[10px] md:text-[11px] text-zinc-500">
           <p>
             Präzision. Eleganz. Kraft. Das ist ARAS. Willkommen in der nächsten
             Ära der Kommunikation. Willkommen bei ARAS AI.
