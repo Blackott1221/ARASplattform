@@ -323,6 +323,13 @@ html, body, #root {
   background-color: #000000;
 }
 
+/* Global Zoom: Make everything 2x smaller for better overview */
+body {
+  zoom: 0.5;
+  -moz-transform: scale(0.5);
+  -moz-transform-origin: 0 0;
+}
+
 * {
   box-sizing: border-box;
 }
