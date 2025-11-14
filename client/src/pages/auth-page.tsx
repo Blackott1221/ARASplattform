@@ -158,9 +158,9 @@ export default function AuthPage() {
     registerData.password.length > 0 && registerData.password.length < 6;
 
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+    <div className="min-h-screen bg-black text-white relative flex">
       {/* Ultra Premium Background */}
-      <div className="absolute inset-0 opacity-25">
+      <div className="absolute inset-0 opacity-25 pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-br from-[#FE9100]/12 via-transparent to-[#a34e00]/12" />
         <div className="absolute inset-0" style={{
           backgroundImage: `radial-gradient(circle at 15% 20%, rgba(254, 145, 0, 0.12) 0%, transparent 45%),
@@ -173,13 +173,14 @@ export default function AuthPage() {
         }} />
       </div>
 
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 py-16 md:py-24">
+      {/* LEFT SIDE - Hero Content */}
+      <div className="hidden lg:flex lg:w-1/2 relative z-10 flex-col justify-center px-12 xl:px-20 py-16">
         {/* Pre-Launch Badge */}
         <motion.div
           initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: [0.25, 0.8, 0.25, 1] }}
-          className="flex justify-center mb-16"
+          className="mb-12"
         >
           <div className="relative">
             <motion.div
@@ -220,11 +221,11 @@ export default function AuthPage() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.2, ease: [0.25, 0.8, 0.25, 1] }}
-          className="text-center mb-20"
+          className="mb-12"
         >
           {/* Main Title */}
           <motion.h1
-            className="text-8xl md:text-9xl font-black mb-10 tracking-tight"
+            className="text-6xl xl:text-7xl font-black mb-8 tracking-tight"
             style={{ fontFamily: 'Orbitron, sans-serif' }}
             initial={{ scale: 0.85 }}
             animate={{ scale: 1 }}
@@ -266,7 +267,7 @@ export default function AuthPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6, duration: 0.8 }}
-            className="text-base uppercase tracking-[0.35em] mb-12 font-semibold"
+            className="text-sm uppercase tracking-[0.35em] mb-8 font-semibold"
             style={{ 
               fontFamily: 'Orbitron, sans-serif',
               color: '#a34e00'
@@ -280,10 +281,10 @@ export default function AuthPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8, duration: 0.8 }}
-            className="h-12 mb-14 flex items-center justify-center"
+            className="h-10 mb-10 flex items-center"
           >
             <span
-              className="text-2xl md:text-3xl font-bold"
+              className="text-xl font-bold"
               style={{ 
                 fontFamily: 'Orbitron, sans-serif',
                 color: '#e9d7c4'
@@ -291,7 +292,7 @@ export default function AuthPage() {
             >
               {typedText}
               <motion.span
-                className="inline-block w-[3px] h-[30px] bg-[#FE9100] ml-2 align-middle"
+                className="inline-block w-[2px] h-[24px] bg-[#FE9100] ml-2 align-middle"
                 animate={{ opacity: [1, 0, 1] }}
                 transition={{ duration: 0.9, repeat: Infinity }}
               />
@@ -303,7 +304,7 @@ export default function AuthPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 1, duration: 0.8 }}
-            className="space-y-5 text-base md:text-lg text-gray-300 leading-relaxed max-w-3xl mx-auto"
+            className="space-y-4 text-base text-gray-300 leading-relaxed"
           >
             <p>Echte Gespräche. Echte Resultate.</p>
             <p>
@@ -311,9 +312,49 @@ export default function AuthPage() {
             </p>
             <p>Du liest nicht über die Zukunft. Du hörst sie.</p>
           </motion.div>
-        </motion.div>
 
-        {/* Auth Card - Centered */}
+          {/* Alpha Info */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.2, duration: 0.8 }}
+            className="mt-10 p-6 rounded-xl border border-white/10"
+            style={{
+              background: 'rgba(0, 0, 0, 0.4)',
+              backdropFilter: 'blur(20px)'
+            }}
+          >
+            <h3 className="text-xs font-bold uppercase tracking-[0.3em] mb-3" style={{ fontFamily: 'Orbitron, sans-serif', color: '#FE9100' }}>
+              Aktuell in der Alpha-Phase
+            </h3>
+            <div className="space-y-2 text-sm text-gray-400 leading-relaxed">
+              <p>
+                ARAS AI ist live – aber nur für ausgewählte Nutzer. Jeder Zugang ist
+                persönlich vergeben.
+              </p>
+              <p className="text-[#FE9100] font-bold">
+                Offizieller Launch: 01.01.2026
+              </p>
+            </div>
+          </motion.div>
+
+          {/* Footer */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.5, duration: 0.8 }}
+            className="mt-10 text-xs text-gray-600 leading-relaxed"
+          >
+            <p>Entwickelt von der Schwarzott Group</p>
+            <p>Gebaut in der Schweiz. Betrieben von einem eigenen, unabhängigen Sprachmodell.</p>
+            <p className="mt-2">Präzision. Eleganz. Kraft. Das ist ARAS.</p>
+          </motion.div>
+        </motion.div>
+      </div>
+
+      {/* RIGHT SIDE - Auth Forms */}
+      <div className="w-full lg:w-1/2 relative z-10 flex items-center justify-center p-6 lg:p-12 overflow-y-auto">
+        {/* Auth Card */}
         <motion.div
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
@@ -921,87 +962,25 @@ export default function AuthPage() {
           transition={{ delay: 1.2, duration: 0.8 }}
           className="max-w-4xl mx-auto mb-16"
         >
-          {/* Alpha Info Box */}
-          <div className="relative mb-10">
-            <motion.div
-              className="absolute -inset-[2px] rounded-2xl opacity-40"
-              style={{
-                background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
-                backgroundSize: '300% 100%',
-                filter: 'blur(10px)'
-              }}
-              animate={{
-                backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
-              }}
-              transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
-            />
-            <div className="relative p-8 rounded-2xl text-center"
-              style={{
-                background: 'rgba(0, 0, 0, 0.6)',
-                backdropFilter: 'blur(30px)',
-                border: '1px solid rgba(255, 255, 255, 0.08)'
-              }}
-            >
-              <h3 className="text-sm font-bold uppercase tracking-[0.3em] mb-4" style={{ fontFamily: 'Orbitron, sans-serif', color: '#FE9100' }}>
-                Aktuell in der Alpha-Phase
-              </h3>
-              <div className="space-y-3 text-sm text-gray-300 leading-relaxed">
-                <p>
-                  ARAS AI ist live – aber nur für ausgewählte Nutzer. Jeder Zugang ist
-                  persönlich vergeben, jede Rückmeldung verbessert das System.
-                </p>
-                <p className="text-[#FE9100] font-bold">
-                  Offizieller globaler Launch: 01.01.2026
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Alpha Access Button */}
-          <motion.div className="text-center mb-10">
-            <motion.a
-              href="https://schwarzott.group"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-3 px-8 py-4 rounded-full font-bold text-sm tracking-wide transition-all"
-              whileHover={{ scale: 1.05, y: -2 }}
-              whileTap={{ scale: 0.95 }}
-              style={{
-                background: 'linear-gradient(135deg, #e9d7c4, #FE9100)',
-                color: '#000000',
-                fontFamily: 'Orbitron, sans-serif',
-                boxShadow: '0 10px 40px rgba(254, 145, 0, 0.3)'
-              }}
-            >
-              <span>Kein Zugang? Alpha-Zugang aktivieren</span>
-              <ExternalLink className="w-4 h-4" />
-            </motion.a>
-            <p className="text-xs text-gray-500 mt-4">
-              Klicke hier, um dich für Alpha-Zugang zu bewerben
-            </p>
-          </motion.div>
-
-          {/* Company Info */}
-          <div className="text-center space-y-2 text-xs text-gray-500">
+          <div className="text-xs text-gray-500 space-y-2">
             <p>Entwickelt von der Schwarzott Group</p>
-            <p>
-              Gebaut in der Schweiz. Betrieben von einem eigenen, unabhängigen
-              Sprachmodell.
-            </p>
+            <p>Alpha-Phase • Launch: 01.01.2026</p>
+            <motion.div className="mt-4">
+              <a
+                href="https://schwarzott.group"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-6 py-2 rounded-full text-xs font-medium transition-all hover:opacity-80"
+                style={{
+                  background: 'linear-gradient(135deg, #e9d7c4, #FE9100)',
+                  color: '#000000'
+                }}
+              >
+                <span>Kein Zugang? Hier bewerben</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </motion.div>
           </div>
-        </motion.div>
-
-        {/* Footer */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5, duration: 0.8 }}
-          className="text-center text-xs text-gray-600 max-w-3xl mx-auto leading-relaxed"
-        >
-          <p>
-            Präzision. Eleganz. Kraft. Das ist ARAS. Willkommen in der nächsten
-            Ära der Kommunikation. Willkommen bei ARAS AI.
-          </p>
         </motion.div>
       </div>
     </div>
