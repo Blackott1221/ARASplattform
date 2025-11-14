@@ -234,7 +234,7 @@ export default function VoiceAgents() {
   };
 
   return (
-    <div className="flex h-screen bg-space space-pattern circuit-pattern">
+    <div className="flex h-screen bg-space space-pattern circuit-pattern overflow-hidden">
       <Sidebar 
         activeSection="voice-agents" 
         onSectionChange={handleSectionChange}

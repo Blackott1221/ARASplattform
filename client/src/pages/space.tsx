@@ -88,7 +88,7 @@ export default function Space() {
   }, []);
 
   return (
-    <div className="flex h-screen bg-space space-pattern circuit-pattern">
+    <div className="flex h-screen bg-space space-pattern circuit-pattern overflow-hidden">
       <Sidebar 
         activeSection="space" 
         onSectionChange={handleSectionChange}

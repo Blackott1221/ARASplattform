@@ -35,7 +35,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex h-screen bg-space space-pattern circuit-pattern">
+    <div className="flex h-screen bg-space space-pattern circuit-pattern overflow-hidden">
       <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
       <div className="flex-1 flex flex-col">
         <TopBar 

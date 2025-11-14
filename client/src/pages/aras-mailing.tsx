@@ -53,7 +53,7 @@ export default function ArasMailingPage() {
   ];
 
   return (
-    <div className="h-screen flex bg-background">
+    <div className="h-screen flex bg-background overflow-hidden">
       <Sidebar 
         activeSection="aras-mailing"
         onSectionChange={() => {}}

@@ -81,7 +81,7 @@ export default function Leads() {
   };
 
   return (
-    <div className="flex h-screen bg-space space-pattern circuit-pattern">
+    <div className="flex h-screen bg-space space-pattern circuit-pattern overflow-hidden">
       <Sidebar activeSection="leads" onSectionChange={() => {}} />
       <div className="flex-1 flex flex-col">
         <TopBar 

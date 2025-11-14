@@ -34,7 +34,7 @@ export default function Campaigns() {
   const tokenBalance = userTokens?.balance || 0;
 
   return (
-    <div className="flex h-screen bg-space space-pattern circuit-pattern">
+    <div className="flex h-screen bg-space space-pattern circuit-pattern overflow-hidden">
       <Sidebar activeSection="campaigns" onSectionChange={() => {}} />
       <div className="flex-1 flex flex-col">
         <TopBar 
