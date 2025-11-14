@@ -40,8 +40,9 @@ export default function Home() {
       <div className="flex-1 flex flex-col">
         <TopBar 
           currentSection={activeSection} 
-          tokenBalance={tokenBalance?.balance || 0}
-          user={user as User}
+          subscriptionData={undefined} 
+          user={user as User} 
+          isVisible={true} 
         />
         <div className="flex-1 overflow-hidden">
           {renderContent()}

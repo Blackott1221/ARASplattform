@@ -7,20 +7,17 @@ import { Mail, Send, Users, TrendingUp, Clock, CheckCircle } from "lucide-react"
 import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
-import type { User, TokenResponse } from "@shared/schema";
+import type { User, SubscriptionResponse } from "@shared/schema";
 
 export default function ArasMailingPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { user } = useAuth();
   
-  // Fetch user's token balance
-  const { data: userTokens } = useQuery<TokenResponse>({
-    queryKey: ["/api/user/tokens"],
+  // Fetch user's subscription data
+  const { data: subscriptionData } = useQuery<SubscriptionResponse>({
+    queryKey: ["/api/user/subscription"],
     enabled: !!user,
   });
-  
-  // Use authenticated user data
-  const tokenBalance = userTokens?.balance || 0;
 
   const features = [
     {
@@ -62,7 +59,7 @@ export default function ArasMailingPage() {
       />
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        <TopBar currentSection="aras-mailing" tokenBalance={tokenBalance} user={user as User} />
+        <TopBar currentSection="aras-mailing" subscriptionData={subscriptionData} user={user as User} isVisible={true} />
         
         <main className="flex-1 overflow-y-auto p-6">
           <div className="max-w-7xl mx-auto space-y-6">

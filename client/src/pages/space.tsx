@@ -23,14 +23,7 @@ export default function Space() {
     enabled: !!user,
   });
   
-  const subscriptionData = userSubscription || {
-    plan: 'starter',
-    status: 'active',
-    aiMessagesUsed: 0,
-    voiceCallsUsed: 0,
-    aiMessagesLimit: 100,
-    voiceCallsLimit: 10
-  };
+  const subscriptionData: SubscriptionResponse | undefined = userSubscription || undefined;
 
   const handleSectionChange = (section: string) => {
     if (section !== "space") {

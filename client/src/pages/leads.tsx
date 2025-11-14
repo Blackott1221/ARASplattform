@@ -86,8 +86,9 @@ export default function Leads() {
       <div className="flex-1 flex flex-col">
         <TopBar 
           currentSection="leads" 
-          subscriptionData={undefined}
-          user={user as import("@shared/schema").User}
+          subscriptionData={undefined} 
+          user={user as import("@shared/schema").User} 
+          isVisible={true} 
         />
         <div className="flex-1 p-6 overflow-y-auto">
           <div className="max-w-6xl mx-auto space-y-6">

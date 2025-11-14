@@ -264,6 +264,7 @@ export default function SettingsPage() {
           currentSection="settings" 
           subscriptionData={userSubscription}
           user={user as any}
+          isVisible={true}
         />
         
         <div className="flex-1 overflow-auto p-6">

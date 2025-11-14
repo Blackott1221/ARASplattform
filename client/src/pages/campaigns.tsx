@@ -4,7 +4,7 @@ import { CampaignStats } from "@/components/campaigns/campaign-stats";
 import { CampaignList } from "@/components/campaigns/campaign-list";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
-import type { User, TokenResponse, Campaign } from "@shared/schema";
+import type { User, Campaign, SubscriptionResponse } from "@shared/schema";
 
 export default function Campaigns() {
   const { user, isLoading: authLoading } = useAuth();
@@ -16,10 +16,10 @@ export default function Campaigns() {
     retry: false,
   });
 
-  const { data: userTokens } = useQuery<TokenResponse>({
-    queryKey: ["/api/user/tokens"],
-    enabled: !!user && !authLoading,
-    retry: false,
+  // Fetch user's subscription data
+  const { data: subscriptionData } = useQuery<SubscriptionResponse>({
+    queryKey: ["/api/user/subscription"],
+    enabled: !!user,
   });
 
   // Show loading state while authentication is in progress
@@ -31,16 +31,15 @@ export default function Campaigns() {
     );
   }
 
-  const tokenBalance = userTokens?.balance || 0;
-
   return (
     <div className="flex h-screen bg-space space-pattern circuit-pattern overflow-hidden">
       <Sidebar activeSection="campaigns" onSectionChange={() => {}} />
       <div className="flex-1 flex flex-col">
         <TopBar 
           currentSection="campaigns" 
-          tokenBalance={tokenBalance}
-          user={user as User}
+          subscriptionData={subscriptionData} 
+          user={user as User} 
+          isVisible={true}
         />
         <div className="flex-1 p-6 overflow-y-auto">
           <CampaignStats campaigns={campaigns} />
