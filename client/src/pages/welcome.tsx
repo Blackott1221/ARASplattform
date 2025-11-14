@@ -36,7 +36,7 @@ export default function Welcome() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+    <div className="min-h-screen bg-black text-white relative overflow-y-auto">
       {/* Premium Background */}
       <div className="absolute inset-0 opacity-25">
         <div className="absolute inset-0 bg-gradient-to-br from-[#FE9100]/12 via-transparent to-[#a34e00]/12" />
