@@ -101,7 +101,7 @@ export default function AuthPage() {
   }, [typedText, isDeleting, typedIndex]);
 
   if (!isLoading && user) {
-    setLocation("/");
+    setLocation("/welcome");
     return null;
   }
 
@@ -126,7 +126,7 @@ export default function AuthPage() {
         title: "Welcome back!",
         description: "You have been successfully logged in."
       });
-      setLocation("/");
+      setLocation("/welcome");
     } catch (error: any) {
       toast({
         title: "Login Failed",
@@ -144,7 +144,7 @@ export default function AuthPage() {
         title: "Account Created!",
         description: "Welcome to ARAS AI. You are now logged in."
       });
-      setLocation("/");
+      setLocation("/welcome");
     } catch (error: any) {
       toast({
         title: "Registration Failed",
