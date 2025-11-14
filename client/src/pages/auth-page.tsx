@@ -158,7 +158,7 @@ export default function AuthPage() {
     registerData.password.length > 0 && registerData.password.length < 6;
 
   return (
-    <div className="min-h-screen bg-black text-white relative flex">
+    <div className="h-screen overflow-y-auto bg-black text-white relative flex">
       {/* Ultra Premium Background */}
       <div className="absolute inset-0 opacity-25 pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-br from-[#FE9100]/12 via-transparent to-[#a34e00]/12" />
