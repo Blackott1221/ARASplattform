@@ -2,9 +2,12 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Phone, MessageSquare, Sparkles, ArrowRight, CheckCircle } from "lucide-react";
 import { Link } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Welcome() {
+  const { user } = useAuth();
   const [activeStep, setActiveStep] = useState(0);
+  const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   const steps = [
     {
@@ -31,6 +34,29 @@ export default function Welcome() {
     const interval = setInterval(() => {
       setActiveStep((prev) => (prev + 1) % steps.length);
     }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Countdown Timer Effect
+  useEffect(() => {
+    const calculateCountdown = () => {
+      const launchDate = new Date('2026-01-01T00:00:00').getTime();
+      const now = new Date().getTime();
+      const distance = launchDate - now;
+
+      if (distance > 0) {
+        setCountdown({
+          days: Math.floor(distance / (1000 * 60 * 60 * 24)),
+          hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+          minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+          seconds: Math.floor((distance % (1000 * 60)) / 1000)
+        });
+      }
+    };
+
+    calculateCountdown();
+    const interval = setInterval(calculateCountdown, 1000);
 
     return () => clearInterval(interval);
   }, []);
@@ -295,6 +321,66 @@ export default function Welcome() {
                 </div>
               </motion.div>
 
+              {/* Countdown Timer */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.6 }}
+                className="mt-8 grid grid-cols-4 gap-4 max-w-md mx-auto"
+              >
+                {[
+                  { label: 'Tage', value: countdown.days },
+                  { label: 'Stunden', value: countdown.hours },
+                  { label: 'Minuten', value: countdown.minutes },
+                  { label: 'Sekunden', value: countdown.seconds }
+                ].map((item, index) => (
+                  <motion.div
+                    key={item.label}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.4 + index * 0.1, duration: 0.4 }}
+                    className="relative"
+                  >
+                    <motion.div
+                      className="absolute -inset-[1px] rounded-xl opacity-40"
+                      style={{
+                        background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00)',
+                        filter: 'blur(6px)'
+                      }}
+                      animate={{
+                        opacity: [0.3, 0.6, 0.3]
+                      }}
+                      transition={{ duration: 2, repeat: Infinity, delay: index * 0.2 }}
+                    />
+                    <div
+                      className="relative p-4 rounded-xl text-center"
+                      style={{
+                        background: 'rgba(0, 0, 0, 0.7)',
+                        backdropFilter: 'blur(20px)',
+                        border: '1px solid rgba(254, 145, 0, 0.3)'
+                      }}
+                    >
+                      <motion.div
+                        key={item.value}
+                        initial={{ scale: 1.2, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ duration: 0.3 }}
+                        className="text-3xl font-black mb-1"
+                        style={{
+                          fontFamily: 'Orbitron, sans-serif',
+                          color: '#FE9100'
+                        }}
+                      >
+                        {String(item.value).padStart(2, '0')}
+                      </motion.div>
+                      <div className="text-xs uppercase tracking-wider text-gray-400 font-semibold">
+                        {item.label}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
+
               <p className="text-sm text-gray-400 mt-6">
                 Du gehörst zu den Ersten, die ARAS testen. Zum offiziellen Launch erhältst du besondere Vorteile, 
                 exklusive Early-Access-Features und einen reduzierten Einstiegspreis.
@@ -323,7 +409,7 @@ export default function Welcome() {
           </div>
 
           {/* Main CTA Button */}
-          <Link href="/app/space">
+          <Link href={user ? "/app/space" : "/auth"}>
             <motion.div className="relative inline-block">
               <motion.div
                 className="absolute -inset-[3px] rounded-full opacity-60"
