@@ -1,375 +1,541 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from "@/components/ui/card";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@/components/ui/tabs";
+import { GradientText } from "@/components/ui/gradient-text";
+import { motion } from "framer-motion";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+
+const TYPED_LINES = [
+  "Die Stimme, die verkauft.",
+  "Echte Gespräche. Echte Resultate.",
+  "ARAS AI führt tausende Anrufe gleichzeitig.",
+  "Du liest nicht über die Zukunft.",
+  "Du hörst sie."
+];
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { user, isLoading, loginMutation, registerMutation } = useAuth();
   const { toast } = useToast();
 
-  const [mode, setMode] = useState<"login" | "signup">("login");
   const [showPassword, setShowPassword] = useState(false);
-
   const [loginData, setLoginData] = useState({ username: "", password: "" });
   const [registerData, setRegisterData] = useState({
     username: "",
     email: "",
     password: "",
     firstName: "",
-    lastName: "",
+    lastName: ""
   });
 
+  // Typing animation
+  const [typedIndex, setTypedIndex] = useState(0);
+  const [typedText, setTypedText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    const current = TYPED_LINES[typedIndex];
+    const speed = isDeleting ? 25 : 70;
+
+    const timer = setTimeout(() => {
+      if (!isDeleting && typedText.length < current.length) {
+        setTypedText(current.slice(0, typedText.length + 1));
+      } else if (!isDeleting && typedText.length === current.length) {
+        setTimeout(() => setIsDeleting(true), 1000);
+      } else if (isDeleting && typedText.length > 0) {
+        setTypedText(current.slice(0, typedText.length - 1));
+      } else if (isDeleting && typedText.length === 0) {
+        setIsDeleting(false);
+        setTypedIndex((prev) => (prev + 1) % TYPED_LINES.length);
+      }
+    }, speed);
+
+    return () => clearTimeout(timer);
+  }, [typedText, isDeleting, typedIndex]);
+
+  // Redirect if already authenticated
   if (!isLoading && user) {
     setLocation("/");
     return null;
   }
 
-  // LOADING SCREEN
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center relative overflow-hidden">
-        <motion.div
-          className="absolute inset-0 opacity-20"
-          style={{
-            background:
-              "radial-gradient(circle at 20% 20%, rgba(254,145,0,0.15) 0%, transparent 40%), radial-gradient(circle at 80% 80%, rgba(233,215,196,0.1) 0%, transparent 50%)",
-          }}
-          animate={{ opacity: [0.1, 0.25, 0.1] }}
-          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="w-64 h-[2px] bg-white/10 overflow-hidden rounded-full"
-        >
-          <motion.div
-            className="h-full"
-            style={{
-              background:
-                "linear-gradient(90deg, #E9D7C4, #FE9100, #A34E00, #FE9100)",
-              backgroundSize: "300% 100%",
-            }}
-            animate={{ backgroundPosition: ["0% 50%", "100% 50%"] }}
-            transition={{ duration: 1.6, repeat: Infinity, ease: "linear" }}
-          />
-        </motion.div>
+      <div className="min-h-screen bg-[#050607] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#FE9100]" />
       </div>
     );
   }
 
-  const handleLogin = async (e: any) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await loginMutation.mutateAsync(loginData);
-      toast({ title: "Welcome back!", description: "You have been successfully logged in." });
+      toast({
+        title: "Welcome back!",
+        description: "You have been successfully logged in."
+      });
       setLocation("/");
     } catch (error: any) {
       toast({
         title: "Login Failed",
         description: error.message || "Invalid credentials",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
 
-  const handleRegister = async (e: any) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       await registerMutation.mutateAsync(registerData);
       toast({
         title: "Account Created!",
-        description: "Welcome to ARAS AI.",
+        description: "Welcome to ARAS AI. You are now logged in."
       });
       setLocation("/");
     } catch (error: any) {
       toast({
         title: "Registration Failed",
         description: error.message || "Failed to create account",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
 
-  // Glass + Glow style
-  const panel = "bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl";
-
-  const inputStyle =
-    "w-full bg-black/50 border border-white/10 text-white placeholder-gray-500 rounded-lg px-4 py-3 focus:border-[#FE9100]/40 focus:ring-4 focus:ring-[#FE9100]/10 transition-all";
-
   return (
-    <div className="min-h-screen bg-black relative overflow-hidden flex items-center justify-center px-6">
-
-      {/* BACKGROUND with ARAS Glow */}
-      <motion.div
-        className="absolute inset-0 opacity-40"
-        style={{
-          backgroundImage:
-            "radial-gradient(circle at 20% 30%, rgba(254,145,0,0.12) 0%, transparent 50%), radial-gradient(circle at 80% 70%, rgba(233,215,196,0.07) 0%, transparent 50%)",
-        }}
-        animate={{ opacity: [0.25, 0.35, 0.25] }}
-        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-      />
-
-      {/* CONTAINER */}
-      <div className="relative z-10 w-full max-w-2xl text-center">
-
-        {/* TITLE */}
-        <motion.h1
-          className="text-[54px] font-orbitron font-extrabold mb-6"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
+    <div className="min-h-screen bg-[#050607] text-white relative overflow-hidden flex items-center justify-center">
+      {/* Background grid + glow */}
+      <div className="pointer-events-none absolute inset-0">
+        <div
+          className="absolute inset-0 opacity-40"
           style={{
-            background: "linear-gradient(90deg, #E9D7C4, #FE9100, #A34E00, #FE9100)",
-            backgroundSize: "300% 100%",
-            WebkitBackgroundClip: "text",
-            backgroundClip: "text",
-            WebkitTextFillColor: "transparent",
+            backgroundImage:
+              "radial-gradient(circle at 0 0, rgba(254,145,0,0.18), transparent 60%), radial-gradient(circle at 100% 100%, rgba(233,215,196,0.12), transparent 55%)"
           }}
-          transition={{ duration: 0.8 }}
-        >
-          ARAS AI
-        </motion.h1>
+        />
+        <div
+          className="absolute inset-0 opacity-25"
+          style={{
+            backgroundImage:
+              "radial-gradient(#111 1px, transparent 1px)",
+            backgroundSize: "18px 18px"
+          }}
+        />
+      </div>
 
-        {/* INTRO */}
+      <div className="relative w-full max-w-5xl px-6 py-10 md:py-16">
+        {/* Top badge */}
         <motion.div
-          className="text-gray-300 text-sm md:text-[15px] leading-relaxed space-y-2 mb-10"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3, duration: 0.8 }}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="flex justify-center mb-10"
         >
-          <p>Die Outbound-KI. Die Stimme, die verkauft.</p>
-          <p>Echte Gespräche. Echte Resultate.</p>
-          <p>ARAS AI führt tausende Anrufe gleichzeitig — und klingt wie ein Mensch.</p>
+          <div className="inline-flex items-center rounded-full border border-[#FE9100]/40 bg-black/60 px-4 py-1 text-xs tracking-[0.16em] uppercase">
+            <span className="mr-2 h-1 w-1 rounded-full bg-[#FE9100]" />
+            <span className="text-[11px] text-[#f3e2cf]">
+              Pre-Launch Phase • Alpha Access
+            </span>
+          </div>
+        </motion.div>
 
-          <motion.p
-            className="pt-2 font-semibold"
-            style={{ color: "#FE9100" }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1 }}
+        {/* Hero + Auth card */}
+        <div className="flex flex-col gap-10">
+          {/* Hero copy */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7 }}
+            className="text-center max-w-3xl mx-auto"
           >
-            Du hörst die Zukunft.
-          </motion.p>
-
-          <p className="text-gray-400">Aktuell in der Alpha-Phase.</p>
-          <p className="text-gray-400">Zugang nur für ausgewählte Nutzer.</p>
-          <p className="text-gray-200">Offizieller Launch: 01.01.2026</p>
-        </motion.div>
-
-        {/* PANEL */}
-        <motion.div
-          className={`mx-auto w-full max-w-md p-8 ${panel}`}
-          initial={{ opacity: 0, y: 30, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.7, ease: "easeOut" }}
-        >
-          <AnimatePresence mode="wait">
-            {mode === "login" ? (
-              <motion.div
-                key="login"
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -15 }}
-                transition={{ duration: 0.3 }}
+            <h1
+              className="text-5xl md:text-6xl font-orbitron font-semibold tracking-[0.18em] mb-4"
+              style={{
+                background:
+                  "linear-gradient(90deg,#a36a2b,#e9d7c4,#FE9100,#e9d7c4,#a36a2b)",
+                backgroundSize: "260% 100%",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent"
+              }}
+            >
+              <motion.span
+                animate={{
+                  backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"]
+                }}
+                transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
               >
-                <h2 className="text-xl font-orbitron font-semibold mb-4 text-white">Zugang</h2>
+                ARAS AI
+              </motion.span>
+            </h1>
 
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="text-left">
-                    <Label className="text-gray-300">Username</Label>
-                    <Input
-                      className={inputStyle}
-                      value={loginData.username}
-                      onChange={(e) =>
-                        setLoginData({ ...loginData, username: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
+            <p className="text-xs md:text-sm uppercase tracking-[0.28em] text-[#f0e1cd]/70 mb-6">
+              Die Outbound-KI
+            </p>
 
-                  <div className="text-left">
-                    <Label className="text-gray-300">Password</Label>
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      className={inputStyle}
-                      value={loginData.password}
-                      onChange={(e) =>
-                        setLoginData({ ...loginData, password: e.target.value })
-                      }
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="text-xs text-gray-500 hover:text-gray-300 mt-1"
-                    >
-                      {showPassword ? "verbergen" : "anzeigen"}
-                    </button>
-                  </div>
-
-                  <Button
-                    className="w-full rounded-full py-3 mt-2"
-                    disabled={loginMutation.isPending}
-                    style={{
-                      background:
-                        "linear-gradient(90deg, #E9D7C4, #FE9100, #A34E00)",
-                      backgroundSize: "220% 100%",
-                      fontFamily: "Orbitron",
-                    }}
-                  >
-                    Zugang öffnen
-                  </Button>
-
-                  <p className="text-xs text-gray-500 mt-3">
-                    Kein Zugang?{" "}
-                    <button
-                      type="button"
-                      onClick={() => setMode("signup")}
-                      className="text-[#FE9100] hover:text-[#E9D7C4]"
-                    >
-                      Alpha-Zugang aktivieren
-                    </button>
-                  </p>
-                </form>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="signup"
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -15 }}
-                transition={{ duration: 0.3 }}
+            {/* Typed line */}
+            <div className="h-7 mb-5 flex items-center justify-center">
+              <span
+                className="text-sm md:text-base text-[#f6e5d2]"
+                style={{ fontFamily: "Orbitron, system-ui, sans-serif" }}
               >
-                <h2 className="text-xl font-orbitron font-semibold mb-4 text-white">
-                  Alpha-Zugang
-                </h2>
+                {typedText}
+                <motion.span
+                  className="ml-1 inline-block h-[18px] w-[2px] bg-[#FE9100]"
+                  animate={{ opacity: [1, 0, 1] }}
+                  transition={{ duration: 0.9, repeat: Infinity }}
+                />
+              </span>
+            </div>
 
-                <form onSubmit={handleRegister} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-left">
-                      <Label className="text-gray-300">First Name</Label>
-                      <Input
-                        className={inputStyle}
-                        value={registerData.firstName}
-                        onChange={(e) =>
-                          setRegisterData({
-                            ...registerData,
-                            firstName: e.target.value,
-                          })
-                        }
-                        required
-                      />
-                    </div>
-                    <div className="text-left">
-                      <Label className="text-gray-300">Last Name</Label>
-                      <Input
-                        className={inputStyle}
-                        value={registerData.lastName}
-                        onChange={(e) =>
-                          setRegisterData({
-                            ...registerData,
-                            lastName: e.target.value,
-                          })
-                        }
-                        required
-                      />
-                    </div>
-                  </div>
+            <div className="space-y-2 text-[13px] md:text-sm text-zinc-300 leading-relaxed">
+              <p>Echte Gespräche. Echte Resultate.</p>
+              <p>
+                ARAS AI führt tausende Anrufe gleichzeitig – und klingt dabei
+                wie ein Mensch.
+              </p>
+              <p>Du liest nicht über die Zukunft. Du hörst sie.</p>
+            </div>
 
-                  <div className="text-left">
-                    <Label className="text-gray-300">Username</Label>
-                    <Input
-                      className={inputStyle}
-                      value={registerData.username}
-                      onChange={(e) =>
-                        setRegisterData({
-                          ...registerData,
-                          username: e.target.value,
-                        })
-                      }
-                      required
-                    />
-                  </div>
+            <div className="mt-6 space-y-1 text-[11px] md:text-xs text-zinc-400">
+              <p>Aktuell in der Alpha-Phase.</p>
+              <p>
+                ARAS AI ist live – aber nur für ausgewählte Nutzer. Jeder
+                Zugang ist persönlich vergeben, jede Rückmeldung verbessert das
+                System.
+              </p>
+              <p>Offizieller globaler Launch: 01.01.2026.</p>
+            </div>
+          </motion.div>
 
-                  <div className="text-left">
-                    <Label className="text-gray-300">Email</Label>
-                    <Input
-                      className={inputStyle}
-                      value={registerData.email}
-                      onChange={(e) =>
-                        setRegisterData({
-                          ...registerData,
-                          email: e.target.value,
-                        })
-                      }
-                      required
-                    />
-                  </div>
+          {/* Auth surface */}
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="max-w-3xl mx-auto"
+          >
+            <div className="rounded-3xl border border-white/8 bg-black/70 backdrop-blur-xl shadow-[0_22px_80px_rgba(0,0,0,0.9)] overflow-hidden">
+              {/* Top copy + CTA */}
+              <div className="px-6 pt-6 pb-4 md:px-8 md:pt-7">
+                <p className="text-[12px] md:text-xs text-zinc-200 mb-1">
+                  Jetzt kostenlos testen.
+                </p>
+                <p className="text-[12px] md:text-xs text-zinc-400 mb-4">
+                  Erstelle deinen kostenlosen Alpha-Account, führe deine ersten
+                  zwei echten Anrufe durch und teste die ARAS-Chatfunktion.{" "}
+                  Keine Kosten. Keine Verpflichtung. Keine Installation.
+                </p>
 
-                  <div className="text-left">
-                    <Label className="text-gray-300">Password</Label>
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      className={inputStyle}
-                      value={registerData.password}
-                      onChange={(e) =>
-                        setRegisterData({
-                          ...registerData,
-                          password: e.target.value,
-                        })
-                      }
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="text-xs text-gray-500 hover:text-gray-300 mt-1"
-                    >
-                      {showPassword ? "verbergen" : "anzeigen"}
-                    </button>
-                  </div>
-
-                  <Button
-                    className="w-full rounded-full py-3 mt-2"
-                    disabled={registerMutation.isPending}
-                    style={{
-                      background:
-                        "linear-gradient(90deg, #E9D7C4, #FE9100, #A34E00)",
-                      backgroundSize: "220% 100%",
-                      fontFamily: "Orbitron",
-                    }}
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  {/* Alpha access pill */}
+                  <button
+                    type="button"
+                    className="relative inline-flex items-center justify-between rounded-full border border-zinc-600/60 bg-zinc-950/70 px-4 py-2 text-[12px] md:text-xs text-zinc-50 tracking-wide transition-all hover:border-[#FE9100]/80 hover:bg-zinc-900/90"
                   >
-                    Zugang erzeugen
-                  </Button>
+                    <span>Kein Zugang? Alpha-Zugang aktivieren</span>
+                    <span className="ml-3 inline-flex h-5 w-5 items-center justify-center rounded-full border border-zinc-400/80">
+                      <span className="block h-2 w-2 border-l border-b border-zinc-300 rotate-45 -translate-y-[1px]" />
+                    </span>
+                  </button>
 
-                  <p className="text-xs text-gray-500 mt-3">
-                    Bereits Zugang?{" "}
-                    <button
-                      type="button"
-                      onClick={() => setMode("login")}
-                      className="text-[#FE9100] hover:text-[#E9D7C4]"
+                  <div className="text-[10px] md:text-[11px] text-zinc-500 text-right md:text-left">
+                    <p>Entwickelt von der Schwarzott Group</p>
+                    <p>Gebaut in der Schweiz. Betrieben von einem eigenen, unabhängigen Sprachmodell.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tabs + forms */}
+              <div className="border-t border-white/5" />
+
+              <Tabs defaultValue="login" className="w-full">
+                <div className="px-6 pt-4 md:px-8">
+                  <TabsList className="grid w-full grid-cols-2 bg-transparent border border-white/10 rounded-full p-1">
+                    <TabsTrigger
+                      value="login"
+                      className="rounded-full data-[state=active]:bg-white/5 data-[state=active]:text-white text-xs md:text-sm"
                     >
-                      Einloggen
-                    </button>
-                  </p>
-                </form>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
+                      Sign In
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="register"
+                      className="rounded-full data-[state=active]:bg-white/5 data-[state=active]:text-white text-xs md:text-sm"
+                    >
+                      Sign Up
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
 
-        {/* FOOTER NOTE */}
-        <motion.p
-          className="text-xs text-gray-500 mt-8"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.2 }}
-        >
-          Entwickelt von der Schwarzott Group — Schweiz
-        </motion.p>
+                {/* LOGIN */}
+                <TabsContent value="login">
+                  <Card className="mt-4 border-0 bg-transparent shadow-none">
+                    <CardHeader className="px-6 md:px-8 pb-2">
+                      <CardTitle className="text-sm md:text-base">
+                        Login für ausgewählte Nutzer
+                      </CardTitle>
+                      <CardDescription className="text-xs md:text-[13px] text-zinc-400">
+                        Melde dich mit deinen Zugangsdaten an, um ARAS AI zu
+                        verwenden.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="px-6 md:px-8 pb-6 md:pb-8">
+                      <form onSubmit={handleLogin} className="space-y-4">
+                        <div className="space-y-2 text-xs md:text-sm">
+                          <Label htmlFor="login-username">Username</Label>
+                          <div className="relative group">
+                            <Input
+                              id="login-username"
+                              type="text"
+                              value={loginData.username}
+                              onChange={(e) =>
+                                setLoginData((prev) => ({
+                                  ...prev,
+                                  username: e.target.value
+                                }))
+                              }
+                              placeholder="Dein Username"
+                              required
+                              className="bg-black/60 border-white/15 focus:border-[#FE9100]/70 focus:ring-0 text-sm rounded-xl group-hover:border-white/25 transition-colors"
+                            />
+                            <div className="pointer-events-none absolute inset-0 rounded-xl border border-transparent group-hover:border-white/8" />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 text-xs md:text-sm">
+                          <Label htmlFor="login-password">Passwort</Label>
+                          <div className="relative group">
+                            <Input
+                              id="login-password"
+                              type={showPassword ? "text" : "password"}
+                              value={loginData.password}
+                              onChange={(e) =>
+                                setLoginData((prev) => ({
+                                  ...prev,
+                                  password: e.target.value
+                                }))
+                              }
+                              placeholder="Passwort eingeben"
+                              required
+                              className="bg-black/60 border-white/15 focus:border-[#FE9100]/70 focus:ring-0 text-sm rounded-xl pr-10 group-hover:border-white/25 transition-colors"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                              onClick={() => setShowPassword(!showPassword)}
+                            >
+                              {showPassword ? (
+                                <EyeOff className="h-4 w-4 text-zinc-400" />
+                              ) : (
+                                <Eye className="h-4 w-4 text-zinc-400" />
+                              )}
+                            </Button>
+                          </div>
+                          <p className="text-[11px] text-zinc-500">
+                            Mindestens 6 Zeichen, idealerweise ein starkes
+                            Passwort.
+                          </p>
+                        </div>
+
+                        <Button
+                          type="submit"
+                          className="w-full mt-2 rounded-full text-sm font-medium tracking-wide bg-gradient-to-r from-[#e9d7c4] via-[#FE9100] to-[#a34e00] text-black hover:brightness-105 border border-[#f3e2cf]/30"
+                          disabled={loginMutation.isPending}
+                        >
+                          {loginMutation.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Signing In...
+                            </>
+                          ) : (
+                            "Sign In"
+                          )}
+                        </Button>
+                      </form>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                {/* REGISTER */}
+                <TabsContent value="register">
+                  <Card className="mt-4 border-0 bg-transparent shadow-none">
+                    <CardHeader className="px-6 md:px-8 pb-2">
+                      <CardTitle className="text-sm md:text-base">
+                        Alpha-Account erstellen
+                      </CardTitle>
+                      <CardDescription className="text-xs md:text-[13px] text-zinc-400">
+                        Wenn du diese Seite siehst, wurdest du ausgewählt.
+                        Du bist Teil der ersten Generation, die die
+                        menschlichste KI-Stimme der Welt erlebt.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="px-6 md:px-8 pb-6 md:pb-8">
+                      <form onSubmit={handleRegister} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2 text-xs md:text-sm">
+                            <Label htmlFor="register-firstName">
+                              Vorname
+                            </Label>
+                            <Input
+                              id="register-firstName"
+                              type="text"
+                              value={registerData.firstName}
+                              onChange={(e) =>
+                                setRegisterData((prev) => ({
+                                  ...prev,
+                                  firstName: e.target.value
+                                }))
+                              }
+                              placeholder="Vorname"
+                              required
+                              className="bg-black/60 border-white/15 focus:border-[#FE9100]/70 focus:ring-0 text-sm rounded-xl"
+                            />
+                          </div>
+                          <div className="space-y-2 text-xs md:text-sm">
+                            <Label htmlFor="register-lastName">
+                              Nachname
+                            </Label>
+                            <Input
+                              id="register-lastName"
+                              type="text"
+                              value={registerData.lastName}
+                              onChange={(e) =>
+                                setRegisterData((prev) => ({
+                                  ...prev,
+                                  lastName: e.target.value
+                                }))
+                              }
+                              placeholder="Nachname"
+                              required
+                              className="bg-black/60 border-white/15 focus:border-[#FE9100]/70 focus:ring-0 text-sm rounded-xl"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 text-xs md:text-sm">
+                          <Label htmlFor="register-username">Username</Label>
+                          <Input
+                            id="register-username"
+                            type="text"
+                            value={registerData.username}
+                            onChange={(e) =>
+                              setRegisterData((prev) => ({
+                                ...prev,
+                                username: e.target.value
+                              }))
+                            }
+                            placeholder="Wähle einen Username"
+                            required
+                            className="bg-black/60 border-white/15 focus:border-[#FE9100]/70 focus:ring-0 text-sm rounded-xl"
+                          />
+                        </div>
+
+                        <div className="space-y-2 text-xs md:text-sm">
+                          <Label htmlFor="register-email">E-Mail</Label>
+                          <Input
+                            id="register-email"
+                            type="email"
+                            value={registerData.email}
+                            onChange={(e) =>
+                              setRegisterData((prev) => ({
+                                ...prev,
+                                email: e.target.value
+                              }))
+                            }
+                            placeholder="name@example.com"
+                            required
+                            className="bg-black/60 border-white/15 focus:border-[#FE9100]/70 focus:ring-0 text-sm rounded-xl"
+                          />
+                        </div>
+
+                        <div className="space-y-2 text-xs md:text-sm">
+                          <Label htmlFor="register-password">Passwort</Label>
+                          <div className="relative group">
+                            <Input
+                              id="register-password"
+                              type={showPassword ? "text" : "password"}
+                              value={registerData.password}
+                              onChange={(e) =>
+                                setRegisterData((prev) => ({
+                                  ...prev,
+                                  password: e.target.value
+                                }))
+                              }
+                              placeholder="Sicheres Passwort erstellen"
+                              required
+                              minLength={6}
+                              className="bg-black/60 border-white/15 focus:border-[#FE9100]/70 focus:ring-0 text-sm rounded-xl pr-10"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                              onClick={() => setShowPassword(!showPassword)}
+                            >
+                              {showPassword ? (
+                                <EyeOff className="h-4 w-4 text-zinc-400" />
+                              ) : (
+                                <Eye className="h-4 w-4 text-zinc-400" />
+                              )}
+                            </Button>
+                          </div>
+                          <p className="text-[11px] text-zinc-500">
+                            Mindestens 6 Zeichen. Für maximale Sicherheit
+                            Groß-, Kleinbuchstaben, Zahlen und Sonderzeichen
+                            kombinieren.
+                          </p>
+                        </div>
+
+                        <Button
+                          type="submit"
+                          className="w-full mt-2 rounded-full text-sm font-medium tracking-wide bg-gradient-to-r from-[#e9d7c4] via-[#FE9100] to-[#a34e00] text-black hover:brightness-105 border border-[#f3e2cf]/30"
+                          disabled={registerMutation.isPending}
+                        >
+                          {registerMutation.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Creating Account...
+                            </>
+                          ) : (
+                            "Alpha-Account erstellen"
+                          )}
+                        </Button>
+                      </form>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+            </div>
+          </motion.div>
+
+          {/* Footer line */}
+          <div className="mt-4 text-center text-[10px] md:text-[11px] text-zinc-500">
+            <p>
+              Präzision. Eleganz. Kraft. Das ist ARAS. Willkommen in der
+              nächsten Ära der Kommunikation. Willkommen bei ARAS AI.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
