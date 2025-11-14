@@ -58,7 +58,7 @@ export default function ArasMailingPage() {
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
       
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden content-zoom">
         <TopBar currentSection="aras-mailing" subscriptionData={subscriptionData} user={user as User} isVisible={true} />
         
         <main className="flex-1 overflow-y-auto p-6">

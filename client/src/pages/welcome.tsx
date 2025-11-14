@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Phone, MessageSquare, Sparkles, ArrowRight, CheckCircle } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { trackCTAClick, trackPageView, captureUTMParameters } from "@/lib/analytics";
 
 export default function Welcome() {
   const { user } = useAuth();
@@ -29,6 +30,12 @@ export default function Welcome() {
       icon: <Sparkles className="w-6 h-6" />,
     },
   ];
+
+  // Capture UTM parameters and track page view on mount
+  useEffect(() => {
+    captureUTMParameters();
+    trackPageView('/welcome', 'Welcome to ARAS AI');
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -62,7 +69,7 @@ export default function Welcome() {
   }, []);
 
   return (
-    <div className="h-screen overflow-y-auto bg-black text-white">
+    <div className="h-screen overflow-y-auto bg-black text-white content-zoom">
       {/* Premium Background */}
       <div className="fixed inset-0 opacity-25 pointer-events-none z-0">
         <div className="absolute inset-0 bg-gradient-to-br from-[#FE9100]/12 via-transparent to-[#a34e00]/12" />
@@ -429,6 +436,13 @@ export default function Welcome() {
               />
               
               <motion.button
+                onClick={() => {
+                  trackCTAClick(
+                    'Zur ARAS Konsole',
+                    'welcome',
+                    user ? '/app/space' : '/auth'
+                  );
+                }}
                 whileHover={{ scale: 1.05, y: -3 }}
                 whileTap={{ scale: 0.95 }}
                 className="relative px-12 py-5 rounded-full font-black text-xl tracking-wide overflow-hidden"

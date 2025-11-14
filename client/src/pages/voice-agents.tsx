@@ -242,7 +242,7 @@ export default function VoiceAgents() {
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
       
-      <div className="flex-1 flex flex-col relative">
+      <div className="flex-1 flex flex-col relative content-zoom">
         <TopBar 
           currentSection="voice-agents" 
           subscriptionData={subscriptionData}

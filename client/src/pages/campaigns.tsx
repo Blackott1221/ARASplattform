@@ -34,7 +34,7 @@ export default function Campaigns() {
   return (
     <div className="flex h-screen bg-space space-pattern circuit-pattern overflow-hidden">
       <Sidebar activeSection="campaigns" onSectionChange={() => {}} />
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col content-zoom">
         <TopBar 
           currentSection="campaigns" 
           subscriptionData={subscriptionData} 

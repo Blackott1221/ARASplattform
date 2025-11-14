@@ -489,7 +489,7 @@ export default function Power() {
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
 
-      <div className="flex-1 flex flex-col relative z-10">
+      <div className="flex-1 flex flex-col relative overflow-hidden content-zoom">
         <TopBar
           currentSection="power"
           subscriptionData={subscriptionData}

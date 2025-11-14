@@ -259,7 +259,7 @@ export default function SettingsPage() {
   return (
     <div className="flex h-screen bg-space space-pattern circuit-pattern overflow-hidden">
       <Sidebar activeSection="settings" onSectionChange={() => {}} />
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col content-zoom">
         <TopBar 
           currentSection="settings" 
           subscriptionData={userSubscription}

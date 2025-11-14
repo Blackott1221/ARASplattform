@@ -243,7 +243,7 @@ export default function Billing() {
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
 
-      <div className="flex-1 flex flex-col relative z-10">
+      <div className="flex-1 flex flex-col relative z-10 content-zoom">
         <TopBar 
           currentSection="billing" 
           subscriptionData={subscriptionData}

@@ -20,6 +20,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Eye, EyeOff, AlertCircle, CheckCircle2, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { trackLogin, trackSignup, captureUTMParameters } from "@/lib/analytics";
 
 const TYPED_LINES = [
   "Die Stimme, die verkauft.",
@@ -81,17 +82,23 @@ export default function AuthPage() {
   };
 
   useEffect(() => {
+    captureUTMParameters();
+  }, []);
+
+  useEffect(() => {
     const current = TYPED_LINES[typedIndex];
-    const speed = isDeleting ? 25 : 70;
+    const speed = isDeleting ? 50 : 100;
 
     const timer = setTimeout(() => {
-      if (!isDeleting && typedText.length < current.length) {
-        setTypedText(current.slice(0, typedText.length + 1));
-      } else if (!isDeleting && typedText.length === current.length) {
-        setTimeout(() => setIsDeleting(true), 1000);
-      } else if (isDeleting && typedText.length > 0) {
-        setTypedText(current.slice(0, typedText.length - 1));
-      } else if (isDeleting && typedText.length === 0) {
+      const currentLine = TYPED_LINES[typedIndex];
+
+      if (!isDeleting && typedText === currentLine) {
+        setTimeout(() => setIsDeleting(true), 2000);
+      } else if (!isDeleting) {
+        setTypedText(currentLine.substring(0, typedText.length + 1));
+      } else if (typedText.length > 0) {
+        setTypedText(currentLine.substring(0, typedText.length - 1));
+      } else {
         setIsDeleting(false);
         setTypedIndex((prev) => (prev + 1) % TYPED_LINES.length);
       }
@@ -121,7 +128,11 @@ export default function AuthPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await loginMutation.mutateAsync(loginData);
+      const result = await loginMutation.mutateAsync(loginData);
+      
+      // Track successful login
+      trackLogin('email', result?.id);
+      
       toast({
         title: "Welcome back!",
         description: "You have been successfully logged in."
@@ -139,7 +150,11 @@ export default function AuthPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await registerMutation.mutateAsync(registerData);
+      const result = await registerMutation.mutateAsync(registerData);
+      
+      // Track successful signup with UTM parameters
+      trackSignup('email', result?.id);
+      
       toast({
         title: "Account Created!",
         description: "Welcome to ARAS AI. You are now logged in."
@@ -158,7 +173,7 @@ export default function AuthPage() {
     registerData.password.length > 0 && registerData.password.length < 6;
 
   return (
-    <div className="h-screen overflow-y-auto bg-black text-white relative flex">
+    <div className="h-screen overflow-y-auto bg-black text-white relative flex content-zoom">
       {/* Ultra Premium Background */}
       <div className="absolute inset-0 opacity-25 pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-br from-[#FE9100]/12 via-transparent to-[#a34e00]/12" />
