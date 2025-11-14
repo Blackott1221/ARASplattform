@@ -9,6 +9,7 @@ import { insertLeadSchema, insertCampaignSchema, insertChatMessageSchema, saniti
 import { z } from "zod";
 import Stripe from "stripe";
 import OpenAI from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import multer from "multer";
