@@ -36,9 +36,9 @@ export default function Welcome() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+    <div className="min-h-screen bg-black text-white relative">
       {/* Premium Background */}
-      <div className="absolute inset-0 opacity-25">
+      <div className="fixed inset-0 opacity-25 pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-br from-[#FE9100]/12 via-transparent to-[#a34e00]/12" />
         <div className="absolute inset-0" style={{
           backgroundImage: `radial-gradient(circle at 25% 25%, rgba(254, 145, 0, 0.1) 0%, transparent 50%),
