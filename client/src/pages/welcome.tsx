@@ -36,9 +36,9 @@ export default function Welcome() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-black text-white relative">
+    <div className="min-h-screen bg-black text-white">
       {/* Premium Background */}
-      <div className="absolute inset-0 opacity-25">
+      <div className="fixed inset-0 opacity-25 pointer-events-none z-0">
         <div className="absolute inset-0 bg-gradient-to-br from-[#FE9100]/12 via-transparent to-[#a34e00]/12" />
         <div className="absolute inset-0" style={{
           backgroundImage: `radial-gradient(circle at 25% 25%, rgba(254, 145, 0, 0.1) 0%, transparent 50%),
@@ -51,7 +51,7 @@ export default function Welcome() {
         }} />
       </div>
 
-      <div className="relative z-10 w-full max-w-5xl mx-auto px-6 py-20 md:py-32">
+      <div className="relative z-10 w-full max-w-5xl mx-auto px-6 py-20 md:py-32 pb-32">
         {/* Hero Section */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
