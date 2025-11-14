@@ -272,4 +272,448 @@ export default function AuthPage() {
                     Gebaut in der Schweiz. Betrieben von einem eigenen, unabhängigen
                     Sprachmodell.
                   </p>
-               
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-white/5" />
+
+            {/* Tabs + forms */}
+            <Tabs defaultValue="login" className="w-full">
+              <div className="px-6 pt-4 md:px-8">
+                <TabsList className="grid w-full grid-cols-2 bg-transparent border border-white/10 rounded-full p-1">
+                  <TabsTrigger
+                    value="login"
+                    className="rounded-full data-[state=active]:bg-white/5 data-[state=active]:text-white text-xs md:text-sm"
+                  >
+                    Sign In
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="register"
+                    className="rounded-full data-[state=active]:bg-white/5 data-[state=active]:text-white text-xs md:text-sm"
+                  >
+                    Sign Up
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+
+              {/* LOGIN */}
+              <TabsContent value="login">
+                <Card className="mt-4 border-0 bg-transparent shadow-none">
+                  <CardHeader className="px-6 md:px-8 pb-2">
+                    <CardTitle className="text-sm md:text-base">
+                      Login für ausgewählte Nutzer
+                    </CardTitle>
+                    <CardDescription className="text-xs md:text-[13px] text-zinc-400">
+                      Melde dich mit deinen Zugangsdaten an, um ARAS AI zu
+                      verwenden.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="px-6 md:px-8 pb-6 md:pb-8">
+                    <form onSubmit={handleLogin} className="space-y-4">
+                      <div className="space-y-2 text-xs md:text-sm">
+                        <Label htmlFor="login-username">Username</Label>
+                        <div className="relative group">
+                          <motion.div
+                            className="pointer-events-none absolute -inset-[1px] rounded-[14px] opacity-0 group-hover:opacity-60 group-focus-within:opacity-100"
+                            animate={{
+                              backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"]
+                            }}
+                            transition={{
+                              duration: 8,
+                              repeat: Infinity,
+                              ease: "linear"
+                            }}
+                            style={{
+                              background:
+                                "linear-gradient(90deg,#e9d7c4,#FE9100,#a34e00,#FE9100,#e9d7c4)",
+                              backgroundSize: "260% 100%"
+                            }}
+                          />
+                          <Input
+                            id="login-username"
+                            type="text"
+                            value={loginData.username}
+                            onChange={(e) =>
+                              setLoginData((prev) => ({
+                                ...prev,
+                                username: e.target.value
+                              }))
+                            }
+                            placeholder="Dein Username"
+                            required
+                            className="relative bg-black/60 border border-white/15 focus:border-[#FE9100]/70 focus:ring-0 text-sm rounded-xl group-hover:border-white/25 transition-colors"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 text-xs md:text-sm">
+                        <Label htmlFor="login-password">Passwort</Label>
+                        <div className="relative group">
+                          <motion.div
+                            className="pointer-events-none absolute -inset-[1px] rounded-[14px] opacity-0 group-hover:opacity-60 group-focus-within:opacity-100"
+                            animate={{
+                              backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"]
+                            }}
+                            transition={{
+                              duration: 8,
+                              repeat: Infinity,
+                              ease: "linear"
+                            }}
+                            style={{
+                              background:
+                                "linear-gradient(90deg,#e9d7c4,#FE9100,#a34e00,#FE9100,#e9d7c4)",
+                              backgroundSize: "260% 100%"
+                            }}
+                          />
+                          <Input
+                            id="login-password"
+                            type={showPassword ? "text" : "password"}
+                            value={loginData.password}
+                            onChange={(e) =>
+                              setLoginData((prev) => ({
+                                ...prev,
+                                password: e.target.value
+                              }))
+                            }
+                            placeholder="Passwort eingeben"
+                            required
+                            className="relative bg-black/60 border border-white/15 focus:border-[#FE9100]/70 focus:ring-0 text-sm rounded-xl pr-10 group-hover:border-white/25 transition-colors"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={() => setShowPassword(!showPassword)}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4 text-zinc-400" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-zinc-400" />
+                            )}
+                          </Button>
+                        </div>
+                        {loginMutation.isError && (
+                          <p className="text-[11px] text-red-400">
+                            Login fehlgeschlagen. Bitte Zugangsdaten prüfen.
+                          </p>
+                        )}
+                      </div>
+
+                      <motion.button
+                        type="submit"
+                        disabled={loginMutation.isPending}
+                        className="relative w-full mt-2 rounded-full text-sm font-medium tracking-wide overflow-hidden"
+                      >
+                        <motion.div
+                          className="absolute inset-0"
+                          animate={{
+                            backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"]
+                          }}
+                          transition={{
+                            duration: 6,
+                            repeat: Infinity,
+                            ease: "linear"
+                          }}
+                          style={{
+                            background:
+                              "linear-gradient(90deg,#e9d7c4,#FE9100,#a34e00,#FE9100,#e9d7c4)",
+                            backgroundSize: "260% 100%"
+                          }}
+                        />
+                        <div className="relative flex items-center justify-center px-4 py-3 bg-black/20">
+                          {loginMutation.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Signing In...
+                            </>
+                          ) : (
+                            "Sign In"
+                          )}
+                        </div>
+                      </motion.button>
+                    </form>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* REGISTER */}
+              <TabsContent value="register">
+                <Card className="mt-4 border-0 bg-transparent shadow-none">
+                  <CardHeader className="px-6 md:px-8 pb-2">
+                    <CardTitle className="text-sm md:text-base">
+                      Alpha-Account erstellen
+                    </CardTitle>
+                    <CardDescription className="text-xs md:text-[13px] text-zinc-400">
+                      Wenn du diese Seite siehst, wurdest du ausgewählt. Du bist
+                      Teil der ersten Generation, die die menschlichste KI-Stimme
+                      der Welt erlebt.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="px-6 md:px-8 pb-6 md:pb-8">
+                    <form onSubmit={handleRegister} className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2 text-xs md:text-sm">
+                          <Label htmlFor="register-firstName">Vorname</Label>
+                          <div className="relative group">
+                            <motion.div
+                              className="pointer-events-none absolute -inset-[1px] rounded-[14px] opacity-0 group-hover:opacity-60 group-focus-within:opacity-100"
+                              animate={{
+                                backgroundPosition: [
+                                  "0% 50%",
+                                  "100% 50%",
+                                  "0% 50%"
+                                ]
+                              }}
+                              transition={{
+                                duration: 8,
+                                repeat: Infinity,
+                                ease: "linear"
+                              }}
+                              style={{
+                                background:
+                                  "linear-gradient(90deg,#e9d7c4,#FE9100,#a34e00,#FE9100,#e9d7c4)",
+                                backgroundSize: "260% 100%"
+                              }}
+                            />
+                            <Input
+                              id="register-firstName"
+                              type="text"
+                              value={registerData.firstName}
+                              onChange={(e) =>
+                                setRegisterData((prev) => ({
+                                  ...prev,
+                                  firstName: e.target.value
+                                }))
+                              }
+                              placeholder="Vorname"
+                              required
+                              className="relative bg-black/60 border border-white/15 focus:border-[#FE9100]/70 focus:ring-0 text-sm rounded-xl"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2 text-xs md:text-sm">
+                          <Label htmlFor="register-lastName">Nachname</Label>
+                          <div className="relative group">
+                            <motion.div
+                              className="pointer-events-none absolute -inset-[1px] rounded-[14px] opacity-0 group-hover:opacity-60 group-focus-within:opacity-100"
+                              animate={{
+                                backgroundPosition: [
+                                  "0% 50%",
+                                  "100% 50%",
+                                  "0% 50%"
+                                ]
+                              }}
+                              transition={{
+                                duration: 8,
+                                repeat: Infinity,
+                                ease: "linear"
+                              }}
+                              style={{
+                                background:
+                                  "linear-gradient(90deg,#e9d7c4,#FE9100,#a34e00,#FE9100,#e9d7c4)",
+                                backgroundSize: "260% 100%"
+                              }}
+                            />
+                            <Input
+                              id="register-lastName"
+                              type="text"
+                              value={registerData.lastName}
+                              onChange={(e) =>
+                                setRegisterData((prev) => ({
+                                  ...prev,
+                                  lastName: e.target.value
+                                }))
+                              }
+                              placeholder="Nachname"
+                              required
+                              className="relative bg-black/60 border border-white/15 focus:border-[#FE9100]/70 focus:ring-0 text-sm rounded-xl"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 text-xs md:text-sm">
+                        <Label htmlFor="register-username">Username</Label>
+                        <div className="relative group">
+                          <motion.div
+                            className="pointer-events-none absolute -inset-[1px] rounded-[14px] opacity-0 group-hover:opacity-60 group-focus-within:opacity-100"
+                            animate={{
+                              backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"]
+                            }}
+                            transition={{
+                              duration: 8,
+                              repeat: Infinity,
+                              ease: "linear"
+                            }}
+                            style={{
+                              background:
+                                "linear-gradient(90deg,#e9d7c4,#FE9100,#a34e00,#FE9100,#e9d7c4)",
+                              backgroundSize: "260% 100%"
+                            }}
+                          />
+                          <Input
+                            id="register-username"
+                            type="text"
+                            value={registerData.username}
+                            onChange={(e) =>
+                              setRegisterData((prev) => ({
+                                ...prev,
+                                username: e.target.value
+                              }))
+                            }
+                            placeholder="Wähle einen Username"
+                            required
+                            className="relative bg-black/60 border border-white/15 focus:border-[#FE9100]/70 focus:ring-0 text-sm rounded-xl"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 text-xs md:text-sm">
+                        <Label htmlFor="register-email">E-Mail</Label>
+                        <div className="relative group">
+                          <motion.div
+                            className="pointer-events-none absolute -inset-[1px] rounded-[14px] opacity-0 group-hover:opacity-60 group-focus-within:opacity-100"
+                            animate={{
+                              backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"]
+                            }}
+                            transition={{
+                              duration: 8,
+                              repeat: Infinity,
+                              ease: "linear"
+                            }}
+                            style={{
+                              background:
+                                "linear-gradient(90deg,#e9d7c4,#FE9100,#a34e00,#FE9100,#e9d7c4)",
+                              backgroundSize: "260% 100%"
+                            }}
+                          />
+                          <Input
+                            id="register-email"
+                            type="email"
+                            value={registerData.email}
+                            onChange={(e) =>
+                              setRegisterData((prev) => ({
+                                ...prev,
+                                email: e.target.value
+                              }))
+                            }
+                            placeholder="name@example.com"
+                            required
+                            className="relative bg-black/60 border border-white/15 focus:border-[#FE9100]/70 focus:ring-0 text-sm rounded-xl"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 text-xs md:text-sm">
+                        <Label htmlFor="register-password">Passwort</Label>
+                        <div className="relative group">
+                          <motion.div
+                            className="pointer-events-none absolute -inset-[1px] rounded-[14px] opacity-0 group-hover:opacity-60 group-focus-within:opacity-100"
+                            animate={{
+                              backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"]
+                            }}
+                            transition={{
+                              duration: 8,
+                              repeat: Infinity,
+                              ease: "linear"
+                            }}
+                            style={{
+                              background:
+                                "linear-gradient(90deg,#e9d7c4,#FE9100,#a34e00,#FE9100,#e9d7c4)",
+                              backgroundSize: "260% 100%"
+                            }}
+                          />
+                          <Input
+                            id="register-password"
+                            type={showPassword ? "text" : "password"}
+                            value={registerData.password}
+                            onChange={(e) =>
+                              setRegisterData((prev) => ({
+                                ...prev,
+                                password: e.target.value
+                              }))
+                            }
+                            placeholder="Sicheres Passwort erstellen"
+                            required
+                            minLength={6}
+                            className="relative bg-black/60 border border-white/15 focus:border-[#FE9100]/70 focus:ring-0 text-sm rounded-xl pr-10"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                            onClick={() => setShowPassword(!showPassword)}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4 text-zinc-400" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-zinc-400" />
+                            )}
+                          </Button>
+                        </div>
+                        {registerPasswordTooShort && (
+                          <p className="text-[11px] text-red-400">
+                            Bitte ein längeres Passwort, für deine Sicherheit.
+                          </p>
+                        )}
+                        {registerMutation.isError && (
+                          <p className="text-[11px] text-red-400">
+                            Registrierung fehlgeschlagen. Bitte Eingaben prüfen.
+                          </p>
+                        )}
+                      </div>
+
+                      <motion.button
+                        type="submit"
+                        disabled={registerMutation.isPending}
+                        className="relative w-full mt-2 rounded-full text-sm font-medium tracking-wide overflow-hidden"
+                      >
+                        <motion.div
+                          className="absolute inset-0"
+                          animate={{
+                            backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"]
+                          }}
+                          transition={{
+                            duration: 6,
+                            repeat: Infinity,
+                            ease: "linear"
+                          }}
+                          style={{
+                            background:
+                              "linear-gradient(90deg,#e9d7c4,#FE9100,#a34e00,#FE9100,#e9d7c4)",
+                            backgroundSize: "260% 100%"
+                          }}
+                        />
+                        <div className="relative flex items-center justify-center px-4 py-3 bg-black/20">
+                          {registerMutation.isPending ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Creating Account...
+                            </>
+                          ) : (
+                            "Alpha-Account erstellen"
+                          )}
+                        </div>
+                      </motion.button>
+                    </form>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </motion.div>
+
+        {/* Footer */}
+        <div className="mb-6 text-center text-[10px] md:text-[11px] text-zinc-500">
+          <p>
+            Präzision. Eleganz. Kraft. Das ist ARAS. Willkommen in der nächsten
+            Ära der Kommunikation. Willkommen bei ARAS AI.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
