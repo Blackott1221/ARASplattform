@@ -1,208 +1,384 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { GradientText } from "@/components/ui/gradient-text";
-import { GlowButton } from "@/components/ui/glow-button";
 import { motion } from "framer-motion";
-import { Bot, Users, Phone, Zap, MessageSquare, CreditCard, ArrowRight } from "lucide-react";
+import { Phone, MessageSquare, Sparkles, ArrowRight, CheckCircle } from "lucide-react";
 import { Link } from "wouter";
 
 export default function Welcome() {
-  const [currentFeature, setCurrentFeature] = useState(0);
+  const [activeStep, setActiveStep] = useState(0);
 
-  const features = [
+  const steps = [
     {
-      icon: <MessageSquare className="w-8 h-8" />,
-      title: "SPACE",
-      subtitle: "AI Chat Assistant",
-      description: "Get strategic sales advice and campaign optimization from your AI assistant.",
-      delay: 0,
+      number: "01",
+      title: "Deine ersten zwei Testanrufe starten",
+      description: "Erlebe selbst, wie ARAS klingt, reagiert und Gespräche führt.",
+      icon: <Phone className="w-6 h-6" />,
     },
     {
-      icon: <Zap className="w-8 h-8" />,
-      title: "POWER",
-      subtitle: "Voice Call Automation",
-      description: "Launch AI-powered voice campaigns with personalized agents and bulk processing.",
-      delay: 0.2,
+      number: "02",
+      title: "Die Chatfunktion ausprobieren",
+      description: "Teste das ARAS-LLM direkt im Browser und stelle beliebige Fragen.",
+      icon: <MessageSquare className="w-6 h-6" />,
     },
     {
-      icon: <Users className="w-8 h-8" />,
-      title: "Lead Management",
-      subtitle: "Smart Pipeline",
-      description: "Organize, track, and convert leads with intelligent status management.",
-      delay: 0.4,
+      number: "03",
+      title: "Feedback geben",
+      description: "In der Alpha zählt jede Erfahrung. Jede Rückmeldung macht ARAS intelligenter.",
+      icon: <Sparkles className="w-6 h-6" />,
     },
-    {
-      icon: <Bot className="w-8 h-8" />,
-      title: "Campaign Automation",
-      subtitle: "Multi-Channel Outreach",
-      description: "Create and manage automated campaigns across voice and email channels.",
-      delay: 0.6,
-    },
-  ];
-
-  const stats = [
-    { value: "60%", label: "Increase in Productivity" },
-    { value: "45%", label: "Higher Conversion Rates" },
-    { value: "80%", label: "Time Savings" },
-    { value: "10x", label: "Faster Lead Processing" },
   ];
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentFeature((prev) => (prev + 1) % features.length);
+      setActiveStep((prev) => (prev + 1) % steps.length);
     }, 3000);
 
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        className="w-full max-w-4xl"
-      >
-        <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
-          <CardContent className="p-12">
-            {/* Header */}
-            <div className="text-center mb-12">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.6 }}
-                className="mb-6"
-              >
-                <h1 className="text-5xl font-orbitron font-bold mb-4">
-                  <GradientText>Welcome to ARAS AI</GradientText>
-                </h1>
-                <p className="text-xl text-muted-foreground">
-                  The future of AI-powered sales automation is here
-                </p>
-              </motion.div>
+    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+      {/* Premium Background */}
+      <div className="absolute inset-0 opacity-25">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#FE9100]/12 via-transparent to-[#a34e00]/12" />
+        <div className="absolute inset-0" style={{
+          backgroundImage: `radial-gradient(circle at 25% 25%, rgba(254, 145, 0, 0.1) 0%, transparent 50%),
+                           radial-gradient(circle at 75% 75%, rgba(233, 215, 196, 0.08) 0%, transparent 50%),
+                           radial-gradient(circle at 50% 50%, rgba(163, 78, 0, 0.06) 0%, transparent 65%)`
+        }} />
+        <div className="absolute inset-0 opacity-15" style={{
+          backgroundImage: "radial-gradient(#444 1px, transparent 1px)",
+          backgroundSize: "25px 25px"
+        }} />
+      </div>
 
-              {/* Animated Logo/Icon */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="w-20 h-20 bg-gradient-to-br from-primary to-primary/60 rounded-full flex items-center justify-center mx-auto mb-8"
-              >
-                <Bot className="w-10 h-10 text-white" />
-              </motion.div>
-            </div>
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-              {stats.map((stat, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.3 + index * 0.1 }}
-                  className="text-center p-4 bg-card/30 rounded-lg border border-border/50"
-                >
-                  <div className="text-3xl font-orbitron font-bold text-primary mb-2">
-                    {stat.value}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {stat.label}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Features Showcase */}
-            <div className="mb-12">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.5 }}
-                className="text-center mb-8"
-              >
-                <h2 className="text-2xl font-orbitron font-semibold mb-4">
-                  <GradientText>Powerful Features</GradientText>
-                </h2>
-                <p className="text-muted-foreground">
-                  Everything you need to transform your sales process
-                </p>
-              </motion.div>
-
-              {/* Feature Cards */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {features.map((feature, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, x: index % 2 === 0 ? -50 : 50 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.6, delay: feature.delay }}
-                    className={`p-6 rounded-lg border transition-all duration-300 ${
-                      currentFeature === index 
-                        ? 'bg-primary/5 border-primary/20 shadow-lg' 
-                        : 'bg-card/30 border-border/50 hover:border-primary/20'
-                    }`}
-                  >
-                    <div className="flex items-start space-x-4">
-                      <div className={`p-3 rounded-lg transition-colors ${
-                        currentFeature === index 
-                          ? 'bg-primary/10 text-primary' 
-                          : 'bg-card text-muted-foreground'
-                      }`}>
-                        {feature.icon}
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-lg font-orbitron font-semibold mb-1">
-                          {feature.title}
-                        </h3>
-                        <p className="text-sm text-primary mb-2">
-                          {feature.subtitle}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {feature.description}
-                        </p>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-
-            {/* CTA Section */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.8 }}
-              className="text-center space-y-6"
+      <div className="relative z-10 w-full max-w-5xl mx-auto px-6 py-20 md:py-32">
+        {/* Hero Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, ease: [0.25, 0.8, 0.25, 1] }}
+          className="text-center mb-20"
+        >
+          {/* Main Title */}
+          <motion.h1
+            className="text-6xl md:text-7xl font-black mb-8 tracking-tight"
+            style={{ fontFamily: 'Orbitron, sans-serif' }}
+            initial={{ scale: 0.9 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.8, ease: [0.25, 0.8, 0.25, 1] }}
+          >
+            <motion.span
+              className="inline-block relative"
+              style={{
+                background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
+                backgroundSize: '300% 100%',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                filter: 'drop-shadow(0 0 40px rgba(254, 145, 0, 0.3))'
+              }}
+              animate={{
+                backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+              }}
+              transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
             >
-              <div className="space-y-2">
-                <h3 className="text-xl font-orbitron font-semibold">
-                  Ready to get started?
-                </h3>
-                <p className="text-muted-foreground">
-                  Begin your journey with ARAS AI and transform your sales process today.
-                </p>
-              </div>
+              Willkommen bei ARAS AI
+              <motion.div
+                className="absolute -inset-8 blur-[60px] opacity-20"
+                style={{
+                  background: 'radial-gradient(circle, #FE9100 0%, #a34e00 50%, transparent 70%)',
+                  zIndex: -1
+                }}
+                animate={{
+                  opacity: [0.15, 0.35, 0.15],
+                  scale: [0.95, 1.05, 0.95]
+                }}
+                transition={{ duration: 4, repeat: Infinity }}
+              />
+            </motion.span>
+          </motion.h1>
 
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link href="/login">
-                  <GlowButton className="sm:w-auto w-full">
-                    <span className="flex items-center space-x-2">
-                      <span>Jetzt einloggen</span>
-                      <ArrowRight className="w-4 h-4" />
+          {/* Subtitle */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4, duration: 0.8 }}
+            className="space-y-6 text-lg md:text-xl text-gray-300 leading-relaxed max-w-3xl mx-auto"
+          >
+            <p className="text-2xl font-semibold" style={{ fontFamily: 'Orbitron, sans-serif', color: '#e9d7c4' }}>
+              Du bist jetzt Teil der Alpha-Generation.
+            </p>
+            <p>
+              Nur ein kleiner Kreis ausgewählter Nutzer erhält Zugang zu dieser Phase. 
+              Dein Account ist aktiviert — und ab jetzt formst du aktiv mit, wie die menschlichste 
+              KI-Stimme der Welt entsteht.
+            </p>
+          </motion.div>
+        </motion.div>
+
+        {/* What You Can Do Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.6 }}
+          className="mb-20"
+        >
+          <h2 
+            className="text-3xl md:text-4xl font-black mb-12 text-center"
+            style={{ fontFamily: 'Orbitron, sans-serif', color: '#FE9100' }}
+          >
+            Was du jetzt tun kannst
+          </h2>
+
+          {/* Steps Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {steps.map((step, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.8 + index * 0.15 }}
+                className="relative group"
+              >
+                {/* Animated Border */}
+                <motion.div
+                  className="absolute -inset-[2px] rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{
+                    background: activeStep === index 
+                      ? 'linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00)'
+                      : 'linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00)',
+                    backgroundSize: '200% 200%',
+                    filter: 'blur(8px)'
+                  }}
+                  animate={activeStep === index ? {
+                    backgroundPosition: ['0% 0%', '100% 100%', '0% 0%']
+                  } : {}}
+                  transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                />
+
+                {/* Card */}
+                <div
+                  className={`relative h-full p-8 rounded-2xl transition-all duration-500 ${
+                    activeStep === index
+                      ? 'bg-gradient-to-br from-[#FE9100]/10 to-[#a34e00]/10'
+                      : 'bg-black/60'
+                  }`}
+                  style={{
+                    backdropFilter: 'blur(20px)',
+                    border: activeStep === index 
+                      ? '1px solid rgba(254, 145, 0, 0.3)' 
+                      : '1px solid rgba(255, 255, 255, 0.1)'
+                  }}
+                >
+                  {/* Number Badge */}
+                  <motion.div
+                    className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-6"
+                    style={{
+                      background: activeStep === index
+                        ? 'linear-gradient(135deg, #e9d7c4, #FE9100)'
+                        : 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)'
+                    }}
+                    animate={activeStep === index ? {
+                      boxShadow: [
+                        '0 0 20px rgba(254, 145, 0, 0.3)',
+                        '0 0 40px rgba(254, 145, 0, 0.5)',
+                        '0 0 20px rgba(254, 145, 0, 0.3)'
+                      ]
+                    } : {}}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    <span 
+                      className="text-2xl font-black"
+                      style={{ 
+                        fontFamily: 'Orbitron, sans-serif',
+                        color: activeStep === index ? '#000000' : '#e9d7c4'
+                      }}
+                    >
+                      {step.number}
                     </span>
-                  </GlowButton>
-                </Link>
-              </div>
+                  </motion.div>
 
-              <div className="pt-6 border-t border-border/50">
-                <p className="text-sm text-muted-foreground">
-                  No credit card required • Free trial available • Enterprise support
+                  {/* Icon */}
+                  <div className="mb-4" style={{ color: activeStep === index ? '#FE9100' : '#888' }}>
+                    {step.icon}
+                  </div>
+
+                  {/* Title */}
+                  <h3 
+                    className="text-xl font-bold mb-4 leading-tight"
+                    style={{ 
+                      fontFamily: 'Orbitron, sans-serif',
+                      color: activeStep === index ? '#e9d7c4' : '#ffffff'
+                    }}
+                  >
+                    {step.title}
+                  </h3>
+
+                  {/* Description */}
+                  <p className="text-sm text-gray-400 leading-relaxed">
+                    {step.description}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Alpha Info Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 1.2 }}
+          className="mb-16"
+        >
+          <div className="relative">
+            <motion.div
+              className="absolute -inset-[2px] rounded-3xl opacity-40"
+              style={{
+                background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
+                backgroundSize: '300% 100%',
+                filter: 'blur(15px)'
+              }}
+              animate={{
+                backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+              }}
+              transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
+            />
+            
+            <div
+              className="relative p-10 md:p-12 rounded-3xl text-center"
+              style={{
+                background: 'rgba(0, 0, 0, 0.7)',
+                backdropFilter: 'blur(30px)',
+                border: '1px solid rgba(255, 255, 255, 0.1)'
+              }}
+            >
+              <h3 
+                className="text-2xl md:text-3xl font-black mb-6"
+                style={{ fontFamily: 'Orbitron, sans-serif', color: '#FE9100' }}
+              >
+                Alpha bedeutet: echtes Produkt – nicht perfekt.
+              </h3>
+              
+              <div className="space-y-4 text-base md:text-lg text-gray-300 leading-relaxed max-w-3xl mx-auto mb-8">
+                <p>
+                  Alles, was du hier siehst, ist live in Entwicklung. Updates können täglich erscheinen. 
+                  Funktionen können sich verändern. Wir optimieren mit dir — und für dich.
                 </p>
               </div>
+
+              {/* Launch Date Badge */}
+              <motion.div
+                className="inline-flex items-center gap-3 px-8 py-4 rounded-full"
+                style={{
+                  background: 'linear-gradient(135deg, #e9d7c4, #FE9100)',
+                  boxShadow: '0 10px 40px rgba(254, 145, 0, 0.3)'
+                }}
+                animate={{
+                  boxShadow: [
+                    '0 10px 40px rgba(254, 145, 0, 0.3)',
+                    '0 15px 50px rgba(254, 145, 0, 0.5)',
+                    '0 10px 40px rgba(254, 145, 0, 0.3)'
+                  ]
+                }}
+                transition={{ duration: 3, repeat: Infinity }}
+              >
+                <CheckCircle className="w-6 h-6 text-black" />
+                <div className="text-left">
+                  <p className="text-xs font-semibold text-black/70 uppercase tracking-wider">
+                    Offizieller Launch
+                  </p>
+                  <p className="text-2xl font-black text-black" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                    01.01.2026
+                  </p>
+                </div>
+              </motion.div>
+
+              <p className="text-sm text-gray-400 mt-6">
+                Du gehörst zu den Ersten, die ARAS testen. Zum offiziellen Launch erhältst du besondere Vorteile, 
+                exklusive Early-Access-Features und einen reduzierten Einstiegspreis.
+              </p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* CTA Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 1.4 }}
+          className="text-center"
+        >
+          <div className="mb-8">
+            <h3 
+              className="text-3xl md:text-4xl font-black mb-3"
+              style={{ fontFamily: 'Orbitron, sans-serif', color: '#e9d7c4' }}
+            >
+              Bereit? Dann starten wir.
+            </h3>
+            <p className="text-xl text-gray-400" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+              Deine Reise beginnt jetzt.
+            </p>
+          </div>
+
+          {/* Main CTA Button */}
+          <Link href="/app/space">
+            <motion.div className="relative inline-block">
+              <motion.div
+                className="absolute -inset-[3px] rounded-full opacity-60"
+                style={{
+                  background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
+                  backgroundSize: '300% 100%',
+                  filter: 'blur(15px)'
+                }}
+                animate={{
+                  backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
+                  opacity: [0.5, 0.8, 0.5]
+                }}
+                transition={{
+                  backgroundPosition: { duration: 4, repeat: Infinity, ease: 'linear' },
+                  opacity: { duration: 2, repeat: Infinity }
+                }}
+              />
+              
+              <motion.button
+                whileHover={{ scale: 1.05, y: -3 }}
+                whileTap={{ scale: 0.95 }}
+                className="relative px-12 py-5 rounded-full font-black text-xl tracking-wide overflow-hidden"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00)',
+                  color: '#000000',
+                  boxShadow: '0 20px 60px rgba(254, 145, 0, 0.4)'
+                }}
+              >
+                <motion.div
+                  className="absolute inset-0"
+                  style={{
+                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)'
+                  }}
+                  animate={{
+                    x: ['-100%', '100%']
+                  }}
+                  transition={{
+                    duration: 2.5,
+                    repeat: Infinity,
+                    ease: 'linear'
+                  }}
+                />
+                <span className="relative flex items-center gap-3">
+                  Zur ARAS Konsole
+                  <ArrowRight className="w-6 h-6" />
+                </span>
+              </motion.button>
             </motion.div>
-          </CardContent>
-        </Card>
-      </motion.div>
+          </Link>
+        </motion.div>
+      </div>
+
+      {/* Load Orbitron Font */}
+      <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
     </div>
   );
 }
