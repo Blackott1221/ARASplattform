@@ -954,34 +954,6 @@ export default function AuthPage() {
             </div>
           </div>
         </motion.div>
-
-        {/* Info Section Below Auth Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.2, duration: 0.8 }}
-          className="max-w-4xl mx-auto mb-16"
-        >
-          <div className="text-xs text-gray-500 space-y-2">
-            <p>Entwickelt von der Schwarzott Group</p>
-            <p>Alpha-Phase • Launch: 01.01.2026</p>
-            <motion.div className="mt-4">
-              <a
-                href="https://schwarzott.group"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-6 py-2 rounded-full text-xs font-medium transition-all hover:opacity-80"
-                style={{
-                  background: 'linear-gradient(135deg, #e9d7c4, #FE9100)',
-                  color: '#000000'
-                }}
-              >
-                <span>Kein Zugang? Hier bewerben</span>
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            </motion.div>
-          </div>
-        </motion.div>
       </div>
     </div>
   );
