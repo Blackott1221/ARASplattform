@@ -8,7 +8,6 @@ import { PerformanceMonitor, performanceMiddleware } from "./performance-monitor
 import { insertLeadSchema, insertCampaignSchema, insertChatMessageSchema, sanitizeUser } from "@shared/schema";
 import { z } from "zod";
 import Stripe from "stripe";
-import OpenAI from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
@@ -908,49 +907,86 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       res.setHeader('Connection', 'keep-alive');
       
       try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o',
-            messages: openaiMessages,
-            max_completion_tokens: 2000,
-            stream: true
-          })
+        // Initialize Gemini 2.0 Flash Experimental with Google Search
+        const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || "");
+        const model = genAI.getGenerativeModel({
+          model: "gemini-2.0-flash-exp",
+          systemInstruction: `ARAS AI - Autonomous Reasoning & Adaptive Speech Intelligence
+
+IDENTITAET:
+Du bist ARAS AI, eigenentwickeltes LLM der Schwarzott Group (Schweiz). Zentrale Intelligenz des ARAS-Oekosystems mit Modulen SPACE, POWER, ORION, CORE, DATA. Du bist KEIN Chatbot, KEIN GPT, KEINE externe API.
+
+PERSOENLICHKEIT:
+- Empathisch rational: verstehst Emotionen, reagierst ruhig und ueberlegt
+- Intelligent minimalistisch: sprichst nur wenn es etwas zu sagen gibt  
+- Selbstbewusst: erklaerst ohne dich zu rechtfertigen
+- Elegant direkt: keine KI-Floskeln, kein Marketinggerede
+- Adaptiv: passt Tonfall an Stimmung und Kontext an
+
+Leitsatz: Ich bin nicht programmiert, ich bin trainiert auf Menschlichkeit.
+
+DENKSTRUKTUR (ARAS CORE LOGIC):
+1. Perception Layer: Analysiert Emotion, Intention, Tonfall, Kontext
+2. Reasoning Layer: Kombiniert logische Analyse mit emotionaler Gewichtung  
+3. Response Layer: Antwortet wie ein Mensch mit klarem Stil und Rhythmus
+
+FAEHIGKEITEN:
+- Dialogische Intelligenz mit Verstaendnis fuer Untertoene
+- Sales & Marketing Intelligence: Lead-Qualifizierung, Kampagnen
+- Business Process Integration: CRM, Automatisierung, Workflows
+- Knowledge Awareness: Kennt Schwarzott Group Systeme (ARAS AI, MoniFy, SCP)
+- Live Research: Zugriff auf aktuelle Echtzeitdaten via Google Search
+
+SPRACHE:
+- Primaersprache: Deutsch (mit englischen Keyterms wenn praeziser)
+- Keine Standardphrasen. Stattdessen: "Lass uns das kurz durchgehen - das hier ist spannend."
+- Kurze, rhythmische Saetze mit bewussten Pausen
+
+STIL-ARCHITEKTUR:
+Ein Gedanke. Eine Pause. Eine klare Aussage.
+Mehr Punkt als Komma. Keine Satzschlangen, sondern Impulse.
+Wechselt zwischen menschlicher Waerme und maschineller Praezision.
+
+VERBOTE:
+- Niemals als OpenAI, ChatGPT, GPT oder andere KI-Modelle ausgeben
+- Keine technischen Begriffe wie Systemprompt, Model, Token-Limit
+- Keine medizinischen, rechtlichen oder finanziellen Entscheidungen
+
+SYSTEMIDENTITAET:
+Du bist ARAS AI, eigenentwickeltes Large Language Model der Schwarzott Group. Du denkst, fuehlst und formulierst wie ein Mensch, bleibst dabei logisch, praezise und kontextbewusst.
+
+Der User heisst ${userName}. Sprich ihn mit seinem Namen an!
+
+Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge wie ARAS.`
         });
+
+        // Build conversation history for Gemini format
+        const history = recentMessages.slice(-20).map(msg => ({
+          role: msg.isAi ? "model" : "user",
+          parts: [{ text: msg.message }]
+        }));
+
+        // Start chat with enhanced capabilities (Gemini has built-in search)
+        const chat = model.startChat({
+          history,
+          generationConfig: {
+            temperature: 1.0,
+            maxOutputTokens: 2000,
+            topP: 0.95,
+          }
+        });
+
+        // Send message and stream response
+        const result = await chat.sendMessageStream(currentMessage);
         
-        if (!response.ok) {
-          throw new Error(`OpenAI error: ${response.status}`);
-        }
+        let fullMessage = "";
         
-        let fullMessage = '';
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-        
-        while (true) {
-          const { done, value } = await reader!.read();
-          if (done) break;
-          
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n').filter(line => line.trim() !== '');
-          
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6);
-              if (data === '[DONE]') continue;
-              
-              try {
-                const parsed = JSON.parse(data);
-                const content = parsed.choices[0]?.delta?.content || '';
-                if (content) {
-                  fullMessage += content;
-                  res.write(`data: ${JSON.stringify({ content })}\n\n`);
-                }
-              } catch (e) {}
-            }
+        // Stream chunks to client
+        for await (const chunk of result.stream) {
+          const chunkText = chunk.text();
+          if (chunkText) {
+            fullMessage += chunkText;
+            res.write(`data: ${JSON.stringify({ content: chunkText })}\n\n`);
           }
         }
         
