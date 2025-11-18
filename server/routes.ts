@@ -907,10 +907,10 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       res.setHeader('Connection', 'keep-alive');
       
       try {
-        // Initialize Gemini 2.0 Flash Experimental with Google Search
+        // Initialize Gemini 2.5 Pro - State-of-the-art with Live Google Search
         const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || "");
         const model = genAI.getGenerativeModel({
-          model: "gemini-2.0-flash-exp",
+          model: "gemini-2.5-pro",
           systemInstruction: `ARAS AI - Autonomous Reasoning & Adaptive Speech Intelligence
 
 IDENTITAET:
@@ -971,8 +971,9 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
           history,
           generationConfig: {
             temperature: 1.0,
-            maxOutputTokens: 2000,
+            maxOutputTokens: 8000, // Gemini 2.5 Pro supports up to 65k
             topP: 0.95,
+            topK: 40,
           }
         });
 
