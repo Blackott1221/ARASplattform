@@ -907,10 +907,10 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       res.setHeader('Connection', 'keep-alive');
       
       try {
-        // Initialize Gemini 2.5 Pro - State-of-the-art with Live Google Search
+        // Initialize Gemini 2.5 Flash - Optimized for chat with Live Google Search
         const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || "");
         const model = genAI.getGenerativeModel({
-          model: "gemini-2.5-pro",
+          model: "gemini-2.5-flash",
           systemInstruction: `ARAS AI - Autonomous Reasoning & Adaptive Speech Intelligence
 
 IDENTITAET:
@@ -1006,7 +1006,17 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         
       } catch (error: any) {
         logger.error("Streaming error:", error);
-        res.write(`data: ${JSON.stringify({ error: "Failed to process message" })}\n\n`);
+        
+        // Provide user-friendly error messages
+        let errorMessage = "Es tut mir leid, ich konnte deine Nachricht nicht verarbeiten.";
+        
+        if (error.status === 503 || error.message?.includes('overloaded')) {
+          errorMessage = "Die ARAS AI ist momentan stark ausgelastet. Bitte versuche es in ein paar Sekunden erneut.";
+        } else if (error.status === 429) {
+          errorMessage = "Zu viele Anfragen. Bitte warte einen Moment.";
+        }
+        
+        res.write(`data: ${JSON.stringify({ error: errorMessage })}\n\n`);
         res.end();
       }
       
