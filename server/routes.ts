@@ -971,7 +971,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
           parts: [{ text: msg.message }]
         }));
 
-        // Start chat with Live Google Search enabled
+        // Start chat with optimized generation config
         const chat = model.startChat({
           history,
           generationConfig: {
@@ -980,9 +980,6 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
             topP: 0.95,
             topK: 40,
           },
-          tools: [{
-            googleSearch: {}, // Enable live Google Search
-          }],
         });
 
         // Send message and stream response

@@ -245,6 +245,10 @@ export function ChatInterface() {
       setIsThinking(false);
       setIsStreaming(false);
       setStreamingMessage('');
+      
+      // Clear optimistic messages after streaming is complete
+      setOptimisticMessages([]);
+      
       return { sessionId };
     },
     onMutate: async (newMessage) => {
@@ -252,11 +256,10 @@ export function ChatInterface() {
       setOptimisticMessages(prev => [...prev, optimisticMsg]);
     },
     onSuccess: (data) => {
-      setOptimisticMessages([]);
       if (data?.sessionId) setCurrentSessionId(data.sessionId);
       setUploadedFiles([]);
       
-      // Refresh all usage-related data
+      // Refresh all usage-related data (optimistic messages already cleared in mutationFn)
       queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/subscription"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/usage"] });
@@ -784,7 +787,7 @@ export function ChatInterface() {
       </div>
 
       {hasMessages && (
-        <div className="px-4 pt-4 pb-6 border-t border-white/5">
+        <div className="px-4 pt-4 pb-8 border-t border-white/5 bg-[#0a0a0a]">
           {uploadedFiles.length > 0 && (
             <div className="mb-3 space-y-2 max-w-4xl mx-auto">
               {uploadedFiles.map((file, index) => (
@@ -847,7 +850,7 @@ export function ChatInterface() {
             </Button>
           </div>
 
-          <div className="mt-3 mb-1 flex items-center justify-center gap-2 text-xs text-gray-600">
+          <div className="mt-4 mb-2 flex items-center justify-center gap-2 text-xs text-gray-500">
             <AlertCircle className="w-3 h-3 flex-shrink-0" />
             <p>ARAS AI ® kann Fehler machen. Bitte überprüfe daher jede Nachricht genauestens!</p>
           </div>
