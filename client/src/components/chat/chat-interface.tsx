@@ -44,6 +44,7 @@ export function ChatInterface() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState("");
   const [isThinking, setIsThinking] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   
   // ✅ NEUER ANSATZ: Wir animieren einfach die LETZTE AI-Message wenn gerade Response kam
   const [shouldAnimateLastAiMessage, setShouldAnimateLastAiMessage] = useState(false);
@@ -269,6 +270,7 @@ export function ChatInterface() {
       setIsThinking(false);
       setIsStreaming(false);
       setStreamingMessage('');
+      setIsSyncing(false);
       
       // Don't show generic error if it's a limit error (already shown)
       if (!error.message.includes('Limit') && !error.message.includes('limit')) {
