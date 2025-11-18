@@ -194,6 +194,19 @@ export function ChatInterface() {
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6));
+              
+              // Handle error messages from backend
+              if (data.error) {
+                setIsStreaming(false);
+                setStreamingMessage('');
+                toast({
+                  title: "ARAS AI Antwort",
+                  description: data.error,
+                  variant: "default",
+                });
+                throw new Error(data.error);
+              }
+              
               if (data.content) {
                 fullMessage += data.content;
                 setStreamingMessage(fullMessage);
@@ -201,7 +214,14 @@ export function ChatInterface() {
               if (data.done && data.sessionId) {
                 sessionId = data.sessionId;
               }
-            } catch (e) {}
+            } catch (e) {
+              // Only log parsing errors, not throw
+              if (e instanceof SyntaxError) {
+                console.debug('JSON parse error (expected for chunked data):', e);
+              } else {
+                throw e; // Re-throw other errors
+              }
+            }
           }
         }
       }
@@ -294,7 +314,17 @@ export function ChatInterface() {
     if ((!messageToSend.trim() && uploadedFiles.length === 0) || sendMessage.isPending) return;
     const userMessage = messageToSend || "Analysiere die hochgeladenen Dateien";
     setMessage("");
-    try { await sendMessage.mutateAsync(userMessage); } catch (error) { console.error('Error sending message:', error); }
+    
+    // Clear textarea height
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
+    
+    try { 
+      await sendMessage.mutateAsync(userMessage); 
+    } catch (error) { 
+      console.error('Error sending message:', error); 
+    }
   };
 
   const startRecording = async () => {
@@ -347,7 +377,7 @@ export function ChatInterface() {
     }
   };
 
-  useEffect(() => { scrollToBottom(); }, [messages, optimisticMessages]);
+  useEffect(() => { scrollToBottom(); }, [messages, optimisticMessages, streamingMessage]);
 
   const getFileIcon = (type: string) => {
     if (type.includes('image')) return <ImageIcon className="w-4 h-4" />;
@@ -659,27 +689,34 @@ export function ChatInterface() {
               })}
             </AnimatePresence>
 
+            {/* Loading dots while waiting for first chunk */}
             {sendMessage.isPending && !isStreaming && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-4">
                 <img src={arasAiImage} alt="ARAS AI" className="w-8 h-8 rounded-full" />
                 <div className="flex space-x-1.5">
-
-            {isStreaming && streamingMessage && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-start gap-4">
-                <img src={arasAiImage} alt="ARAS AI" className="w-8 h-8 rounded-full" />
-                <div className="flex-1 bg-white/5 rounded-lg p-4 text-white whitespace-pre-wrap">
-                  {streamingMessage}
-                  <motion.span
-                    animate={{ opacity: [1, 0] }}
-                    transition={{ duration: 0.8, repeat: Infinity }}
-                    className="inline-block w-[2px] h-[18px] bg-[#FE9100] ml-1 align-middle"
-                  />
-                </div>
-              </motion.div>
-            )}
                   {[0, 0.2, 0.4].map((delay, i) => (
                     <motion.div key={i} className="w-2 h-2 bg-[#FE9100] rounded-full" animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.5, repeat: Infinity, delay }} />
                   ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* Streaming message with typewriter cursor */}
+            {isStreaming && streamingMessage && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }} 
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="flex items-start gap-4"
+              >
+                <img src={arasAiImage} alt="ARAS AI" className="w-8 h-8 rounded-full flex-shrink-0" />
+                <div className="flex-1 bg-white/5 rounded-lg p-4 text-white whitespace-pre-wrap break-words">
+                  {streamingMessage}
+                  <motion.span
+                    animate={{ opacity: [1, 0, 1] }}
+                    transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut" }}
+                    className="inline-block w-[2px] h-[18px] bg-[#FE9100] ml-1 align-middle"
+                  />
                 </div>
               </motion.div>
             )}
