@@ -683,7 +683,7 @@ export function ChatInterface() {
           </div>
         ) : (
           <div className="max-w-4xl mx-auto">
-            <AnimatePresence>
+            <AnimatePresence initial={false}>
               {allMessages.map((msg, index) => {
                 const isOptimistic = 'isOptimistic' in msg && msg.isOptimistic;
                 
@@ -698,11 +698,8 @@ export function ChatInterface() {
                 return (
                   <motion.div
                     key={isOptimistic ? msg.id : `msg-${msg.id}`}
-                    layout
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.2, layout: { duration: 0.2 } }}
+                    initial={false}
+                    animate={{ opacity: 1 }}
                   >
                     <MessageBubble
                       message={msg.message}
