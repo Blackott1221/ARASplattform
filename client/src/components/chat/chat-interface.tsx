@@ -695,17 +695,25 @@ export function ChatInterface() {
                                        msg.id === lastAiMessage.id;
                 
                 return (
-                  <MessageBubble
+                  <motion.div
                     key={isOptimistic ? msg.id : `msg-${msg.id}`}
-                    message={msg.message}
-                    isAi={msg.isAi || false}
-                    timestamp={msg.timestamp ? new Date(msg.timestamp) : new Date()}
-                    messageId={msg.id.toString()}
-                    onReaction={() => {}}
-                    onSpeak={() => {}}
-                    isSpeaking={false}
-                    isNew={!!isNewAiMessage}
-                  />
+                    layout
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.2, layout: { duration: 0.2 } }}
+                  >
+                    <MessageBubble
+                      message={msg.message}
+                      isAi={msg.isAi || false}
+                      timestamp={msg.timestamp ? new Date(msg.timestamp) : new Date()}
+                      messageId={msg.id.toString()}
+                      onReaction={() => {}}
+                      onSpeak={() => {}}
+                      isSpeaking={false}
+                      isNew={!!isNewAiMessage}
+                    />
+                  </motion.div>
                 );
               })}
             </AnimatePresence>
