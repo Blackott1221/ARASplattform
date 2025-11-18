@@ -245,9 +245,40 @@ export function ChatInterface() {
 
       setIsThinking(false);
       setIsStreaming(false);
-      setStreamingMessage('');
       
-      // DON'T clear optimistic messages here - wait for onSuccess to avoid reload flash
+      // CRITICAL: Add streamed message directly to cache to prevent flash
+      if (fullMessage && sessionId) {
+        const currentMessages = queryClient.getQueryData<any[]>(["/api/chat/messages"]) || [];
+        
+        // Add user message and AI response directly to cache
+        const updatedMessages = [
+          ...currentMessages,
+          // User message (from optimistic)
+          {
+            id: Date.now(),
+            sessionId,
+            userId: user?.id,
+            message: messageData.message,
+            isAi: false,
+            timestamp: new Date().toISOString()
+          },
+          // AI response (from streaming)
+          {
+            id: Date.now() + 1,
+            sessionId,
+            userId: user?.id,
+            message: fullMessage,
+            isAi: true,
+            timestamp: new Date().toISOString()
+          }
+        ];
+        
+        // Update cache directly - no refetch needed!
+        queryClient.setQueryData(["/api/chat/messages"], updatedMessages);
+      }
+      
+      setStreamingMessage('');
+      setOptimisticMessages([]);
       
       return { sessionId };
     },
