@@ -906,6 +906,11 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
       
+      // ⚡ INSTANT FEEDBACK: Send "thinking" signal immediately
+      res.write(`data: ${JSON.stringify({ thinking: true })}
+
+`);
+      
       try {
         // Initialize Gemini 2.5 Flash - Optimized for chat with Live Google Search
         const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || "");
@@ -966,15 +971,18 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
           parts: [{ text: msg.message }]
         }));
 
-        // Start chat with enhanced capabilities (Gemini has built-in search)
+        // Start chat with Live Google Search enabled
         const chat = model.startChat({
           history,
           generationConfig: {
             temperature: 1.0,
-            maxOutputTokens: 8000, // Gemini 2.5 Pro supports up to 65k
+            maxOutputTokens: 8000,
             topP: 0.95,
             topK: 40,
-          }
+          },
+          tools: [{
+            googleSearch: {}, // Enable live Google Search
+          }],
         });
 
         // Send message and stream response

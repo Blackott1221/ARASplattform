@@ -43,6 +43,7 @@ export function ChatInterface() {
   const [optimisticMessages, setOptimisticMessages] = useState<OptimisticMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState("");
+  const [isThinking, setIsThinking] = useState(false);
   
   // ✅ NEUER ANSATZ: Wir animieren einfach die LETZTE AI-Message wenn gerade Response kam
   const [shouldAnimateLastAiMessage, setShouldAnimateLastAiMessage] = useState(false);
@@ -135,7 +136,8 @@ export function ChatInterface() {
         messageData.message = `${message}\n\n[WICHTIG: Analysiere die hochgeladenen Dateien: ${uploadedFiles.map(f => f.name).join(', ')}]`;
       }
 
-      setIsStreaming(true);
+      setIsThinking(true);
+      setIsStreaming(false);
       setStreamingMessage('');
 
       const response = await fetch('/api/chat/messages', {
@@ -182,6 +184,7 @@ export function ChatInterface() {
       const decoder = new TextDecoder();
       let fullMessage = '';
       let sessionId = currentSessionId;
+      let hasStartedStreaming = false; // Track if we've started streaming
 
       while (true) {
         const { done, value } = await reader!.read();
@@ -195,8 +198,15 @@ export function ChatInterface() {
             try {
               const data = JSON.parse(line.slice(6));
               
+              // Handle thinking signal - instant feedback
+              if (data.thinking) {
+                setIsThinking(true);
+                continue;
+              }
+              
               // Handle error messages from backend
               if (data.error) {
+                setIsThinking(false);
                 setIsStreaming(false);
                 setStreamingMessage('');
                 toast({
@@ -208,6 +218,12 @@ export function ChatInterface() {
               }
               
               if (data.content) {
+                // First content = switch from thinking to streaming
+                if (!hasStartedStreaming) {
+                  hasStartedStreaming = true;
+                  setIsThinking(false);
+                  setIsStreaming(true);
+                }
                 fullMessage += data.content;
                 setStreamingMessage(fullMessage);
               }
@@ -226,6 +242,7 @@ export function ChatInterface() {
         }
       }
 
+      setIsThinking(false);
       setIsStreaming(false);
       setStreamingMessage('');
       return { sessionId };
@@ -247,6 +264,7 @@ export function ChatInterface() {
     },
     onError: (error: Error) => {
       setOptimisticMessages([]);
+      setIsThinking(false);
       setIsStreaming(false);
       setStreamingMessage('');
       
@@ -377,7 +395,7 @@ export function ChatInterface() {
     }
   };
 
-  useEffect(() => { scrollToBottom(); }, [messages, optimisticMessages, streamingMessage]);
+  useEffect(() => { scrollToBottom(); }, [messages, optimisticMessages, streamingMessage, isThinking]);
 
   const getFileIcon = (type: string) => {
     if (type.includes('image')) return <ImageIcon className="w-4 h-4" />;
@@ -689,14 +707,53 @@ export function ChatInterface() {
               })}
             </AnimatePresence>
 
-            {/* Loading dots while waiting for first chunk */}
-            {sendMessage.isPending && !isStreaming && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-4">
-                <img src={arasAiImage} alt="ARAS AI" className="w-8 h-8 rounded-full" />
-                <div className="flex space-x-1.5">
-                  {[0, 0.2, 0.4].map((delay, i) => (
-                    <motion.div key={i} className="w-2 h-2 bg-[#FE9100] rounded-full" animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.5, repeat: Infinity, delay }} />
-                  ))}
+            {/* Elegant "Thinking" animation - shows immediately */}
+            {isThinking && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }} 
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="flex items-start gap-4"
+              >
+                <img src={arasAiImage} alt="ARAS AI" className="w-8 h-8 rounded-full flex-shrink-0" />
+                <div className="flex-1 bg-white/5 rounded-lg px-4 py-3 border border-white/10">
+                  <div className="flex items-center gap-3">
+                    <motion.div
+                      className="text-transparent bg-clip-text font-medium"
+                      style={{
+                        backgroundImage: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
+                        backgroundSize: '200% auto',
+                      }}
+                      animate={{
+                        backgroundPosition: ['0% center', '200% center'],
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: 'linear',
+                      }}
+                    >
+                      ARAS AI denkt gerade nach
+                    </motion.div>
+                    <div className="flex space-x-1">
+                      {[0, 0.15, 0.3].map((delay, i) => (
+                        <motion.div 
+                          key={i} 
+                          className="w-1.5 h-1.5 bg-[#FE9100] rounded-full" 
+                          animate={{ 
+                            scale: [1, 1.3, 1],
+                            opacity: [0.5, 1, 0.5] 
+                          }} 
+                          transition={{ 
+                            duration: 1, 
+                            repeat: Infinity, 
+                            delay,
+                            ease: 'easeInOut'
+                          }} 
+                        />
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             )}
