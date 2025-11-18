@@ -246,8 +246,7 @@ export function ChatInterface() {
       setIsStreaming(false);
       setStreamingMessage('');
       
-      // Clear optimistic messages after streaming is complete
-      setOptimisticMessages([]);
+      // DON'T clear optimistic messages here - wait for onSuccess to avoid reload flash
       
       return { sessionId };
     },
