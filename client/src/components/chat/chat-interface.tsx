@@ -464,7 +464,7 @@ export function ChatInterface() {
         </div>
       )}
 
-      <div ref={messagesContainerRef} className={`flex-1 overflow-y-auto relative z-10 aras-scroll ${!hasMessages ? 'flex items-center justify-center' : 'p-6 space-y-4'}`}>
+      <div ref={messagesContainerRef} className={`flex-1 overflow-y-auto relative z-10 aras-scroll ${!hasMessages ? 'flex items-center justify-center' : 'px-6 py-4 space-y-4'}`}>
         {!hasMessages ? (
           <div className="w-full flex flex-col items-center px-6">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center mb-8 w-full max-w-3xl">
@@ -727,7 +727,7 @@ export function ChatInterface() {
       </div>
 
       {hasMessages && (
-        <div className="p-4 border-t border-white/5">
+        <div className="px-4 pt-4 pb-6 border-t border-white/5">
           {uploadedFiles.length > 0 && (
             <div className="mb-3 space-y-2 max-w-4xl mx-auto">
               {uploadedFiles.map((file, index) => (
@@ -790,8 +790,9 @@ export function ChatInterface() {
             </Button>
           </div>
 
-          <div className="mt-2 text-center text-xs text-gray-700">
-            <p>ARAS AI ® kann Fehler machen. Bitte verlasse Dich nicht auf jede Ausgabe und überprüfe wichtige Informationen</p>
+          <div className="mt-3 mb-1 flex items-center justify-center gap-2 text-xs text-gray-600">
+            <AlertCircle className="w-3 h-3 flex-shrink-0" />
+            <p>ARAS AI ® kann Fehler machen. Bitte überprüfe daher jede Nachricht genauestens!</p>
           </div>
         </div>
       )}
