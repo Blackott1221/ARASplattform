@@ -120,8 +120,8 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
           </div>
         )}
         
-        {/* Navigation Items - More Centered */}
-        <nav className={`flex-1 flex flex-col justify-center ${isCollapsed ? 'px-3' : 'px-4'} -mt-16`}>
+        {/* Navigation Items */}
+        <nav className={`flex flex-col ${isCollapsed ? 'px-3' : 'px-4'} pt-6 pb-4`}>
           <div className="space-y-3">
             {navItems.map((item, index) => {
               const Icon = item.icon;
@@ -236,8 +236,8 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
           </div>
         </nav>
         
-        {/* Logout Button - More Spacing */}
-        <div className={`${isCollapsed ? 'px-3 pb-8' : 'px-4 pb-8'} pt-4`}>
+        {/* Logout Button */}
+        <div className={`${isCollapsed ? 'px-3 pb-6' : 'px-4 pb-6'} mt-auto`}>
           <motion.button
             onClick={async () => {
               try {
