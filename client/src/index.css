@@ -327,10 +327,7 @@ html, body, #root {
   box-sizing: border-box;
 }
 
-/* Content Zoom - Scale down everything except sidebar */
+/* Content Zoom - Use font-size reduction instead of transform */
 .content-zoom {
-  transform: scale(0.85);
-  transform-origin: top left;
-  width: 117.65%; /* 100 / 0.85 to compensate for scaling */
-  height: 117.65%;
+  font-size: 90%; /* 10% smaller text and spacing */
 }
