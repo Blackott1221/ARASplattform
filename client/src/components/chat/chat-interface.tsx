@@ -247,7 +247,8 @@ export function ChatInterface() {
       setIsStreaming(false);
       
       // CRITICAL: Add streamed message directly to cache to prevent flash
-      if (fullMessage && sessionId) {
+      const userId = user && typeof user === 'object' && 'id' in user ? (user as any).id : null;
+      if (fullMessage && sessionId && userId) {
         const currentMessages = queryClient.getQueryData<any[]>(["/api/chat/messages"]) || [];
         
         // Add user message and AI response directly to cache
@@ -257,7 +258,7 @@ export function ChatInterface() {
           {
             id: Date.now(),
             sessionId,
-            userId: user?.id,
+            userId,
             message: messageData.message,
             isAi: false,
             timestamp: new Date().toISOString()
@@ -266,7 +267,7 @@ export function ChatInterface() {
           {
             id: Date.now() + 1,
             sessionId,
-            userId: user?.id,
+            userId,
             message: fullMessage,
             isAi: true,
             timestamp: new Date().toISOString()

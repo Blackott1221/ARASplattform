@@ -9,6 +9,7 @@ import type { User } from "@shared/schema";
 export default function Home() {
   const { user } = useAuth();
   const [activeSection, setActiveSection] = useState("space");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const { data: tokenBalance } = useQuery<{ balance: number }>({
     queryKey: ["/api/user/tokens"],
@@ -36,7 +37,12 @@ export default function Home() {
 
   return (
     <div className="flex h-screen bg-space space-pattern circuit-pattern overflow-hidden">
-      <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
+      <Sidebar 
+        activeSection={activeSection} 
+        onSectionChange={setActiveSection} 
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
       <div className="flex-1 flex flex-col content-zoom">
         <TopBar 
           currentSection={activeSection} 
