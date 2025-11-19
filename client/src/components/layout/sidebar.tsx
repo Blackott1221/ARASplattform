@@ -121,7 +121,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
         )}
         
         {/* Navigation Items */}
-        <nav className={`flex flex-col ${isCollapsed ? 'px-3' : 'px-4'} pt-6 pb-4`}>
+        <nav className={`flex-1 flex flex-col justify-start ${isCollapsed ? 'px-3' : 'px-4'} pt-6`}>
           <div className="space-y-3">
             {navItems.map((item, index) => {
               const Icon = item.icon;
