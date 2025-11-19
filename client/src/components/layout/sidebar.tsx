@@ -10,7 +10,7 @@ import {
   LogOut,
   LayoutDashboard
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import arasLogo from "@/assets/aras_logo_1755067745303.png";
 
 interface SidebarProps {
@@ -22,17 +22,6 @@ interface SidebarProps {
 
 export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, onToggleCollapse }: SidebarProps) {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
-
-  // Auto-collapse after 4 seconds
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (onToggleCollapse && !isCollapsed) {
-        onToggleCollapse();
-      }
-    }, 4000);
-
-    return () => clearTimeout(timer);
-  }, [isCollapsed, onToggleCollapse]);
 
   const navItems = [
     { id: "space", label: "Space", icon: MessageCircle },
