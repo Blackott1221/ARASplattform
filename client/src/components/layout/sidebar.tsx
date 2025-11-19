@@ -237,7 +237,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
         </nav>
         
         {/* Logout Button - Simple & Transparent */}
-        <div className={`${isCollapsed ? 'px-3 py-4' : 'px-4 py-4'} mt-8`}>
+        <div className={`${isCollapsed ? 'px-3 py-2 pt-4' : 'px-4 py-2 pt-4'}`}>
           <motion.button
             onClick={async () => {
               try {
