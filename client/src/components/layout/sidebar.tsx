@@ -236,8 +236,8 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
           </div>
         </nav>
         
-        {/* Logout Button */}
-        <div className={`${isCollapsed ? 'px-3 pb-2' : 'px-4 pb-2'} mt-auto`}>
+        {/* Logout Button - Simple & Transparent */}
+        <div className={`${isCollapsed ? 'px-3 py-4' : 'px-4 py-4'} mt-8`}>
           <motion.button
             onClick={async () => {
               try {
@@ -252,22 +252,24 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
             whileTap={{ scale: 0.98 }}
             onMouseEnter={() => setHoveredItem('logout')}
             onMouseLeave={() => setHoveredItem(null)}
+            style={{ opacity: 0.7 }}
           >
             {/* Button Container */}
             <motion.div
               className={`relative flex ${isCollapsed ? 'justify-center' : 'items-center'} ${isCollapsed ? 'p-2.5' : 'px-3 py-2'} rounded-full transition-all duration-200`}
               style={{
-                background: 'transparent',
+                background: 'rgba(239, 68, 68, 0.05)',
                 border: '1px solid',
                 borderColor: hoveredItem === 'logout'
-                  ? 'rgba(239, 68, 68, 0.3)'
-                  : 'rgba(239, 68, 68, 0.15)'
+                  ? 'rgba(239, 68, 68, 0.4)'
+                  : 'rgba(239, 68, 68, 0.2)',
+                opacity: hoveredItem === 'logout' ? 1 : 0.8
               }}
             >
               <LogOut 
                 className={`${isCollapsed ? 'w-5 h-5' : 'w-4 h-4'} transition-all`}
                 style={{
-                  color: hoveredItem === 'logout' ? '#ef4444' : '#9b5a5a'
+                  color: hoveredItem === 'logout' ? '#ef4444' : '#dc2626'
                 }}
               />
               

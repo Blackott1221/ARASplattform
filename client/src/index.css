@@ -327,7 +327,15 @@ html, body, #root {
   box-sizing: border-box;
 }
 
-/* Content Zoom - Use font-size reduction instead of transform */
+/* Content Zoom - Use CSS zoom property for proper scaling */
 .content-zoom {
-  font-size: 90%; /* 10% smaller text and spacing */
+  zoom: 0.8; /* 20% smaller - works in all browsers, preserves scrolling */
+}
+
+/* Firefox doesn't support zoom, use transform instead */
+@-moz-document url-prefix() {
+  .content-zoom {
+    transform: scale(0.8);
+    transform-origin: 0 0;
+  }
 }
