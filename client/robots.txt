@@ -1,0 +1,13 @@
+# robots.txt for ARAS AI Platform
+
+User-agent: *
+Allow: /
+Allow: /auth
+Allow: /app
+
+# Disallow admin and API routes
+Disallow: /api/
+Disallow: /admin/
+
+# Sitemap
+Sitemap: https://platform.aras.ai/sitemap.xml
