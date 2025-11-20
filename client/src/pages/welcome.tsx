@@ -482,288 +482,134 @@ export default function Welcome() {
         </motion.div>
 
 
-        {/* Recent Updates Timeline Section */}
+        {/* Recent Updates - Clean Glass Design */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 1.6 }}
-          className="mb-16"
+          className="mb-20"
         >
           <h2 
-            className="text-3xl md:text-4xl font-black mb-4 text-center"
+            className="text-3xl md:text-4xl font-black mb-3 text-center"
             style={{ fontFamily: 'Orbitron, sans-serif', color: '#FE9100' }}
           >
             Was ist neu in ARAS AI?
           </h2>
-          <p className="text-center text-gray-400 mb-12 max-w-2xl mx-auto">
-            Wir entwickeln täglich neue Features. Hier sind die neuesten Updates aus der Alpha-Phase.
+          <p className="text-center text-gray-400 mb-12 text-sm">
+            Täglich neue Features. Live in der Alpha-Phase.
           </p>
 
-          {/* Two Column Timeline Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-6xl mx-auto">
-            {/* Left Timeline */}
-            <div className="space-y-4">
-              {[
-                {
-                  title: "Premium Auth-Design",
-                  description: "Komplett überarbeitete Login/Registrierung mit animierten Gradienten und Glassmorphism",
-                  date: "14. November 2025",
-                  icon: <Sparkles className="w-5 h-5" />,
-                  delay: 1.8
-                },
-                {
-                  title: "ElevenLabs Integration",
-                  description: "Ultra-realistische AI-Stimme für natürliche Telefongespräche",
-                  date: "13. November 2025",
-                  icon: <Phone className="w-5 h-5" />,
-                  delay: 2.0
-                },
-                {
-                  title: "Audio-Aufzeichnung",
-                  description: "Alle Anrufe werden aufgezeichnet und können heruntergeladen werden",
-                  date: "12. November 2025",
-                  icon: <Sparkles className="w-5 h-5" />,
-                  delay: 2.2
-                },
-                {
-                  title: "Live-Transkripte",
-                  description: "Gespräche werden in Echtzeit transkribiert und analysiert",
-                  date: "12. November 2025",
-                  icon: <MessageSquare className="w-5 h-5" />,
-                  delay: 2.4
-                },
-                {
-                  title: "Power Page Redesign",
-                  description: "Moderne UI mit animierten Status-Indikatoren und Call-Timer",
-                  date: "10. November 2025",
-                  icon: <Sparkles className="w-5 h-5" />,
-                  delay: 2.6
-                }
-              ].map((update, index) => (
+          {/* Clean Update Cards - No Icons, Pure Glass */}
+          <div className="max-w-5xl mx-auto space-y-3">
+            {[
+              { title: "Transparent CTA Button Design", desc: "Clean button mit animated border und glow effect", date: "20. Nov" },
+              { title: "Welcome Page Flow Optimierung", desc: "CTA positionierung für bessere conversion", date: "20. Nov" },
+              { title: "Chat Typing Animation Fix", desc: "Smooth typing ohne message flash", date: "20. Nov" },
+              { title: "Message Animation Pipeline", desc: "Optimierte animation trigger ohne doppelte renders", date: "20. Nov" },
+              { title: "Chat Streaming UX", desc: "Clean 'denkt nach' state während streaming", date: "20. Nov" },
+              { title: "Sidebar Logout Button Fix", desc: "Perfekte positionierung mit flex-shrink-0", date: "19. Nov" },
+              { title: "Content Zoom System", desc: "Globale skalierung mit font-size control", date: "19. Nov" },
+              { title: "VSCode Tailwind Settings", desc: "Clean IDE ohne CSS warnings", date: "19. Nov" },
+              { title: "Premium Auth Design", desc: "Glassmorphism und animated gradients", date: "14. Nov" },
+              { title: "ElevenLabs Voice Integration", desc: "Ultra-realistische AI stimme", date: "13. Nov" },
+              { title: "Call Audio Recording", desc: "Automatische aufzeichnung aller gespräche", date: "12. Nov" },
+              { title: "Live Transkription", desc: "Echtzeit text von allen calls", date: "12. Nov" },
+              { title: "Webhook System", desc: "ElevenLabs status updates", date: "12. Nov" },
+              { title: "Admin Dashboard", desc: "User management und analytics", date: "11. Nov" },
+              { title: "4-Tier Subscription", desc: "Free, Pro, Business, Enterprise", date: "10. Nov" },
+              { title: "Usage Tracking", desc: "AI messages und voice calls", date: "10. Nov" },
+              { title: "Session Management", desc: "Secure cookie-based auth", date: "10. Nov" },
+              { title: "Power Page Redesign", desc: "Animated status und call timer", date: "10. Nov" }
+            ].map((update, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 1.8 + index * 0.05 }}
+                className="relative group"
+              >
+                {/* Subtle hover glow */}
                 <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -30 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: update.delay }}
-                  className="relative group"
+                  className="absolute -inset-[1px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{
+                    background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
+                    filter: 'blur(8px)'
+                  }}
+                />
+                
+                {/* Glass card */}
+                <div
+                  className="relative px-6 py-4 rounded-xl transition-all duration-300"
+                  style={{
+                    background: 'rgba(0, 0, 0, 0.4)',
+                    backdropFilter: 'blur(30px)',
+                    border: '1px solid rgba(255, 255, 255, 0.06)'
+                  }}
                 >
-                  <motion.div
-                    className="absolute -inset-[1px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                    style={{
-                      background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00)',
-                      filter: 'blur(6px)'
-                    }}
-                  />
-                  <div
-                    className="relative p-5 rounded-xl"
-                    style={{
-                      background: 'rgba(0, 0, 0, 0.6)',
-                      backdropFilter: 'blur(20px)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)'
-                    }}
-                  >
-                    <div className="flex items-start gap-4">
-                      <div
-                        className="p-2 rounded-lg"
-                        style={{
-                          background: 'linear-gradient(135deg, rgba(233, 215, 196, 0.2), rgba(254, 145, 0, 0.2))',
-                          border: '1px solid rgba(254, 145, 0, 0.3)'
-                        }}
+                  <div className="flex items-center justify-between gap-6">
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <h4 
+                        className="font-bold text-white mb-1 text-sm"
+                        style={{ fontFamily: 'Orbitron, sans-serif' }}
                       >
-                        <div style={{ color: '#FE9100' }}>{update.icon}</div>
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-bold text-white mb-1" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                          {update.title}
-                        </h4>
-                        <p className="text-sm text-gray-400 mb-2">
-                          {update.description}
-                        </p>
-                        <p className="text-xs text-gray-600">{update.date}</p>
-                      </div>
-                      <motion.div
-                        className="w-2 h-2 rounded-full bg-[#FE9100]"
-                        animate={{
-                          scale: [1, 1.3, 1],
-                          opacity: [1, 0.6, 1]
-                        }}
-                        transition={{ duration: 2, repeat: Infinity, delay: update.delay }}
-                      />
+                        {update.title}
+                      </h4>
+                      <p className="text-xs text-gray-500">
+                        {update.desc}
+                      </p>
+                    </div>
+                    
+                    {/* Date badge */}
+                    <div
+                      className="px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap"
+                      style={{
+                        background: 'rgba(254, 145, 0, 0.08)',
+                        border: '1px solid rgba(254, 145, 0, 0.2)',
+                        color: '#FE9100'
+                      }}
+                    >
+                      {update.date}
                     </div>
                   </div>
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Right Timeline */}
-            <div className="space-y-4">
-              {[
-                {
-                  title: "Admin Dashboard",
-                  description: "Vollständiges User-Management mit Analytics und System-Kontrollen",
-                  date: "11. November 2025",
-                  icon: <Sparkles className="w-5 h-5" />,
-                  delay: 1.9
-                },
-                {
-                  title: "4-Paket Subscription",
-                  description: "Flexibles Abo-System mit Free, Pro, Business und Enterprise",
-                  date: "10. November 2025",
-                  icon: <CheckCircle className="w-5 h-5" />,
-                  delay: 2.1
-                },
-                {
-                  title: "Usage Tracking",
-                  description: "Präzise Verfolgung von AI-Nachrichten und Voice-Calls",
-                  date: "10. November 2025",
-                  icon: <Sparkles className="w-5 h-5" />,
-                  delay: 2.3
-                },
-                {
-                  title: "Webhook Integration",
-                  description: "Automatische Updates von ElevenLabs für Call-Status und Ergebnisse",
-                  date: "12. November 2025",
-                  icon: <Phone className="w-5 h-5" />,
-                  delay: 2.5
-                },
-                {
-                  title: "Session Management",
-                  description: "Sichere Cookie-basierte Sessions mit Proxy-Support für Production",
-                  date: "10. November 2025",
-                  icon: <CheckCircle className="w-5 h-5" />,
-                  delay: 2.7
-                }
-              ].map((update, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: 30 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: update.delay }}
-                  className="relative group"
-                >
-                  <motion.div
-                    className="absolute -inset-[1px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                    style={{
-                      background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00)',
-                      filter: 'blur(6px)'
-                    }}
-                  />
-                  <div
-                    className="relative p-5 rounded-xl"
-                    style={{
-                      background: 'rgba(0, 0, 0, 0.6)',
-                      backdropFilter: 'blur(20px)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)'
-                    }}
-                  >
-                    <div className="flex items-start gap-4">
-                      <div
-                        className="p-2 rounded-lg"
-                        style={{
-                          background: 'linear-gradient(135deg, rgba(233, 215, 196, 0.2), rgba(254, 145, 0, 0.2))',
-                          border: '1px solid rgba(254, 145, 0, 0.3)'
-                        }}
-                      >
-                        <div style={{ color: '#FE9100' }}>{update.icon}</div>
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-bold text-white mb-1" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                          {update.title}
-                        </h4>
-                        <p className="text-sm text-gray-400 mb-2">
-                          {update.description}
-                        </p>
-                        <p className="text-xs text-gray-600">{update.date}</p>
-                      </div>
-                      <motion.div
-                        className="w-2 h-2 rounded-full bg-[#FE9100]"
-                        animate={{
-                          scale: [1, 1.3, 1],
-                          opacity: [1, 0.6, 1]
-                        }}
-                        transition={{ duration: 2, repeat: Infinity, delay: update.delay }}
-                      />
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+                </div>
+              </motion.div>
+            ))}
           </div>
 
           {/* Coming Soon Badge */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, delay: 2.9 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 2.5, duration: 0.6 }}
             className="text-center mt-12"
           >
             <div className="relative inline-block">
               <motion.div
-                className="absolute -inset-[2px] rounded-full opacity-50"
+                className="absolute -inset-[2px] rounded-full opacity-40"
                 style={{
                   background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
                   backgroundSize: '300% 100%',
-                  filter: 'blur(10px)'
+                  filter: 'blur(12px)'
                 }}
                 animate={{
                   backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
                 }}
-                transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
+                transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
               />
               <div
-                className="relative px-8 py-4 rounded-full"
+                className="relative px-8 py-3 rounded-full"
                 style={{
-                  background: 'rgba(0, 0, 0, 0.7)',
-                  backdropFilter: 'blur(20px)',
-                  border: '1px solid rgba(254, 145, 0, 0.3)'
+                  background: 'rgba(0, 0, 0, 0.6)',
+                  backdropFilter: 'blur(30px)',
+                  border: '1px solid rgba(254, 145, 0, 0.2)'
                 }}
               >
-                <div className="flex items-center gap-3">
-                  <motion.div
-                    animate={{
-                      rotate: 360
-                    }}
-                    transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-                  >
-                    <Sparkles className="w-5 h-5 text-[#FE9100]" />
-                  </motion.div>
-                  <span className="font-bold" style={{ fontFamily: 'Orbitron, sans-serif', color: '#e9d7c4' }}>
-                    Weitere Updates folgen täglich
-                  </span>
-                </div>
+                <span className="text-sm font-bold" style={{ fontFamily: 'Orbitron, sans-serif', color: '#e9d7c4' }}>
+                  Weitere Updates folgen täglich
+                </span>
               </div>
             </div>
-            
-            {/* Coming Soon Features */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 3.1, duration: 0.6 }}
-              className="mt-6 flex flex-wrap justify-center gap-3"
-            >
-              {[
-                "Kampagnen-Management",
-                "Multi-Language Support",
-                "Advanced Analytics",
-                "API-Integration",
-                "Mobile App"
-              ].map((feature, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 3.2 + index * 0.1, duration: 0.3 }}
-                  className="px-4 py-2 rounded-full text-xs font-semibold"
-                  style={{
-                    background: 'rgba(254, 145, 0, 0.1)',
-                    border: '1px solid rgba(254, 145, 0, 0.3)',
-                    color: '#FE9100'
-                  }}
-                >
-                  {feature}
-                </motion.div>
-              ))}
-            </motion.div>
           </motion.div>
         </motion.div>
       </div>
