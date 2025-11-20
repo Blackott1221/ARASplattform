@@ -1072,6 +1072,7 @@ export function ChatInterface() {
                         rows={3}
                         disabled={callLoading}
                       />
+                    </div>
 
                     {/* Call Button */}
                     <div className="pt-2">
