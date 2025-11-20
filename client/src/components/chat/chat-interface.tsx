@@ -43,6 +43,7 @@ export function ChatInterface() {
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [displayText, setDisplayText] = useState("");
   const [isTyping, setIsTyping] = useState(true);
+  const [currentTime, setCurrentTime] = useState(new Date());
   const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -73,6 +74,14 @@ export function ChatInterface() {
     }
   }, [message]);
 
+  // Live time update for Swiss time
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   useEffect(() => {
     const currentText = ANIMATED_TEXTS[currentTextIndex];
     let charIndex = 0;
@@ -86,10 +95,10 @@ export function ChatInterface() {
           setTimeout(() => {
             setIsTyping(true);
             setCurrentTextIndex((prev) => (prev + 1) % ANIMATED_TEXTS.length);
-          }, 2000);
+          }, 1600);
           clearInterval(typeInterval);
         }
-      }, 80);
+      }, 45);
       return () => clearInterval(typeInterval);
     }
   }, [currentTextIndex, isTyping]);
@@ -543,6 +552,42 @@ export function ChatInterface() {
           <div className="w-full flex flex-col items-center px-6">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center mb-8 w-full max-w-3xl">
               
+              {/* DATE & TIME - SWISS TIME */}
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.5 }}
+                className="mb-6 flex items-center justify-center gap-3 text-sm"
+              >
+                <div className="px-4 py-2 rounded-xl" style={{
+                  background: 'rgba(254, 145, 0, 0.05)',
+                  border: '1px solid rgba(254, 145, 0, 0.2)'
+                }}>
+                  <span className="text-gray-400">
+                    {currentTime.toLocaleDateString('de-CH', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                      timeZone: 'Europe/Zurich'
+                    })}
+                  </span>
+                </div>
+                <div className="px-4 py-2 rounded-xl font-mono" style={{
+                  background: 'rgba(254, 145, 0, 0.1)',
+                  border: '1px solid rgba(254, 145, 0, 0.3)',
+                  fontFamily: 'monospace'
+                }}>
+                  <span style={{ color: '#FE9100' }}>
+                    {currentTime.toLocaleTimeString('de-CH', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                      timeZone: 'Europe/Zurich'
+                    })}
+                  </span>
+                </div>
+              </motion.div>
+
               {/* ARAS AI LOGO MIT GRADIENT */}
               <motion.h1 
                 className="text-7xl font-bold mb-6 relative"
