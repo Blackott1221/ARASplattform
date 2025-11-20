@@ -92,17 +92,18 @@ export function ChatInterface() {
   const { data: chatSessions = [] } = useQuery<any[]>({ queryKey: ["/api/chat/sessions"], enabled: !!user && !authLoading, retry: false });
   const { data: subscriptionData } = useQuery<import("@shared/schema").SubscriptionResponse>({ queryKey: ["/api/user/subscription"], enabled: !!user && !authLoading, retry: false });
 
-  // ✅ KRITISCH: Wenn neue AI-Message hinzukommt, starte Animation!
-  useEffect(() => {
-    if (messages.length > previousMessagesLength.current) {
-      const lastMessage = messages[messages.length - 1];
-      if (lastMessage && lastMessage.isAi) {
-        setShouldAnimateLastAiMessage(true);
-        setTimeout(() => setShouldAnimateLastAiMessage(false), 30000);
-      }
-    }
-    previousMessagesLength.current = messages.length;
-  }, [messages]);
+  // ✅ DEACTIVATED: Animation flag is now set manually in mutationFn
+  // This useEffect was causing double animation trigger
+  // useEffect(() => {
+  //   if (messages.length > previousMessagesLength.current) {
+  //     const lastMessage = messages[messages.length - 1];
+  //     if (lastMessage && lastMessage.isAi) {
+  //       setShouldAnimateLastAiMessage(true);
+  //       setTimeout(() => setShouldAnimateLastAiMessage(false), 30000);
+  //     }
+  //   }
+  //   previousMessagesLength.current = messages.length;
+  // }, [messages]);
 
   useEffect(() => {
     if (chatSessions.length > 0) {
@@ -250,6 +251,9 @@ export function ChatInterface() {
       // This ensures MessageBubble receives isNew={true} on first render
       setShouldAnimateLastAiMessage(true);
       
+      // Reset animation flag after 30 seconds
+      setTimeout(() => setShouldAnimateLastAiMessage(false), 30000);
+      
       // Small delay to ensure flag is set before messages update
       await new Promise(resolve => setTimeout(resolve, 10));
       
@@ -298,8 +302,11 @@ export function ChatInterface() {
       if (data?.sessionId) setCurrentSessionId(data.sessionId);
       setUploadedFiles([]);
       
-      // Refresh all usage-related data (optimistic messages already cleared in mutationFn)
-      queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
+      // ✅ NO refetch for messages - we already updated cache manually!
+      // Refetching would cause animation to restart = double animation bug
+      // queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
+      
+      // Refresh usage-related data only
       queryClient.invalidateQueries({ queryKey: ["/api/user/subscription"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/usage"] });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
