@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { MessageBubble } from "./message-bubble";
-import { Send, Mic, MicOff, Plus, MessageSquare, X, Menu, Paperclip, File, Image as ImageIcon, FileText, Clock, AlertCircle, Phone, Loader2, ArrowUp } from "lucide-react";
+import { Send, Mic, MicOff, Plus, MessageSquare, X, Menu, Paperclip, File, Image as ImageIcon, FileText, Clock, AlertCircle, Phone, Loader2, ArrowUp, Sparkles, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
@@ -27,6 +27,30 @@ const SUGGESTED_PROMPTS = [
   { text: "ARAS AI Anruf starten", isCall: true }
 ];
 
+// ✅ NEUE CALL TEMPLATES
+const CALL_TEMPLATES = [
+  { 
+    icon: "📅", 
+    title: "Termin vereinbaren", 
+    message: "Ich möchte einen Termin für nächste Woche vereinbaren. Bitte finden Sie einen passenden Zeitpunkt." 
+  },
+  { 
+    icon: "📞", 
+    title: "Rückruf anfordern", 
+    message: "Bitte rufen Sie mich zurück, um Details zu besprechen. Ich bin heute zwischen 14-18 Uhr erreichbar." 
+  },
+  { 
+    icon: "💼", 
+    title: "Geschäftsanfrage", 
+    message: "Ich interessiere mich für Ihre Dienstleistungen und würde gerne mehr über Ihre Angebote erfahren." 
+  },
+  { 
+    icon: "✨", 
+    title: "Custom", 
+    message: "" 
+  }
+];
+
 interface UploadedFile { name: string; type: string; size: number; content: string; }
 interface OptimisticMessage { id: string; message: string; isAi: boolean; timestamp: Date; isOptimistic: true; }
 
@@ -37,6 +61,7 @@ export function ChatInterface() {
   const [showHistory, setShowHistory] = useState(false);
   const [showCallModal, setShowCallModal] = useState(false);
   const [callFormData, setCallFormData] = useState({ contactName: '', phoneNumber: '', message: '' });
+  const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
   const [phoneError, setPhoneError] = useState('');
   const [callLoading, setCallLoading] = useState(false);
   const [callResult, setCallResult] = useState<any>(null);
@@ -53,7 +78,6 @@ export function ChatInterface() {
   const [isThinking, setIsThinking] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   
-  // ✅ NEUER ANSATZ: Wir animieren einfach die LETZTE AI-Message wenn gerade Response kam
   const [shouldAnimateLastAiMessage, setShouldAnimateLastAiMessage] = useState(false);
   const previousMessagesLength = useRef(0);
 
@@ -107,19 +131,6 @@ export function ChatInterface() {
   const { data: chatSessions = [] } = useQuery<any[]>({ queryKey: ["/api/chat/sessions"], enabled: !!user && !authLoading, retry: false });
   const { data: subscriptionData } = useQuery<import("@shared/schema").SubscriptionResponse>({ queryKey: ["/api/user/subscription"], enabled: !!user && !authLoading, retry: false });
 
-  // ✅ DEACTIVATED: Animation flag is now set manually in mutationFn
-  // This useEffect was causing double animation trigger
-  // useEffect(() => {
-  //   if (messages.length > previousMessagesLength.current) {
-  //     const lastMessage = messages[messages.length - 1];
-  //     if (lastMessage && lastMessage.isAi) {
-  //       setShouldAnimateLastAiMessage(true);
-  //       setTimeout(() => setShouldAnimateLastAiMessage(false), 30000);
-  //     }
-  //   }
-  //   previousMessagesLength.current = messages.length;
-  // }, [messages]);
-
   useEffect(() => {
     if (chatSessions.length > 0) {
       const activeSession = chatSessions.find(s => s.isActive);
@@ -165,17 +176,15 @@ export function ChatInterface() {
       });
 
       if (!response.ok) {
-        // Handle limit reached errors
         if (response.status === 403) {
           const errorData = await response.json();
           const errorMessage = errorData.error || errorData.message || 'Limit reached';
           
-          // Show error toast with upgrade button
           toast({
             title: "Limit erreicht! ❌",
             description: errorMessage,
             variant: "destructive",
-            duration: 15000, // Show for 15 seconds
+            duration: 15000,
             action: (
               <ToastAction 
                 altText="Jetzt upgraden" 
@@ -190,7 +199,6 @@ export function ChatInterface() {
           setStreamingMessage('');
           setOptimisticMessages([]);
           
-          // Return null to prevent onError from showing generic toast
           return null;
         }
         
@@ -201,7 +209,7 @@ export function ChatInterface() {
       const decoder = new TextDecoder();
       let fullMessage = '';
       let sessionId = currentSessionId;
-      let hasStartedStreaming = false; // Track if we've started streaming
+      let hasStartedStreaming = false;
 
       while (true) {
         const { done, value } = await reader!.read();
@@ -215,13 +223,11 @@ export function ChatInterface() {
             try {
               const data = JSON.parse(line.slice(6));
               
-              // Handle thinking signal - instant feedback
               if (data.thinking) {
                 setIsThinking(true);
                 continue;
               }
               
-              // Handle error messages from backend
               if (data.error) {
                 setIsThinking(false);
                 setIsStreaming(false);
@@ -235,7 +241,6 @@ export function ChatInterface() {
               }
               
               if (data.content) {
-                // First content = switch from thinking to streaming
                 if (!hasStartedStreaming) {
                   hasStartedStreaming = true;
                   setIsThinking(false);
@@ -248,11 +253,10 @@ export function ChatInterface() {
                 sessionId = data.sessionId;
               }
             } catch (e) {
-              // Only log parsing errors, not throw
               if (e instanceof SyntaxError) {
                 console.debug('JSON parse error (expected for chunked data):', e);
               } else {
-                throw e; // Re-throw other errors
+                throw e;
               }
             }
           }
@@ -262,25 +266,16 @@ export function ChatInterface() {
       setIsThinking(false);
       setIsStreaming(false);
       
-      // ✅ CRITICAL FIX: Set animation flag BEFORE cache update!
-      // This ensures MessageBubble receives isNew={true} on first render
       setShouldAnimateLastAiMessage(true);
-      
-      // Reset animation flag after 30 seconds
       setTimeout(() => setShouldAnimateLastAiMessage(false), 30000);
-      
-      // Small delay to ensure flag is set before messages update
       await new Promise(resolve => setTimeout(resolve, 10));
       
-      // CRITICAL: Add streamed message directly to cache to prevent flash
       const userId = user && typeof user === 'object' && 'id' in user ? (user as any).id : null;
       if (fullMessage && sessionId && userId) {
         const currentMessages = queryClient.getQueryData<any[]>(["/api/chat/messages"]) || [];
         
-        // Add user message and AI response directly to cache
         const updatedMessages = [
           ...currentMessages,
-          // User message (from optimistic)
           {
             id: Date.now(),
             sessionId,
@@ -289,7 +284,6 @@ export function ChatInterface() {
             isAi: false,
             timestamp: new Date().toISOString()
           },
-          // AI response (from streaming)
           {
             id: Date.now() + 1,
             sessionId,
@@ -300,7 +294,6 @@ export function ChatInterface() {
           }
         ];
         
-        // Update cache directly - now with animation flag already set!
         queryClient.setQueryData(["/api/chat/messages"], updatedMessages);
       }
       
@@ -317,11 +310,6 @@ export function ChatInterface() {
       if (data?.sessionId) setCurrentSessionId(data.sessionId);
       setUploadedFiles([]);
       
-      // ✅ NO refetch for messages - we already updated cache manually!
-      // Refetching would cause animation to restart = double animation bug
-      // queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
-      
-      // Refresh usage-related data only
       queryClient.invalidateQueries({ queryKey: ["/api/user/subscription"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/usage"] });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
@@ -333,12 +321,12 @@ export function ChatInterface() {
       setStreamingMessage('');
       setIsSyncing(false);
       
-      // Don't show generic error if it's a limit error (already shown)
       if (!error.message.includes('Limit') && !error.message.includes('limit')) {
         toast({ title: "Fehler", description: "Nachricht konnte nicht gesendet werden", variant: "destructive" });
       }
     },
   });
+
   const loadChatSession = async (sessionId: string) => {
     try {
       await apiRequest("POST", `/api/chat/sessions/${sessionId}/activate`, {});
@@ -398,7 +386,6 @@ export function ChatInterface() {
     const userMessage = messageToSend || "Analysiere die hochgeladenen Dateien";
     setMessage("");
     
-    // Clear textarea height
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
@@ -655,7 +642,7 @@ export function ChatInterface() {
                 </span>
               </motion.div>
 
-              {/* PROMPT BUTTONS - 3 BUTTONS NEBENEINANDER WITH ANIMATED BORDERS */}
+              {/* ✅ MODERNE PROMPT BUTTONS - TRANSPARENTER INNENRAUM MIT ANIMIERTEN RÄNDERN */}
               <motion.div 
                 initial={{ opacity: 0 }} 
                 animate={{ opacity: 1 }} 
@@ -668,11 +655,11 @@ export function ChatInterface() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.6 + index * 0.1 }}
-                    className="relative"
+                    className="relative group"
                   >
-                    {/* Animated Border */}
+                    {/* Animated Gradient Border - Only visible on hover */}
                     <motion.div
-                      className="absolute -inset-[2px] rounded-xl"
+                      className="absolute -inset-[1.5px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                       style={{
                         background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
                         backgroundSize: '300% 100%'
@@ -680,27 +667,45 @@ export function ChatInterface() {
                       animate={{
                         backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
                       }}
-                      transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
+                      transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
                     />
                     
+                    {/* Static Subtle Border - Always visible */}
+                    <div 
+                      className="absolute -inset-[1px] rounded-xl"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.08)',
+                      }}
+                    />
+                    
+                    {/* Button Content */}
                     <motion.button
                       whileHover={{ 
-                        scale: 1.05,
-                        boxShadow: '0 0 30px rgba(254, 145, 0, 0.4)'
+                        scale: 1.02,
+                        y: -2,
                       }}
-                      whileTap={{ scale: 0.95 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => prompt.isCall ? setShowCallModal(true) : handleSendMessage(prompt.text)}
-                      className="relative px-6 py-3 rounded-xl text-white text-sm font-medium transition-all flex items-center gap-2 bg-[#0a0a0a]"
+                      className="relative px-5 py-3 rounded-xl text-white/90 text-sm font-medium transition-all flex items-center gap-2.5 hover:text-white"
+                      style={{
+                        background: 'rgba(10, 10, 10, 0.7)',
+                        backdropFilter: 'blur(20px)',
+                      }}
                     >
-                      <span>{prompt.text}</span>
-                      <ArrowUp className="w-4 h-4" style={{ color: '#FE9100' }} />
+                      <span className="relative z-10">{prompt.text}</span>
+                      <motion.div
+                        whileHover={{ x: 2, y: -2 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 10 }}
+                      >
+                        <ArrowUp className="w-3.5 h-3.5" style={{ color: '#FE9100' }} />
+                      </motion.div>
                     </motion.button>
                   </motion.div>
                 ))}
               </motion.div>
             </motion.div>
 
-            {/* EINGABEFELD - ZENTRIERT MIT BUTTONS */}
+            {/* ✅ MODERNES EINGABEFELD MIT CLEANEN BUTTONS */}
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }} className="w-full max-w-3xl">
               {uploadedFiles.length > 0 && (
                 <div className="mb-3 space-y-2">
@@ -720,10 +725,10 @@ export function ChatInterface() {
 
               <div className="relative flex items-end space-x-2">
                 <div className="flex-1 relative">
-                  {/* FLOWING GRADIENT BORDER */}
-                  <div className="absolute -inset-[2px] rounded-3xl">
+                  {/* Subtle Animated Border */}
+                  <div className="absolute -inset-[1px] rounded-3xl">
                     <motion.div
-                      className="w-full h-full rounded-3xl"
+                      className="w-full h-full rounded-3xl opacity-50"
                       animate={{
                         backgroundImage: [
                           'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
@@ -732,9 +737,9 @@ export function ChatInterface() {
                           'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
                         ],
                       }}
-                      transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+                      transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
                       style={{
-                        padding: '2px',
+                        padding: '1px',
                         WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
                         WebkitMaskComposite: 'xor',
                         maskComposite: 'exclude',
@@ -770,10 +775,14 @@ export function ChatInterface() {
                   </Button>
                 </div>
 
-                {/* Call Button with Animated Border */}
-                <div className="relative">
+                {/* ✅ MODERNER CALL BUTTON */}
+                <motion.div 
+                  className="relative group"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
                   <motion.div
-                    className="absolute -inset-[2px] rounded-2xl"
+                    className="absolute -inset-[1.5px] rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                     style={{
                       background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
                       backgroundSize: '300% 100%'
@@ -783,6 +792,14 @@ export function ChatInterface() {
                     }}
                     transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
                   />
+                  
+                  <div 
+                    className="absolute -inset-[1px] rounded-2xl"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.08)',
+                    }}
+                  />
+                  
                   <Button
                     onClick={() => setShowCallModal(true)}
                     variant="ghost"
@@ -791,7 +808,7 @@ export function ChatInterface() {
                   >
                     <Phone className="w-5 h-5 text-[#FE9100]" />
                   </Button>
-                </div>
+                </motion.div>
 
                 <Button
                   onClick={() => handleSendMessage()}
@@ -815,7 +832,6 @@ export function ChatInterface() {
               {allMessages.map((msg, index) => {
                 const isOptimistic = 'isOptimistic' in msg && msg.isOptimistic;
                 
-                // ✅ KRITISCH: Animiere die LETZTE AI-Message wenn Flag gesetzt ist!
                 const lastAiMessage = [...allMessages].reverse().find(m => m.isAi && !('isOptimistic' in m));
                 const isNewAiMessage = shouldAnimateLastAiMessage && 
                                        !isOptimistic && 
@@ -844,7 +860,6 @@ export function ChatInterface() {
               })}
             </AnimatePresence>
 
-            {/* Clean, minimal "Thinking" animation - shown during thinking AND streaming */}
             {(isThinking || isStreaming) && (
               <motion.div 
                 initial={{ opacity: 0 }} 
@@ -903,10 +918,9 @@ export function ChatInterface() {
 
           <div className="relative flex items-end space-x-2 max-w-4xl mx-auto">
             <div className="flex-1 relative">
-              {/* FLOWING GRADIENT BORDER */}
-              <div className="absolute -inset-[2px] rounded-2xl">
+              <div className="absolute -inset-[1px] rounded-2xl">
                 <motion.div
-                  className="w-full h-full rounded-2xl"
+                  className="w-full h-full rounded-2xl opacity-50"
                   animate={{
                     backgroundImage: [
                       'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
@@ -915,9 +929,9 @@ export function ChatInterface() {
                       'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
                     ],
                   }}
-                  transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+                  transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
                   style={{
-                    padding: '2px',
+                    padding: '1px',
                     WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
                     WebkitMaskComposite: 'xor',
                     maskComposite: 'exclude',
@@ -938,10 +952,14 @@ export function ChatInterface() {
               </Button>
             </div>
 
-            {/* Call Button with Animated Border */}
-            <div className="relative">
+            {/* Modern Call Button */}
+            <motion.div 
+              className="relative group"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
               <motion.div
-                className="absolute -inset-[2px] rounded-xl"
+                className="absolute -inset-[1.5px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                 style={{
                   background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
                   backgroundSize: '300% 100%'
@@ -951,6 +969,14 @@ export function ChatInterface() {
                 }}
                 transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
               />
+              
+              <div 
+                className="absolute -inset-[1px] rounded-xl"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.08)',
+                }}
+              />
+              
               <Button 
                 onClick={() => setShowCallModal(true)} 
                 variant="ghost" 
@@ -959,7 +985,7 @@ export function ChatInterface() {
               >
                 <Phone className="w-4 h-4 text-[#FE9100]" />
               </Button>
-            </div>
+            </motion.div>
 
             <Button onClick={() => handleSendMessage()} size="sm" disabled={!message.trim() || sendMessage.isPending} className="h-12 px-5 bg-white/10 hover:bg-white/15 text-white rounded-xl disabled:opacity-30">
               <Send className="w-4 h-4" />
@@ -982,118 +1008,232 @@ export function ChatInterface() {
         </motion.div>
       )}
 
-      {/* Call Modal */}
+      {/* ✅ ULTRA-MODERNES CALL MODAL MIT TEMPLATES */}
       <AnimatePresence>
         {showCallModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
             onClick={() => !callLoading && setShowCallModal(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
+              initial={{ scale: 0.9, y: 20, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.9, y: 20, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative w-full max-w-lg mx-4"
+              className="relative w-full max-w-2xl"
             >
+              {/* Flowing Gradient Border */}
+              <motion.div
+                className="absolute -inset-[2px] rounded-3xl"
+                style={{
+                  background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
+                  backgroundSize: '300% 100%'
+                }}
+                animate={{
+                  backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                }}
+                transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
+              />
+
               <div
-                className="bg-[#0a0a0a] rounded-2xl p-6 border border-white/10"
+                className="relative rounded-3xl p-8"
+                style={{
+                  background: 'rgba(10, 10, 10, 0.98)',
+                  backdropFilter: 'blur(40px)'
+                }}
               >
                 {/* Close Button */}
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.1, rotate: 90 }}
+                  whileTap={{ scale: 0.9 }}
                   onClick={() => !callLoading && setShowCallModal(false)}
-                  className="absolute top-5 right-5 p-2 rounded-full hover:bg-white/5 transition-all"
+                  className="absolute top-6 right-6 p-2 rounded-full hover:bg-white/10 transition-all"
                   disabled={callLoading}
                 >
                   <X className="w-5 h-5 text-gray-500 hover:text-white" />
-                </button>
+                </motion.button>
 
-                {/* Header */}
-                <div className="mb-6">
-                  <h3 
-                    className="text-xl font-bold text-white mb-1"
-                    style={{ fontFamily: 'Orbitron, sans-serif' }}
-                  >
-                    Anruf starten
-                  </h3>
-                  <p className="text-sm text-gray-500">Fülle die Felder aus und starte den Anruf</p>
-                </div>
-
-                {/* Form */}
                 {!callResult ? (
-                  <div className="space-y-4">
-                    {/* Contact Name */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-2">Name</label>
-                      <input
-                        type="text"
-                        value={callFormData.contactName}
-                        onChange={(e) => setCallFormData({ ...callFormData, contactName: e.target.value })}
-                        placeholder="Max Mustermann"
-                        className="w-full px-4 py-3 rounded-lg bg-black text-white text-sm placeholder-gray-600 border border-white/10 focus:border-[#FE9100] focus:outline-none transition-colors"
-                        disabled={callLoading}
-                      />
+                  <div>
+                    {/* Header */}
+                    <div className="mb-8">
+                      <div className="flex items-center gap-3 mb-3">
+                        <motion.div 
+                          className="w-12 h-12 rounded-2xl flex items-center justify-center" 
+                          style={{
+                            background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.15), rgba(254, 145, 0, 0.05))',
+                            border: '1px solid rgba(254, 145, 0, 0.3)'
+                          }}
+                          whileHover={{ scale: 1.05, rotate: 5 }}
+                        >
+                          <Phone className="w-6 h-6" style={{ color: '#FE9100' }} />
+                        </motion.div>
+                        <div>
+                          <h3 
+                            className="text-3xl font-bold"
+                            style={{ 
+                              fontFamily: 'Orbitron, sans-serif',
+                              background: 'linear-gradient(90deg, #e9d7c4, #FE9100)',
+                              backgroundClip: 'text',
+                              WebkitBackgroundClip: 'text',
+                              WebkitTextFillColor: 'transparent',
+                            }}
+                          >
+                            Smart Call
+                          </h3>
+                          <p className="text-sm text-gray-500 mt-1">KI-gestützter Anruf in Sekunden</p>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Phone Number */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-2">Telefon</label>
-                      <input
-                        type="tel"
-                        value={callFormData.phoneNumber}
-                        onChange={(e) => {
-                          const formatted = e.target.value.replace(/[^\d+]/g, '');
-                          setCallFormData({ ...callFormData, phoneNumber: formatted });
-                          setPhoneError(formatted && !/^\+[0-9]{10,15}$/.test(formatted) ? 'Format: +4917661119320' : '');
-                        }}
-                        placeholder="+41 79 123 45 67"
-                        className="w-full px-4 py-3 rounded-lg bg-black text-white text-sm placeholder-gray-600 font-mono border focus:outline-none transition-colors"
-                        style={{
-                          borderColor: phoneError ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.1)'
-                        }}
-                        disabled={callLoading}
-                      />
-                      {phoneError && (
-                        <p className="mt-1.5 text-xs text-red-400">{phoneError}</p>
-                      )}
+                    {/* Call Templates */}
+                    <div className="mb-6">
+                      <label className="block text-xs font-medium text-gray-400 mb-3">Schnellvorlage wählen</label>
+                      <div className="grid grid-cols-4 gap-3">
+                        {CALL_TEMPLATES.map((template, index) => (
+                          <motion.button
+                            key={index}
+                            whileHover={{ scale: 1.05, y: -2 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => {
+                              setSelectedTemplate(index);
+                              setCallFormData({ ...callFormData, message: template.message });
+                            }}
+                            className={`relative p-4 rounded-xl transition-all ${
+                              selectedTemplate === index
+                                ? 'bg-white/10 border border-[#FE9100]/50'
+                                : 'bg-white/5 border border-white/10 hover:border-white/20'
+                            }`}
+                            disabled={callLoading}
+                          >
+                            <div className="text-2xl mb-2">{template.icon}</div>
+                            <div className="text-xs text-white/80">{template.title}</div>
+                            {selectedTemplate === index && (
+                              <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#FE9100] flex items-center justify-center"
+                              >
+                                <Sparkles className="w-3 h-3 text-black" />
+                              </motion.div>
+                            )}
+                          </motion.button>
+                        ))}
+                      </div>
                     </div>
 
-                    {/* Message */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-400 mb-2">Nachricht</label>
-                      <textarea
-                        value={callFormData.message}
-                        onChange={(e) => setCallFormData({ ...callFormData, message: e.target.value })}
-                        placeholder="Termin vereinbaren für nächste Woche"
-                        className="w-full px-4 py-3 rounded-lg bg-black text-white text-sm placeholder-gray-600 border border-white/10 focus:border-[#FE9100] focus:outline-none resize-none transition-colors"
-                        rows={3}
-                        disabled={callLoading}
-                      />
-                    </div>
+                    {/* Form Fields */}
+                    <div className="space-y-5">
+                      {/* Contact Name */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-400 mb-2">Kontaktname</label>
+                        <div className="relative group">
+                          <motion.div
+                            className="absolute -inset-[1px] rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity"
+                            style={{
+                              background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
+                              backgroundSize: '200% 100%'
+                            }}
+                            animate={{
+                              backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                            }}
+                            transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                          />
+                          <input
+                            type="text"
+                            value={callFormData.contactName}
+                            onChange={(e) => setCallFormData({ ...callFormData, contactName: e.target.value })}
+                            placeholder="Max Mustermann"
+                            className="relative w-full px-4 py-3 rounded-xl bg-[#141414] border border-white/10 text-white text-sm placeholder-gray-600 focus:outline-none transition-all"
+                            disabled={callLoading}
+                          />
+                        </div>
+                      </div>
 
-                    {/* Call Button */}
-                    <div className="pt-2">
-                      <div className="relative inline-block w-full">
-                        {/* Animated Border (nur wenn form complete) */}
-                        {!callLoading && callFormData.contactName && callFormData.phoneNumber && callFormData.message && !phoneError && (
-                          <div className="absolute -inset-[1px] rounded-lg overflow-hidden">
-                            <motion.div
-                              className="absolute inset-0"
-                              style={{
-                                background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
-                                backgroundSize: '300% 100%'
-                              }}
-                              animate={{
-                                backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
-                              }}
-                              transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                            />
-                          </div>
+                      {/* Phone Number */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-400 mb-2">Telefonnummer</label>
+                        <div className="relative group">
+                          <motion.div
+                            className="absolute -inset-[1px] rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity"
+                            style={{
+                              background: phoneError 
+                                ? 'rgba(239,68,68,0.5)'
+                                : 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
+                              backgroundSize: '200% 100%'
+                            }}
+                            animate={phoneError ? {} : {
+                              backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                            }}
+                            transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                          />
+                          <input
+                            type="tel"
+                            value={callFormData.phoneNumber}
+                            onChange={(e) => {
+                              const formatted = e.target.value.replace(/[^\d+]/g, '');
+                              setCallFormData({ ...callFormData, phoneNumber: formatted });
+                              setPhoneError(formatted && !/^\+[0-9]{10,15}$/.test(formatted) ? 'Format: +4917661119320' : '');
+                            }}
+                            placeholder="+41 79 123 45 67"
+                            className="relative w-full px-4 py-3 rounded-xl bg-[#141414] border border-white/10 text-white text-sm placeholder-gray-600 focus:outline-none transition-all font-mono"
+                            disabled={callLoading}
+                          />
+                        </div>
+                        {phoneError && (
+                          <motion.p 
+                            initial={{ opacity: 0, y: -5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mt-2 text-xs text-red-400"
+                          >
+                            {phoneError}
+                          </motion.p>
                         )}
-                        <button
+                      </div>
+
+                      {/* Message */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-400 mb-2">
+                          Nachricht / Ziel 
+                          {selectedTemplate !== null && selectedTemplate < 3 && (
+                            <span className="ml-2 text-[#FE9100]">✨ Template aktiv</span>
+                          )}
+                        </label>
+                        <div className="relative group">
+                          <motion.div
+                            className="absolute -inset-[1px] rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity"
+                            style={{
+                              background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
+                              backgroundSize: '200% 100%'
+                            }}
+                            animate={{
+                              backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                            }}
+                            transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                          />
+                          <textarea
+                            value={callFormData.message}
+                            onChange={(e) => {
+                              setCallFormData({ ...callFormData, message: e.target.value });
+                              if (selectedTemplate !== 3) setSelectedTemplate(3);
+                            }}
+                            placeholder="z.B. Termin vereinbaren für nächste Woche"
+                            className="relative w-full px-4 py-3 rounded-xl bg-[#141414] border border-white/10 text-white text-sm placeholder-gray-600 focus:outline-none transition-all resize-none"
+                            style={{ minHeight: 100 }}
+                            disabled={callLoading}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Call Button */}
+                      <motion.div className="pt-3">
+                        <motion.button
+                          whileHover={{ scale: callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError ? 1 : 1.02 }}
+                          whileTap={{ scale: callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError ? 1 : 0.98 }}
                           onClick={async () => {
                             if (!callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError) {
                               toast({ title: 'Fehlende Angaben', description: 'Bitte fülle alle Felder korrekt aus', variant: 'destructive' });
@@ -1114,11 +1254,12 @@ export function ChatInterface() {
                               const data = await response.json();
                               if (data.success) {
                                 setCallResult({ success: true });
-                                toast({ title: 'Anruf gestartet!', description: `ARAS AI ruft ${callFormData.contactName} an...` });
+                                toast({ title: 'Anruf gestartet! ✓', description: `ARAS AI ruft ${callFormData.contactName} an...` });
                                 setTimeout(() => {
                                   setShowCallModal(false);
                                   setCallResult(null);
                                   setCallFormData({ contactName: '', phoneNumber: '', message: '' });
+                                  setSelectedTemplate(null);
                                 }, 2000);
                               } else {
                                 toast({ title: 'Fehler', description: data.error || 'Anruf konnte nicht gestartet werden', variant: 'destructive' });
@@ -1130,33 +1271,62 @@ export function ChatInterface() {
                             }
                           }}
                           disabled={callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || !!phoneError}
-                          className="relative w-full py-3 rounded-lg bg-black text-white font-medium text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-40"
-                          style={{ fontFamily: 'Orbitron, sans-serif' }}
+                          className="relative w-full py-4 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-3 overflow-hidden"
+                          style={{
+                            fontFamily: 'Orbitron, sans-serif',
+                            background: (callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError)
+                              ? 'rgba(255, 255, 255, 0.05)'
+                              : 'linear-gradient(90deg, rgba(254, 145, 0, 0.2), rgba(163, 78, 0, 0.2))',
+                            border: '1px solid rgba(254, 145, 0, 0.3)',
+                            opacity: (callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError) ? 0.4 : 1
+                          }}
                         >
                           {callLoading ? (
                             <>
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              <span>Starte Anruf...</span>
+                              <Loader2 className="w-5 h-5 animate-spin" style={{ color: '#FE9100' }} />
+                              <span className="text-white">Verbinde...</span>
                             </>
                           ) : (
                             <>
-                              <Phone className="w-4 h-4" />
-                              <span>Anruf starten</span>
-                              <ArrowUp className="w-4 h-4" />
+                              <Zap className="w-5 h-5" style={{ color: '#FE9100' }} />
+                              <span className="text-white">Anruf starten</span>
                             </>
                           )}
-                        </button>
-                      </div>
+                        </motion.button>
+                      </motion.div>
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center py-6">
-                    <div className="w-16 h-16 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center mx-auto mb-4">
-                      <Phone className="w-7 h-7 text-green-400" />
-                    </div>
-                    <h4 className="text-lg font-bold text-white mb-1">Anruf gestartet!</h4>
-                    <p className="text-sm text-gray-500">ARAS AI ruft {callFormData.contactName} an...</p>
-                  </div>
+                  <motion.div 
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="text-center py-12"
+                  >
+                    <motion.div 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: 'spring', delay: 0.2 }}
+                      className="w-24 h-24 rounded-3xl flex items-center justify-center mx-auto mb-6"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(22, 163, 74, 0.2))',
+                        border: '2px solid rgba(34, 197, 94, 0.4)'
+                      }}
+                    >
+                      <Phone className="w-10 h-10 text-green-400" />
+                    </motion.div>
+                    <motion.div
+                      initial={{ y: 10, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ delay: 0.3 }}
+                    >
+                      <h4 className="text-2xl font-bold text-white mb-3" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                        Anruf gestartet!
+                      </h4>
+                      <p className="text-base text-gray-400">
+                        ARAS AI verbindet sich mit <span className="text-[#FE9100]">{callFormData.contactName}</span>
+                      </p>
+                    </motion.div>
+                  </motion.div>
                 )}
               </div>
             </motion.div>
