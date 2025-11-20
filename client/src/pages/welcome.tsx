@@ -149,121 +149,12 @@ export default function Welcome() {
           </motion.div>
         </motion.div>
 
-        {/* What You Can Do Section */}
+        {/* Alpha Info Section - MOVED UP */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.6 }}
           className="mb-20"
-        >
-          <h2 
-            className="text-3xl md:text-4xl font-black mb-12 text-center"
-            style={{ fontFamily: 'Orbitron, sans-serif', color: '#FE9100' }}
-          >
-            Was du jetzt tun kannst
-          </h2>
-
-          {/* Steps Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {steps.map((step, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.8 + index * 0.15 }}
-                className="relative group"
-              >
-                {/* Animated Border */}
-                <motion.div
-                  className="absolute -inset-[2px] rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                  style={{
-                    background: activeStep === index 
-                      ? 'linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00)'
-                      : 'linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00)',
-                    backgroundSize: '200% 200%',
-                    filter: 'blur(8px)'
-                  }}
-                  animate={activeStep === index ? {
-                    backgroundPosition: ['0% 0%', '100% 100%', '0% 0%']
-                  } : {}}
-                  transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                />
-
-                {/* Card */}
-                <div
-                  className={`relative h-full p-8 rounded-2xl transition-all duration-500 ${
-                    activeStep === index
-                      ? 'bg-gradient-to-br from-[#FE9100]/10 to-[#a34e00]/10'
-                      : 'bg-black/60'
-                  }`}
-                  style={{
-                    backdropFilter: 'blur(20px)',
-                    border: activeStep === index 
-                      ? '1px solid rgba(254, 145, 0, 0.3)' 
-                      : '1px solid rgba(255, 255, 255, 0.1)'
-                  }}
-                >
-                  {/* Number Badge */}
-                  <motion.div
-                    className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-6"
-                    style={{
-                      background: activeStep === index
-                        ? 'linear-gradient(135deg, #e9d7c4, #FE9100)'
-                        : 'rgba(255, 255, 255, 0.05)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)'
-                    }}
-                    animate={activeStep === index ? {
-                      boxShadow: [
-                        '0 0 20px rgba(254, 145, 0, 0.3)',
-                        '0 0 40px rgba(254, 145, 0, 0.5)',
-                        '0 0 20px rgba(254, 145, 0, 0.3)'
-                      ]
-                    } : {}}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  >
-                    <span 
-                      className="text-2xl font-black"
-                      style={{ 
-                        fontFamily: 'Orbitron, sans-serif',
-                        color: activeStep === index ? '#000000' : '#e9d7c4'
-                      }}
-                    >
-                      {step.number}
-                    </span>
-                  </motion.div>
-
-                  {/* Icon */}
-                  <div className="mb-4" style={{ color: activeStep === index ? '#FE9100' : '#888' }}>
-                    {step.icon}
-                  </div>
-
-                  {/* Title */}
-                  <h3 
-                    className="text-xl font-bold mb-4 leading-tight"
-                    style={{ 
-                      fontFamily: 'Orbitron, sans-serif',
-                      color: activeStep === index ? '#e9d7c4' : '#ffffff'
-                    }}
-                  >
-                    {step.title}
-                  </h3>
-
-                  {/* Description */}
-                  <p className="text-sm text-gray-400 leading-relaxed">
-                    {step.description}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Alpha Info Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 1.2 }}
-          className="mb-16"
         >
           <div className="relative">
             <motion.div
@@ -396,6 +287,115 @@ export default function Welcome() {
           </div>
         </motion.div>
 
+        {/* What You Can Do Section - MOVED DOWN */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.8 }}
+          className="mb-20"
+        >
+          <h2 
+            className="text-3xl md:text-4xl font-black mb-12 text-center"
+            style={{ fontFamily: 'Orbitron, sans-serif', color: '#FE9100' }}
+          >
+            Was du jetzt tun kannst
+          </h2>
+
+          {/* Steps Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {steps.map((step, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.8 + index * 0.15 }}
+                className="relative group"
+              >
+                {/* Animated Border */}
+                <motion.div
+                  className="absolute -inset-[2px] rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{
+                    background: activeStep === index 
+                      ? 'linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00)'
+                      : 'linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00)',
+                    backgroundSize: '200% 200%',
+                    filter: 'blur(8px)'
+                  }}
+                  animate={activeStep === index ? {
+                    backgroundPosition: ['0% 0%', '100% 100%', '0% 0%']
+                  } : {}}
+                  transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                />
+
+                {/* Card */}
+                <div
+                  className={`relative h-full p-8 rounded-2xl transition-all duration-500 ${
+                    activeStep === index
+                      ? 'bg-gradient-to-br from-[#FE9100]/10 to-[#a34e00]/10'
+                      : 'bg-black/60'
+                  }`}
+                  style={{
+                    backdropFilter: 'blur(20px)',
+                    border: activeStep === index 
+                      ? '1px solid rgba(254, 145, 0, 0.3)' 
+                      : '1px solid rgba(255, 255, 255, 0.1)'
+                  }}
+                >
+                  {/* Number Badge */}
+                  <motion.div
+                    className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-6"
+                    style={{
+                      background: activeStep === index
+                        ? 'linear-gradient(135deg, #e9d7c4, #FE9100)'
+                        : 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)'
+                    }}
+                    animate={activeStep === index ? {
+                      boxShadow: [
+                        '0 0 20px rgba(254, 145, 0, 0.3)',
+                        '0 0 40px rgba(254, 145, 0, 0.5)',
+                        '0 0 20px rgba(254, 145, 0, 0.3)'
+                      ]
+                    } : {}}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    <span 
+                      className="text-2xl font-black"
+                      style={{ 
+                        fontFamily: 'Orbitron, sans-serif',
+                        color: activeStep === index ? '#000000' : '#e9d7c4'
+                      }}
+                    >
+                      {step.number}
+                    </span>
+                  </motion.div>
+
+                  {/* Icon */}
+                  <div className="mb-4" style={{ color: activeStep === index ? '#FE9100' : '#888' }}>
+                    {step.icon}
+                  </div>
+
+                  {/* Title */}
+                  <h3 
+                    className="text-xl font-bold mb-4 leading-tight"
+                    style={{ 
+                      fontFamily: 'Orbitron, sans-serif',
+                      color: activeStep === index ? '#e9d7c4' : '#ffffff'
+                    }}
+                  >
+                    {step.title}
+                  </h3>
+
+                  {/* Description */}
+                  <p className="text-sm text-gray-400 leading-relaxed">
+                    {step.description}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
         {/* CTA Section */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
@@ -415,9 +415,27 @@ export default function Welcome() {
             </p>
           </div>
 
-          {/* Main CTA Button */}
+          {/* Main CTA Button - Transparent with Animated Border */}
           <Link href={user ? "/app/space" : "/auth"}>
             <motion.div className="relative inline-block">
+              {/* Animated Border */}
+              <motion.div
+                className="absolute -inset-[2px] rounded-full"
+                style={{
+                  background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
+                  backgroundSize: '300% 100%'
+                }}
+                animate={{
+                  backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: 'linear'
+                }}
+              />
+              
+              {/* Glow Effect */}
               <motion.div
                 className="absolute -inset-[3px] rounded-full opacity-60"
                 style={{
@@ -448,25 +466,12 @@ export default function Welcome() {
                 className="relative px-12 py-5 rounded-full font-black text-xl tracking-wide overflow-hidden"
                 style={{
                   fontFamily: 'Orbitron, sans-serif',
-                  background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00)',
-                  color: '#000000',
-                  boxShadow: '0 20px 60px rgba(254, 145, 0, 0.4)'
+                  background: 'transparent',
+                  backdropFilter: 'blur(20px)',
+                  color: '#e9d7c4',
+                  border: 'none'
                 }}
               >
-                <motion.div
-                  className="absolute inset-0"
-                  style={{
-                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)'
-                  }}
-                  animate={{
-                    x: ['-100%', '100%']
-                  }}
-                  transition={{
-                    duration: 2.5,
-                    repeat: Infinity,
-                    ease: 'linear'
-                  }}
-                />
                 <span className="relative flex items-center gap-3">
                   Zur ARAS Konsole
                   <ArrowRight className="w-6 h-6" />
