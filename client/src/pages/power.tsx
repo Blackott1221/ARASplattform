@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { Lock } from 'lucide-react';
 import type { SubscriptionResponse } from "@shared/schema";
 import arasLogo from "@/assets/aras_logo_1755067745303.png";
 
@@ -1073,8 +1074,25 @@ export default function Power() {
                     />
                   </div>
 
+                  {/* Lock Icon & Title */}
                   <div className="mb-6">
-                    <div className="text-[13px] text-gray-400 mb-2 tracking-wide uppercase">Massencalls</div>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-[13px] text-gray-400 tracking-wide uppercase">Massencalls</div>
+                      <motion.div
+                        animate={{
+                          scale: [1, 1.1, 1],
+                          rotate: [0, -5, 5, 0]
+                        }}
+                        transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                        className="p-2 rounded-lg"
+                        style={{
+                          background: 'rgba(254, 145, 0, 0.1)',
+                          border: '1px solid rgba(254, 145, 0, 0.3)'
+                        }}
+                      >
+                        <Lock className="w-5 h-5" style={{ color: CI.orange }} />
+                      </motion.div>
+                    </div>
                     <h3
                       className="text-2xl font-bold"
                       style={{
@@ -1185,10 +1203,10 @@ export default function Power() {
                     </div>
                   </div>
 
-                  {/* Coming Soon strip */}
+                  {/* Locked Badge */}
                   <div className="mt-6">
                     <div
-                      className="w-full rounded-xl px-4 py-3 text-center text-[13px] font-semibold tracking-wide"
+                      className="w-full rounded-xl px-4 py-3 text-center text-[13px] font-semibold tracking-wide flex items-center justify-center gap-3"
                       style={{
                         color: '#ffffff',
                         background: 'linear-gradient(90deg, rgba(254,145,0,0.16), rgba(163,78,0,0.16))',
@@ -1197,11 +1215,11 @@ export default function Power() {
                         fontFamily: 'Orbitron, sans-serif'
                       }}
                     >
-                      Enterprise Campaign Mode – Coming Soon
+                      <Lock className="w-4 h-4" style={{ color: CI.orange }} />
+                      <span>Nur für ARAS Ultimate – Enterprise Mode verfügbar</span>
                     </div>
-                    <div className="text-[12px] text-gray-500 mt-2">
-                      Dieser Modus ist aktuell deaktiviert. Vorbereitung und UI stehen bereit. Die Ausführung wird
-                      freigeschaltet, sobald die Server-Orchestrierung aktiv ist.
+                    <div className="text-[12px] text-gray-500 mt-2 text-center">
+                      Massencalls sind exklusiv für Enterprise-Kunden. Kontaktiere uns für ein individuelles Angebot.
                     </div>
                   </div>
                 </div>
