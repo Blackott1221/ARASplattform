@@ -287,11 +287,96 @@ export default function Welcome() {
           </div>
         </motion.div>
 
-        {/* What You Can Do Section - MOVED DOWN */}
+        {/* CTA Section - MOVED UP */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.8 }}
+          className="text-center mb-20"
+        >
+          <div className="mb-8">
+            <h3 
+              className="text-3xl md:text-4xl font-black mb-3"
+              style={{ fontFamily: 'Orbitron, sans-serif', color: '#e9d7c4' }}
+            >
+              Bereit? Dann starten wir.
+            </h3>
+            <p className="text-xl text-gray-400" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+              Deine Reise beginnt jetzt.
+            </p>
+          </div>
+
+          {/* Main CTA Button - Transparent with Animated Border */}
+          <Link href={user ? "/app/space" : "/auth"}>
+            <motion.div className="relative inline-block">
+              {/* Animated Border */}
+              <motion.div
+                className="absolute -inset-[2px] rounded-full"
+                style={{
+                  background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
+                  backgroundSize: '300% 100%'
+                }}
+                animate={{
+                  backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                }}
+                transition={{
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: 'linear'
+                }}
+              />
+              
+              {/* Glow Effect */}
+              <motion.div
+                className="absolute -inset-[3px] rounded-full opacity-60"
+                style={{
+                  background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
+                  backgroundSize: '300% 100%',
+                  filter: 'blur(15px)'
+                }}
+                animate={{
+                  backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
+                  opacity: [0.5, 0.8, 0.5]
+                }}
+                transition={{
+                  backgroundPosition: { duration: 4, repeat: Infinity, ease: 'linear' },
+                  opacity: { duration: 2, repeat: Infinity }
+                }}
+              />
+              
+              <motion.button
+                onClick={() => {
+                  trackCTAClick(
+                    'ARAS AI starten!',
+                    'welcome',
+                    user ? '/app/space' : '/auth'
+                  );
+                }}
+                whileHover={{ scale: 1.05, y: -3 }}
+                whileTap={{ scale: 0.95 }}
+                className="relative px-12 py-5 rounded-full font-black text-xl tracking-wide overflow-hidden"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  background: 'transparent',
+                  backdropFilter: 'blur(20px)',
+                  color: '#e9d7c4',
+                  border: 'none'
+                }}
+              >
+                <span className="relative flex items-center gap-3">
+                  ARAS AI starten!
+                  <ArrowRight className="w-6 h-6" />
+                </span>
+              </motion.button>
+            </motion.div>
+          </Link>
+        </motion.div>
+
+        {/* What You Can Do Section - MOVED DOWN */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 1.0 }}
           className="mb-20"
         >
           <h2 
@@ -396,90 +481,6 @@ export default function Welcome() {
           </div>
         </motion.div>
 
-        {/* CTA Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 1.4 }}
-          className="text-center mb-20"
-        >
-          <div className="mb-8">
-            <h3 
-              className="text-3xl md:text-4xl font-black mb-3"
-              style={{ fontFamily: 'Orbitron, sans-serif', color: '#e9d7c4' }}
-            >
-              Bereit? Dann starten wir.
-            </h3>
-            <p className="text-xl text-gray-400" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-              Deine Reise beginnt jetzt.
-            </p>
-          </div>
-
-          {/* Main CTA Button - Transparent with Animated Border */}
-          <Link href={user ? "/app/space" : "/auth"}>
-            <motion.div className="relative inline-block">
-              {/* Animated Border */}
-              <motion.div
-                className="absolute -inset-[2px] rounded-full"
-                style={{
-                  background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
-                  backgroundSize: '300% 100%'
-                }}
-                animate={{
-                  backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
-                }}
-                transition={{
-                  duration: 4,
-                  repeat: Infinity,
-                  ease: 'linear'
-                }}
-              />
-              
-              {/* Glow Effect */}
-              <motion.div
-                className="absolute -inset-[3px] rounded-full opacity-60"
-                style={{
-                  background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
-                  backgroundSize: '300% 100%',
-                  filter: 'blur(15px)'
-                }}
-                animate={{
-                  backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
-                  opacity: [0.5, 0.8, 0.5]
-                }}
-                transition={{
-                  backgroundPosition: { duration: 4, repeat: Infinity, ease: 'linear' },
-                  opacity: { duration: 2, repeat: Infinity }
-                }}
-              />
-              
-              <motion.button
-                onClick={() => {
-                  trackCTAClick(
-                    'Zur ARAS Konsole',
-                    'welcome',
-                    user ? '/app/space' : '/auth'
-                  );
-                }}
-                whileHover={{ scale: 1.05, y: -3 }}
-                whileTap={{ scale: 0.95 }}
-                className="relative px-12 py-5 rounded-full font-black text-xl tracking-wide overflow-hidden"
-                style={{
-                  fontFamily: 'Orbitron, sans-serif',
-                  background: 'transparent',
-                  backdropFilter: 'blur(20px)',
-                  color: '#e9d7c4',
-                  border: 'none'
-                }}
-              >
-                <span className="relative flex items-center gap-3">
-                  Zur ARAS Konsole
-                  <ArrowRight className="w-6 h-6" />
-                </span>
-              </motion.button>
-            </motion.div>
-          </Link>
-        </motion.div>
 
         {/* Recent Updates Timeline Section */}
         <motion.div
