@@ -246,6 +246,13 @@ export function ChatInterface() {
       setIsThinking(false);
       setIsStreaming(false);
       
+      // ✅ CRITICAL FIX: Set animation flag BEFORE cache update!
+      // This ensures MessageBubble receives isNew={true} on first render
+      setShouldAnimateLastAiMessage(true);
+      
+      // Small delay to ensure flag is set before messages update
+      await new Promise(resolve => setTimeout(resolve, 10));
+      
       // CRITICAL: Add streamed message directly to cache to prevent flash
       const userId = user && typeof user === 'object' && 'id' in user ? (user as any).id : null;
       if (fullMessage && sessionId && userId) {
@@ -274,7 +281,7 @@ export function ChatInterface() {
           }
         ];
         
-        // Update cache directly - no refetch needed!
+        // Update cache directly - now with animation flag already set!
         queryClient.setQueryData(["/api/chat/messages"], updatedMessages);
       }
       
