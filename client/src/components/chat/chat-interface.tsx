@@ -34,6 +34,7 @@ export function ChatInterface() {
   const [message, setMessage] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [audioURL, setAudioURL] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
   const [showCallModal, setShowCallModal] = useState(false);
   const [callFormData, setCallFormData] = useState({ contactName: '', phoneNumber: '', message: '' });
   const [phoneError, setPhoneError] = useState('');
