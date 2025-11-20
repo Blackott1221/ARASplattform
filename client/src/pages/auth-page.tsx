@@ -238,86 +238,90 @@ export default function AuthPage() {
           transition={{ duration: 1, delay: 0.2, ease: [0.25, 0.8, 0.25, 1] }}
           className="mb-12"
         >
-          {/* Main Title - With Enhanced Glassmorphism */}
+          {/* Main Title - Transparent with Animated Border */}
           <motion.div
             initial={{ scale: 0.85, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 1, ease: [0.25, 0.8, 0.25, 1] }}
-            className="mb-8 inline-block"
+            className="mb-6 inline-block"
           >
-            <div
-              className="relative px-12 py-6 rounded-3xl"
-              style={{
-                background: 'rgba(0, 0, 0, 0.6)',
-                backdropFilter: 'blur(40px)',
-                border: '1px solid rgba(254, 145, 0, 0.2)',
-                boxShadow: '0 20px 60px rgba(254, 145, 0, 0.15)'
-              }}
-            >
-              {/* Animated border glow */}
+            <div className="relative">
+              {/* Animated Border */}
               <motion.div
-                className="absolute -inset-[2px] rounded-3xl opacity-40"
+                className="absolute -inset-[2px] rounded-3xl"
                 style={{
                   background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
-                  backgroundSize: '300% 100%',
-                  filter: 'blur(8px)'
+                  backgroundSize: '300% 100%'
                 }}
                 animate={{
                   backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
                 }}
-                transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
+                transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
               />
               
-              <motion.h1
-                className="relative text-6xl xl:text-7xl font-black tracking-tight"
-                style={{ fontFamily: 'Orbitron, sans-serif' }}
+              {/* Subtle Glow */}
+              <motion.div
+                className="absolute -inset-[3px] rounded-3xl opacity-40"
+                style={{
+                  background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
+                  filter: 'blur(12px)'
+                }}
+                animate={{
+                  opacity: [0.3, 0.5, 0.3]
+                }}
+                transition={{ duration: 3, repeat: Infinity }}
+              />
+              
+              {/* Transparent Container */}
+              <div
+                className="relative px-12 py-6 rounded-3xl"
+                style={{
+                  background: 'rgba(0, 0, 0, 0.3)',
+                  border: 'none'
+                }}
               >
-                <motion.span
-                  className="inline-block relative"
-                  style={{
-                    background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
-                    backgroundSize: '300% 100%',
-                    backgroundClip: 'text',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    filter: 'drop-shadow(0 0 40px rgba(254, 145, 0, 0.3))'
-                  }}
-                  animate={{
-                    backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
-                  }}
-                  transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
+                <motion.h1
+                  className="relative text-6xl xl:text-7xl font-black tracking-tight"
+                  style={{ fontFamily: 'Orbitron, sans-serif' }}
                 >
-                  ARAS AI
-                </motion.span>
-              </motion.h1>
+                  <motion.span
+                    className="inline-block relative"
+                    style={{
+                      background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
+                      backgroundSize: '300% 100%',
+                      backgroundClip: 'text',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      filter: 'drop-shadow(0 0 30px rgba(254, 145, 0, 0.4))'
+                    }}
+                    animate={{
+                      backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                    }}
+                    transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
+                  >
+                    ARAS AI
+                  </motion.span>
+                </motion.h1>
+              </div>
             </div>
           </motion.div>
 
-          {/* Subtitle - With Glassmorphism */}
+          {/* Subtitle - Below Title */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6, duration: 0.8 }}
-            className="inline-block mb-8"
+            className="mb-8"
           >
-            <div
-              className="px-6 py-3 rounded-xl"
-              style={{
-                background: 'rgba(0, 0, 0, 0.5)',
-                backdropFilter: 'blur(30px)',
-                border: '1px solid rgba(254, 145, 0, 0.2)'
+            <p
+              className="text-sm uppercase tracking-[0.35em] font-semibold"
+              style={{ 
+                fontFamily: 'Orbitron, sans-serif',
+                color: '#e9d7c4'
               }}
             >
-              <p
-                className="text-sm uppercase tracking-[0.35em] font-semibold"
-                style={{ 
-                  fontFamily: 'Orbitron, sans-serif',
-                  color: '#FE9100'
-                }}
-              >
-                Die Outbound-KI
-              </p>
-            </div>
+              Die Outbound-KI
+            </p>
           </motion.div>
 
           {/* Typewriter */}
