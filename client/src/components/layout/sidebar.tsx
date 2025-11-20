@@ -121,7 +121,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
         )}
         
         {/* Navigation Items */}
-        <nav className={`flex-1 flex flex-col justify-start ${isCollapsed ? 'px-3' : 'px-4'} pt-6`}>
+        <nav className={`flex-shrink-0 flex flex-col justify-start ${isCollapsed ? 'px-3' : 'px-4'} pt-6 pb-2`}>
           <div className="space-y-3">
             {navItems.map((item, index) => {
               const Icon = item.icon;
@@ -237,7 +237,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
         </nav>
         
         {/* Logout Button - Simple & Transparent */}
-        <div className={`${isCollapsed ? 'px-3 py-2 pt-4' : 'px-4 py-2 pt-4'}`}>
+        <div className={`flex-shrink-0 ${isCollapsed ? 'px-3 py-2' : 'px-4 py-2'}`}>
           <motion.button
             onClick={async () => {
               try {
