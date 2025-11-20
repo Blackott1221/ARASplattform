@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { MessageBubble } from "./message-bubble";
-import { Send, Mic, MicOff, Plus, MessageSquare, X, Menu, Paperclip, File, Image as ImageIcon, FileText, Clock, AlertCircle, Phone, Loader2 } from "lucide-react";
+import { Send, Mic, MicOff, Plus, MessageSquare, X, Menu, Paperclip, File, Image as ImageIcon, FileText, Clock, AlertCircle, Phone, Loader2, ArrowUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
@@ -22,9 +22,9 @@ const ANIMATED_TEXTS = [
 ];
 
 const SUGGESTED_PROMPTS = [
-  "Was ist ARAS AI?",
-  "Aktuelle Nachrichten",
-  "Vertriebsstrategien"
+  { text: "Was ist ARAS AI?", isCall: false },
+  { text: "Aktuelle Nachrichten", isCall: false },
+  { text: "ARAS AI Anruf starten", isCall: true }
 ];
 
 interface UploadedFile { name: string; type: string; size: number; content: string; }
@@ -655,30 +655,48 @@ export function ChatInterface() {
                 </span>
               </motion.div>
 
-              {/* PROMPT BUTTONS - 3 BUTTONS NEBENEINANDER */}
+              {/* PROMPT BUTTONS - 3 BUTTONS NEBENEINANDER WITH ANIMATED BORDERS */}
               <motion.div 
                 initial={{ opacity: 0 }} 
                 animate={{ opacity: 1 }} 
                 transition={{ delay: 0.5 }}
-                className="flex justify-center gap-3 mb-12"
+                className="flex justify-center gap-4 mb-12"
               >
                 {SUGGESTED_PROMPTS.map((prompt, index) => (
-                  <motion.button
+                  <motion.div
                     key={index}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.6 + index * 0.1 }}
-                    whileHover={{ 
-                      scale: 1.02,
-                      backgroundColor: 'rgba(254, 145, 0, 0.05)',
-                      borderColor: 'rgba(254, 145, 0, 0.3)'
-                    }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => handleSendMessage(prompt)}
-                    className="px-5 py-3 rounded-xl bg-transparent border border-white/10 text-gray-400 hover:text-white text-sm transition-all"
+                    className="relative"
                   >
-                    {prompt}
-                  </motion.button>
+                    {/* Animated Border */}
+                    <motion.div
+                      className="absolute -inset-[2px] rounded-xl"
+                      style={{
+                        background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
+                        backgroundSize: '300% 100%'
+                      }}
+                      animate={{
+                        backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                      }}
+                      transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
+                    />
+                    
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => prompt.isCall ? setShowCallModal(true) : handleSendMessage(prompt.text)}
+                      className="relative px-6 py-3 rounded-xl text-white text-sm transition-all flex items-center gap-2"
+                      style={{
+                        background: 'rgba(0, 0, 0, 0.8)',
+                        backdropFilter: 'blur(10px)'
+                      }}
+                    >
+                      <span>{prompt.text}</span>
+                      <ArrowUp className="w-4 h-4" style={{ color: '#FE9100' }} />
+                    </motion.button>
+                  </motion.div>
                 ))}
               </motion.div>
             </motion.div>
