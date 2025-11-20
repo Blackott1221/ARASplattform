@@ -708,14 +708,28 @@ export function ChatInterface() {
                   </Button>
                 </div>
 
-                <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  variant="ghost"
-                  size="sm"
-                  className="h-14 w-14 p-0 rounded-2xl hover:bg-white/5"
-                >
-                  <Paperclip className="w-5 h-5 text-gray-500" />
-                </Button>
+                {/* Call Button with Animated Border */}
+                <div className="relative">
+                  <motion.div
+                    className="absolute -inset-[2px] rounded-2xl"
+                    style={{
+                      background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
+                      backgroundSize: '300% 100%'
+                    }}
+                    animate={{
+                      backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                    }}
+                    transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+                  />
+                  <Button
+                    onClick={() => setShowCallModal(true)}
+                    variant="ghost"
+                    size="sm"
+                    className="relative h-14 w-14 p-0 rounded-2xl hover:bg-white/5 bg-[#0a0a0a]"
+                  >
+                    <Phone className="w-5 h-5 text-[#FE9100]" />
+                  </Button>
+                </div>
 
                 <Button
                   onClick={() => handleSendMessage()}
