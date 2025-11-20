@@ -557,13 +557,13 @@ export function ChatInterface() {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2, duration: 0.5 }}
-                className="mb-6 flex items-center justify-center gap-3 text-sm"
+                className="mb-12 flex items-center justify-center gap-3 text-xs"
               >
-                <div className="px-4 py-2 rounded-xl" style={{
-                  background: 'rgba(254, 145, 0, 0.05)',
-                  border: '1px solid rgba(254, 145, 0, 0.2)'
+                <div className="px-3 py-1.5 rounded-lg" style={{
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid rgba(255, 255, 255, 0.05)'
                 }}>
-                  <span className="text-gray-400">
+                  <span className="text-gray-600">
                     {currentTime.toLocaleDateString('de-CH', {
                       day: 'numeric',
                       month: 'long',
@@ -572,12 +572,12 @@ export function ChatInterface() {
                     })}
                   </span>
                 </div>
-                <div className="px-4 py-2 rounded-xl font-mono" style={{
-                  background: 'rgba(254, 145, 0, 0.1)',
-                  border: '1px solid rgba(254, 145, 0, 0.3)',
+                <div className="px-3 py-1.5 rounded-lg font-mono" style={{
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid rgba(255, 255, 255, 0.05)',
                   fontFamily: 'monospace'
                 }}>
-                  <span style={{ color: '#FE9100' }}>
+                  <span className="text-gray-600">
                     {currentTime.toLocaleTimeString('de-CH', {
                       hour: '2-digit',
                       minute: '2-digit',
@@ -684,14 +684,13 @@ export function ChatInterface() {
                     />
                     
                     <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => prompt.isCall ? setShowCallModal(true) : handleSendMessage(prompt.text)}
-                      className="relative px-6 py-3 rounded-xl text-white text-sm transition-all flex items-center gap-2"
-                      style={{
-                        background: 'rgba(0, 0, 0, 0.8)',
-                        backdropFilter: 'blur(10px)'
+                      whileHover={{ 
+                        scale: 1.05,
+                        boxShadow: '0 0 30px rgba(254, 145, 0, 0.4)'
                       }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => prompt.isCall ? setShowCallModal(true) : handleSendMessage(prompt.text)}
+                      className="relative px-6 py-3 rounded-xl text-white text-sm font-medium transition-all flex items-center gap-2 bg-[#0a0a0a]"
                     >
                       <span>{prompt.text}</span>
                       <ArrowUp className="w-4 h-4" style={{ color: '#FE9100' }} />
@@ -1000,169 +999,229 @@ export function ChatInterface() {
               onClick={(e) => e.stopPropagation()}
               className="relative w-full max-w-lg mx-4"
             >
-              <div
-                className="relative rounded-2xl p-7"
+              {/* Animated Border for Modal */}
+              <motion.div
+                className="absolute -inset-[2px] rounded-3xl"
                 style={{
-                  background: 'rgba(0,0,0,0.9)',
-                  border: '1px solid rgba(254, 145, 0, 0.3)',
-                  backdropFilter: 'blur(20px)',
-                  boxShadow: '0 20px 60px rgba(254, 145, 0, 0.3)'
+                  background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
+                  backgroundSize: '300% 100%'
+                }}
+                animate={{
+                  backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                }}
+                transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+              />
+
+              <div
+                className="relative rounded-3xl p-8"
+                style={{
+                  background: 'rgba(10, 10, 10, 0.95)',
+                  backdropFilter: 'blur(40px)'
                 }}
               >
                 {/* Close Button */}
                 <button
                   onClick={() => !callLoading && setShowCallModal(false)}
-                  className="absolute top-4 right-4 p-2 rounded-lg hover:bg-white/10 transition-colors"
+                  className="absolute top-5 right-5 p-2 rounded-full hover:bg-white/5 transition-all"
                   disabled={callLoading}
                 >
-                  <X className="w-5 h-5 text-gray-400" />
+                  <X className="w-5 h-5 text-gray-500 hover:text-white" />
                 </button>
 
                 {/* Header */}
-                <div className="mb-6">
+                <div className="mb-8 text-center">
+                  <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.1 }}
+                    className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.15), rgba(163, 78, 0, 0.15))',
+                      border: '1px solid rgba(254, 145, 0, 0.3)'
+                    }}
+                  >
+                    <Phone className="w-7 h-7" style={{ color: '#FE9100' }} />
+                  </motion.div>
                   <h3 
-                    className="text-2xl font-bold"
+                    className="text-3xl font-black mb-2"
                     style={{ 
                       fontFamily: 'Orbitron, sans-serif',
-                      background: 'linear-gradient(90deg, #e9d7c4, #FE9100)',
-                      WebkitBackgroundClip: 'text',
-                      backgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent'
+                      color: '#e9d7c4'
                     }}
                   >
                     ARAS AI Anruf
                   </h3>
-                  <p className="text-sm text-gray-400 mt-1">Einzelanruf starten</p>
+                  <p className="text-sm text-gray-500">Starte einen intelligenten Anruf</p>
                 </div>
 
                 {/* Form */}
                 {!callResult ? (
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                     {/* Contact Name */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-300 mb-2">Gesprächspartner</label>
-                      <input
-                        type="text"
-                        value={callFormData.contactName}
-                        onChange={(e) => setCallFormData({ ...callFormData, contactName: e.target.value })}
-                        placeholder="Name eingeben…"
-                        className="w-full px-4 py-3 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all"
-                        style={{
-                          background: 'rgba(255,255,255,0.03)',
-                          border: '1px solid rgba(255,255,255,0.10)'
-                        }}
-                        disabled={callLoading}
-                      />
+                      <label className="block text-xs font-semibold text-gray-400 mb-2.5 tracking-wide uppercase">Kontaktname</label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={callFormData.contactName}
+                          onChange={(e) => setCallFormData({ ...callFormData, contactName: e.target.value })}
+                          placeholder="z.B. Max Mustermann"
+                          className="w-full px-5 py-4 rounded-2xl text-white text-sm placeholder-gray-700 focus:outline-none transition-all"
+                          style={{
+                            background: 'rgba(255,255,255,0.02)',
+                            border: '1px solid rgba(255,255,255,0.08)'
+                          }}
+                          disabled={callLoading}
+                        />
+                      </div>
                     </div>
 
                     {/* Phone Number */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-300 mb-2">Telefonnummer</label>
-                      <input
-                        type="tel"
-                        value={callFormData.phoneNumber}
-                        onChange={(e) => {
-                          const formatted = e.target.value.replace(/[^\d+]/g, '');
-                          setCallFormData({ ...callFormData, phoneNumber: formatted });
-                          setPhoneError(formatted && !/^\+[0-9]{10,15}$/.test(formatted) ? 'Format: +4917661119320' : '');
-                        }}
-                        placeholder="+49…"
-                        className="w-full px-4 py-3 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all"
-                        style={{
-                          background: 'rgba(255,255,255,0.03)',
-                          border: phoneError ? '1px solid rgba(239,68,68,0.5)' : '1px solid rgba(255,255,255,0.10)'
-                        }}
-                        disabled={callLoading}
-                      />
-                      {phoneError && <p className="mt-1 text-xs text-red-400">{phoneError}</p>}
+                      <label className="block text-xs font-semibold text-gray-400 mb-2.5 tracking-wide uppercase">Telefonnummer</label>
+                      <div className="relative">
+                        <input
+                          type="tel"
+                          value={callFormData.phoneNumber}
+                          onChange={(e) => {
+                            const formatted = e.target.value.replace(/[^\d+]/g, '');
+                            setCallFormData({ ...callFormData, phoneNumber: formatted });
+                            setPhoneError(formatted && !/^\+[0-9]{10,15}$/.test(formatted) ? 'Bitte Format +4917661119320 verwenden' : '');
+                          }}
+                          placeholder="+41 79 123 45 67"
+                          className="w-full px-5 py-4 rounded-2xl text-white text-sm placeholder-gray-700 focus:outline-none transition-all font-mono"
+                          style={{
+                            background: 'rgba(255,255,255,0.02)',
+                            border: phoneError ? '1px solid rgba(239,68,68,0.4)' : '1px solid rgba(255,255,255,0.08)'
+                          }}
+                          disabled={callLoading}
+                        />
+                        {phoneError && (
+                          <motion.p 
+                            initial={{ opacity: 0, y: -5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mt-2 text-xs text-red-400 flex items-center gap-1"
+                          >
+                            <AlertCircle className="w-3 h-3" />
+                            {phoneError}
+                          </motion.p>
+                        )}
+                      </div>
                     </div>
 
                     {/* Message */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-300 mb-2">Ziel der Nachricht</label>
+                      <label className="block text-xs font-semibold text-gray-400 mb-2.5 tracking-wide uppercase">Anrufziel</label>
                       <textarea
                         value={callFormData.message}
                         onChange={(e) => setCallFormData({ ...callFormData, message: e.target.value })}
-                        placeholder="Beispiel: Bitte vereinbaren Sie einen Termin für nächste Woche…"
-                        className="w-full px-4 py-3 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all resize-none"
+                        placeholder="Beschreibe das Ziel dieses Anrufs (z.B. Termin vereinbaren, Produkt vorstellen, Fragen beantworten…)"
+                        className="w-full px-5 py-4 rounded-2xl text-white text-sm placeholder-gray-700 focus:outline-none transition-all resize-none"
                         style={{
-                          minHeight: 100,
-                          background: 'rgba(255,255,255,0.03)',
-                          border: '1px solid rgba(255,255,255,0.10)'
+                          minHeight: 120,
+                          background: 'rgba(255,255,255,0.02)',
+                          border: '1px solid rgba(255,255,255,0.08)'
                         }}
                         disabled={callLoading}
                       />
                     </div>
 
                     {/* Call Button */}
-                    <button
-                      onClick={async () => {
-                        if (!callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError) {
-                          toast({ title: 'Fehlende Angaben', description: 'Bitte fülle alle Felder korrekt aus', variant: 'destructive' });
-                          return;
-                        }
-                        setCallLoading(true);
-                        try {
-                          const response = await fetch('/api/aras-voice/smart-call', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            credentials: 'include',
-                            body: JSON.stringify({ 
-                              name: callFormData.contactName, 
-                              phoneNumber: callFormData.phoneNumber, 
-                              message: callFormData.message 
-                            })
-                          });
-                          const data = await response.json();
-                          if (data.success) {
-                            setCallResult({ success: true });
-                            toast({ title: 'Anruf gestartet! ✓', description: `ARAS AI ruft ${callFormData.contactName} an...` });
-                            setTimeout(() => {
-                              setShowCallModal(false);
-                              setCallResult(null);
-                              setCallFormData({ contactName: '', phoneNumber: '', message: '' });
-                            }, 2000);
-                          } else {
-                            toast({ title: 'Fehler', description: data.error || 'Anruf konnte nicht gestartet werden', variant: 'destructive' });
+                    <motion.div className="pt-2">
+                      <motion.button
+                        whileHover={{ scale: callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError ? 1 : 1.02 }}
+                        whileTap={{ scale: callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError ? 1 : 0.98 }}
+                        onClick={async () => {
+                          if (!callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError) {
+                            toast({ title: 'Fehlende Angaben', description: 'Bitte fülle alle Felder korrekt aus', variant: 'destructive' });
+                            return;
                           }
-                        } catch (error: any) {
-                          toast({ title: 'Fehler', description: error?.message || 'Anruf fehlgeschlagen', variant: 'destructive' });
-                        } finally {
-                          setCallLoading(false);
-                        }
-                      }}
-                      disabled={callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || !!phoneError}
-                      className="w-full py-3 rounded-full font-semibold text-sm transition-all flex items-center justify-center gap-2"
-                      style={{
-                        fontFamily: 'Orbitron, sans-serif',
-                        background: (callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError)
-                          ? 'rgba(45,45,45,0.6)'
-                          : 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
-                        backgroundSize: '200% 100%',
-                        color: (callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError) ? 'rgba(170,170,170,0.6)' : '#000'
-                      }}
-                    >
-                      {callLoading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Anruf wird gestartet...
-                        </>
-                      ) : (
-                        <>
-                          <Phone className="w-4 h-4" />
-                          Jetzt anrufen lassen
-                        </>
-                      )}
-                    </button>
+                          setCallLoading(true);
+                          try {
+                            const response = await fetch('/api/aras-voice/smart-call', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              credentials: 'include',
+                              body: JSON.stringify({ 
+                                name: callFormData.contactName, 
+                                phoneNumber: callFormData.phoneNumber, 
+                                message: callFormData.message 
+                              })
+                            });
+                            const data = await response.json();
+                            if (data.success) {
+                              setCallResult({ success: true });
+                              toast({ title: 'Anruf gestartet! ✓', description: `ARAS AI ruft ${callFormData.contactName} an...` });
+                              setTimeout(() => {
+                                setShowCallModal(false);
+                                setCallResult(null);
+                                setCallFormData({ contactName: '', phoneNumber: '', message: '' });
+                              }, 2000);
+                            } else {
+                              toast({ title: 'Fehler', description: data.error || 'Anruf konnte nicht gestartet werden', variant: 'destructive' });
+                            }
+                          } catch (error: any) {
+                            toast({ title: 'Fehler', description: error?.message || 'Anruf fehlgeschlagen', variant: 'destructive' });
+                          } finally {
+                            setCallLoading(false);
+                          }
+                        }}
+                        disabled={callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || !!phoneError}
+                        className="w-full py-4 rounded-2xl font-bold text-base transition-all flex items-center justify-center gap-3"
+                        style={{
+                          fontFamily: 'Orbitron, sans-serif',
+                          background: (callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError)
+                            ? 'rgba(255,255,255,0.03)'
+                            : 'linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00)',
+                          color: (callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError) ? 'rgba(170,170,170,0.5)' : '#0a0a0a',
+                          boxShadow: (callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError) ? 'none' : '0 8px 32px rgba(254, 145, 0, 0.3)'
+                        }}
+                      >
+                        {callLoading ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <span>Verbinde...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Phone className="w-5 h-5" />
+                            <span>Anruf starten</span>
+                          </>
+                        )}
+                      </motion.button>
+                    </motion.div>
                   </div>
                 ) : (
-                  <div className="text-center py-6">
-                    <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Phone className="w-8 h-8 text-green-400" />
-                    </div>
-                    <p className="text-lg font-semibold text-white">Anruf gestartet!</p>
-                    <p className="text-sm text-gray-400 mt-2">ARAS AI führt den Anruf durch...</p>
-                  </div>
+                  <motion.div 
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="text-center py-8"
+                  >
+                    <motion.div 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: 'spring', delay: 0.2 }}
+                      className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-5"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(22, 163, 74, 0.2))',
+                        border: '2px solid rgba(34, 197, 94, 0.4)'
+                      }}
+                    >
+                      <Phone className="w-9 h-9 text-green-400" />
+                    </motion.div>
+                    <motion.div
+                      initial={{ y: 10, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ delay: 0.3 }}
+                    >
+                      <h4 className="text-xl font-bold text-white mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                        Anruf gestartet!
+                      </h4>
+                      <p className="text-sm text-gray-500">
+                        ARAS AI verbindet sich mit {callFormData.contactName}...
+                      </p>
+                    </motion.div>
+                  </motion.div>
                 )}
               </div>
             </motion.div>
