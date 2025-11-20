@@ -280,28 +280,15 @@ export default function AuthPage() {
                   border: 'none'
                 }}
               >
-                <motion.h1
+                <h1
                   className="relative text-6xl xl:text-7xl font-black tracking-tight"
-                  style={{ fontFamily: 'Orbitron, sans-serif' }}
+                  style={{ 
+                    fontFamily: 'Orbitron, sans-serif',
+                    color: '#e9d7c4'
+                  }}
                 >
-                  <motion.span
-                    className="inline-block relative"
-                    style={{
-                      background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
-                      backgroundSize: '300% 100%',
-                      backgroundClip: 'text',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                      filter: 'drop-shadow(0 0 30px rgba(254, 145, 0, 0.4))'
-                    }}
-                    animate={{
-                      backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
-                    }}
-                    transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
-                  >
-                    ARAS AI
-                  </motion.span>
-                </motion.h1>
+                  ARAS AI
+                </h1>
               </div>
             </div>
           </motion.div>
