@@ -238,58 +238,87 @@ export default function AuthPage() {
           transition={{ duration: 1, delay: 0.2, ease: [0.25, 0.8, 0.25, 1] }}
           className="mb-12"
         >
-          {/* Main Title */}
-          <motion.h1
-            className="text-6xl xl:text-7xl font-black mb-8 tracking-tight"
-            style={{ fontFamily: 'Orbitron, sans-serif' }}
-            initial={{ scale: 0.85 }}
-            animate={{ scale: 1 }}
+          {/* Main Title - With Enhanced Glassmorphism */}
+          <motion.div
+            initial={{ scale: 0.85, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 1, ease: [0.25, 0.8, 0.25, 1] }}
+            className="mb-8 inline-block"
           >
-            <motion.span
-              className="inline-block relative"
+            <div
+              className="relative px-12 py-6 rounded-3xl"
               style={{
-                background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
-                backgroundSize: '300% 100%',
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                filter: 'drop-shadow(0 0 40px rgba(254, 145, 0, 0.25))'
+                background: 'rgba(0, 0, 0, 0.6)',
+                backdropFilter: 'blur(40px)',
+                border: '1px solid rgba(254, 145, 0, 0.2)',
+                boxShadow: '0 20px 60px rgba(254, 145, 0, 0.15)'
               }}
-              animate={{
-                backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
-              }}
-              transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
             >
-              ARAS AI
+              {/* Animated border glow */}
               <motion.div
-                className="absolute -inset-8 blur-[60px] opacity-20"
+                className="absolute -inset-[2px] rounded-3xl opacity-40"
                 style={{
-                  background: 'radial-gradient(circle, #FE9100 0%, #a34e00 50%, transparent 70%)',
-                  zIndex: -1
+                  background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
+                  backgroundSize: '300% 100%',
+                  filter: 'blur(8px)'
                 }}
                 animate={{
-                  opacity: [0.15, 0.35, 0.15],
-                  scale: [0.95, 1.05, 0.95]
+                  backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
                 }}
-                transition={{ duration: 4, repeat: Infinity }}
+                transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
               />
-            </motion.span>
-          </motion.h1>
+              
+              <motion.h1
+                className="relative text-6xl xl:text-7xl font-black tracking-tight"
+                style={{ fontFamily: 'Orbitron, sans-serif' }}
+              >
+                <motion.span
+                  className="inline-block relative"
+                  style={{
+                    background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
+                    backgroundSize: '300% 100%',
+                    backgroundClip: 'text',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    filter: 'drop-shadow(0 0 40px rgba(254, 145, 0, 0.3))'
+                  }}
+                  animate={{
+                    backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                  }}
+                  transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
+                >
+                  ARAS AI
+                </motion.span>
+              </motion.h1>
+            </div>
+          </motion.div>
 
-          {/* Subtitle */}
-          <motion.p
+          {/* Subtitle - With Glassmorphism */}
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6, duration: 0.8 }}
-            className="text-sm uppercase tracking-[0.35em] mb-8 font-semibold"
-            style={{ 
-              fontFamily: 'Orbitron, sans-serif',
-              color: '#a34e00'
-            }}
+            className="inline-block mb-8"
           >
-            Die Outbound-KI
-          </motion.p>
+            <div
+              className="px-6 py-3 rounded-xl"
+              style={{
+                background: 'rgba(0, 0, 0, 0.5)',
+                backdropFilter: 'blur(30px)',
+                border: '1px solid rgba(254, 145, 0, 0.2)'
+              }}
+            >
+              <p
+                className="text-sm uppercase tracking-[0.35em] font-semibold"
+                style={{ 
+                  fontFamily: 'Orbitron, sans-serif',
+                  color: '#FE9100'
+                }}
+              >
+                Die Outbound-KI
+              </p>
+            </div>
+          </motion.div>
 
           {/* Typewriter */}
           <motion.div
@@ -312,20 +341,6 @@ export default function AuthPage() {
                 transition={{ duration: 0.9, repeat: Infinity }}
               />
             </span>
-          </motion.div>
-
-          {/* Description */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1, duration: 0.8 }}
-            className="space-y-4 text-base text-gray-300 leading-relaxed"
-          >
-            <p>Echte Gespräche. Echte Resultate.</p>
-            <p>
-              ARAS AI führt tausende Anrufe gleichzeitig – und klingt dabei wie ein Mensch.
-            </p>
-            <p>Du liest nicht über die Zukunft. Du hörst sie.</p>
           </motion.div>
 
           {/* Alpha Info */}
