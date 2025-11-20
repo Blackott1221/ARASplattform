@@ -755,8 +755,8 @@ export function ChatInterface() {
               })}
             </AnimatePresence>
 
-            {/* Clean, minimal "Thinking" animation */}
-            {isThinking && (
+            {/* Clean, minimal "Thinking" animation - shown during thinking AND streaming */}
+            {(isThinking || isStreaming) && (
               <motion.div 
                 initial={{ opacity: 0 }} 
                 animate={{ opacity: 1 }}
@@ -785,26 +785,6 @@ export function ChatInterface() {
                       </motion.span>
                     ))}
                   </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Streaming message with typewriter cursor */}
-            {isStreaming && streamingMessage && (
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }} 
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-                className="flex items-start gap-4"
-              >
-                <img src={arasAiImage} alt="ARAS AI" className="w-8 h-8 rounded-full flex-shrink-0" />
-                <div className="flex-1 bg-white/5 rounded-lg p-4 text-white whitespace-pre-wrap break-words">
-                  {streamingMessage}
-                  <motion.span
-                    animate={{ opacity: [1, 0, 1] }}
-                    transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut" }}
-                    className="inline-block w-[2px] h-[18px] bg-[#FE9100] ml-1 align-middle"
-                  />
                 </div>
               </motion.div>
             )}
