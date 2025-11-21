@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { MessageBubble } from "./message-bubble";
-import { Send, Mic, MicOff, Plus, MessageSquare, X, Menu, Paperclip, File, Image as ImageIcon, FileText, Clock, AlertCircle, Phone, Loader2, ArrowUp, Sparkles, Zap } from "lucide-react";
+import { Send, Mic, MicOff, Plus, MessageSquare, X, Menu, Paperclip, File, Image as ImageIcon, FileText, Clock, AlertCircle, Phone, Loader2, ArrowUp, Sparkles, Zap, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
@@ -27,21 +27,20 @@ const SUGGESTED_PROMPTS = [
   { text: "ARAS AI Anruf starten", isCall: true }
 ];
 
-// ✅ NEUE CALL TEMPLATES
 const CALL_TEMPLATES = [
   { 
     icon: "📅", 
-    title: "Termin vereinbaren", 
+    title: "Termin", 
     message: "Ich möchte einen Termin für nächste Woche vereinbaren. Bitte finden Sie einen passenden Zeitpunkt." 
   },
   { 
     icon: "📞", 
-    title: "Rückruf anfordern", 
+    title: "Rückruf", 
     message: "Bitte rufen Sie mich zurück, um Details zu besprechen. Ich bin heute zwischen 14-18 Uhr erreichbar." 
   },
   { 
     icon: "💼", 
-    title: "Geschäftsanfrage", 
+    title: "Business", 
     message: "Ich interessiere mich für Ihre Dienstleistungen und würde gerne mehr über Ihre Angebote erfahren." 
   },
   { 
@@ -90,7 +89,6 @@ export function ChatInterface() {
   const { user, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
 
-  // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -98,7 +96,6 @@ export function ChatInterface() {
     }
   }, [message]);
 
-  // Live time update for Swiss time
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
@@ -155,7 +152,6 @@ export function ChatInterface() {
     },
   });
 
-
   const sendMessage = useMutation({
     mutationFn: async (message: string) => {
       const messageData: any = { message, sessionId: currentSessionId };
@@ -198,10 +194,8 @@ export function ChatInterface() {
           setIsStreaming(false);
           setStreamingMessage('');
           setOptimisticMessages([]);
-          
           return null;
         }
-        
         throw new Error('Failed to send message');
       }
 
@@ -479,7 +473,6 @@ export function ChatInterface() {
         </motion.div>
       )}
 
-      {/* SIDEBAR */}
       <AnimatePresence>
         {showHistory && (
           <>
@@ -539,7 +532,6 @@ export function ChatInterface() {
           <div className="w-full flex flex-col items-center px-6">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center mb-8 w-full max-w-3xl">
               
-              {/* DATE & TIME - SWISS TIME */}
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -575,7 +567,6 @@ export function ChatInterface() {
                 </div>
               </motion.div>
 
-              {/* ARAS AI LOGO MIT GRADIENT */}
               <motion.h1 
                 className="text-7xl font-bold mb-6 relative"
                 style={{ fontFamily: 'Orbitron, sans-serif' }}
@@ -615,7 +606,6 @@ export function ChatInterface() {
                 </span>
               </motion.h1>
 
-              {/* TYPEWRITER EFFEKT */}
               <motion.div 
                 initial={{ opacity: 0 }} 
                 animate={{ opacity: 1 }} 
@@ -642,7 +632,7 @@ export function ChatInterface() {
                 </span>
               </motion.div>
 
-              {/* ✅ MODERNE PROMPT BUTTONS - TRANSPARENTER INNENRAUM MIT ANIMIERTEN RÄNDERN */}
+              {/* 🔥 SPEKTAKULÄRE BUTTONS MIT PERMANENT ANIMIERTEN BORDERS & GLASSMORPHISM */}
               <motion.div 
                 initial={{ opacity: 0 }} 
                 animate={{ opacity: 1 }} 
@@ -657,47 +647,43 @@ export function ChatInterface() {
                     transition={{ delay: 0.6 + index * 0.1 }}
                     className="relative group"
                   >
-                    {/* Animated Gradient Border - Only visible on hover */}
+                    {/* 🔥 PERMANENT ANIMIERTER GRADIENT BORDER - IMMER SICHTBAR! */}
                     <motion.div
-                      className="absolute -inset-[1.5px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                      className="absolute -inset-[2px] rounded-xl"
                       style={{
                         background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
-                        backgroundSize: '300% 100%'
+                        backgroundSize: '300% 100%',
+                        boxShadow: '0 0 20px rgba(254, 145, 0, 0.3)',
                       }}
                       animate={{
                         backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
                       }}
-                      transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+                      transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
                     />
                     
-                    {/* Static Subtle Border - Always visible */}
-                    <div 
-                      className="absolute -inset-[1px] rounded-xl"
-                      style={{
-                        background: 'rgba(255, 255, 255, 0.08)',
-                      }}
-                    />
-                    
-                    {/* Button Content */}
+                    {/* Glassmorphism Button */}
                     <motion.button
                       whileHover={{ 
-                        scale: 1.02,
-                        y: -2,
+                        scale: 1.05,
+                        y: -3,
+                        boxShadow: '0 10px 40px rgba(254, 145, 0, 0.5)',
                       }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => prompt.isCall ? setShowCallModal(true) : handleSendMessage(prompt.text)}
-                      className="relative px-5 py-3 rounded-xl text-white/90 text-sm font-medium transition-all flex items-center gap-2.5 hover:text-white"
+                      className="relative px-6 py-3.5 rounded-xl text-white text-sm font-semibold transition-all flex items-center gap-3"
                       style={{
-                        background: 'rgba(10, 10, 10, 0.7)',
-                        backdropFilter: 'blur(20px)',
+                        fontFamily: 'Orbitron, sans-serif',
+                        background: 'rgba(10, 10, 10, 0.6)',
+                        backdropFilter: 'blur(30px)',
+                        WebkitBackdropFilter: 'blur(30px)',
                       }}
                     >
                       <span className="relative z-10">{prompt.text}</span>
                       <motion.div
-                        whileHover={{ x: 2, y: -2 }}
-                        transition={{ type: 'spring', stiffness: 400, damping: 10 }}
+                        whileHover={{ x: 3, y: -3 }}
+                        transition={{ type: 'spring', stiffness: 500 }}
                       >
-                        <ArrowUp className="w-3.5 h-3.5" style={{ color: '#FE9100' }} />
+                        <ArrowUp className="w-4 h-4" style={{ color: '#FE9100' }} />
                       </motion.div>
                     </motion.button>
                   </motion.div>
@@ -705,7 +691,7 @@ export function ChatInterface() {
               </motion.div>
             </motion.div>
 
-            {/* ✅ MODERNES EINGABEFELD MIT CLEANEN BUTTONS */}
+            {/* EINGABEFELD - ORIGINAL BEIBEHALTEN */}
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }} className="w-full max-w-3xl">
               {uploadedFiles.length > 0 && (
                 <div className="mb-3 space-y-2">
@@ -723,12 +709,11 @@ export function ChatInterface() {
                 </div>
               )}
 
-              <div className="relative flex items-end space-x-2">
+              <div className="relative flex items-end space-x-3">
                 <div className="flex-1 relative">
-                  {/* Subtle Animated Border */}
-                  <div className="absolute -inset-[1px] rounded-3xl">
+                  <div className="absolute -inset-[2px] rounded-3xl">
                     <motion.div
-                      className="w-full h-full rounded-3xl opacity-50"
+                      className="w-full h-full rounded-3xl"
                       animate={{
                         backgroundImage: [
                           'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
@@ -737,9 +722,9 @@ export function ChatInterface() {
                           'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
                         ],
                       }}
-                      transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
+                      transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
                       style={{
-                        padding: '1px',
+                        padding: '2px',
                         WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
                         WebkitMaskComposite: 'xor',
                         maskComposite: 'exclude',
@@ -775,39 +760,39 @@ export function ChatInterface() {
                   </Button>
                 </div>
 
-                {/* ✅ MODERNER CALL BUTTON */}
-                <motion.div 
-                  className="relative group"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
+                {/* 🔥 ULTRA-MODERNER CALL BUTTON MIT GLASSMORPHISM & GLOW */}
+                <motion.div className="relative">
+                  {/* Permanent animierter Border */}
                   <motion.div
-                    className="absolute -inset-[1.5px] rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                    className="absolute -inset-[2px] rounded-2xl"
                     style={{
                       background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
-                      backgroundSize: '300% 100%'
+                      backgroundSize: '300% 100%',
+                      boxShadow: '0 0 25px rgba(254, 145, 0, 0.4)',
                     }}
                     animate={{
                       backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
                     }}
-                    transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+                    transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
                   />
                   
-                  <div 
-                    className="absolute -inset-[1px] rounded-2xl"
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.08)',
+                  <motion.button
+                    whileHover={{ 
+                      scale: 1.1,
+                      rotate: 5,
+                      boxShadow: '0 15px 50px rgba(254, 145, 0, 0.6)',
                     }}
-                  />
-                  
-                  <Button
+                    whileTap={{ scale: 0.95, rotate: 0 }}
                     onClick={() => setShowCallModal(true)}
-                    variant="ghost"
-                    size="sm"
-                    className="relative h-14 w-14 p-0 rounded-2xl hover:bg-white/5 bg-[#0a0a0a]"
+                    className="relative h-14 w-14 rounded-2xl flex items-center justify-center"
+                    style={{
+                      background: 'rgba(10, 10, 10, 0.7)',
+                      backdropFilter: 'blur(30px)',
+                      WebkitBackdropFilter: 'blur(30px)',
+                    }}
                   >
                     <Phone className="w-5 h-5 text-[#FE9100]" />
-                  </Button>
+                  </motion.button>
                 </motion.div>
 
                 <Button
@@ -831,13 +816,8 @@ export function ChatInterface() {
             <AnimatePresence initial={false}>
               {allMessages.map((msg, index) => {
                 const isOptimistic = 'isOptimistic' in msg && msg.isOptimistic;
-                
                 const lastAiMessage = [...allMessages].reverse().find(m => m.isAi && !('isOptimistic' in m));
-                const isNewAiMessage = shouldAnimateLastAiMessage && 
-                                       !isOptimistic && 
-                                       msg.isAi && 
-                                       lastAiMessage && 
-                                       msg.id === lastAiMessage.id;
+                const isNewAiMessage = shouldAnimateLastAiMessage && !isOptimistic && msg.isAi && lastAiMessage && msg.id === lastAiMessage.id;
                 
                 return (
                   <motion.div
@@ -875,15 +855,8 @@ export function ChatInterface() {
                       <motion.span
                         key={i}
                         className="text-gray-500 text-lg font-bold leading-none"
-                        animate={{ 
-                          opacity: [0.2, 1, 0.2]
-                        }} 
-                        transition={{ 
-                          duration: 1.5, 
-                          repeat: Infinity, 
-                          delay,
-                          ease: 'easeInOut'
-                        }}
+                        animate={{ opacity: [0.2, 1, 0.2] }} 
+                        transition={{ duration: 1.5, repeat: Infinity, delay, ease: 'easeInOut' }}
                       >
                         .
                       </motion.span>
@@ -916,11 +889,11 @@ export function ChatInterface() {
             </div>
           )}
 
-          <div className="relative flex items-end space-x-2 max-w-4xl mx-auto">
+          <div className="relative flex items-end space-x-3 max-w-4xl mx-auto">
             <div className="flex-1 relative">
-              <div className="absolute -inset-[1px] rounded-2xl">
+              <div className="absolute -inset-[2px] rounded-2xl">
                 <motion.div
-                  className="w-full h-full rounded-2xl opacity-50"
+                  className="w-full h-full rounded-2xl"
                   animate={{
                     backgroundImage: [
                       'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
@@ -929,9 +902,9 @@ export function ChatInterface() {
                       'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
                     ],
                   }}
-                  transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
+                  transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
                   style={{
-                    padding: '1px',
+                    padding: '2px',
                     WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
                     WebkitMaskComposite: 'xor',
                     maskComposite: 'exclude',
@@ -953,38 +926,36 @@ export function ChatInterface() {
             </div>
 
             {/* Modern Call Button */}
-            <motion.div 
-              className="relative group"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
+            <motion.div className="relative">
               <motion.div
-                className="absolute -inset-[1.5px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                className="absolute -inset-[2px] rounded-xl"
                 style={{
                   background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
-                  backgroundSize: '300% 100%'
+                  backgroundSize: '300% 100%',
+                  boxShadow: '0 0 20px rgba(254, 145, 0, 0.4)',
                 }}
                 animate={{
                   backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
                 }}
-                transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
               />
               
-              <div 
-                className="absolute -inset-[1px] rounded-xl"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.08)',
+              <motion.button
+                whileHover={{ 
+                  scale: 1.1,
+                  rotate: 5,
+                  boxShadow: '0 10px 40px rgba(254, 145, 0, 0.6)',
                 }}
-              />
-              
-              <Button 
-                onClick={() => setShowCallModal(true)} 
-                variant="ghost" 
-                size="sm" 
-                className="relative h-12 w-12 p-0 rounded-xl hover:bg-white/5 bg-[#0a0a0a]"
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowCallModal(true)}
+                className="relative h-12 w-12 rounded-xl flex items-center justify-center"
+                style={{
+                  background: 'rgba(10, 10, 10, 0.7)',
+                  backdropFilter: 'blur(30px)',
+                }}
               >
                 <Phone className="w-4 h-4 text-[#FE9100]" />
-              </Button>
+              </motion.button>
             </motion.div>
 
             <Button onClick={() => handleSendMessage()} size="sm" disabled={!message.trim() || sendMessage.isPending} className="h-12 px-5 bg-white/10 hover:bg-white/15 text-white rounded-xl disabled:opacity-30">
@@ -1008,76 +979,103 @@ export function ChatInterface() {
         </motion.div>
       )}
 
-      {/* ✅ ULTRA-MODERNES CALL MODAL MIT TEMPLATES */}
+      {/* 🔥 ULTRA-SPEKTAKULÄRES CALL MODAL MIT GLASSMORPHISM */}
       <AnimatePresence>
         {showCallModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-            onClick={() => !callLoading && setShowCallModal(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{
+              background: 'rgba(0, 0, 0, 0.85)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+            }}
+            onClick={(e) => {
+              // ✅ FIX: Nur schließen wenn direkt auf Hintergrund geklickt
+              if (e.target === e.currentTarget && !callLoading) {
+                setShowCallModal(false);
+              }
+            }}
           >
             <motion.div
-              initial={{ scale: 0.9, y: 20, opacity: 0 }}
+              initial={{ scale: 0.8, y: 50, opacity: 0 }}
               animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.9, y: 20, opacity: 0 }}
-              transition={{ type: 'spring', damping: 25 }}
+              exit={{ scale: 0.8, y: 50, opacity: 0 }}
+              transition={{ type: 'spring', damping: 20 }}
               onClick={(e) => e.stopPropagation()}
               className="relative w-full max-w-2xl"
             >
-              {/* Flowing Gradient Border */}
+              {/* 🔥 PERMANENT ANIMIERTER GRADIENT BORDER */}
               <motion.div
-                className="absolute -inset-[2px] rounded-3xl"
+                className="absolute -inset-[3px] rounded-3xl"
                 style={{
                   background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
-                  backgroundSize: '300% 100%'
+                  backgroundSize: '300% 100%',
+                  boxShadow: '0 0 60px rgba(254, 145, 0, 0.5)',
                 }}
                 animate={{
                   backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
                 }}
-                transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
+                transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
               />
 
               <div
                 className="relative rounded-3xl p-8"
                 style={{
-                  background: 'rgba(10, 10, 10, 0.98)',
-                  backdropFilter: 'blur(40px)'
+                  background: 'rgba(10, 10, 10, 0.95)',
+                  backdropFilter: 'blur(60px)',
+                  WebkitBackdropFilter: 'blur(60px)',
                 }}
               >
-                {/* Close Button */}
+                {/* ✅ FIX: Close Button mit z-index und pointer-events */}
                 <motion.button
-                  whileHover={{ scale: 1.1, rotate: 90 }}
+                  whileHover={{ scale: 1.15, rotate: 90 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={() => !callLoading && setShowCallModal(false)}
-                  className="absolute top-6 right-6 p-2 rounded-full hover:bg-white/10 transition-all"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!callLoading) {
+                      setShowCallModal(false);
+                      setCallResult(null);
+                      setCallFormData({ contactName: '', phoneNumber: '', message: '' });
+                      setSelectedTemplate(null);
+                      setPhoneError('');
+                    }
+                  }}
                   disabled={callLoading}
+                  className="absolute top-6 right-6 p-2.5 rounded-full hover:bg-white/10 transition-all z-50"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    pointerEvents: callLoading ? 'none' : 'auto',
+                  }}
                 >
-                  <X className="w-5 h-5 text-gray-500 hover:text-white" />
+                  <X className="w-5 h-5 text-gray-400 hover:text-white" />
                 </motion.button>
 
                 {!callResult ? (
                   <div>
                     {/* Header */}
                     <div className="mb-8">
-                      <div className="flex items-center gap-3 mb-3">
+                      <div className="flex items-center gap-4 mb-3">
                         <motion.div 
-                          className="w-12 h-12 rounded-2xl flex items-center justify-center" 
+                          className="w-14 h-14 rounded-2xl flex items-center justify-center" 
                           style={{
-                            background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.15), rgba(254, 145, 0, 0.05))',
-                            border: '1px solid rgba(254, 145, 0, 0.3)'
+                            background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.2), rgba(163, 78, 0, 0.2))',
+                            border: '2px solid rgba(254, 145, 0, 0.4)',
+                            boxShadow: '0 0 30px rgba(254, 145, 0, 0.3)',
                           }}
-                          whileHover={{ scale: 1.05, rotate: 5 }}
+                          whileHover={{ scale: 1.1, rotate: 360 }}
+                          transition={{ duration: 0.6 }}
                         >
-                          <Phone className="w-6 h-6" style={{ color: '#FE9100' }} />
+                          <Phone className="w-7 h-7" style={{ color: '#FE9100' }} />
                         </motion.div>
                         <div>
                           <h3 
-                            className="text-3xl font-bold"
+                            className="text-4xl font-bold mb-1"
                             style={{ 
                               fontFamily: 'Orbitron, sans-serif',
-                              background: 'linear-gradient(90deg, #e9d7c4, #FE9100)',
+                              background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
                               backgroundClip: 'text',
                               WebkitBackgroundClip: 'text',
                               WebkitTextFillColor: 'transparent',
@@ -1085,40 +1083,50 @@ export function ChatInterface() {
                           >
                             Smart Call
                           </h3>
-                          <p className="text-sm text-gray-500 mt-1">KI-gestützter Anruf in Sekunden</p>
+                          <p className="text-sm text-gray-500">KI-gesteuerte Anrufe in Sekunden</p>
                         </div>
                       </div>
                     </div>
 
-                    {/* Call Templates */}
-                    <div className="mb-6">
-                      <label className="block text-xs font-medium text-gray-400 mb-3">Schnellvorlage wählen</label>
+                    {/* Templates */}
+                    <div className="mb-7">
+                      <label className="block text-xs font-semibold text-gray-400 mb-3" style={{ fontFamily: 'Orbitron, sans-serif' }}>SCHNELLVORLAGEN</label>
                       <div className="grid grid-cols-4 gap-3">
                         {CALL_TEMPLATES.map((template, index) => (
                           <motion.button
                             key={index}
-                            whileHover={{ scale: 1.05, y: -2 }}
+                            whileHover={{ scale: 1.08, y: -4 }}
                             whileTap={{ scale: 0.95 }}
                             onClick={() => {
                               setSelectedTemplate(index);
                               setCallFormData({ ...callFormData, message: template.message });
                             }}
-                            className={`relative p-4 rounded-xl transition-all ${
+                            className={`relative p-5 rounded-xl transition-all ${
                               selectedTemplate === index
-                                ? 'bg-white/10 border border-[#FE9100]/50'
-                                : 'bg-white/5 border border-white/10 hover:border-white/20'
+                                ? 'border-2 border-[#FE9100] shadow-lg shadow-[#FE9100]/30'
+                                : 'border border-white/10 hover:border-white/30'
                             }`}
+                            style={{
+                              background: selectedTemplate === index 
+                                ? 'rgba(254, 145, 0, 0.1)' 
+                                : 'rgba(255, 255, 255, 0.02)',
+                              backdropFilter: 'blur(20px)',
+                            }}
                             disabled={callLoading}
                           >
-                            <div className="text-2xl mb-2">{template.icon}</div>
-                            <div className="text-xs text-white/80">{template.title}</div>
+                            <div className="text-3xl mb-2">{template.icon}</div>
+                            <div className="text-xs text-white/90 font-medium">{template.title}</div>
                             {selectedTemplate === index && (
                               <motion.div
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#FE9100] flex items-center justify-center"
+                                initial={{ scale: 0, rotate: -180 }}
+                                animate={{ scale: 1, rotate: 0 }}
+                                className="absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center"
+                                style={{
+                                  background: 'linear-gradient(135deg, #FE9100, #a34e00)',
+                                  boxShadow: '0 4px 15px rgba(254, 145, 0, 0.5)',
+                                }}
                               >
-                                <Sparkles className="w-3 h-3 text-black" />
+                                <Sparkles className="w-3 h-3 text-white" />
                               </motion.div>
                             )}
                           </motion.button>
@@ -1126,17 +1134,17 @@ export function ChatInterface() {
                       </div>
                     </div>
 
-                    {/* Form Fields */}
+                    {/* Form */}
                     <div className="space-y-5">
-                      {/* Contact Name */}
                       <div>
-                        <label className="block text-xs font-medium text-gray-400 mb-2">Kontaktname</label>
+                        <label className="block text-xs font-semibold text-gray-400 mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>KONTAKTNAME</label>
                         <div className="relative group">
                           <motion.div
-                            className="absolute -inset-[1px] rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity"
+                            className="absolute -inset-[2px] rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity"
                             style={{
                               background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
-                              backgroundSize: '200% 100%'
+                              backgroundSize: '200% 100%',
+                              boxShadow: '0 0 20px rgba(254, 145, 0, 0.3)',
                             }}
                             animate={{
                               backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
@@ -1148,23 +1156,28 @@ export function ChatInterface() {
                             value={callFormData.contactName}
                             onChange={(e) => setCallFormData({ ...callFormData, contactName: e.target.value })}
                             placeholder="Max Mustermann"
-                            className="relative w-full px-4 py-3 rounded-xl bg-[#141414] border border-white/10 text-white text-sm placeholder-gray-600 focus:outline-none transition-all"
+                            className="relative w-full px-5 py-3.5 rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none transition-all"
+                            style={{
+                              background: 'rgba(20, 20, 20, 0.9)',
+                              backdropFilter: 'blur(20px)',
+                              border: '1px solid rgba(255, 255, 255, 0.08)',
+                            }}
                             disabled={callLoading}
                           />
                         </div>
                       </div>
 
-                      {/* Phone Number */}
                       <div>
-                        <label className="block text-xs font-medium text-gray-400 mb-2">Telefonnummer</label>
+                        <label className="block text-xs font-semibold text-gray-400 mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>TELEFONNUMMER</label>
                         <div className="relative group">
                           <motion.div
-                            className="absolute -inset-[1px] rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity"
+                            className="absolute -inset-[2px] rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity"
                             style={{
                               background: phoneError 
-                                ? 'rgba(239,68,68,0.5)'
+                                ? 'rgba(239,68,68,0.6)'
                                 : 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
-                              backgroundSize: '200% 100%'
+                              backgroundSize: '200% 100%',
+                              boxShadow: phoneError ? '0 0 20px rgba(239,68,68,0.4)' : '0 0 20px rgba(254, 145, 0, 0.3)',
                             }}
                             animate={phoneError ? {} : {
                               backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
@@ -1180,7 +1193,12 @@ export function ChatInterface() {
                               setPhoneError(formatted && !/^\+[0-9]{10,15}$/.test(formatted) ? 'Format: +4917661119320' : '');
                             }}
                             placeholder="+41 79 123 45 67"
-                            className="relative w-full px-4 py-3 rounded-xl bg-[#141414] border border-white/10 text-white text-sm placeholder-gray-600 focus:outline-none transition-all font-mono"
+                            className="relative w-full px-5 py-3.5 rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none transition-all font-mono"
+                            style={{
+                              background: 'rgba(20, 20, 20, 0.9)',
+                              backdropFilter: 'blur(20px)',
+                              border: phoneError ? '1px solid rgba(239,68,68,0.5)' : '1px solid rgba(255, 255, 255, 0.08)',
+                            }}
                             disabled={callLoading}
                           />
                         </div>
@@ -1188,27 +1206,27 @@ export function ChatInterface() {
                           <motion.p 
                             initial={{ opacity: 0, y: -5 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="mt-2 text-xs text-red-400"
+                            className="mt-2 text-xs text-red-400 font-medium"
                           >
-                            {phoneError}
+                            ⚠️ {phoneError}
                           </motion.p>
                         )}
                       </div>
 
-                      {/* Message */}
                       <div>
-                        <label className="block text-xs font-medium text-gray-400 mb-2">
-                          Nachricht / Ziel 
+                        <label className="block text-xs font-semibold text-gray-400 mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                          NACHRICHT
                           {selectedTemplate !== null && selectedTemplate < 3 && (
                             <span className="ml-2 text-[#FE9100]">✨ Template aktiv</span>
                           )}
                         </label>
                         <div className="relative group">
                           <motion.div
-                            className="absolute -inset-[1px] rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity"
+                            className="absolute -inset-[2px] rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity"
                             style={{
                               background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
-                              backgroundSize: '200% 100%'
+                              backgroundSize: '200% 100%',
+                              boxShadow: '0 0 20px rgba(254, 145, 0, 0.3)',
                             }}
                             animate={{
                               backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
@@ -1222,18 +1240,28 @@ export function ChatInterface() {
                               if (selectedTemplate !== 3) setSelectedTemplate(3);
                             }}
                             placeholder="z.B. Termin vereinbaren für nächste Woche"
-                            className="relative w-full px-4 py-3 rounded-xl bg-[#141414] border border-white/10 text-white text-sm placeholder-gray-600 focus:outline-none transition-all resize-none"
-                            style={{ minHeight: 100 }}
+                            className="relative w-full px-5 py-3.5 rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none transition-all resize-none"
+                            style={{
+                              minHeight: 110,
+                              background: 'rgba(20, 20, 20, 0.9)',
+                              backdropFilter: 'blur(20px)',
+                              border: '1px solid rgba(255, 255, 255, 0.08)',
+                            }}
                             disabled={callLoading}
                           />
                         </div>
                       </div>
 
                       {/* Call Button */}
-                      <motion.div className="pt-3">
+                      <motion.div className="pt-4">
                         <motion.button
-                          whileHover={{ scale: callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError ? 1 : 1.02 }}
-                          whileTap={{ scale: callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError ? 1 : 0.98 }}
+                          whileHover={{ 
+                            scale: callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError ? 1 : 1.03,
+                            boxShadow: callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError 
+                              ? '0 0 0 rgba(254, 145, 0, 0)' 
+                              : '0 20px 60px rgba(254, 145, 0, 0.5)',
+                          }}
+                          whileTap={{ scale: 0.97 }}
                           onClick={async () => {
                             if (!callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError) {
                               toast({ title: 'Fehlende Angaben', description: 'Bitte fülle alle Felder korrekt aus', variant: 'destructive' });
@@ -1260,7 +1288,7 @@ export function ChatInterface() {
                                   setCallResult(null);
                                   setCallFormData({ contactName: '', phoneNumber: '', message: '' });
                                   setSelectedTemplate(null);
-                                }, 2000);
+                                }, 2500);
                               } else {
                                 toast({ title: 'Fehler', description: data.error || 'Anruf konnte nicht gestartet werden', variant: 'destructive' });
                               }
@@ -1271,25 +1299,27 @@ export function ChatInterface() {
                             }
                           }}
                           disabled={callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || !!phoneError}
-                          className="relative w-full py-4 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-3 overflow-hidden"
+                          className="relative w-full py-5 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3 overflow-hidden"
                           style={{
                             fontFamily: 'Orbitron, sans-serif',
                             background: (callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError)
                               ? 'rgba(255, 255, 255, 0.05)'
-                              : 'linear-gradient(90deg, rgba(254, 145, 0, 0.2), rgba(163, 78, 0, 0.2))',
-                            border: '1px solid rgba(254, 145, 0, 0.3)',
-                            opacity: (callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError) ? 0.4 : 1
+                              : 'linear-gradient(90deg, rgba(254, 145, 0, 0.3), rgba(163, 78, 0, 0.3))',
+                            border: '2px solid rgba(254, 145, 0, 0.4)',
+                            opacity: (callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError) ? 0.4 : 1,
+                            boxShadow: '0 10px 40px rgba(254, 145, 0, 0.3)',
                           }}
                         >
                           {callLoading ? (
                             <>
-                              <Loader2 className="w-5 h-5 animate-spin" style={{ color: '#FE9100' }} />
+                              <Loader2 className="w-6 h-6 animate-spin" style={{ color: '#FE9100' }} />
                               <span className="text-white">Verbinde...</span>
                             </>
                           ) : (
                             <>
-                              <Zap className="w-5 h-5" style={{ color: '#FE9100' }} />
-                              <span className="text-white">Anruf starten</span>
+                              <Zap className="w-6 h-6" style={{ color: '#FE9100' }} />
+                              <span className="text-white">ANRUF STARTEN</span>
+                              <ChevronRight className="w-5 h-5" style={{ color: '#FE9100' }} />
                             </>
                           )}
                         </motion.button>
@@ -1300,30 +1330,31 @@ export function ChatInterface() {
                   <motion.div 
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="text-center py-12"
+                    className="text-center py-16"
                   >
                     <motion.div 
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       transition={{ type: 'spring', delay: 0.2 }}
-                      className="w-24 h-24 rounded-3xl flex items-center justify-center mx-auto mb-6"
+                      className="w-28 h-28 rounded-3xl flex items-center justify-center mx-auto mb-7"
                       style={{
-                        background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(22, 163, 74, 0.2))',
-                        border: '2px solid rgba(34, 197, 94, 0.4)'
+                        background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(22, 163, 74, 0.2))',
+                        border: '3px solid rgba(34, 197, 94, 0.5)',
+                        boxShadow: '0 0 60px rgba(34, 197, 94, 0.4)',
                       }}
                     >
-                      <Phone className="w-10 h-10 text-green-400" />
+                      <Phone className="w-12 h-12 text-green-400" />
                     </motion.div>
                     <motion.div
                       initial={{ y: 10, opacity: 0 }}
                       animate={{ y: 0, opacity: 1 }}
                       transition={{ delay: 0.3 }}
                     >
-                      <h4 className="text-2xl font-bold text-white mb-3" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                      <h4 className="text-3xl font-bold text-white mb-3" style={{ fontFamily: 'Orbitron, sans-serif' }}>
                         Anruf gestartet!
                       </h4>
-                      <p className="text-base text-gray-400">
-                        ARAS AI verbindet sich mit <span className="text-[#FE9100]">{callFormData.contactName}</span>
+                      <p className="text-lg text-gray-400">
+                        ARAS AI verbindet sich mit <span className="text-[#FE9100] font-semibold">{callFormData.contactName}</span>
                       </p>
                     </motion.div>
                   </motion.div>
