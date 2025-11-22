@@ -63,12 +63,32 @@ async function comparePasswords(supplied: string, stored: string) {
   return testHex === hashed;
 }
 
-// Simple authentication middleware
+// Authentication middleware (Passport compatible)
 function requireAuth(req: any, res: any, next: any) {
-  if (!req.session?.userId) {
-    return res.status(401).json({ message: "Unauthorized" });
+  console.log('[REQUIREAUTH] Checking authentication...');
+  console.log('[REQUIREAUTH] isAuthenticated:', req.isAuthenticated ? req.isAuthenticated() : 'no method');
+  console.log('[REQUIREAUTH] req.user:', req.user ? 'exists' : 'null');
+  console.log('[REQUIREAUTH] session.userId:', req.session?.userId);
+  
+  // Check if user is authenticated via Passport
+  if (req.isAuthenticated && req.isAuthenticated()) {
+    console.log('[REQUIREAUTH] ✅ Passport authenticated');
+    // Ensure session.userId is set for backwards compatibility
+    if (req.user && !req.session.userId) {
+      req.session.userId = req.user.id;
+      req.session.username = req.user.username;
+    }
+    return next();
   }
-  next();
+  
+  // Fallback: Check session-based auth
+  if (req.session?.userId) {
+    console.log('[REQUIREAUTH] ✅ Session authenticated');
+    return next();
+  }
+  
+  console.log('[REQUIREAUTH] ❌ Unauthorized - no valid auth found');
+  return res.status(401).json({ message: "Unauthorized" });
 }
 
 // Configure multer for handling audio file uploads
