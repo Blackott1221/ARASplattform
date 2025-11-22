@@ -95,9 +95,26 @@ export function setupSimpleAuth(app: Express) {
         company, website, industry, role, phone, language, primaryGoal 
       } = req.body;
       
+      // 🔥 DEBUG: Log ALL received fields
+      console.log('[REGISTER-DEBUG] Received registration data:', {
+        username, email, firstName, lastName,
+        company, website, industry, role, phone, language, primaryGoal
+      });
+      
+      // Check email FIRST (more common duplicate)
+      if (email) {
+        const existingEmail = await storage.getUserByEmail(email);
+        if (existingEmail) {
+          console.log('[REGISTER-DEBUG] Email already exists:', email);
+          return res.status(400).json({ message: "Diese E-Mail-Adresse ist bereits registriert" });
+        }
+      }
+      
+      // Then check username
       const existingUser = await storage.getUserByUsername(username);
       if (existingUser) {
-        return res.status(400).json({ message: "Username already exists" });
+        console.log('[REGISTER-DEBUG] Username already exists:', username);
+        return res.status(400).json({ message: "Dieser Benutzername ist bereits vergeben" });
       }
 
       // 🔥 AI PROFILE GENERATION
@@ -272,8 +289,18 @@ Bleibe immer ARAS AI - entwickelt von der Schwarzott Group.`;
     });
   });
 
-  app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).json({ message: "Unauthorized" });
+  app.get("/api/auth/user", (req, res) => {
+    console.log('[AUTH-DEBUG] GET /api/auth/user called');
+    console.log('[AUTH-DEBUG] Session exists:', !!req.session);
+    console.log('[AUTH-DEBUG] Authenticated:', req.isAuthenticated());
+    console.log('[AUTH-DEBUG] User:', req.user ? 'exists' : 'null');
+    
+    if (!req.isAuthenticated()) {
+      console.log('[AUTH-DEBUG] User not authenticated - returning 401');
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    console.log('[AUTH-DEBUG] Returning user data');
     res.json(sanitizeUser(req.user as User));
   });
 }

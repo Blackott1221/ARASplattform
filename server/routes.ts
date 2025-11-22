@@ -16,6 +16,7 @@ import twilio from "twilio";
 import chatRouter from "./chat";
 import { requireAdmin } from "./middleware/admin";
 import { checkCallLimit, checkMessageLimit } from "./middleware/usage-limits";
+import { setupSimpleAuth } from "./simple-auth";
 
 const scryptAsync = promisify(scrypt);
 
@@ -98,26 +99,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Add performance monitoring middleware
   app.use(performanceMiddleware());
   
-  // Simple in-memory session setup
-  const session = await import('express-session');
-  const MemoryStore = await import('memorystore');
-  
-  const sessionStore = MemoryStore.default(session.default);
-
-  app.use(session.default({
-    secret: process.env.SESSION_SECRET || "aras-ai-production-secret-2024",
-    resave: false,
-    saveUninitialized: false,
-    store: new sessionStore({
-      checkPeriod: 86400000, // prune expired entries every 24h
-    }),
-    cookie: {
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // true in production with HTTPS
-      sameSite: 'lax' // Add sameSite for better compatibility
-    },
-  }));
+  // 🔥 Setup authentication with Business Intelligence support
+  // This includes:
+  // - PostgreSQL session store for persistence
+  // - Passport authentication
+  // - Enhanced registration with company research
+  // - AI Profile generation
+  setupSimpleAuth(app);
 
   // Debug route to check auth status
   app.get('/api/auth/status', (req: any, res) => {
@@ -128,154 +116,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Auth routes
-  app.get('/api/auth/user', async (req: any, res) => {
-    try {
-      console.log('[AUTH-DEBUG] GET /api/auth/user called');
-      console.log('[AUTH-DEBUG] Session exists:', !!req.session);
-      console.log('[AUTH-DEBUG] Session ID:', req.session?.id);
-      console.log('[AUTH-DEBUG] User ID in session:', req.session?.userId);
-      
-      // Simple session check
-      if (!req.session?.userId) {
-        console.log('[AUTH-DEBUG] No userId in session - returning 401');
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      
-      const userId = req.session.userId;
-      console.log('[AUTH-DEBUG] Fetching user from DB:', userId);
-      const user = await storage.getUser(userId);
-      
-      if (!user) {
-        console.log('[AUTH-DEBUG] User not found in database:', userId);
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      console.log('[AUTH-DEBUG] User found successfully:', user.username);
-      res.json(sanitizeUser(user));
-    } catch (error) {
-      logger.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
+  // Auth routes handled by simple-auth.ts (passport authentication)
 
-  // Login route
-  app.post('/api/login', async (req: any, res) => {
-    try {
-      const { username, password } = req.body;
-      console.log('[LOGIN-DEBUG] Login attempt for:', username);
-      console.log('[LOGIN-DEBUG] Password provided:', !!password);
-      
-      if (!username || !password) {
-        console.log('[LOGIN-DEBUG] Missing credentials');
-        return res.status(400).send("Username and password required");
-      }
+  // 🔥 Login route MOVED to simple-auth.ts with passport authentication
+  // Using passport-local strategy for secure authentication
 
-      console.log('[LOGIN-DEBUG] Looking up user in database...');
-      const user = await storage.getUserByUsername(username);
-      if (!user) {
-        console.log('[LOGIN-DEBUG] User not found in database:', username);
-        return res.status(400).send("Invalid credentials");
-      }
-      console.log('[LOGIN-DEBUG] User found:', user.username, 'ID:', user.id);
+  // 🔥 Register route MOVED to simple-auth.ts with Business Intelligence support
+  // Old basic registration endpoint removed - using the new enhanced version
+  // See: server/simple-auth.ts for the new /api/register endpoint with:
+  // - Business Intelligence fields (company, industry, role, etc.)
+  // - AI Profile generation with Gemini
+  // - Live company research
+  // - Personalized system prompts
 
-      console.log('[LOGIN-DEBUG] Comparing passwords...');
-      const isValid = await comparePasswords(password, user.password);
-      if (!isValid) {
-        console.log('[LOGIN-DEBUG] Password comparison failed');
-        return res.status(400).send("Invalid credentials");
-      }
-      console.log('[LOGIN-DEBUG] Password verified successfully');
-
-      console.log('[LOGIN-DEBUG] Setting session userId:', user.id);
-      req.session.userId = user.id;
-      req.session.username = user.username;
-      
-      // Explicitly save the session to ensure it persists
-      req.session.save((err: any) => {
-        if (err) {
-          console.log('[LOGIN-DEBUG] Session save error:', err);
-          logger.error("Session save error:", err);
-          return res.status(500).send("Login failed - session save error");
-        }
-        console.log('[LOGIN-DEBUG] Session saved successfully. User logged in:', user.username);
-        logger.info("User logged in successfully", { userId: user.id, username: user.username });
-        res.json(sanitizeUser(user));
-      });
-    } catch (error) {
-      logger.error("Login error:", error);
-      res.status(500).send("Login failed");
-    }
-  });
-
-  // Register route
-  app.post('/api/register', async (req: any, res) => {
-    try {
-      const { username, password, email, firstName, lastName } = req.body;
-      console.log('[REGISTER-DEBUG] Registration attempt for:', username);
-      console.log('[REGISTER-DEBUG] Email:', email);
-      
-      if (!username || !password) {
-        console.log('[REGISTER-DEBUG] Missing username or password');
-        return res.status(400).send("Username and password required");
-      }
-
-      console.log('[REGISTER-DEBUG] Checking if username exists...');
-      const existingUser = await storage.getUserByUsername(username);
-      if (existingUser) {
-        console.log('[REGISTER-DEBUG] Username already exists:', username);
-        return res.status(400).send("Username already exists");
-      }
-      console.log('[REGISTER-DEBUG] Username available, creating user...');
-
-      const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      console.log('[REGISTER-DEBUG] Generated user ID:', userId);
-      const hashedPassword = await hashPassword(password);
-      console.log('[REGISTER-DEBUG] Password hashed, creating user in database...');
-      
-      const newUser = await storage.createUser({
-        id: userId,
-        username,
-        password: hashedPassword,
-        email,
-        firstName,
-        lastName,
-        subscriptionPlan: "free", // Start with free plan
-        subscriptionStatus: "active", // Free plan is immediately active
-        aiMessagesUsed: 0, // Initialize message counter
-        voiceCallsUsed: 0, // Initialize calls counter
-      });
-      console.log('[REGISTER-DEBUG] User created successfully:', newUser.id);
-
-      console.log('[REGISTER-DEBUG] Setting session userId:', newUser.id);
-      req.session.userId = newUser.id;
-      req.session.username = newUser.username;
-      
-      // Explicitly save the session to ensure it persists
-      req.session.save((err: any) => {
-        if (err) {
-          console.log('[REGISTER-DEBUG] Session save error:', err);
-          logger.error("Session save error:", err);
-          return res.status(500).send("Registration failed - session save error");
-        }
-        console.log('[REGISTER-DEBUG] Session saved. Registration complete for:', newUser.username);
-        res.status(201).json(sanitizeUser(newUser));
-      });
-    } catch (error) {
-      logger.error("Registration error:", error);
-      res.status(500).send("Registration failed");
-    }
-  });
-
-  // Logout route
-  app.post('/api/logout', (req: any, res) => {
-    req.session.destroy((err: any) => {
-      if (err) {
-        return res.status(500).send("Logout failed");
-      }
-      res.sendStatus(200);
-    });
-  });
+  // Logout route MOVED to simple-auth.ts
 
   // Subscription status route - Enhanced with trial information per Stripe best practices
   app.get('/api/user/subscription', requireAuth, async (req: any, res) => {
@@ -1073,7 +927,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       
       res.json({
         message: 'New chat session started',
-        session,
+        session: newChatSession,
         success: true 
       });
     } catch (error) {

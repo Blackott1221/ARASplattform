@@ -207,48 +207,159 @@ export default function AuthPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Step validation
+    // STEP 1 VALIDATION - Personal Data
     if (registrationStep === 1) {
-      if (!registerData.firstName || !registerData.lastName || !registerData.email || !registerData.username || !registerData.password) {
+      // Check required fields
+      if (!registerData.firstName) {
         toast({
-          title: "Fehlende Informationen",
-          description: "Bitte fülle alle Felder aus",
+          title: "Hey, wir brauchen deinen Vornamen! 😊",
+          description: "Damit deine KI dich persönlich ansprechen kann.",
           variant: "destructive"
         });
         return;
       }
+      if (!registerData.lastName) {
+        toast({
+          title: "Und deinen Nachnamen bitte! 👤",
+          description: "Das macht's offizieller und persönlicher.",
+          variant: "destructive"
+        });
+        return;
+      }
+      if (!registerData.email) {
+        toast({
+          title: "E-Mail fehlt noch! 📧",
+          description: "Wir brauchen sie für wichtige Updates und Login.",
+          variant: "destructive"
+        });
+        return;
+      }
+      // Email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(registerData.email)) {
+        toast({
+          title: "Hmm, die E-Mail sieht komisch aus 🤔",
+          description: "Bitte gib eine gültige E-Mail-Adresse ein (z.B. max@firma.de)",
+          variant: "destructive"
+        });
+        return;
+      }
+      if (!registerData.username) {
+        toast({
+          title: "Username vergessen! 💭",
+          description: "Wähle einen coolen Usernamen für dein Login.",
+          variant: "destructive"
+        });
+        return;
+      }
+      if (!registerData.password) {
+        toast({
+          title: "Passwort fehlt! 🔐",
+          description: "Ein sicheres Passwort schützt deinen Account.",
+          variant: "destructive"
+        });
+        return;
+      }
+      // Password strength check
+      if (registerData.password.length < 6) {
+        toast({
+          title: "Passwort zu kurz! ⚠️",
+          description: "Mindestens 6 Zeichen sind nötig für deine Sicherheit.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       setRegistrationStep(2);
       return;
     }
     
+    // STEP 2 VALIDATION - Business Intelligence
     if (registrationStep === 2) {
-      if (!registerData.company || !registerData.industry || !registerData.role) {
+      if (!registerData.company) {
         toast({
-          title: "Fehlende Informationen",
-          description: "Bitte fülle alle Business-Felder aus",
+          title: "Firmenname fehlt! 🏢",
+          description: "Damit deine KI weiß, für wen sie arbeitet.",
           variant: "destructive"
         });
         return;
       }
+      if (!registerData.industry) {
+        toast({
+          title: "Branche wählen! 🎯",
+          description: "Das hilft der KI, sich auf deine Branche zu spezialisieren.",
+          variant: "destructive"
+        });
+        return;
+      }
+      if (!registerData.role) {
+        toast({
+          title: "Deine Position fehlt! 👔",
+          description: "Sag uns, welche Rolle du im Unternehmen hast.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Website validation (optional, but if provided must be valid)
+      if (registerData.website && registerData.website.trim() !== '') {
+        const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/{0-9a-zA-Z\.-]*)*\/?$/;
+        if (!urlRegex.test(registerData.website)) {
+          toast({
+            title: "Website-Format nicht korrekt 🌐",
+            description: "Bitte gib eine gültige URL ein (z.B. firma.de oder https://firma.de)",
+            variant: "destructive"
+          });
+          return;
+        }
+        // Auto-add https:// if missing
+        if (!registerData.website.startsWith('http')) {
+          setRegisterData(prev => ({ 
+            ...prev, 
+            website: `https://${prev.website}` 
+          }));
+        }
+      }
+      
       setRegistrationStep(3);
       return;
     }
     
-    // Final registration with AI research
+    // STEP 3 - Final Registration with AI research
     if (registrationStep === 3) {
+      if (!registerData.primaryGoal) {
+        toast({
+          title: "Was ist dein Hauptziel? 🎯",
+          description: "Wähle aus, wobei die KI dir am meisten helfen soll.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
       setIsResearching(true);
       try {
         const result = await registerMutation.mutateAsync(registerData);
         trackSignup('email', result?.id);
         toast({
-          title: "🚀 Account Created!",
-          description: `Welcome to ARAS AI, ${registerData.firstName}! Deine persönliche KI wird vorbereitet...`
+          title: "Willkommen bei ARAS AI! 🎉",
+          description: `Hey ${registerData.firstName}! Deine persönliche KI wird gerade auf ${registerData.company} trainiert...`
         });
         setLocation("/welcome");
       } catch (error: any) {
+        // Better error messages from server
+        let errorMessage = "Ups, da ist was schief gelaufen. Versuch's nochmal!";
+        
+        if (error.message?.includes('email')) {
+          errorMessage = "Diese E-Mail ist schon bei uns registriert. Willst du dich einloggen?";
+        } else if (error.message?.includes('username') || error.message?.includes('Benutzername')) {
+          errorMessage = "Dieser Username ist leider schon vergeben. Wähle einen anderen!";
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
         toast({
-          title: "Registration Failed",
-          description: error.message || "Failed to create account",
+          title: "Registrierung fehlgeschlagen 😕",
+          description: errorMessage,
           variant: "destructive"
         });
       } finally {
@@ -1165,7 +1276,7 @@ export default function AuthPage() {
                           <>
                             {/* STEP 2: Business Intelligence 🚀 */}
                             <div className="space-y-1.5">
-                              <Label className="text-[10px] font-bold text-gray-400">Firma 🏢</Label>
+                              <Label className="text-[10px] font-bold text-gray-400">Firma</Label>
                               <div className="relative group">
                                 <motion.div
                                   className="absolute -inset-[1px] rounded-lg opacity-0 group-focus-within:opacity-100 transition-opacity"
@@ -1193,7 +1304,7 @@ export default function AuthPage() {
                             </div>
 
                             <div className="space-y-1.5">
-                              <Label className="text-[10px] font-bold text-gray-400">Website (optional) 🌐</Label>
+                              <Label className="text-[10px] font-bold text-gray-400">Website (optional)</Label>
                               <div className="relative group">
                                 <motion.div
                                   className="absolute -inset-[1px] rounded-lg opacity-0 group-focus-within:opacity-100 transition-opacity"
@@ -1221,7 +1332,7 @@ export default function AuthPage() {
 
                             <div className="grid grid-cols-2 gap-3">
                               <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400">Branche 🎯</Label>
+                                <Label className="text-[10px] font-bold text-gray-400">Branche</Label>
                                 <div className="relative group">
                                   <motion.div
                                     className="absolute -inset-[1px] rounded-lg opacity-0 group-focus-within:opacity-100 transition-opacity"
@@ -1254,7 +1365,7 @@ export default function AuthPage() {
                               </div>
 
                               <div className="space-y-1.5">
-                                <Label className="text-[10px] font-bold text-gray-400">Position 👤</Label>
+                                <Label className="text-[10px] font-bold text-gray-400">Position</Label>
                                 <div className="relative group">
                                   <motion.div
                                     className="absolute -inset-[1px] rounded-lg opacity-0 group-focus-within:opacity-100 transition-opacity"
@@ -1288,7 +1399,7 @@ export default function AuthPage() {
                             </div>
 
                             <div className="space-y-1.5">
-                              <Label className="text-[10px] font-bold text-gray-400">Telefon (optional) 📞</Label>
+                              <Label className="text-[10px] font-bold text-gray-400">Telefon (optional)</Label>
                               <div className="relative group">
                                 <motion.div
                                   className="absolute -inset-[1px] rounded-lg opacity-0 group-focus-within:opacity-100 transition-opacity"
@@ -1320,7 +1431,7 @@ export default function AuthPage() {
                           <>
                             {/* STEP 3: AI Configuration 🤖 */}
                             <div className="space-y-1.5">
-                              <Label className="text-[10px] font-bold text-gray-400">Primäres Ziel 🎯</Label>
+                              <Label className="text-[10px] font-bold text-gray-400">Primäres Ziel</Label>
                               <div className="relative group">
                                 <motion.div
                                   className="absolute -inset-[1px] rounded-lg opacity-0 group-focus-within:opacity-100 transition-opacity"
@@ -1353,7 +1464,7 @@ export default function AuthPage() {
                             </div>
 
                             <div className="space-y-1.5">
-                              <Label className="text-[10px] font-bold text-gray-400">Sprache 🌍</Label>
+                              <Label className="text-[10px] font-bold text-gray-400">Sprache</Label>
                               <div className="relative group">
                                 <motion.div
                                   className="absolute -inset-[1px] rounded-lg opacity-0 group-focus-within:opacity-100 transition-opacity"

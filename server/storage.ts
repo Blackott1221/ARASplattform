@@ -48,6 +48,7 @@ export interface IStorage {
   // User operations
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: UpsertUser): Promise<User>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserStripeInfo(userId: string, stripeInfo: { stripeCustomerId?: string; customerId?: string; subscriptionId?: string; paymentMethodId?: string; hasPaymentMethod?: boolean }): Promise<User>;
@@ -186,6 +187,18 @@ export class DatabaseStorage implements IStorage {
       return user;
     } catch (error) {
       console.log('[DB-DEBUG] Database error in getUserByUsername:', error);
+      throw error;
+    }
+  }
+  
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    console.log('[DB-DEBUG] Looking up user by email:', email);
+    try {
+      const [user] = await db.select().from(users).where(eq(users.email, email));
+      console.log('[DB-DEBUG] Email lookup result:', user ? `Found: ${user.id}` : 'Not found');
+      return user;
+    } catch (error) {
+      console.log('[DB-DEBUG] Database error in getUserByEmail:', error);
       throw error;
     }
   }
@@ -1331,6 +1344,10 @@ export class MemStorage implements IStorage {
   async getUserByUsername(username: string): Promise<User | undefined> {
     return this.usersByUsername.get(username);
   }
+  
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(u => u.email === email);
+  }
 
   async createUser(userData: UpsertUser): Promise<User> {
     const id = userData.id || this.generateId();
@@ -1339,13 +1356,17 @@ export class MemStorage implements IStorage {
     const hashedPassword = await hashPassword(userData.password);
     
     const user: User = {
-      ...userData,
       id,
+      username: userData.username,
       password: hashedPassword,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      email: userData.email || null,
+      firstName: userData.firstName || null,
+      lastName: userData.lastName || null,
+      profileImageUrl: null,
+      stripeCustomerId: null,
+      stripeSubscriptionId: null,
       subscriptionPlan: userData.subscriptionPlan || 'starter',
-      subscriptionStatus: userData.subscriptionStatus || 'trial', // New users start with trial
+      subscriptionStatus: userData.subscriptionStatus || 'trial',
       subscriptionStartDate: new Date(),
       subscriptionEndDate: null,
       trialStartDate: userData.trialStartDate || null,
@@ -1358,12 +1379,19 @@ export class MemStorage implements IStorage {
       monthlyResetDate: new Date(),
       threadId: null,
       assistantId: null,
-      stripeCustomerId: null,
-      stripeSubscriptionId: null,
-      email: userData.email || null,
-      firstName: userData.firstName || null,
-      lastName: userData.lastName || null,
-      profileImageUrl: null,
+      // Business Intelligence Fields
+      company: userData.company || null,
+      website: userData.website || null,
+      industry: userData.industry || null,
+      role: userData.role || null,
+      phone: userData.phone || null,
+      language: userData.language || null,
+      primaryGoal: userData.primaryGoal || null,
+      aiProfile: userData.aiProfile || null,
+      profileEnriched: userData.profileEnriched || false,
+      lastEnrichmentDate: userData.lastEnrichmentDate || null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
     
     this.users.set(id, user);
