@@ -29,7 +29,21 @@ export function useAuth() {
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (userData: { username: string; password: string; email?: string; firstName?: string; lastName?: string }) => {
+    mutationFn: async (userData: { 
+      username: string; 
+      password: string; 
+      email?: string; 
+      firstName?: string; 
+      lastName?: string;
+      // 🔥 Business Intelligence Fields
+      company?: string;
+      website?: string;
+      industry?: string;
+      role?: string;
+      phone?: string;
+      language?: string;
+      primaryGoal?: string;
+    }) => {
       console.log('[FRONTEND-DEBUG] Register attempt:', userData.username);
       const res = await apiRequest("POST", "/api/register", userData);
       const newUser = await res.json();

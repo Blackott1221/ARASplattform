@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { db, client } from "./db";
 import { subscriptionPlans } from "@shared/schema";
+import { sql } from "drizzle-orm";
 
 const app = express();
 app.use(express.json({ limit: "50mb" }));
@@ -40,6 +41,60 @@ app.use((req, res, next) => {
 
   next();
 });
+
+// 🔥 Migrate AI Profile columns on startup
+async function migrateAIProfile() {
+  try {
+    log('🔍 Checking AI Profile columns...');
+    
+    // Add all columns in one statement
+    await db.execute(sql`
+      DO $$ 
+      BEGIN
+        -- Add Business Intelligence columns
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS company VARCHAR(255);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS website VARCHAR(500);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS industry VARCHAR(100);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(100);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS language VARCHAR(10) DEFAULT 'de';
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS primary_goal VARCHAR(255);
+        
+        -- Add AI Profile JSONB column
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_profile JSONB;
+        
+        -- Add enrichment tracking
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_enriched BOOLEAN DEFAULT FALSE;
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS last_enrichment_date TIMESTAMP;
+        
+        -- Create indexes if they don't exist
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_users_company') THEN
+          CREATE INDEX idx_users_company ON users(company);
+        END IF;
+        
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_users_industry') THEN
+          CREATE INDEX idx_users_industry ON users(industry);
+        END IF;
+        
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_users_profile_enriched') THEN
+          CREATE INDEX idx_users_profile_enriched ON users(profile_enriched);
+        END IF;
+        
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_users_language') THEN
+          CREATE INDEX idx_users_language ON users(language);
+        END IF;
+        
+        IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_users_ai_profile') THEN
+          CREATE INDEX idx_users_ai_profile ON users USING GIN(ai_profile);
+        END IF;
+      END $$;
+    `);
+    
+    log('✅ AI Profile columns ready');
+  } catch (error) {
+    log('⚠️ AI Profile migration error (might already exist):', String(error));
+  }
+}
 
 // Seed subscription plans on startup
 async function seedSubscriptionPlans() {
@@ -155,6 +210,9 @@ async function seedSubscriptionPlans() {
 }
 
 (async () => {
+  // 🔥 Migrate AI Profile columns first
+  await migrateAIProfile();
+  
   // Seed subscription plans
   await seedSubscriptionPlans();
   
@@ -231,7 +289,7 @@ async function seedSubscriptionPlans() {
         WHERE id IN ('starter', 'professional', 'enterprise')
       `;
       
-      log(`[ADMIN] Found ${oldPlans.length} old plans to delete:`, oldPlans.map((p: any) => p.id));
+      log(`[ADMIN] Found ${oldPlans.length} old plans to delete: ${oldPlans.map((p: any) => p.id).join(', ')}`);
       
       if (oldPlans.length === 0) {
         return res.json({

@@ -9,6 +9,7 @@ import type { User } from "@shared/schema";
 import { sanitizeUser } from "@shared/schema";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 declare global {
   namespace Express {
@@ -89,11 +90,125 @@ export function setupSimpleAuth(app: Express) {
 
   app.post("/api/register", async (req, res, next) => {
     try {
-      const { username, password, email, firstName, lastName } = req.body;
+      const { 
+        username, password, email, firstName, lastName,
+        company, website, industry, role, phone, language, primaryGoal 
+      } = req.body;
       
       const existingUser = await storage.getUserByUsername(username);
       if (existingUser) {
         return res.status(400).json({ message: "Username already exists" });
+      }
+
+      // 🔥 AI PROFILE GENERATION
+      let aiProfile = null;
+      
+      if (company && industry) {
+        try {
+          console.log(`[🔍 RESEARCH] Starting live research for ${company}...`);
+          
+          // Initialize Gemini
+          const gemini = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || "");
+          const model = gemini.getGenerativeModel({
+            model: "gemini-2.0-flash-exp",
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 2000,
+            }
+          });
+          
+          // Research Company
+          const companyPrompt = `Du bist ein Business Intelligence Analyst. Recherchiere mit Google Search über:
+          
+          Firma: ${company}
+          Website: ${website || "nicht angegeben"}
+          Branche: ${industry}
+          
+          Finde heraus:
+          1. Was macht die Firma? Produkte/Services?
+          2. Zielgruppe und Marktposition
+          3. Kommunikationsstil und Brand Voice
+          4. Beste Call-Zeiten für ${industry} Branche
+          5. Effektive Keywords für diese Branche
+          
+          Antworte als JSON:
+          {
+            "companyDescription": "...",
+            "products": ["..."],
+            "services": ["..."],
+            "targetAudience": "...",
+            "brandVoice": "...",
+            "bestCallTimes": "...",
+            "effectiveKeywords": ["..."]
+          }`;
+          
+          const result = await model.generateContent(companyPrompt);
+          const text = result.response.text();
+          
+          // Parse AI Response
+          let companyIntel: any = null;
+          try {
+            const jsonMatch = text.match(/```json\n?([\s\S]*?)```|\{[\s\S]*\}/)?.[0];
+            const cleanJson = (jsonMatch || text)
+              .replace(/```json\n?/g, '')
+              .replace(/```\n?/g, '')
+              .trim();
+            companyIntel = JSON.parse(cleanJson);
+          } catch (parseError) {
+            console.log('[RESEARCH] Using fallback intelligence');
+            companyIntel = {
+              companyDescription: `${company} ist ein Unternehmen in der ${industry} Branche`,
+              products: [],
+              services: [],
+              targetAudience: "B2B und B2C Kunden",
+              brandVoice: "Professionell und kundenorientiert",
+              bestCallTimes: "Dienstag-Donnerstag, 14-16 Uhr",
+              effectiveKeywords: []
+            };
+          }
+          
+          // Generate Personalized System Prompt
+          const customSystemPrompt = `Du bist ARAS AI® – die persönliche KI-Assistenz von ${firstName} ${lastName}.
+
+🧠 ÜBER DEN USER:
+Name: ${firstName} ${lastName}
+Firma: ${company}
+Branche: ${industry}
+Position: ${role}
+
+🏢 ÜBER DIE FIRMA:
+${companyIntel.companyDescription}
+
+Zielgruppe: ${companyIntel.targetAudience}
+Brand Voice: ${companyIntel.brandVoice}
+
+🎯 PRIMÄRES ZIEL: ${primaryGoal}
+
+💬 SPRACHE: ${language === 'de' ? 'Deutsch (du-Form)' : language === 'en' ? 'English' : 'Français'}
+
+Du bist die persönliche KI von ${firstName} bei ${company}. Beziehe dich immer auf den Business Context.
+
+Bleibe immer ARAS AI - entwickelt von der Schwarzott Group.`;
+          
+          // Build AI Profile
+          aiProfile = {
+            companyDescription: companyIntel.companyDescription,
+            products: companyIntel.products || [],
+            services: companyIntel.services || [],
+            targetAudience: companyIntel.targetAudience,
+            brandVoice: companyIntel.brandVoice,
+            customSystemPrompt,
+            effectiveKeywords: companyIntel.effectiveKeywords || [],
+            bestCallTimes: companyIntel.bestCallTimes,
+            goals: [primaryGoal],
+            lastUpdated: new Date().toISOString()
+          };
+          
+          console.log(`[✅ RESEARCH] Profile enriched for ${company}`);
+        } catch (error) {
+          console.error("[RESEARCH] Error:", error);
+          // Continue without enrichment
+        }
       }
 
       const user = await storage.createUser({
@@ -103,6 +218,18 @@ export function setupSimpleAuth(app: Express) {
         email,
         firstName,
         lastName,
+        // 🔥 BUSINESS INTELLIGENCE
+        company,
+        website,
+        industry,
+        role,
+        phone,
+        language: language || "de",
+        primaryGoal,
+        aiProfile,
+        profileEnriched: aiProfile !== null,
+        lastEnrichmentDate: aiProfile ? new Date() : null,
+        // Subscription
         subscriptionStatus: "trialing",
         trialStartDate: new Date(),
         trialMessagesUsed: 0,
@@ -122,7 +249,7 @@ export function setupSimpleAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err, user, info) => {
+    passport.authenticate("local", (err: any, user: Express.User | false, info: any) => {
       if (err) {
         return res.status(500).json({ message: "Authentication error" });
       }
@@ -133,7 +260,7 @@ export function setupSimpleAuth(app: Express) {
         if (err) {
           return res.status(500).json({ message: "Login session error" });
         }
-        res.status(200).json(sanitizeUser(user));
+        res.status(200).json(sanitizeUser(user as User));
       });
     })(req, res, next);
   });

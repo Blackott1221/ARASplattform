@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
-import { Loader2, Eye, EyeOff, AlertCircle, CheckCircle2, ArrowRight, Phone, Calendar, Sparkles } from "lucide-react";
+import { Loader2, Eye, EyeOff, AlertCircle, CheckCircle2, ArrowRight, Phone, Calendar, Sparkles, Building, Globe, User, Target, ChevronLeft, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { trackLogin, trackSignup, captureUTMParameters } from "@/lib/analytics";
@@ -30,7 +30,15 @@ export default function AuthPage() {
     email: "",
     password: "",
     firstName: "",
-    lastName: ""
+    lastName: "",
+    // 🔥 BUSINESS INTELLIGENCE FIELDS
+    company: "",
+    website: "",
+    industry: "",
+    role: "",
+    phone: "",
+    language: "de",
+    primaryGoal: ""
   });
 
   const [typedIndex, setTypedIndex] = useState(0);
@@ -38,6 +46,39 @@ export default function AuthPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [emailError, setEmailError] = useState("");
   const [passwordStrength, setPasswordStrength] = useState<'weak' | 'medium' | 'strong' | null>(null);
+  const [registrationStep, setRegistrationStep] = useState(1); // 1: Personal, 2: Business, 3: AI Config
+  const [isResearching, setIsResearching] = useState(false);
+  
+  // Industry & Goal Options
+  const industries = [
+    { value: "real_estate", label: "Immobilien" },
+    { value: "insurance", label: "Versicherungen" },
+    { value: "b2b_services", label: "B2B Services" },
+    { value: "healthcare", label: "Healthcare" },
+    { value: "finance", label: "Finanzwesen" },
+    { value: "ecommerce", label: "E-Commerce" },
+    { value: "technology", label: "Technologie" },
+    { value: "consulting", label: "Beratung" },
+    { value: "other", label: "Andere" }
+  ];
+  
+  const primaryGoals = [
+    { value: "lead_generation", label: "Lead Generierung" },
+    { value: "appointment_booking", label: "Terminbuchung" },
+    { value: "customer_support", label: "Kundensupport" },
+    { value: "sales_outreach", label: "Vertrieb" },
+    { value: "market_research", label: "Marktforschung" },
+    { value: "follow_up", label: "Nachfassen" }
+  ];
+  
+  const roles = [
+    { value: "ceo", label: "CEO / Geschäftsführer" },
+    { value: "sales_manager", label: "Sales Manager" },
+    { value: "marketing", label: "Marketing Manager" },
+    { value: "founder", label: "Founder" },
+    { value: "freelancer", label: "Freelancer" },
+    { value: "other", label: "Andere" }
+  ];
 
   // Animated counter for stats
   const [callsCount, setCallsCount] = useState(0);
@@ -165,20 +206,60 @@ export default function AuthPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      const result = await registerMutation.mutateAsync(registerData);
-      trackSignup('email', result?.id);
-      toast({
-        title: "Account Created!",
-        description: "Welcome to ARAS AI. You are now logged in."
-      });
-      setLocation("/welcome");
-    } catch (error: any) {
-      toast({
-        title: "Registration Failed",
-        description: error.message || "Failed to create account",
-        variant: "destructive"
-      });
+    
+    // Step validation
+    if (registrationStep === 1) {
+      if (!registerData.firstName || !registerData.lastName || !registerData.email || !registerData.username || !registerData.password) {
+        toast({
+          title: "Fehlende Informationen",
+          description: "Bitte fülle alle Felder aus",
+          variant: "destructive"
+        });
+        return;
+      }
+      setRegistrationStep(2);
+      return;
+    }
+    
+    if (registrationStep === 2) {
+      if (!registerData.company || !registerData.industry || !registerData.role) {
+        toast({
+          title: "Fehlende Informationen",
+          description: "Bitte fülle alle Business-Felder aus",
+          variant: "destructive"
+        });
+        return;
+      }
+      setRegistrationStep(3);
+      return;
+    }
+    
+    // Final registration with AI research
+    if (registrationStep === 3) {
+      setIsResearching(true);
+      try {
+        const result = await registerMutation.mutateAsync(registerData);
+        trackSignup('email', result?.id);
+        toast({
+          title: "🚀 Account Created!",
+          description: `Welcome to ARAS AI, ${registerData.firstName}! Deine persönliche KI wird vorbereitet...`
+        });
+        setLocation("/welcome");
+      } catch (error: any) {
+        toast({
+          title: "Registration Failed",
+          description: error.message || "Failed to create account",
+          variant: "destructive"
+        });
+      } finally {
+        setIsResearching(false);
+      }
+    }
+  };
+  
+  const goToPreviousStep = () => {
+    if (registrationStep > 1) {
+      setRegistrationStep(registrationStep - 1);
     }
   };
 
@@ -816,17 +897,65 @@ export default function AuthPage() {
                       exit={{ opacity: 0, x: -20 }}
                       transition={{ duration: 0.2 }}
                     >
+                      {/* 🔥 PROGRESS INDICATOR */}
+                      <div className="mb-6">
+                        <div className="flex items-center justify-between mb-3">
+                          {[1, 2, 3].map((step) => (
+                            <div key={step} className="flex items-center">
+                              <motion.div
+                                className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
+                                style={{
+                                  background: registrationStep >= step 
+                                    ? 'linear-gradient(135deg, #e9d7c4, #FE9100)' 
+                                    : 'rgba(255, 255, 255, 0.1)',
+                                  color: registrationStep >= step ? '#000' : '#666',
+                                  fontFamily: 'Orbitron, sans-serif'
+                                }}
+                                animate={{
+                                  scale: registrationStep === step ? [1, 1.1, 1] : 1
+                                }}
+                                transition={{ duration: 0.3 }}
+                              >
+                                {step}
+                              </motion.div>
+                              {step < 3 && (
+                                <div 
+                                  className="w-12 h-0.5 mx-1" 
+                                  style={{
+                                    background: registrationStep > step 
+                                      ? 'linear-gradient(90deg, #FE9100, #e9d7c4)'
+                                      : 'rgba(255, 255, 255, 0.1)'
+                                  }}
+                                />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="text-[10px] text-gray-500 text-center">
+                          {registrationStep === 1 && "Persönliche Daten"}
+                          {registrationStep === 2 && "Business Intelligence"}
+                          {registrationStep === 3 && "AI Konfiguration"}
+                        </div>
+                      </div>
+                      
                       <div className="mb-5">
                         <h2 className="text-xl font-black mb-1" style={{ fontFamily: 'Orbitron, sans-serif', color: '#e9d7c4' }}>
-                          Join Alpha
+                          {registrationStep === 1 && "Join Alpha"}
+                          {registrationStep === 2 && "Dein Business"}
+                          {registrationStep === 3 && "KI personalisieren"}
                         </h2>
                         <p className="text-xs text-gray-500">
-                          Du wurdest ausgewählt
+                          {registrationStep === 1 && "Du wurdest ausgewählt"}
+                          {registrationStep === 2 && "Erzähle uns von deinem Unternehmen"}
+                          {registrationStep === 3 && "Konfiguriere deine persönliche KI"}
                         </p>
                       </div>
 
                       <form onSubmit={handleRegister} className="space-y-3.5">
-                        <div className="grid grid-cols-2 gap-3">
+                        {registrationStep === 1 && (
+                          <>
+                            {/* STEP 1: Personal Information */}
+                            <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1.5">
                             <Label className="text-[10px] font-bold text-gray-400">Vorname</Label>
                             <div className="relative group">
@@ -1029,6 +1158,253 @@ export default function AuthPage() {
                             )}
                           </AnimatePresence>
                         </div>
+                          </>
+                        )}
+                        
+                        {registrationStep === 2 && (
+                          <>
+                            {/* STEP 2: Business Intelligence 🚀 */}
+                            <div className="space-y-1.5">
+                              <Label className="text-[10px] font-bold text-gray-400">Firma 🏢</Label>
+                              <div className="relative group">
+                                <motion.div
+                                  className="absolute -inset-[1px] rounded-lg opacity-0 group-focus-within:opacity-100 transition-opacity"
+                                  style={{
+                                    background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
+                                    backgroundSize: '200% 100%'
+                                  }}
+                                  animate={{
+                                    backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                                  }}
+                                  transition={{ duration: 3, repeat: Infinity }}
+                                />
+                                <Input
+                                  type="text"
+                                  value={registerData.company}
+                                  onChange={(e) => setRegisterData(prev => ({ ...prev, company: e.target.value }))}
+                                  placeholder="Deine Firma"
+                                  required
+                                  className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2 text-xs"
+                                  style={{
+                                    boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
+                                  }}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <Label className="text-[10px] font-bold text-gray-400">Website (optional) 🌐</Label>
+                              <div className="relative group">
+                                <motion.div
+                                  className="absolute -inset-[1px] rounded-lg opacity-0 group-focus-within:opacity-100 transition-opacity"
+                                  style={{
+                                    background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
+                                    backgroundSize: '200% 100%'
+                                  }}
+                                  animate={{
+                                    backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                                  }}
+                                  transition={{ duration: 3, repeat: Infinity }}
+                                />
+                                <Input
+                                  type="url"
+                                  value={registerData.website}
+                                  onChange={(e) => setRegisterData(prev => ({ ...prev, website: e.target.value }))}
+                                  placeholder="https://www.example.com"
+                                  className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2 text-xs"
+                                  style={{
+                                    boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
+                                  }}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-1.5">
+                                <Label className="text-[10px] font-bold text-gray-400">Branche 🎯</Label>
+                                <div className="relative group">
+                                  <motion.div
+                                    className="absolute -inset-[1px] rounded-lg opacity-0 group-focus-within:opacity-100 transition-opacity"
+                                    style={{
+                                      background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
+                                      backgroundSize: '200% 100%'
+                                    }}
+                                    animate={{
+                                      backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                                    }}
+                                    transition={{ duration: 3, repeat: Infinity }}
+                                  />
+                                  <select
+                                    value={registerData.industry}
+                                    onChange={(e) => setRegisterData(prev => ({ ...prev, industry: e.target.value }))}
+                                    required
+                                    className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2 text-xs w-full appearance-none"
+                                    style={{
+                                      boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
+                                    }}
+                                  >
+                                    <option value="" className="bg-black">Wähle Branche...</option>
+                                    {industries.map(ind => (
+                                      <option key={ind.value} value={ind.value} className="bg-black">
+                                        {ind.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+
+                              <div className="space-y-1.5">
+                                <Label className="text-[10px] font-bold text-gray-400">Position 👤</Label>
+                                <div className="relative group">
+                                  <motion.div
+                                    className="absolute -inset-[1px] rounded-lg opacity-0 group-focus-within:opacity-100 transition-opacity"
+                                    style={{
+                                      background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
+                                      backgroundSize: '200% 100%'
+                                    }}
+                                    animate={{
+                                      backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                                    }}
+                                    transition={{ duration: 3, repeat: Infinity }}
+                                  />
+                                  <select
+                                    value={registerData.role}
+                                    onChange={(e) => setRegisterData(prev => ({ ...prev, role: e.target.value }))}
+                                    required
+                                    className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2 text-xs w-full appearance-none"
+                                    style={{
+                                      boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
+                                    }}
+                                  >
+                                    <option value="" className="bg-black">Deine Rolle...</option>
+                                    {roles.map(role => (
+                                      <option key={role.value} value={role.value} className="bg-black">
+                                        {role.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <Label className="text-[10px] font-bold text-gray-400">Telefon (optional) 📞</Label>
+                              <div className="relative group">
+                                <motion.div
+                                  className="absolute -inset-[1px] rounded-lg opacity-0 group-focus-within:opacity-100 transition-opacity"
+                                  style={{
+                                    background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
+                                    backgroundSize: '200% 100%'
+                                  }}
+                                  animate={{
+                                    backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                                  }}
+                                  transition={{ duration: 3, repeat: Infinity }}
+                                />
+                                <Input
+                                  type="tel"
+                                  value={registerData.phone}
+                                  onChange={(e) => setRegisterData(prev => ({ ...prev, phone: e.target.value }))}
+                                  placeholder="+49 123 456789"
+                                  className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2 text-xs"
+                                  style={{
+                                    boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </>
+                        )}
+                        
+                        {registrationStep === 3 && (
+                          <>
+                            {/* STEP 3: AI Configuration 🤖 */}
+                            <div className="space-y-1.5">
+                              <Label className="text-[10px] font-bold text-gray-400">Primäres Ziel 🎯</Label>
+                              <div className="relative group">
+                                <motion.div
+                                  className="absolute -inset-[1px] rounded-lg opacity-0 group-focus-within:opacity-100 transition-opacity"
+                                  style={{
+                                    background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
+                                    backgroundSize: '200% 100%'
+                                  }}
+                                  animate={{
+                                    backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                                  }}
+                                  transition={{ duration: 3, repeat: Infinity }}
+                                />
+                                <select
+                                  value={registerData.primaryGoal}
+                                  onChange={(e) => setRegisterData(prev => ({ ...prev, primaryGoal: e.target.value }))}
+                                  required
+                                  className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2 text-xs w-full appearance-none"
+                                  style={{
+                                    boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
+                                  }}
+                                >
+                                  <option value="" className="bg-black">Was ist dein Hauptziel?</option>
+                                  {primaryGoals.map(goal => (
+                                    <option key={goal.value} value={goal.value} className="bg-black">
+                                      {goal.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <Label className="text-[10px] font-bold text-gray-400">Sprache 🌍</Label>
+                              <div className="relative group">
+                                <motion.div
+                                  className="absolute -inset-[1px] rounded-lg opacity-0 group-focus-within:opacity-100 transition-opacity"
+                                  style={{
+                                    background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
+                                    backgroundSize: '200% 100%'
+                                  }}
+                                  animate={{
+                                    backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                                  }}
+                                  transition={{ duration: 3, repeat: Infinity }}
+                                />
+                                <select
+                                  value={registerData.language}
+                                  onChange={(e) => setRegisterData(prev => ({ ...prev, language: e.target.value }))}
+                                  className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2 text-xs w-full appearance-none"
+                                  style={{
+                                    boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
+                                  }}
+                                >
+                                  <option value="de" className="bg-black">Deutsch</option>
+                                  <option value="en" className="bg-black">English</option>
+                                  <option value="fr" className="bg-black">Français</option>
+                                </select>
+                              </div>
+                            </div>
+
+                            {isResearching && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="p-4 rounded-xl bg-gradient-to-r from-[#FE9100]/10 to-[#e9d7c4]/10 border border-[#FE9100]/20"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <motion.div
+                                    animate={{ rotate: 360 }}
+                                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                                  >
+                                    <Search className="w-5 h-5 text-[#FE9100]" />
+                                  </motion.div>
+                                  <div>
+                                    <p className="text-xs font-bold text-[#e9d7c4]">KI wird personalisiert...</p>
+                                    <p className="text-[10px] text-gray-500 mt-1">
+                                      Analysiere {registerData.company} in Echtzeit
+                                    </p>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </>
+                        )}
 
                         <AnimatePresence>
                           {registerMutation.isError && (
@@ -1050,34 +1426,66 @@ export default function AuthPage() {
                           )}
                         </AnimatePresence>
 
-                        <motion.div className="pt-2">
+                        <div className="pt-3 space-y-2">
+                          {/* Back Button for Step 2 & 3 */}
+                          {registrationStep > 1 && (
+                            <motion.button
+                              type="button"
+                              onClick={goToPreviousStep}
+                              whileHover={{ scale: 1.01 }}
+                              whileTap={{ scale: 0.99 }}
+                              className="relative w-full py-2.5 rounded-xl font-bold text-xs overflow-hidden flex items-center justify-center gap-2 text-gray-400 hover:text-gray-300"
+                              style={{
+                                fontFamily: 'Orbitron, sans-serif',
+                                background: 'rgba(255, 255, 255, 0.05)',
+                                border: '1px solid rgba(255, 255, 255, 0.1)'
+                              }}
+                            >
+                              <ChevronLeft className="w-3.5 h-3.5" />
+                              Zurück
+                            </motion.button>
+                          )}
+                          
+                          {/* Submit/Next Button */}
                           <motion.button
                             type="submit"
-                            disabled={registerMutation.isPending}
-                            whileHover={{ scale: registerMutation.isPending ? 1 : 1.01 }}
-                            whileTap={{ scale: registerMutation.isPending ? 1 : 0.99 }}
-                            className="relative w-full py-3 rounded-xl font-black text-sm overflow-hidden flex items-center justify-center gap-2"
+                            disabled={registerMutation.isPending || isResearching}
+                            whileHover={{ scale: (registerMutation.isPending || isResearching) ? 1 : 1.01 }}
+                            whileTap={{ scale: (registerMutation.isPending || isResearching) ? 1 : 0.99 }}
+                            className="relative w-full py-3.5 rounded-xl font-black text-sm overflow-hidden flex items-center justify-center gap-2"
                             style={{
                               fontFamily: 'Orbitron, sans-serif',
                               background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00)',
                               color: '#000000',
                               boxShadow: '0 10px 30px rgba(254, 145, 0, 0.3)',
-                              cursor: registerMutation.isPending ? 'not-allowed' : 'pointer'
+                              cursor: (registerMutation.isPending || isResearching) ? 'not-allowed' : 'pointer'
                             }}
                           >
-                            {registerMutation.isPending ? (
+                            {isResearching ? (
+                              <>
+                                <motion.div
+                                  animate={{ rotate: 360 }}
+                                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                >
+                                  <Search className="w-4 h-4" />
+                                </motion.div>
+                                PERSONALISIERE KI...
+                              </>
+                            ) : registerMutation.isPending ? (
                               <>
                                 <Loader2 className="w-4 h-4 animate-spin" />
                                 CREATING...
                               </>
                             ) : (
                               <>
-                                JOIN ALPHA
+                                {registrationStep === 1 && "WEITER"}
+                                {registrationStep === 2 && "WEITER"}
+                                {registrationStep === 3 && "ACCOUNT ERSTELLEN"}
                                 <ArrowRight className="w-4 h-4" />
                               </>
                             )}
                           </motion.button>
-                        </motion.div>
+                        </div>
                       </form>
                     </motion.div>
                   )}

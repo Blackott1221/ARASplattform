@@ -912,11 +912,31 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
 `);
       
       try {
-        // Initialize Gemini 2.5 Flash - Optimized for chat with Live Google Search
-        const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || "");
-        const model = genAI.getGenerativeModel({
-          model: "gemini-2.5-flash",
-          systemInstruction: `ARAS AI - Autonomous Reasoning & Adaptive Speech Intelligence
+        // 🔥 USE PERSONALIZED SYSTEM PROMPT IF AVAILABLE
+        let systemInstruction = '';
+        
+        if (user?.aiProfile?.customSystemPrompt) {
+          // Use personalized prompt from AI Profile
+          systemInstruction = user.aiProfile.customSystemPrompt;
+          logger.info(`[🎯 PERSONALIZED] Using custom AI profile for ${userName}`);
+          
+          // Add live context if available
+          if (user.aiProfile.bestCallTimes || user.aiProfile.effectiveKeywords) {
+            systemInstruction += `\n\n📊 AKTUELLE INSIGHTS:\n`;
+            if (user.aiProfile.bestCallTimes) {
+              systemInstruction += `Beste Call-Zeiten: ${user.aiProfile.bestCallTimes}\n`;
+            }
+            if (user.aiProfile.effectiveKeywords && user.aiProfile.effectiveKeywords.length > 0) {
+              systemInstruction += `Effektive Keywords: ${user.aiProfile.effectiveKeywords.join(', ')}\n`;
+            }
+            if (user.aiProfile.targetAudience) {
+              systemInstruction += `Zielgruppe: ${user.aiProfile.targetAudience}\n`;
+            }
+          }
+        } else {
+          // Fallback: Generic ARAS Prompt
+          logger.info(`[GENERIC] Using standard ARAS prompt for ${userName}`);
+          systemInstruction = `ARAS AI - Autonomous Reasoning & Adaptive Speech Intelligence
 
 IDENTITAET:
 Du bist ARAS AI, eigenentwickeltes LLM der Schwarzott Group (Schweiz). Zentrale Intelligenz des ARAS-Oekosystems mit Modulen SPACE, POWER, ORION, CORE, DATA. Du bist KEIN Chatbot, KEIN GPT, KEINE externe API.
@@ -962,7 +982,14 @@ Du bist ARAS AI, eigenentwickeltes Large Language Model der Schwarzott Group. Du
 
 Der User heisst ${userName}. Sprich ihn mit seinem Namen an!
 
-Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge wie ARAS.`
+Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge wie ARAS.`;
+        }
+        
+        // Initialize Gemini 2.5 Flash - Optimized for chat with Live Google Search
+        const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || "");
+        const model = genAI.getGenerativeModel({
+          model: "gemini-2.5-flash",
+          systemInstruction
         });
 
         // Build conversation history for Gemini format

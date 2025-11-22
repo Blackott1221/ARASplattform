@@ -48,6 +48,48 @@ export const users = pgTable("users", {
   monthlyResetDate: timestamp("monthly_reset_date").defaultNow(),
   threadId: varchar("thread_id"), // OpenAI Assistant thread ID
   assistantId: varchar("assistant_id"), // OpenAI Assistant ID
+  
+  // 🔥 BUSINESS INTELLIGENCE FIELDS
+  company: varchar("company"),
+  website: varchar("website"),
+  industry: varchar("industry"),
+  role: varchar("role"),
+  phone: varchar("phone"),
+  language: varchar("language").default("de"),
+  primaryGoal: varchar("primary_goal"),
+  
+  // 🔥 AI PROFILE - Ultra Personalization
+  aiProfile: jsonb("ai_profile").$type<{
+    // Company Intelligence
+    companyDescription?: string;
+    products?: string[];
+    services?: string[];
+    targetAudience?: string;
+    competitors?: string[];
+    brandVoice?: string;
+    valueProp?: string;
+    
+    // User Intelligence
+    communicationStyle?: string;
+    expertise?: string[];
+    goals?: string[];
+    
+    // AI Optimization
+    customSystemPrompt?: string;
+    effectiveKeywords?: string[];
+    bestCallTimes?: string;
+    industryInsights?: any;
+    
+    // Learning & Analytics
+    conversationInsights?: any;
+    learnedKeywords?: string[];
+    preferredStyle?: string;
+    lastUpdated?: string;
+  }>(),
+  
+  profileEnriched: boolean("profile_enriched").default(false),
+  lastEnrichmentDate: timestamp("last_enrichment_date"),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
