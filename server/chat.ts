@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { Router } from "express";
-import OpenAI from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { db } from "./db";
 import { chatMessages, chatSessions, users } from "@shared/schema";
 import { eq } from "drizzle-orm";
@@ -12,8 +12,15 @@ declare module "express-session" {
   }
 }
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+// Initialize Gemini 3.0 Flash (NEWEST - Released Nov 2025)
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || '');
+const model = genAI.getGenerativeModel({ 
+  model: "gemini-3.0-flash",  // 🔥 GEMINI 3.0 - Latest model with live data
+  generationConfig: {
+    temperature: 1.0,
+    topP: 0.95,
+    maxOutputTokens: 8000,
+  },
 });
 
 const router = Router();
@@ -159,24 +166,26 @@ router.post("/chat/messages", async (req: Request, res: Response) => {
 
     console.log(`[CHAT] 💬 ${user.firstName} (${user.company}) | Session: ${currentSessionId}`);
     console.log(`[CHAT] 📊 Context: ${contextMessages.length} messages | Profile enriched: ${user.profileEnriched}`);
+    console.log(`[CHAT] 🔥 Using Gemini 3.0 Flash with LIVE DATA`);
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4-turbo-preview",
-      messages: [
-        { 
-          role: "system", 
-          content: enhancedSystemPrompt
-        },
-        ...contextMessages,
-      ],
-      temperature: 1.0,
-      max_tokens: 1500, // Increased for more detailed responses
-      presence_penalty: 0.8,
-      frequency_penalty: 0.5,
-      top_p: 0.95,
+    // Build conversation history for Gemini
+    const conversationHistory = contextMessages.map(msg => ({
+      role: msg.role === "assistant" ? "model" : "user",
+      parts: [{ text: msg.content }]
+    }));
+
+    // Start chat with Gemini
+    const chat = model.startChat({
+      history: conversationHistory,
+      systemInstruction: enhancedSystemPrompt,
     });
 
-    const assistantMessage = completion.choices[0]?.message?.content || 
+    // Send message and get response
+    const result = await chat.sendMessage(
+      contextMessages[contextMessages.length - 1]?.content || message
+    );
+    
+    const assistantMessage = result.response.text() || 
       "Ups, da lief was schief. Versuch's nochmal!";
 
     await db.insert(chatMessages).values({
