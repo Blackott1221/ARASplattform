@@ -124,29 +124,40 @@ export default function Space() {
                   <div className="max-w-6xl mx-auto">
                     {/* Header with Close */}
                     <div className="flex items-start justify-between mb-6">
-                      <div>
-                        <motion.h2 
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.1 }}
-                          className="text-2xl font-black text-white flex items-center gap-3"
-                          style={{ fontFamily: 'Orbitron, sans-serif' }}
+                      <div className="flex-1">
+                        <motion.div 
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.05 }}
+                          className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-[#FE9100]/20 to-[#a34e00]/10 border border-[#FE9100]/30 mb-3"
                         >
-                          <span>Willkommen, {(user as any)?.firstName}!</span>
-                          <motion.span
-                            animate={{ rotate: [0, 20, 0, 20, 0] }}
-                            transition={{ duration: 1.5, times: [0, 0.2, 0.4, 0.6, 0.8], repeat: 2, repeatDelay: 2 }}
-                          >
-                            👋
-                          </motion.span>
+                          <span className="text-xs font-black text-[#FE9100]" style={{ fontFamily: 'Orbitron, sans-serif' }}>SYSTEM</span>
+                          <div className="w-1 h-1 rounded-full bg-[#FE9100] animate-pulse" />
+                          <span className="text-[10px] text-gray-400 uppercase tracking-widest">Initialisierung Abgeschlossen</span>
+                        </motion.div>
+                        
+                        <motion.h2 
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.15, type: "spring", stiffness: 200 }}
+                          className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-gray-400 flex items-center gap-3 mb-2"
+                          style={{ fontFamily: 'Orbitron, sans-serif', letterSpacing: '-0.02em' }}
+                        >
+                          <span>Hey {(user as any)?.firstName},</span>
                         </motion.h2>
+                        
                         <motion.p 
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
-                          transition={{ delay: 0.2 }}
-                          className="text-xs text-gray-500 mt-1 uppercase tracking-wider font-bold"
+                          transition={{ delay: 0.25 }}
+                          className="text-base text-gray-300 font-medium max-w-3xl leading-relaxed"
                         >
-                          🔥 LIVE RESEARCH ABGESCHLOSSEN
+                          Ich bin <span className="font-black text-[#FE9100]">ARAS AI®</span> – deine persönliche Intelligenz. 
+                          Ich habe die letzten Sekunden damit verbracht, <span className="text-white font-semibold">{(user as any)?.company}</span> zu analysieren.
+                          <br />
+                          <span className="text-sm text-gray-500 mt-1 inline-block">
+                            Hier ist, was ich herausgefunden habe →
+                          </span>
                         </motion.p>
                       </div>
 

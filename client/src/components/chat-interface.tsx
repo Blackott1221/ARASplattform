@@ -685,7 +685,7 @@ export function ChatInterface() {
               <AnimatePresence>
                 {allMessages.map((msg, index) => {
                   const isOptimistic = 'isOptimistic' in msg && msg.isOptimistic;
-                  const isNewAiMessage = !isOptimistic && msg.isAi && msg.id === newMessageId;
+                  const isNewAiMessage = !!(!isOptimistic && msg.isAi && msg.id === newMessageId);
                   
                   return (
                     <MessageBubble
@@ -761,8 +761,8 @@ export function ChatInterface() {
               </div>
             )}
 
-            <div className="px-6 py-4">
-              <div className="max-w-4xl mx-auto">
+            <div className="px-6 py-5 pb-6">
+              <div className="max-w-4xl mx-auto space-y-3">
                 <div className="relative">
                   <Input
                     value={message}
@@ -808,6 +808,13 @@ export function ChatInterface() {
                       <Send className="w-4 h-4" />
                     </motion.button>
                   </div>
+                </div>
+                
+                {/* Disclaimer Text */}
+                <div className="text-center px-4">
+                  <p className="text-xs text-gray-500 leading-relaxed">
+                    ARAS AI kann Fehler machen. Überprüfe wichtige Informationen.
+                  </p>
                 </div>
               </div>
             </div>

@@ -634,9 +634,9 @@ export class DatabaseStorage implements IStorage {
     
     console.log(`[CHECK-LIMIT-DB] Plan limits: aiLimit=${plan.aiMessagesLimit}, voiceLimit=${plan.voiceCallsLimit}`);
 
-    // Check subscription status - must be active
-    if (userSub.subscriptionStatus !== 'active') {
-      console.log(`[CHECK-LIMIT-DB] BLOCKED: Subscription status is '${userSub.subscriptionStatus}', not 'active'`);
+    // Check subscription status - must be active or trialing
+    if (userSub.subscriptionStatus !== 'active' && userSub.subscriptionStatus !== 'trialing') {
+      console.log(`[CHECK-LIMIT-DB] BLOCKED: Subscription status is '${userSub.subscriptionStatus}', not 'active' or 'trialing'`);
       return { 
         allowed: false, 
         message: "Subscription is not active. Please check your billing status.",

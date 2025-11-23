@@ -302,44 +302,29 @@ Bleibe immer ARAS AI - entwickelt von der Schwarzott Group.`;
         aiProfile,
         profileEnriched: aiProfile !== null,
         lastEnrichmentDate: aiProfile ? new Date() : null,
-        // Subscription
-        subscriptionStatus: "trialing",
-        trialStartDate: new Date(),
-        trialMessagesUsed: 0,
+        // Subscription - FREE PLAN by default
+        subscriptionPlan: "free",
+        subscriptionStatus: "active",
         aiMessagesUsed: 0,
         voiceCallsUsed: 0,
         hasPaymentMethod: false,
       });
 
-      // ✅ CREATE WELCOME SESSION & PERSONALIZED MESSAGE
+      // ✅ CREATE INITIAL CHAT SESSION (without welcome message)
       try {
-        console.log(`[WELCOME] Creating personalized welcome message for ${firstName}...`);
+        console.log(`[SESSION] Creating initial chat session for ${firstName}...`);
         
-        // Create first chat session
-        const welcomeSession = await storage.createChatSession({
+        // Create first chat session (empty - user starts fresh)
+        await storage.createChatSession({
           userId: user.id,
-          title: "Willkommen bei ARAS AI",
+          title: "Neue Unterhaltung",
           isActive: true
         });
         
-        // Build personalized welcome message
-        const welcomeText = aiProfile 
-          ? `Hallo ${firstName}! 👋\n\nIch bin ARAS AI – deine persönliche KI-Assistenz für ${company}.\n\n🏢 **Was ich über dein Unternehmen weiß:**\n${aiProfile.companyDescription}\n\n🎯 **Dein Hauptziel:** ${primaryGoal === 'lead_generation' ? 'Lead-Generierung' : primaryGoal === 'customer_support' ? 'Kundensupport' : primaryGoal === 'appointment_booking' ? 'Terminbuchung' : 'Sales & Vertrieb'}\n\n💬 Ich spreche ${language === 'de' ? 'Deutsch' : language === 'en' ? 'Englisch' : 'deine Sprache'} und kenne deine Branche (${industry}).\n\n**Womit kann ich dir heute helfen?**`
-          : `Hallo ${firstName}! 👋\n\nIch bin ARAS AI – deine persönliche KI-Assistenz.\n\nIch lerne gerade mehr über ${company}, um dich bestmöglich zu unterstützen.\n\n**Womit kann ich dir heute helfen?**`;
-        
-        // Create welcome message
-        await storage.createChatMessage({
-          sessionId: welcomeSession.id,
-          userId: user.id,
-          message: welcomeText,  // FIX: 'content' -> 'message'
-          isAi: true,
-          timestamp: new Date()
-        });
-        
-        console.log(`[WELCOME] ✅ Personalized message created for session ${welcomeSession.id}`);
-      } catch (welcomeError) {
-        console.error(`[WELCOME] Error creating welcome message:`, welcomeError);
-        // Don't fail registration if welcome message fails
+        console.log(`[SESSION] ✅ Initial session created - Welcome displayed on SPACE page`);
+      } catch (sessionError) {
+        console.error(`[SESSION] Error creating session:`, sessionError);
+        // Don't fail registration if session creation fails
       }
 
       req.login(user, (err) => {
