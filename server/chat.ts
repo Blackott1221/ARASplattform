@@ -12,15 +12,19 @@ declare module "express-session" {
   }
 }
 
-// Initialize Gemini 3.0 Flash (NEWEST - Released Nov 2025)
+// Initialize Gemini Experimental (NEWEST AVAILABLE)
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || '');
 const model = genAI.getGenerativeModel({ 
-  model: "gemini-3.0-flash",  // 🔥 GEMINI 3.0 - Latest model with live data
+  model: "gemini-exp-1206",  // 🔥 NEWEST EXPERIMENTAL MODEL
   generationConfig: {
     temperature: 1.0,
     topP: 0.95,
-    maxOutputTokens: 8000,
+    topK: 40,
+    maxOutputTokens: 8192,
   },
+  tools: [{
+    googleSearchRetrieval: {}  // 🔥 ENABLE GOOGLE SEARCH GROUNDING for LIVE DATA
+  }],
 });
 
 const router = Router();
@@ -166,7 +170,7 @@ router.post("/chat/messages", async (req: Request, res: Response) => {
 
     console.log(`[CHAT] 💬 ${user.firstName} (${user.company}) | Session: ${currentSessionId}`);
     console.log(`[CHAT] 📊 Context: ${contextMessages.length} messages | Profile enriched: ${user.profileEnriched}`);
-    console.log(`[CHAT] 🔥 Using Gemini 3.0 Flash with LIVE DATA`);
+    console.log(`[CHAT] 🔥 Using Gemini EXP-1206 (NEWEST) with LIVE DATA & GROUNDING`);
 
     // Build conversation history for Gemini
     const conversationHistory = contextMessages.map(msg => ({

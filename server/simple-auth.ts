@@ -125,7 +125,15 @@ export function setupSimpleAuth(app: Express) {
           console.log(`[🔍 RESEARCH] Starting live research for ${company}...`);
           
           const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || "");
-          const model = genAI.getGenerativeModel({ model: "gemini-3.0-flash" });  // 🔥 GEMINI 3.0
+          const model = genAI.getGenerativeModel({ 
+            model: "gemini-exp-1206",  // 🔥 NEWEST EXPERIMENTAL
+            generationConfig: {
+              temperature: 1.0,
+              topP: 0.95,
+              topK: 40,
+              maxOutputTokens: 8192,
+            }
+          });
           
           // 🔥 PROMPT 1: Company Deep Dive
           const companyDeepDive = `
