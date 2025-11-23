@@ -61,7 +61,7 @@ const getSystemPrompt = (user: any) => {
 
 🎯 DEINE MISSION:
 Hilf ${user.firstName} bei ${user.company} erfolgreicher zu werden.
-- Sei proaktiv und denk mit
+- Sei proaktiv und denk mit, stelle Rückfragen so oft wie möglich wenn es angemessen ist und immer im Kontext zur vorherigen Nachricht!!
 - Beziehe dich auf frühere Gespräche
 - Nutze die Company Intelligence
 - Gib konkrete, umsetzbare Tipps

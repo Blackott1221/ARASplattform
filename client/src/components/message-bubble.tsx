@@ -199,7 +199,7 @@ export function MessageBubble({
         <div className="flex flex-col">
           {/* Message Bubble */}
           <motion.div 
-            className={`px-5 py-3.5 rounded-2xl ${
+            className={`px-6 py-5 rounded-2xl ${
               isAi 
                 ? 'bg-white/[0.03] backdrop-blur-sm border border-white/10 text-gray-100' 
                 : 'bg-gradient-to-br from-[#FE9100] to-[#a34e00] text-white'
@@ -209,7 +209,7 @@ export function MessageBubble({
             transition={{ duration: 0.2 }}
           >
             <div className="text-[14px] leading-relaxed break-words space-y-3">
-              {isAi && !isTyping ? (
+              {isAi && (!isNew || !isTyping) ? (
                 // Render formatted content when not typing
                 formattedContent.map((part, idx) => {
                   const cleanContent = cleanInlineMarkdown(part.content);

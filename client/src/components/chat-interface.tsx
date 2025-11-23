@@ -680,7 +680,7 @@ export function ChatInterface() {
           </div>
 
           {/* Messages - Centered with max-width */}
-          <div className="flex-1 overflow-y-auto px-6 py-6 premium-scroll">
+          <div className="flex-1 overflow-y-auto px-6 pt-6 pb-20 premium-scroll">
             <div className="max-w-4xl mx-auto">
               <AnimatePresence>
                 {allMessages.map((msg, index) => {
@@ -735,7 +735,7 @@ export function ChatInterface() {
           </div>
 
           {/* Input Area - Centered with max-width */}
-          <div className="border-t border-white/10 bg-black/80 backdrop-blur-xl pb-4">
+          <div className="border-t border-white/10 bg-black/80 backdrop-blur-xl pb-8">
             {uploadedFiles.length > 0 && (
               <div className="px-6 pt-4">
                 <div className="max-w-4xl mx-auto">
@@ -761,8 +761,8 @@ export function ChatInterface() {
               </div>
             )}
 
-            <div className="px-6 pt-6 pb-8">
-              <div className="max-w-4xl mx-auto space-y-4">
+            <div className="px-6 pt-8 pb-12">
+              <div className="max-w-4xl mx-auto space-y-5">
                 <div className="relative">
                   <Input
                     value={message}
@@ -811,8 +811,8 @@ export function ChatInterface() {
                 </div>
                 
                 {/* Disclaimer Text */}
-                <div className="text-center px-4 pt-2">
-                  <p className="text-xs text-gray-500 leading-relaxed font-medium">
+                <div className="text-center px-4 pt-3 pb-2">
+                  <p className="text-sm text-gray-400 leading-relaxed font-medium">
                     ARAS AI kann Fehler machen. Überprüfe wichtige Informationen.
                   </p>
                 </div>
