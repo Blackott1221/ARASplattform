@@ -1365,7 +1365,7 @@ export class MemStorage implements IStorage {
       profileImageUrl: null,
       stripeCustomerId: null,
       stripeSubscriptionId: null,
-      subscriptionPlan: userData.subscriptionPlan || 'starter',
+      subscriptionPlan: userData.subscriptionPlan || 'free',
       subscriptionStatus: userData.subscriptionStatus || 'trial',
       subscriptionStartDate: new Date(),
       subscriptionEndDate: null,

@@ -124,53 +124,109 @@ export function setupSimpleAuth(app: Express) {
         try {
           console.log(`[🔍 RESEARCH] Starting live research for ${company}...`);
           
-          // Initialize Gemini
-          const gemini = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || "");
-          const model = gemini.getGenerativeModel({
-            model: "gemini-2.0-flash-exp",
-            generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: 2000,
-            }
-          });
+          const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || "");
+          const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
           
-          // Research Company
-          const companyPrompt = `Du bist ein Business Intelligence Analyst. Recherchiere mit Google Search über:
+          // 🔥 PROMPT 1: Company Deep Dive
+          const companyDeepDive = `
+[🤖 ULTRA-DEEP RESEARCH MODE ACTIVATED]
+
+Unternehmen: ${company}
+Website: ${website || 'Nicht angegeben'}
+Branche: ${industry}
+
+Du bist ein Elite-Business-Intelligence-Agent. Recherchiere ALLES über dieses Unternehmen:
+
+🏢 UNTERNEHMENS-DNA:
+- Gründungsjahr und Geschichte
+- CEO/Gründer (Name, Background, Social Media)
+- Unternehmensstruktur und Mitarbeiterzahl
+- Standorte und Niederlassungen
+- Umsatz und Finanzinformationen
+- Investoren und Funding-Runden
+
+💼 BUSINESS INTELLIGENCE:
+- Exakte Produkte und Services (mit Preisen wenn verfügbar)
+- Unique Selling Propositions (USPs)
+- Marktposition und Marktanteil
+- Hauptwettbewerber und Differenzierung
+- Aktuelle Projekte und Initiativen
+- Technologie-Stack und Tools
+
+🎯 TARGET & STRATEGY:
+- Detaillierte Zielgruppenprofile
+- Customer Personas mit Demographics
+- Vertriebskanäle und Verkaufsprozess
+- Marketing-Strategie und Kampagnen
+- Content-Strategie und Social Media Präsenz
+- Brand Voice und Tonality
+
+📡 ONLINE PRESENCE:
+- Website-Traffic und SEO-Rankings
+- Social Media Follower und Engagement
+- Online-Reputation und Reviews
+- Presse-Erwähnungen und News
+- Awards und Zertifizierungen
+
+💡 INSIDER INTELLIGENCE:
+- Unternehmenskultur und Werte
+- Mitarbeiter-Reviews (Glassdoor, Kununu)
+- Aktuelle Herausforderungen und Pain Points
+- Expansion Plans und Zukunftsstrategien
+- Skandale oder Kontroversen (falls vorhanden)
+
+📈 MARKET INTELLIGENCE:
+- Branchentrends und Marktentwicklung
+- Regulatorisches Umfeld
+- Saisonale Muster und Zyklen
+- Key Performance Indicators der Branche
+
+Gib mir eine ULTRA-DETAILLIERTE Analyse als JSON:
+{
+  "companyDescription": "Ultra-detaillierte Beschreibung mit allen gefundenen Informationen",
+  "foundedYear": "Jahr oder 'Unbekannt'",
+  "ceoName": "Name des CEOs/Gründers",
+  "employeeCount": "Anzahl oder Schätzung",
+  "revenue": "Umsatz oder Schätzung",
+  "fundingInfo": "Funding-Details",
+  "products": ["Detaillierte Produktliste"],
+  "services": ["Detaillierte Serviceliste"],
+  "targetAudience": "Sehr detaillierte Zielgruppenbeschreibung",
+  "competitors": ["Hauptwettbewerber"],
+  "uniqueSellingPoints": ["USPs"],
+  "brandVoice": "Detaillierte Brand Voice Analyse",
+  "onlinePresence": "Website, Social Media Details",
+  "currentChallenges": ["Aktuelle Herausforderungen"],
+  "opportunities": ["Chancen und Potenziale"],
+  "bestCallTimes": "Optimale Kontaktzeiten mit Begründung",
+  "effectiveKeywords": ["Top 20+ relevante Keywords"],
+  "insiderInfo": "Insider-Informationen und Gerüchte",
+  "recentNews": ["Aktuelle News und Entwicklungen"],
+  "decisionMakers": ["Key Decision Makers mit Positionen"],
+  "psychologicalProfile": "Psychologisches Unternehmensprofil",
+  "salesTriggers": ["Verkaufsauslöser und Buying Signals"],
+  "communicationPreferences": "Bevorzugte Kommunikationskanäle",
+  "budgetCycles": "Budget-Zyklen und Kaufentscheidungszeiträume"
+}
+
+Sei EXTREM gründlich. Wenn das Unternehmen existiert, finde ECHTE Daten.
+Wenn es neu/unbekannt ist, erstelle ULTRA-REALISTISCHE Projektionen basierend auf der Branche.
+Denke wie ein Top-Tier Business Intelligence Analyst bei McKinsey.
+`;
+
+          const result = await model.generateContent(companyDeepDive);
+          const response = result.response.text();
           
-          Firma: ${company}
-          Website: ${website || "nicht angegeben"}
-          Branche: ${industry}
-          
-          Finde heraus:
-          1. Was macht die Firma? Produkte/Services?
-          2. Zielgruppe und Marktposition
-          3. Kommunikationsstil und Brand Voice
-          4. Beste Call-Zeiten für ${industry} Branche
-          5. Effektive Keywords für diese Branche
-          
-          Antworte als JSON:
-          {
-            "companyDescription": "...",
-            "products": ["..."],
-            "services": ["..."],
-            "targetAudience": "...",
-            "brandVoice": "...",
-            "bestCallTimes": "...",
-            "effectiveKeywords": ["..."]
-          }`;
-          
-          const result = await model.generateContent(companyPrompt);
-          const text = result.response.text();
-          
-          // Parse AI Response
-          let companyIntel: any = null;
+          // Extract JSON from response
+          let companyIntel: any;
           try {
-            const jsonMatch = text.match(/```json\n?([\s\S]*?)```|\{[\s\S]*\}/)?.[0];
-            const cleanJson = (jsonMatch || text)
-              .replace(/```json\n?/g, '')
-              .replace(/```\n?/g, '')
-              .trim();
-            companyIntel = JSON.parse(cleanJson);
+            const jsonMatch = response.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              companyIntel = JSON.parse(jsonMatch[0]);
+              console.log('[RESEARCH] ✅ Successfully parsed company intelligence');
+            } else {
+              throw new Error('No JSON found in response');
+            }
           } catch (parseError) {
             console.log('[RESEARCH] Using fallback intelligence');
             companyIntel = {
@@ -254,6 +310,37 @@ Bleibe immer ARAS AI - entwickelt von der Schwarzott Group.`;
         voiceCallsUsed: 0,
         hasPaymentMethod: false,
       });
+
+      // ✅ CREATE WELCOME SESSION & PERSONALIZED MESSAGE
+      try {
+        console.log(`[WELCOME] Creating personalized welcome message for ${firstName}...`);
+        
+        // Create first chat session
+        const welcomeSession = await storage.createChatSession({
+          userId: user.id,
+          title: "Willkommen bei ARAS AI",
+          isActive: true
+        });
+        
+        // Build personalized welcome message
+        const welcomeText = aiProfile 
+          ? `Hallo ${firstName}! 👋\n\nIch bin ARAS AI – deine persönliche KI-Assistenz für ${company}.\n\n🏢 **Was ich über dein Unternehmen weiß:**\n${aiProfile.companyDescription}\n\n🎯 **Dein Hauptziel:** ${primaryGoal === 'lead_generation' ? 'Lead-Generierung' : primaryGoal === 'customer_support' ? 'Kundensupport' : primaryGoal === 'appointment_booking' ? 'Terminbuchung' : 'Sales & Vertrieb'}\n\n💬 Ich spreche ${language === 'de' ? 'Deutsch' : language === 'en' ? 'Englisch' : 'deine Sprache'} und kenne deine Branche (${industry}).\n\n**Womit kann ich dir heute helfen?**`
+          : `Hallo ${firstName}! 👋\n\nIch bin ARAS AI – deine persönliche KI-Assistenz.\n\nIch lerne gerade mehr über ${company}, um dich bestmöglich zu unterstützen.\n\n**Womit kann ich dir heute helfen?**`;
+        
+        // Create welcome message
+        await storage.createChatMessage({
+          sessionId: welcomeSession.id,
+          userId: user.id,
+          message: welcomeText,  // FIX: 'content' -> 'message'
+          isAi: true,
+          timestamp: new Date()
+        });
+        
+        console.log(`[WELCOME] ✅ Personalized message created for session ${welcomeSession.id}`);
+      } catch (welcomeError) {
+        console.error(`[WELCOME] Error creating welcome message:`, welcomeError);
+        // Don't fail registration if welcome message fails
+      }
 
       req.login(user, (err) => {
         if (err) return next(err);
