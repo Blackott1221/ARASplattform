@@ -111,11 +111,19 @@ function App() {
     initializeAnalytics();
   }, []);
 
+  // Slow down video playback
+  useEffect(() => {
+    const video = document.querySelector('video');
+    if (video) {
+      video.playbackRate = 0.5; // 50% speed
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <div className="dark aras-bg-animated relative min-h-screen">
-          {/* Video Background - 15x zoomed out for subtle pattern effect */}
+          {/* Video Background - 50x zoomed out for very subtle pattern, slow motion */}
           <div className="fixed inset-0 z-0 overflow-hidden">
             <video
               autoPlay
@@ -123,14 +131,14 @@ function App() {
               muted
               playsInline
               src={backgroundVideo}
-              className="absolute inset-0 w-full h-full object-cover opacity-40"
+              className="absolute inset-0 w-full h-full object-cover opacity-30"
               style={{
-                transform: 'scale(15)',
+                transform: 'scale(50)',
                 transformOrigin: 'center center'
               }}
             />
-            {/* 50% dark overlay for subtle background */}
-            <div className="absolute inset-0 bg-black/50"></div>
+            {/* 60% dark overlay for subtle background */}
+            <div className="absolute inset-0 bg-black/60"></div>
           </div>
 
           {/* Content Wrapper - positioned above video */}
