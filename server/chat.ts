@@ -12,10 +12,10 @@ declare module "express-session" {
   }
 }
 
-// Initialize Gemini Experimental (NEWEST AVAILABLE)
+// Initialize Gemini 3.0 Flash (NEWEST MODEL NOV 2025)
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || '');
 const model = genAI.getGenerativeModel({ 
-  model: "gemini-exp-1206",  // 🔥 NEWEST EXPERIMENTAL MODEL
+  model: "gemini-3.0-flash",  // 🔥 NEWEST MODEL NOV 2025
   generationConfig: {
     temperature: 1.0,
     topP: 0.95,
@@ -23,9 +23,11 @@ const model = genAI.getGenerativeModel({
     maxOutputTokens: 8192,
   },
   tools: [{
-    googleSearchRetrieval: {}  // 🔥 ENABLE GOOGLE SEARCH GROUNDING for LIVE DATA
+    googleSearchRetrieval: {}  // 🔥 LIVE DATA GROUNDING
   }],
 });
+
+console.log('[GEMINI] 🔥 Using gemini-3.0-flash with Google Search Grounding for LIVE DATA');
 
 const router = Router();
 

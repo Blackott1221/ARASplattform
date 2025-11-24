@@ -122,17 +122,21 @@ export function setupSimpleAuth(app: Express) {
       
       if (company && industry) {
         try {
-          console.log(`[🔍 RESEARCH] Starting live research for ${company}...`);
+          console.log(`[🔍 RESEARCH] Starting ULTRA-DEEP live research for ${company}...`);
+          console.log('[🔥 GEMINI] Using gemini-3.0-flash with Google Search Grounding');
           
           const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || "");
           const model = genAI.getGenerativeModel({ 
-            model: "gemini-exp-1206",  // 🔥 NEWEST EXPERIMENTAL
+            model: "gemini-3.0-flash",  // 🔥 NEWEST MODEL NOV 2025
             generationConfig: {
               temperature: 1.0,
               topP: 0.95,
               topK: 40,
               maxOutputTokens: 8192,
-            }
+            },
+            tools: [{
+              googleSearchRetrieval: {}  // 🔥 LIVE DATA GROUNDING
+            }]
           });
           
           // 🔥 PROMPT 1: Company Deep Dive

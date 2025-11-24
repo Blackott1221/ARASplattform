@@ -8,12 +8,11 @@ import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { 
-  Brain, Building2, Target, Globe, TrendingUp, Users, 
-  Calendar, Clock, Shield, Activity, RefreshCw, Database,
+  Building2, Target, Globe, TrendingUp, Users, 
+  Calendar, Clock, RefreshCw,
   Plus, User, Mail, Briefcase, CheckCircle2, AlertCircle,
-  Zap, Award, Hash, FileText, Upload, Link, Eye, Edit,
-  Phone, MapPin, Sparkles, ChevronRight, XCircle,
-  Server, Cpu, BarChart3, DollarSign, Rocket
+  Zap, Award, Hash, FileText, Upload,
+  XCircle, Server
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -141,48 +140,42 @@ export default function Leads() {
 
   // User Profile Data sections
   const profileData = [
-    { icon: User, label: 'Name', value: `${userProfile.firstName} ${userProfile.lastName}`, color: 'text-blue-400' },
-    { icon: Mail, label: 'E-Mail', value: userProfile.email || userProfile.username, color: 'text-green-400' },
-    { icon: Building2, label: 'Firma', value: userProfile.company, color: 'text-purple-400' },
-    { icon: Briefcase, label: 'Position', value: userProfile.role, color: 'text-yellow-400' },
-    { icon: Globe, label: 'Branche', value: userProfile.industry, color: 'text-cyan-400' },
-    { icon: Target, label: 'Hauptziel', value: userProfile.primaryGoal?.replace('_', ' '), color: 'text-red-400' },
-    { icon: Hash, label: 'User ID', value: userProfile.id, color: 'text-gray-400' },
+    { emoji: '👤', label: 'Name', value: `${userProfile.firstName} ${userProfile.lastName}` },
+    { emoji: '📧', label: 'E-Mail', value: userProfile.email || userProfile.username },
+    { emoji: '🏢', label: 'Firma', value: userProfile.company },
+    { emoji: '💼', label: 'Position', value: userProfile.role },
+    { emoji: '🌐', label: 'Branche', value: userProfile.industry },
+    { emoji: '🎯', label: 'Hauptziel', value: userProfile.primaryGoal?.replace('_', ' ') },
+    { emoji: '#️⃣', label: 'User ID', value: userProfile.id },
   ];
 
   const businessIntelligence = [
     { 
       label: 'Company Intelligence', 
       value: companyIntel?.description || aiProfile.companyDescription || 'AI-generierte Analyse verfügbar', 
-      icon: FileText,
       fullText: true 
     },
     { 
       label: 'Zielgruppe', 
-      value: aiProfile.targetAudience || 'Wird analysiert...', 
-      icon: Users 
+      value: aiProfile.targetAudience || 'Wird analysiert...'
     },
     { 
       label: 'Effektive Keywords', 
       value: aiProfile.effectiveKeywords?.slice(0, 10).join(', ') || 'SEO-Optimierung läuft...', 
-      icon: Zap,
       badge: aiProfile.effectiveKeywords?.length || 0
     },
     { 
       label: 'Wettbewerber', 
       value: aiProfile.competitors?.slice(0, 5).join(', ') || 'Marktanalyse läuft...', 
-      icon: TrendingUp,
       badge: aiProfile.competitors?.length || 0
     },
     { 
       label: 'Services', 
-      value: companyIntel?.services?.join(', ') || aiProfile.services || 'Wird erfasst...', 
-      icon: Award 
+      value: companyIntel?.services?.join(', ') || aiProfile.services || 'Wird erfasst...'
     },
     { 
       label: 'Business Goals', 
-      value: companyIntel?.goals?.join(', ') || 'Strategieentwicklung...', 
-      icon: Target 
+      value: companyIntel?.goals?.join(', ') || 'Strategieentwicklung...'
     }
   ];
 
@@ -340,32 +333,35 @@ export default function Leads() {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.2 }}
-                  className="bg-gradient-to-br from-white/[0.03] to-white/[0.01] border border-[#FE9100]/20 rounded-xl p-6"
+                  className="bg-gradient-to-br from-[#FE9100]/5 via-transparent to-[#a34e00]/5 border border-[#FE9100]/30 rounded-2xl p-8 relative overflow-hidden"
                 >
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 bg-gradient-to-br from-[#FE9100]/20 to-[#a34e00]/20 rounded-xl">
-                      <Brain className="w-6 h-6 text-[#FE9100]" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-3">
-                        <span 
-                          className="text-sm font-bold text-[#FE9100] px-3 py-1 bg-[#FE9100]/10 rounded-full border border-[#FE9100]/30"
-                          style={{ fontFamily: 'Orbitron, sans-serif' }}
-                        >
-                          💡 ARAS AI® ANALYSIS
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#FE9100]/10 via-transparent to-transparent animate-pulse" />
+                  <div className="relative">
+                    <motion.div 
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                      className="mb-4"
+                    >
+                      <h3 
+                        className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#FE9100] via-[#E9D7C4] to-[#FE9100] animate-pulse"
+                        style={{ fontFamily: 'Orbitron, sans-serif' }}
+                      >
+                        ARAS AI® INTELLIGENCE ANALYSIS
+                      </h3>
+                    </motion.div>
+                    <motion.p 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.5 }}
+                      className="text-white/90 leading-relaxed text-lg font-medium"
+                    >
+                      {aiSummary || (
+                        <span className="italic text-gray-400 animate-pulse">
+                          🔥 ARAS AI analysiert Ihre Daten...
                         </span>
-                        <span className="text-xs text-gray-500">
-                          Powered by Gemini EXP-1206 with Live Data
-                        </span>
-                      </div>
-                      <p className="text-gray-200 leading-relaxed text-lg">
-                        {aiSummary || (
-                          <span className="italic text-gray-500">
-                            Analysiere Ihre Daten mit Gemini...
-                          </span>
-                        )}
-                      </p>
-                    </div>
+                      )}
+                    </motion.p>
                   </div>
                 </motion.div>
               </div>
@@ -381,31 +377,34 @@ export default function Leads() {
                 transition={{ delay: 0.3 }}
                 className="lg:col-span-1"
               >
-                <Card className="bg-gradient-to-br from-black to-[#0a0a0a] border-white/10 backdrop-blur-xl overflow-hidden">
-                  <div className="bg-gradient-to-r from-[#FE9100]/20 to-transparent p-6 border-b border-white/10">
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                      <Shield className="w-5 h-5 text-[#FE9100]" />
-                      User Profile
+                <Card className="bg-gradient-to-br from-black via-[#0a0a0a] to-black border border-[#FE9100]/20 backdrop-blur-xl overflow-hidden relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#FE9100]/5 via-transparent to-transparent" />
+                  <div className="relative p-6">
+                    <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#FE9100] to-[#E9D7C4] mb-6" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                      USER PROFILE
                     </h2>
-                  </div>
                   <div className="p-6 space-y-3">
                     {profileData.map((item, idx) => (
                       <motion.div 
                         key={idx}
-                        initial={{ opacity: 0, x: -10 }}
+                        initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.4 + idx * 0.05 }}
-                        className="flex items-center justify-between py-3 border-b border-white/5 hover:bg-white/[0.02] transition-colors rounded px-2"
+                        transition={{ delay: 0.4 + idx * 0.08, type: "spring", stiffness: 100 }}
+                        whileHover={{ x: 5, scale: 1.02 }}
+                        className="py-4 border-b border-[#FE9100]/10 hover:border-[#FE9100]/30 transition-all duration-300 cursor-pointer"
                       >
-                        <div className="flex items-center gap-3">
-                          <item.icon className={`w-4 h-4 ${item.color}`} />
-                          <span className="text-sm text-gray-400">{item.label}</span>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">{item.emoji}</span>
+                            <span className="text-sm font-medium text-gray-400">{item.label}</span>
+                          </div>
+                          <span className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-300 truncate max-w-[180px]">
+                            {item.value}
+                          </span>
                         </div>
-                        <span className="text-sm font-semibold text-white truncate max-w-[200px]">
-                          {item.value}
-                        </span>
                       </motion.div>
                     ))}
+                  </div>
                   </div>
                 </Card>
               </motion.div>
@@ -417,42 +416,48 @@ export default function Leads() {
                 transition={{ delay: 0.4 }}
                 className="lg:col-span-2"
               >
-                <Card className="bg-gradient-to-br from-black to-[#0a0a0a] border-white/10 backdrop-blur-xl overflow-hidden h-full">
-                  <div className="bg-gradient-to-r from-[#FE9100]/20 to-transparent p-6 border-b border-white/10">
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                      <Brain className="w-5 h-5 text-[#FE9100]" />
-                      Business Intelligence & AI Research
+                <Card className="bg-gradient-to-br from-black via-[#0a0a0a] to-black border border-[#FE9100]/20 backdrop-blur-xl overflow-hidden h-full relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#FE9100]/5 via-transparent to-transparent" />
+                  <div className="relative p-6">
+                    <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#FE9100] to-[#E9D7C4] mb-6" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                      BUSINESS INTELLIGENCE
                     </h2>
-                  </div>
-                  <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {businessIntelligence.map((item, idx) => (
-                      <motion.div 
-                        key={idx}
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: 0.5 + idx * 0.05 }}
-                        className={`bg-gradient-to-br from-white/[0.03] to-white/[0.01] rounded-xl p-4 border border-white/5 hover:border-[#FE9100]/30 transition-all ${item.fullText ? 'md:col-span-2' : ''}`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="p-2 bg-gradient-to-r from-[#FE9100]/10 to-[#a34e00]/10 rounded-lg">
-                            <item.icon className="w-4 h-4 text-[#FE9100]" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {businessIntelligence.map((item, idx) => (
+                        <motion.div 
+                          key={idx}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.5 + idx * 0.1, type: "spring", stiffness: 80 }}
+                          whileHover={{ scale: 1.03, y: -5 }}
+                          className={`bg-gradient-to-br from-[#FE9100]/5 to-transparent rounded-xl p-5 border border-[#FE9100]/10 hover:border-[#FE9100]/40 transition-all duration-300 cursor-pointer ${item.fullText ? 'md:col-span-2' : ''}`}
+                        >
+                          <div className="flex items-center gap-3 mb-3">
+                            <motion.p 
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ delay: 0.6 + idx * 0.1 }}
+                              className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-[#FE9100] to-[#E9D7C4] uppercase tracking-wider"
+                            >
+                              {item.label}
+                            </motion.p>
+                            {item.badge && (
+                              <motion.span 
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ delay: 0.7 + idx * 0.1, type: "spring" }}
+                                className="text-xs px-3 py-1 bg-gradient-to-r from-[#FE9100] to-[#a34e00] text-white rounded-full font-black"
+                              >
+                                {item.badge}
+                              </motion.span>
+                            )}
                           </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <p className="text-xs text-gray-500 uppercase tracking-wide">{item.label}</p>
-                              {item.badge && (
-                                <span className="text-xs px-2 py-0.5 bg-[#FE9100]/20 text-[#FE9100] rounded-full font-bold">
-                                  {item.badge}
-                                </span>
-                              )}
-                            </div>
-                            <p className={`text-sm text-gray-200 ${item.fullText ? 'leading-relaxed' : 'font-medium'} line-clamp-3`}>
-                              {item.value}
-                            </p>
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
+                          <p className={`text-sm text-white/80 ${item.fullText ? 'leading-relaxed' : 'font-medium'} line-clamp-3`}>
+                            {item.value}
+                          </p>
+                        </motion.div>
+                      ))}
+                    </div>
                   </div>
                 </Card>
               </motion.div>
@@ -467,11 +472,12 @@ export default function Leads() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.6 }}
               >
-                <Card className="bg-gradient-to-br from-black to-[#0a0a0a] border-white/10 backdrop-blur-xl p-6">
-                  <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                    <Activity className="w-5 h-5 text-[#FE9100]" />
-                    Nutzungsstatistiken
-                  </h2>
+                <Card className="bg-gradient-to-br from-black via-[#0a0a0a] to-black border border-[#FE9100]/20 backdrop-blur-xl p-6 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#FE9100]/5 via-transparent to-transparent" />
+                  <div className="relative">
+                    <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#FE9100] to-[#E9D7C4] mb-6" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                      NUTZUNG
+                    </h2>
                   <div className="space-y-5">
                     {usageStats.map((stat, idx) => (
                       <div key={idx}>
@@ -492,6 +498,7 @@ export default function Leads() {
                       </div>
                     ))}
                   </div>
+                  </div>
                 </Card>
               </motion.div>
 
@@ -501,26 +508,29 @@ export default function Leads() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.7 }}
               >
-                <Card className="bg-gradient-to-br from-black to-[#0a0a0a] border-white/10 backdrop-blur-xl p-6">
-                  <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                    <Shield className="w-5 h-5 text-[#FE9100]" />
-                    Account Status
-                  </h2>
+                <Card className="bg-gradient-to-br from-black via-[#0a0a0a] to-black border border-[#FE9100]/20 backdrop-blur-xl p-6 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#FE9100]/5 via-transparent to-transparent" />
+                  <div className="relative">
+                    <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#FE9100] to-[#E9D7C4] mb-6" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                      ACCOUNT STATUS
+                    </h2>
                   <div className="space-y-4">
                     {accountStatus.map((item, idx) => (
-                      <div 
+                      <motion.div 
                         key={idx}
-                        className="flex items-center justify-between p-3 bg-white/[0.02] rounded-lg"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.75 + idx * 0.1, type: "spring" }}
+                        whileHover={{ scale: 1.02, x: 5 }}
+                        className="flex items-center justify-between p-4 bg-gradient-to-r from-[#FE9100]/5 to-transparent rounded-lg border border-[#FE9100]/10 hover:border-[#FE9100]/30 transition-all cursor-pointer"
                       >
-                        <div className="flex items-center gap-3">
-                          <item.icon className={`w-4 h-4 ${item.color || 'text-gray-400'}`} />
-                          <span className="text-sm text-gray-400">{item.label}</span>
-                        </div>
-                        <span className={`text-sm font-medium ${item.color || 'text-white'}`}>
+                        <span className="text-sm font-medium text-gray-300">{item.label}</span>
+                        <span className={`text-sm font-bold ${item.color || 'text-white'}`}>
                           {item.value}
                         </span>
-                      </div>
+                      </motion.div>
                     ))}
+                  </div>
                   </div>
                 </Card>
               </motion.div>
@@ -532,12 +542,12 @@ export default function Leads() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8 }}
             >
-              <Card className="bg-gradient-to-br from-black to-[#0a0a0a] border-white/10 backdrop-blur-xl overflow-hidden">
-                <div className="bg-gradient-to-r from-[#FE9100]/20 to-transparent p-6 border-b border-white/10">
+              <Card className="bg-gradient-to-br from-black via-[#0a0a0a] to-black border border-[#FE9100]/20 backdrop-blur-xl overflow-hidden relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-[#FE9100]/5 via-transparent to-transparent" />
+                <div className="relative p-6 border-b border-[#FE9100]/20">
                   <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                      <Database className="w-5 h-5 text-[#FE9100]" />
-                      Ihre Datenquellen & AI Training
+                    <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#FE9100] to-[#E9D7C4]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                      DATENQUELLEN
                     </h2>
                     <Button
                       onClick={() => setShowAddDataDialog(true)}
@@ -566,7 +576,7 @@ export default function Leads() {
                           source.type === 'document' ? <FileText className="w-10 h-10 text-[#FE9100] mb-3" /> :
                           source.type === 'url' ? <Globe className="w-10 h-10 text-purple-400 mb-3" /> :
                           source.type === 'api' ? <Server className="w-10 h-10 text-blue-400 mb-3" /> :
-                          <Database className="w-10 h-10 text-green-400 mb-3" />
+                          <span className="text-5xl mb-3">💾</span>
                         }
                         <h3 className="text-sm font-bold text-white mb-1">{source.name}</h3>
                         <p className="text-xs text-gray-400">{source.content}</p>
