@@ -146,7 +146,7 @@ export function setupSimpleAuth(app: Express) {
             },
             tools: [{
               googleSearch: {}  // 🔥 LIVE GOOGLE SEARCH GROUNDING
-            }]
+            }] as any  // Type not updated yet in SDK
           });
           
           // 🔥 PROMPT 1: Company Deep Dive

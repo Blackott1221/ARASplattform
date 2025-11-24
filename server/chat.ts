@@ -24,7 +24,7 @@ const model = genAI.getGenerativeModel({
   },
   tools: [{
     googleSearch: {}  // 🔥 LIVE GOOGLE SEARCH GROUNDING
-  }],
+  }] as any,  // Type not updated yet in SDK
 });
 
 console.log('[GEMINI] 🔥 Using gemini-2.5-flash with Google Search Grounding for LIVE DATA');
