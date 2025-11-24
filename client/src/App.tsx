@@ -114,19 +114,19 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <div className="dark aras-bg-animated relative min-h-screen">
-          {/* Video Background */}
+          {/* Video Background - TESTING: Full opacity to verify video loads */}
           <div className="fixed inset-0 z-0 overflow-hidden">
             <video
               autoPlay
               loop
               muted
               playsInline
-              className="absolute inset-0 w-full h-full object-cover opacity-50"
+              className="absolute inset-0 w-full h-full object-cover opacity-100"
             >
               <source src="/background-video-compressed.mp4" type="video/mp4" />
             </video>
-            {/* Subtle dark overlay for text readability */}
-            <div className="absolute inset-0 bg-black/40"></div>
+            {/* Overlay temporarily removed for testing */}
+            {/* <div className="absolute inset-0 bg-black/40"></div> */}
           </div>
 
           {/* Content Wrapper - positioned above video */}
