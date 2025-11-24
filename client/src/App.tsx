@@ -113,16 +113,34 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <div className="dark aras-bg-animated">
-          {/* Early Access Banner - Ganz oben fixiert */}
-          <div className="fixed top-0 left-0 right-0 z-[9999]">
-            <EarlyAccessBanner />
+        <div className="dark aras-bg-animated relative min-h-screen">
+          {/* Video Background */}
+          <div className="fixed inset-0 z-0 overflow-hidden">
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover opacity-30"
+            >
+              <source src="/3129902-uhd_3840_2160_25fps.mp4" type="video/mp4" />
+            </video>
+            {/* Dark gradient overlay for better text readability */}
+            <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/50 to-black/70"></div>
           </div>
-          
-          {/* Main Content - mit Padding-Top für Banner */}
-          <div className="pt-10">
-            <Toaster />
-            <Router />
+
+          {/* Content Wrapper - positioned above video */}
+          <div className="relative z-10">
+            {/* Early Access Banner - Ganz oben fixiert */}
+            <div className="fixed top-0 left-0 right-0 z-[9999]">
+              <EarlyAccessBanner />
+            </div>
+            
+            {/* Main Content - mit Padding-Top für Banner */}
+            <div className="pt-10">
+              <Toaster />
+              <Router />
+            </div>
           </div>
         </div>
       </TooltipProvider>
