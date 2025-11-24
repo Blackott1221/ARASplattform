@@ -121,12 +121,12 @@ function App() {
               loop
               muted
               playsInline
-              className="absolute inset-0 w-full h-full object-cover opacity-30"
+              className="absolute inset-0 w-full h-full object-cover opacity-50"
             >
-              <source src="/3129902-uhd_3840_2160_25fps.mp4" type="video/mp4" />
+              <source src="/background-video-compressed.mp4" type="video/mp4" />
             </video>
-            {/* Dark gradient overlay for better text readability */}
-            <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/50 to-black/70"></div>
+            {/* Subtle dark overlay for text readability */}
+            <div className="absolute inset-0 bg-black/40"></div>
           </div>
 
           {/* Content Wrapper - positioned above video */}
