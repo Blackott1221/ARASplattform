@@ -27,7 +27,7 @@ const model = genAI.getGenerativeModel({
   }],
 });
 
-console.log('[GEMINI] 🔥 Using gemini-3.0-flash with Google Search Grounding for LIVE DATA');
+console.log('[GEMINI] 🔥 Using gemini-2.5-flash with Google Search Grounding for LIVE DATA');
 
 const router = Router();
 
