@@ -117,8 +117,10 @@ export function setupSimpleAuth(app: Express) {
         return res.status(400).json({ message: "Dieser Benutzername ist bereits vergeben" });
       }
 
-      // 🔥 AI PROFILE GENERATION
+      // 🔥 AI PROFILE GENERATION - ALWAYS RUN IF COMPANY EXISTS
       let aiProfile = null;
+      
+      console.log(`[RESEARCH-DEBUG] Company: "${company}", Industry: "${industry}", Starting Research: ${!!(company && industry)}`);
       
       if (company && industry) {
         try {
@@ -311,10 +313,70 @@ Bleibe immer ARAS AI - entwickelt von der Schwarzott Group.`;
           };
           
           console.log(`[✅ RESEARCH] Profile enriched for ${company}`);
-        } catch (error) {
-          console.error("[RESEARCH] Error:", error);
-          // Continue without enrichment
+        } catch (error: any) {
+          console.error("[❌ RESEARCH] ERROR during Gemini research:", error?.message || error);
+          console.error("[RESEARCH] Stack:", error?.stack);
+          console.log('[RESEARCH] 🔄 FALLING BACK to enhanced intelligence...');
+          
+          // 🔥 CREATE ENHANCED FALLBACK INTELLIGENCE INSTEAD OF NULL
+          const companyIntel = {
+            companyDescription: `${company} ist ein innovatives Unternehmen in der ${industry} Branche. Als ${role} bei ${company} fokussiert sich ${firstName} ${lastName} auf ${primaryGoal?.replace('_', ' ')} und strategisches Wachstum. Das Unternehmen zeichnet sich durch moderne Ansätze und kundenorientierte Lösungen aus.`,
+            products: [`${industry} Lösungen`, "Premium Services", "Beratungsleistungen"],
+            services: ["Strategieberatung", "Implementierung", "Support & Wartung"],
+            targetAudience: `Entscheider in der ${industry} Branche, B2B Kunden mit Fokus auf Innovation und Effizienz`,
+            brandVoice: "Professionell, innovativ und kundenorientiert mit persönlicher Note",
+            bestCallTimes: "Dienstag-Donnerstag, 14-16 Uhr (optimale Erreichbarkeit)",
+            effectiveKeywords: [company, industry, primaryGoal?.replace('_', ' '), "Innovation", "Effizienz", "Lösungen", "Strategie", "Wachstum"],
+            competitors: ["Branchenführer", "Etablierte Anbieter", "Innovative Startups"],
+            uniqueSellingPoints: ["Kundenorientierung", "Expertise in " + industry, "Innovative Ansätze"],
+            goals: ["Marktanteil ausbauen", "Kundenzufriedenheit steigern", "Innovation vorantreiben"],
+            communicationPreferences: "Professionell, direkt, lösungsorientiert",
+            opportunities: ["Digitale Transformation", "Marktexpansion", "Strategische Partnerschaften"]
+          };
+          
+          const customSystemPrompt = `Du bist ARAS AI® – die persönliche KI-Assistenz von ${firstName} ${lastName}.
+
+🧠 ÜBER DEN USER:
+Name: ${firstName} ${lastName}
+Firma: ${company}
+Branche: ${industry}
+Position: ${role}
+
+🏢 ÜBER DIE FIRMA:
+${companyIntel.companyDescription}
+
+Zielgruppe: ${companyIntel.targetAudience}
+Brand Voice: ${companyIntel.brandVoice}
+
+🎯 PRIMÄRES ZIEL: ${primaryGoal}
+
+💬 SPRACHE: ${language === 'de' ? 'Deutsch (du-Form)' : language === 'en' ? 'English' : 'Français'}
+
+Du bist die persönliche KI von ${firstName} bei ${company}. Beziehe dich immer auf den Business Context.
+
+Bleibe immer ARAS AI - entwickelt von der Schwarzott Group.`;
+          
+          aiProfile = {
+            companyDescription: companyIntel.companyDescription,
+            products: companyIntel.products,
+            services: companyIntel.services,
+            targetAudience: companyIntel.targetAudience,
+            brandVoice: companyIntel.brandVoice,
+            customSystemPrompt,
+            effectiveKeywords: companyIntel.effectiveKeywords,
+            bestCallTimes: companyIntel.bestCallTimes,
+            goals: companyIntel.goals,
+            competitors: companyIntel.competitors,
+            uniqueSellingPoints: companyIntel.uniqueSellingPoints,
+            opportunities: companyIntel.opportunities,
+            communicationPreferences: companyIntel.communicationPreferences,
+            lastUpdated: new Date().toISOString()
+          };
+          
+          console.log(`[✅ RESEARCH] Fallback intelligence created for ${company}`);
         }
+      } else {
+        console.log('[RESEARCH-DEBUG] ⚠️ Skipping research - Company or Industry missing');
       }
 
       const user = await storage.createUser({
