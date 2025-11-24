@@ -23,7 +23,7 @@ const model = genAI.getGenerativeModel({
     maxOutputTokens: 8192,
   },
   tools: [{
-    googleSearchRetrieval: {}  // 🔥 LIVE DATA GROUNDING
+    googleSearch: {}  // 🔥 LIVE GOOGLE SEARCH GROUNDING
   }],
 });
 
