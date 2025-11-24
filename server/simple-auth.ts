@@ -125,7 +125,7 @@ export function setupSimpleAuth(app: Express) {
       if (company && industry) {
         try {
           console.log(`[🔍 RESEARCH] Starting ULTRA-DEEP live research for ${company}...`);
-          console.log('[🔥 GEMINI] Using gemini-3.0-flash with Google Search Grounding');
+          console.log('[🔥 GEMINI] Using gemini-2.5-flash with Google Search Grounding');
           
           // Validate API Key
           const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
@@ -137,7 +137,7 @@ export function setupSimpleAuth(app: Express) {
           
           const genAI = new GoogleGenerativeAI(apiKey);
           const model = genAI.getGenerativeModel({ 
-            model: "gemini-3.0-flash",  // 🔥 NEWEST MODEL NOV 2025
+            model: "gemini-2.5-flash",  // 🔥 NEWEST MODEL NOV 2025
             generationConfig: {
               temperature: 1.0,
               topP: 0.95,

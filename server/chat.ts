@@ -12,10 +12,10 @@ declare module "express-session" {
   }
 }
 
-// Initialize Gemini 3.0 Flash (NEWEST MODEL NOV 2025)
+// Initialize Gemini 2.5 Flash (NEWEST MODEL NOV 2025)
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || '');
 const model = genAI.getGenerativeModel({ 
-  model: "gemini-3.0-flash",  // 🔥 NEWEST MODEL NOV 2025
+  model: "gemini-2.5-flash",  // 🔥 NEWEST MODEL NOV 2025
   generationConfig: {
     temperature: 1.0,
     topP: 0.95,
