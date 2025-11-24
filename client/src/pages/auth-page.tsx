@@ -348,22 +348,28 @@ export default function AuthPage() {
         `📊 Analysiere über 500+ Datenquellen zu ${registerData.company}...`,
         "🌐 Scanne Unternehmenswebsite und Social Media Präsenz...",
         "🤖 KI-Agenten durchsuchen Branchendatenbanken...",
+        "🧠 Gemini 3.0 Flash analysiert Unternehmens-DNA...",
         "📈 Analysiere Marktposition und Wettbewerber...",
         "🎯 Identifiziere Zielgruppen und Kundenprofile...",
         "💼 Extrahiere Produkte, Services und USPs...",
+        "👔 Identifiziere Entscheidungsträger und Key Contacts...",
+        "💰 Analysiere Budget-Zyklen und Kaufentscheidungen...",
         "🔮 Erstelle psychologisches Unternehmensprofil...",
+        "🌍 Live-Daten über Google Search werden integriert...",
+        "📊 Wettbewerber-Intelligence wird finalisiert...",
         "✨ Generiere personalisierte KI-Strategie...",
-        "🚀 Finalisiere ARAS AI Konfiguration..."
+        "🚀 ARAS AI wird mit deinen Daten trainiert...",
+        "✅ Finalisiere Intelligence Report..."
       ];
       
       let currentStep = 0;
       const stepInterval = setInterval(() => {
         if (currentStep < researchSteps.length) {
           setResearchStatus(researchSteps[currentStep]);
-          setResearchProgress((currentStep + 1) * 10);
+          setResearchProgress(Math.min(((currentStep + 1) / researchSteps.length) * 100, 95));
           currentStep++;
         }
-      }, 1500);
+      }, 2000);
       
       // Start actual registration after animation starts
       setTimeout(async () => {
@@ -371,20 +377,20 @@ export default function AuthPage() {
           const result = await registerMutation.mutateAsync(registerData);
           trackSignup('email', result?.id);
           
-          // Wait for animation to finish
+          // Wait for REAL backend research to complete (30+ seconds)
           setTimeout(() => {
             clearInterval(stepInterval);
             setResearchProgress(100);
-            setResearchStatus("✅ Research abgeschlossen! AI-Profil wurde erfolgreich erstellt.");
+            setResearchStatus("✅ ULTRA-DEEP Research abgeschlossen! ARAS AI kennt jetzt ALLES über " + registerData.company + "! 🔥");
             
             setTimeout(() => {
               toast({
-                title: "Willkommen bei ARAS AI! 🎉",
-                description: `Hey ${registerData.firstName}! Deine persönliche KI ist jetzt bereit für ${registerData.company}!`
+                title: "🎉 Willkommen bei ARAS AI Pro Research™!",
+                description: `Hey ${registerData.firstName}! Deine KI hat ${registerData.company} komplett analysiert. Ready to blow your mind! 💪🔥`
               });
               setLocation("/welcome");
-            }, 2000);
-          }, Math.max(0, (researchSteps.length * 1500) - 2000));
+            }, 3000);
+          }, Math.max(28000, (researchSteps.length * 2000) - 2000));
           
         } catch (error: any) {
           clearInterval(stepInterval);

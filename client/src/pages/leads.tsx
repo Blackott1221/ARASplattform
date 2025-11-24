@@ -79,7 +79,21 @@ export default function Leads() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ 
-          message: `Gib mir eine kurze, prägnante Zusammenfassung über ${userProfile.firstName} ${userProfile.lastName} von ${userProfile.company}. Was sind die wichtigsten 3-4 Punkte aus dem AI-Profil und Business Intelligence? Sei konkret und fokussiert.`,
+          message: `🔥 ARAS AI ULTRA-DEEP INTELLIGENCE REPORT 🔥
+
+User: ${userProfile.firstName} ${userProfile.lastName}
+Firma: ${userProfile.company}
+Position: ${userProfile.role}
+Branche: ${userProfile.industry}
+Hauptziel: ${userProfile.primaryGoal}
+
+Als ARAS AI Pro Research™ kenne ich ALLES über ${userProfile.company}:
+- ${aiProfile.competitors?.length || 0} Wettbewerber analysiert
+- ${aiProfile.effectiveKeywords?.length || 0} relevante Keywords identifiziert
+- Company Intelligence: ${aiProfile.companyDescription?.substring(0, 100)}...
+- Zielgruppe: ${aiProfile.targetAudience}
+
+Gib mir jetzt eine KRASSE 4-5 Satz Zusammenfassung die ${userProfile.firstName} WOW sagt! Zeige dass du ALLES weißt - CEO, Mitarbeiter, Umsatz, Wettbewerber, Insider-Info. Sei konkret und nutze die echten Daten. Sprich direkt ${userProfile.firstName} mit Namen an und zeige dass ARAS AI sein Business IN- UND AUSWENDIG kennt! 💪🔥`,
           sessionId: 'dashboard-summary-' + Date.now()
         })
       });

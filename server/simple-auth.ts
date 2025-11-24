@@ -275,8 +275,9 @@ Du bist die persönliche KI von ${firstName} bei ${company}. Beziehe dich immer 
 
 Bleibe immer ARAS AI - entwickelt von der Schwarzott Group.`;
           
-          // Build AI Profile
+          // Build AI Profile with FULL Intelligence Data
           aiProfile = {
+            // Core Company Data
             companyDescription: companyIntel.companyDescription,
             products: companyIntel.products || [],
             services: companyIntel.services || [],
@@ -285,7 +286,27 @@ Bleibe immer ARAS AI - entwickelt von der Schwarzott Group.`;
             customSystemPrompt,
             effectiveKeywords: companyIntel.effectiveKeywords || [],
             bestCallTimes: companyIntel.bestCallTimes,
-            goals: [primaryGoal],
+            goals: companyIntel.goals || [primaryGoal],
+            
+            // 🔥 ULTRA-DEEP Intelligence Data
+            competitors: companyIntel.competitors || [],
+            uniqueSellingPoints: companyIntel.uniqueSellingPoints || [],
+            foundedYear: companyIntel.foundedYear || null,
+            ceoName: companyIntel.ceoName || null,
+            employeeCount: companyIntel.employeeCount || null,
+            revenue: companyIntel.revenue || null,
+            fundingInfo: companyIntel.fundingInfo || null,
+            onlinePresence: companyIntel.onlinePresence || null,
+            currentChallenges: companyIntel.currentChallenges || [],
+            opportunities: companyIntel.opportunities || [],
+            recentNews: companyIntel.recentNews || [],
+            decisionMakers: companyIntel.decisionMakers || [],
+            psychologicalProfile: companyIntel.psychologicalProfile || null,
+            salesTriggers: companyIntel.salesTriggers || [],
+            communicationPreferences: companyIntel.communicationPreferences || null,
+            budgetCycles: companyIntel.budgetCycles || null,
+            insiderInfo: companyIntel.insiderInfo || null,
+            
             lastUpdated: new Date().toISOString()
           };
           

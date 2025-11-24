@@ -58,9 +58,9 @@ export const users = pgTable("users", {
   language: varchar("language").default("de"),
   primaryGoal: varchar("primary_goal"),
   
-  // 🔥 AI PROFILE - Ultra Personalization
+  // 🔥 AI PROFILE - ULTRA-DEEP Intelligence & Personalization
   aiProfile: jsonb("ai_profile").$type<{
-    // Company Intelligence
+    // Core Company Intelligence
     companyDescription?: string;
     products?: string[];
     services?: string[];
@@ -68,6 +68,24 @@ export const users = pgTable("users", {
     competitors?: string[];
     brandVoice?: string;
     valueProp?: string;
+    
+    // 🔥 ULTRA-DEEP Company Intelligence (Pro Research™)
+    uniqueSellingPoints?: string[];
+    foundedYear?: string | number | null;
+    ceoName?: string | null;
+    employeeCount?: string | number | null;
+    revenue?: string | null;
+    fundingInfo?: string | null;
+    onlinePresence?: string | null;
+    currentChallenges?: string[];
+    opportunities?: string[];
+    recentNews?: string[];
+    decisionMakers?: string[];
+    psychologicalProfile?: string | null;
+    salesTriggers?: string[];
+    communicationPreferences?: string | null;
+    budgetCycles?: string | null;
+    insiderInfo?: string | null;
     
     // User Intelligence
     communicationStyle?: string;
