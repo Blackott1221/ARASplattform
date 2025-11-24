@@ -103,6 +103,29 @@ export const users = pgTable("users", {
     learnedKeywords?: string[];
     preferredStyle?: string;
     lastUpdated?: string;
+    
+    // 🧠 DEEP PERSONAL INTELLIGENCE (from SPACE chats)
+    personalityType?: string;  // e.g. "Analytical, Direct, Results-Driven"
+    communicationTone?: string;  // e.g. "Professional but casual"
+    decisionMakingStyle?: string;  // e.g. "Data-driven, Fast-paced"
+    emotionalTriggers?: string[];  // What motivates/frustrates them
+    workingHours?: string;  // Observed active times
+    responsePatterns?: string;  // How they typically respond
+    interests?: string[];  // Topics they discuss
+    painPoints?: string[];  // Problems they mention
+    aspirations?: string[];  // Goals they express
+    vocabulary?: string[];  // Common words/phrases they use
+    urgencyLevel?: string;  // How urgent their needs are
+    trustLevel?: string;  // How much they trust AI/automation
+    technicalLevel?: string;  // Tech-savvy rating
+    collaborationStyle?: string;  // How they work with others
+    priorityFocus?: string[];  // What they care about most
+    stressIndicators?: string[];  // Signs of stress/pressure
+    successMetrics?: string[];  // How they measure success
+    learningStyle?: string;  // How they prefer to learn
+    feedbackStyle?: string;  // How they give/receive feedback
+    chatInsightsSummary?: string;  // Gemini-generated summary of all chats
+    lastChatAnalysis?: string;  // Timestamp of last analysis
   }>(),
   
   profileEnriched: boolean("profile_enriched").default(false),

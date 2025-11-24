@@ -3,7 +3,7 @@ import { Router } from "express";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { db } from "./db";
 import { chatMessages, chatSessions, users } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 // Extend express-session types
 declare module "express-session" {
@@ -209,6 +209,19 @@ router.post("/chat/messages", async (req: Request, res: Response) => {
       })
       .where(eq(users.id, userId));
 
+    // 🧠 AUTO-TRIGGER ANALYSIS every 10 messages
+    const totalMessages = (user.aiMessagesUsed || 0) + 1;
+    if (totalMessages % 10 === 0) {
+      console.log(`[🧠 AUTO-ANALYZE] Triggering analysis after ${totalMessages} messages`);
+      // Trigger analysis in background (don't await)
+      fetch(`http://localhost:${process.env.PORT || 5000}/api/chat/analyze-user`, {
+        method: 'POST',
+        headers: {
+          'Cookie': req.headers.cookie || ''
+        }
+      }).catch(err => console.error('[❌ AUTO-ANALYZE] Failed:', err));
+    }
+
     return res.json({
       message: assistantMessage,
       sessionId: currentSessionId,
@@ -262,6 +275,131 @@ router.get("/chat/messages", async (req: Request, res: Response) => {
   } catch (error) {
     console.error("[GET-MESSAGES-ERROR]", error);
     return res.status(500).json({ message: "Failed to fetch messages" });
+  }
+});
+
+// 🧠 ANALYZE USER CHAT HISTORY FOR DEEP INTELLIGENCE
+router.post('/analyze-user', async (req, res) => {
+  try {
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const userId = (req.user as any).id;
+    console.log(`[🧠 ANALYZE] Starting deep analysis for user: ${userId}`);
+
+    // Get all user messages
+    const messages = await db.select()
+      .from(chatMessages)
+      .where(eq(chatMessages.userId, userId))
+      .orderBy(desc(chatMessages.timestamp))
+      .limit(100);  // Last 100 messages
+
+    if (messages.length === 0) {
+      return res.json({ message: 'No messages to analyze yet' });
+    }
+
+    console.log(`[🧠 ANALYZE] Found ${messages.length} messages to analyze`);
+
+    // Prepare conversation text for analysis
+    const conversationText = messages
+      .map(m => `${m.isAi ? 'AI' : 'USER'}: ${m.message}`)
+      .join('\n\n');
+
+    // 🔥 ULTRA-DEEP GEMINI ANALYSIS PROMPT
+    const analysisPrompt = `You are an expert psychologist and business analyst. Analyze this conversation history and extract DEEP PERSONAL INTELLIGENCE.
+
+CONVERSATION HISTORY:
+${conversationText}
+
+Provide a comprehensive JSON analysis with the following structure:
+{
+  "personalityType": "Describe personality traits (e.g., Analytical, Direct, Results-Driven)",
+  "communicationTone": "How they communicate (e.g., Professional but casual, Formal, Friendly)",
+  "decisionMakingStyle": "How they make decisions (e.g., Data-driven, Intuitive, Fast-paced)",
+  "emotionalTriggers": ["List 3-5 things that motivate or frustrate them"],
+  "workingHours": "Observed active times pattern",
+  "responsePatterns": "How they typically respond to questions",
+  "interests": ["Topics they seem interested in"],
+  "painPoints": ["Problems or challenges they mention"],
+  "aspirations": ["Goals they express or hint at"],
+  "vocabulary": ["Common words, phrases, or expressions they use"],
+  "urgencyLevel": "high/medium/low - how urgent their needs seem",
+  "trustLevel": "How much they trust AI/automation",
+  "technicalLevel": "Tech-savvy rating: expert/intermediate/beginner",
+  "collaborationStyle": "How they work with the AI assistant",
+  "priorityFocus": ["What they care about most"],
+  "stressIndicators": ["Any signs of stress or pressure"],
+  "successMetrics": ["How they seem to measure success"],
+  "learningStyle": "How they prefer to learn: visual/analytical/practical",
+  "feedbackStyle": "How they give feedback",
+  "chatInsightsSummary": "A detailed 2-3 paragraph summary of key insights about this person"
+}
+
+Be specific and insightful. Use actual examples from the conversation.`;
+
+    console.log(`[🧠 ANALYZE] Sending ${conversationText.length} chars to Gemini...`);
+
+    const chat = model.startChat({
+      history: [],
+    });
+
+    const result = await chat.sendMessage(analysisPrompt);
+    const analysisText = result.response.text();
+    
+    console.log(`[🧠 ANALYZE] Gemini response received: ${analysisText.length} chars`);
+
+    // Extract JSON from response
+    let insights: any = {};
+    try {
+      const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        insights = JSON.parse(jsonMatch[0]);
+        console.log(`[✅ ANALYZE] Parsed insights successfully`);
+      }
+    } catch (e) {
+      console.error(`[❌ ANALYZE] Failed to parse JSON:`, e);
+      // Fallback
+      insights = {
+        chatInsightsSummary: analysisText,
+        lastChatAnalysis: new Date().toISOString()
+      };
+    }
+
+    // Add timestamp
+    insights.lastChatAnalysis = new Date().toISOString();
+
+    // Update user profile with insights
+    const currentUser = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (currentUser.length > 0) {
+      const currentProfile = currentUser[0].aiProfile || {};
+      const updatedProfile = {
+        ...currentProfile,
+        ...insights
+      };
+
+      await db.update(users)
+        .set({ 
+          aiProfile: updatedProfile,
+          lastEnrichmentDate: new Date()
+        })
+        .where(eq(users.id, userId));
+
+      console.log(`[✅ ANALYZE] User profile updated with deep insights`);
+    }
+
+    res.json({ 
+      success: true, 
+      insights,
+      messagesAnalyzed: messages.length
+    });
+
+  } catch (error: any) {
+    console.error('[❌ ANALYZE] Error:', error);
+    res.status(500).json({ 
+      message: 'Analysis failed', 
+      error: error.message 
+    });
   }
 });
 

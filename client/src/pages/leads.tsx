@@ -67,6 +67,7 @@ export default function Leads() {
     business: true,
     usage: true,
     account: true,
+    personal: true,
     sources: true
   });
   
@@ -392,6 +393,44 @@ Gib mir jetzt eine KRASSE 4-5 Satz Zusammenfassung die ${userProfile.firstName} 
     setSelectedDetail(item);
     setShowDetailDialog(true);
   };
+  
+  // 🧠 ANALYZE SPACE CHATS
+  const [isAnalyzingChats, setIsAnalyzingChats] = useState(false);
+  
+  const analyzeSpaceChats = async () => {
+    setIsAnalyzingChats(true);
+    try {
+      const response = await fetch('/api/chat/analyze-user', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        toast({
+          title: '✅ Analysis Complete!',
+          description: `Analyzed ${data.messagesAnalyzed} messages. Dashboard updated with deep insights.`
+        });
+        // Refresh user data
+        queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      } else {
+        toast({
+          title: '❌ Analysis Failed',
+          description: 'Could not analyze chat history',
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error('Failed to analyze chats:', error);
+      toast({
+        title: '❌ Error',
+        description: 'Analysis failed',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsAnalyzingChats(false);
+    }
+  };
 
   return (
     <div className="flex h-screen bg-black overflow-hidden">
@@ -477,7 +516,17 @@ Gib mir jetzt eine KRASSE 4-5 Satz Zusammenfassung die ${userProfile.firstName} 
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.4 }}
+                    className="flex gap-3"
                   >
+                    <Button
+                      onClick={analyzeSpaceChats}
+                      disabled={isAnalyzingChats}
+                      className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold px-8 py-6 text-base rounded-xl shadow-2xl shadow-purple-600/20"
+                      style={{ fontFamily: 'Orbitron, sans-serif' }}
+                    >
+                      <Sparkles className={`w-5 h-5 mr-2 ${isAnalyzingChats ? 'animate-spin' : ''}`} />
+                      Analyze SPACE
+                    </Button>
                     <Button
                       onClick={generateAISummary}
                       disabled={isLoadingSummary}
