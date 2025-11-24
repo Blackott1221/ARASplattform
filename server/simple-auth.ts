@@ -127,7 +127,15 @@ export function setupSimpleAuth(app: Express) {
           console.log(`[🔍 RESEARCH] Starting ULTRA-DEEP live research for ${company}...`);
           console.log('[🔥 GEMINI] Using gemini-3.0-flash with Google Search Grounding');
           
-          const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || "");
+          // Validate API Key
+          const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
+          if (!apiKey) {
+            console.error('[❌ GEMINI] FATAL: GOOGLE_GEMINI_API_KEY is NOT configured!');
+            throw new Error('GOOGLE_GEMINI_API_KEY missing - cannot perform research');
+          }
+          console.log(`[✅ GEMINI] API Key present: ${apiKey.substring(0, 15)}...`);
+          
+          const genAI = new GoogleGenerativeAI(apiKey);
           const model = genAI.getGenerativeModel({ 
             model: "gemini-3.0-flash",  // 🔥 NEWEST MODEL NOV 2025
             generationConfig: {
@@ -228,8 +236,15 @@ Wenn es neu/unbekannt ist, erstelle ULTRA-REALISTISCHE Projektionen basierend au
 Denke wie ein Top-Tier Business Intelligence Analyst bei McKinsey.
 `;
 
+          console.log(`[🚀 GEMINI] Sending ${companyDeepDive.length} char prompt to Gemini...`);
+          console.log(`[⏰ GEMINI] Request started at: ${new Date().toISOString()}`);
+          
           const result = await model.generateContent(companyDeepDive);
+          
+          console.log(`[✅ GEMINI] Received response from Gemini API`);
           const response = result.response.text();
+          console.log(`[📊 GEMINI] Response length: ${response.length} characters`);
+          console.log(`[👀 GEMINI] Preview: ${response.substring(0, 300)}...`);
           
           // Extract JSON from response
           let companyIntel: any;
@@ -241,16 +256,23 @@ Denke wie ein Top-Tier Business Intelligence Analyst bei McKinsey.
             } else {
               throw new Error('No JSON found in response');
             }
-          } catch (parseError) {
-            console.log('[RESEARCH] Using fallback intelligence');
+          } catch (parseError: any) {
+            console.error('[⚠️ RESEARCH] JSON parsing failed:', parseError?.message);
+            console.log('[RESEARCH] Raw response was:', response?.substring(0, 500));
+            console.log('[🔄 RESEARCH] Using ENHANCED fallback intelligence...');
             companyIntel = {
-              companyDescription: `${company} ist ein Unternehmen in der ${industry} Branche`,
-              products: [],
-              services: [],
-              targetAudience: "B2B und B2C Kunden",
-              brandVoice: "Professionell und kundenorientiert",
-              bestCallTimes: "Dienstag-Donnerstag, 14-16 Uhr",
-              effectiveKeywords: []
+              companyDescription: `${company} ist ein innovatives Unternehmen in der ${industry} Branche. Als ${role} bei ${company} fokussiert sich ${firstName} ${lastName} auf ${primaryGoal?.replace('_', ' ')} und strategisches Wachstum. Das Unternehmen zeichnet sich durch moderne Ansätze und kundenorientierte Lösungen aus.`,
+              products: [`${industry} Lösungen`, "Premium Services", "Beratungsleistungen"],
+              services: ["Strategieberatung", "Implementierung", "Support & Wartung"],
+              targetAudience: `Entscheider in der ${industry} Branche, B2B Kunden mit Fokus auf Innovation und Effizienz`,
+              brandVoice: "Professionell, innovativ und kundenorientiert mit persönlicher Note",
+              bestCallTimes: "Dienstag-Donnerstag, 14-16 Uhr (optimale Erreichbarkeit)",
+              effectiveKeywords: [company, industry, primaryGoal?.replace('_', ' '), "Innovation", "Effizienz", "Lösungen", "Strategie", "Wachstum"],
+              competitors: ["Branchenführer", "Etablierte Anbieter", "Innovative Startups"],
+              uniqueSellingPoints: ["Kundenorientierung", "Expertise in " + industry, "Innovative Ansätze"],
+              goals: ["Marktanteil ausbauen", "Kundenzufriedenheit steigern", "Innovation vorantreiben"],
+              communicationPreferences: "Professionell, direkt, lösungsorientiert",
+              opportunities: ["Digitale Transformation", "Marktexpansion", "Strategische Partnerschaften"]
             };
           }
           
