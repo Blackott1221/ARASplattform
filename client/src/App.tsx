@@ -123,7 +123,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <div className="dark aras-bg-animated relative min-h-screen">
-          {/* Video Background - 50x zoomed out for very subtle pattern, slow motion */}
+          {/* Video Background - scaled down to 30% size for small, subtle pattern */}
           <div className="fixed inset-0 z-0 overflow-hidden">
             <video
               autoPlay
@@ -133,7 +133,7 @@ function App() {
               src={backgroundVideo}
               className="absolute inset-0 w-full h-full object-cover opacity-30"
               style={{
-                transform: 'scale(50)',
+                transform: 'scale(0.3)',
                 transformOrigin: 'center center'
               }}
             />
