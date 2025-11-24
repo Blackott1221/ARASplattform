@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import backgroundVideo from "@/assets/background-video.mp4";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -121,10 +122,9 @@ function App() {
               loop
               muted
               playsInline
+              src={backgroundVideo}
               className="absolute inset-0 w-full h-full object-cover opacity-100"
-            >
-              <source src="/background-video-compressed.mp4" type="video/mp4" />
-            </video>
+            />
             {/* Overlay temporarily removed for testing */}
             {/* <div className="absolute inset-0 bg-black/40"></div> */}
           </div>

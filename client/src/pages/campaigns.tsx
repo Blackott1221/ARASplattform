@@ -25,14 +25,14 @@ export default function Campaigns() {
   // Show loading state while authentication is in progress
   if (authLoading) {
     return (
-      <div className="flex h-screen bg-space space-pattern circuit-pattern items-center justify-center">
+      <div className="flex h-screen items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-space space-pattern circuit-pattern overflow-hidden">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar activeSection="campaigns" onSectionChange={() => {}} />
       <div className="flex-1 flex flex-col content-zoom">
         <TopBar 

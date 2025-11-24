@@ -66,8 +66,7 @@
 
   body {
     @apply font-inter antialiased text-foreground;
-    background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 50%, #000000 100%);
-    background-attachment: fixed;
+    background: transparent;
     min-height: 100vh;
     overflow-x: hidden;
   }
@@ -320,7 +319,7 @@ html, body, #root {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background-color: #000000;
+  background-color: transparent;
 }
 
 * {

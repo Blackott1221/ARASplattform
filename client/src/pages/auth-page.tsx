@@ -176,7 +176,7 @@ export default function AuthPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
@@ -431,7 +431,7 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden">
+    <div className="min-h-screen text-white relative overflow-hidden">
       {/* 🌊 ULTRA-SMOOTH WAVE BACKGROUND - SMALLER & MORE DISTANT */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {/* Film Grain Texture for Premium Look */}

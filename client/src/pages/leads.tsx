@@ -217,7 +217,7 @@ Gib mir jetzt eine KRASSE 4-5 Satz Zusammenfassung die ${userProfile.firstName} 
 
   if (!user || authLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-black">
+      <div className="flex items-center justify-center h-screen">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
@@ -433,7 +433,7 @@ Gib mir jetzt eine KRASSE 4-5 Satz Zusammenfassung die ${userProfile.firstName} 
   };
 
   return (
-    <div className="flex h-screen bg-black overflow-hidden">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar 
         activeSection="leads"
         onSectionChange={() => {}}

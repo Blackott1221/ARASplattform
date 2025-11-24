@@ -71,7 +71,7 @@ export default function VoiceCalls() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black p-8">
+    <div className="min-h-screen p-8">
       <div className="max-w-7xl mx-auto">
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <div className="flex items-center gap-4 mb-4">

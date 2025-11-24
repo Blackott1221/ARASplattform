@@ -92,7 +92,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex bg-background">
+    <div className="min-h-screen flex">
       {/* Left Panel - Dynamic Content */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-background via-card to-background"></div>

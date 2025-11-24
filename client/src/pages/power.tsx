@@ -468,7 +468,7 @@ export default function Power() {
 
   // ----------------- UI -----------------
   return (
-    <div className="flex h-screen bg-black relative overflow-hidden">
+    <div className="flex h-screen relative overflow-hidden">
       {/* Premium ARAS background */}
       <div className="absolute inset-0 opacity-[0.14] pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-br from-[#FE9100]/10 via-transparent to-[#A34E00]/10" />

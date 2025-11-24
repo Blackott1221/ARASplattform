@@ -28,7 +28,7 @@ export default function Billing() {
 
   if (authLoading) {
     return (
-      <div className="flex h-screen bg-black items-center justify-center">
+      <div className="flex h-screen items-center justify-center">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
@@ -225,7 +225,7 @@ export default function Billing() {
   };
 
   return (
-    <div className="flex h-screen bg-black relative overflow-hidden">
+    <div className="flex h-screen relative overflow-hidden">
       {/* Premium Background */}
       <div className="absolute inset-0 opacity-20">
         <div className="absolute inset-0 bg-gradient-to-br from-[#FE9100]/10 via-transparent to-[#a34e00]/10" />
