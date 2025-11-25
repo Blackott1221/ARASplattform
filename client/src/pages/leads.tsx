@@ -80,8 +80,17 @@ export default function Leads() {
     enabled: !!user && !authLoading,
   });
 
+  // Update time every second with correct local timezone
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    const updateTime = () => {
+      setCurrentTime(new Date());
+    };
+    
+    // Initial update
+    updateTime();
+    
+    // Update every second
+    const timer = setInterval(updateTime, 1000);
     return () => clearInterval(timer);
   }, []);
 
@@ -501,13 +510,13 @@ Gib mir jetzt eine KRASSE 4-5 Satz Zusammenfassung die ${userProfile.firstName} 
                       <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
                         <Calendar className="w-3.5 h-3.5 text-[#FE9100]" />
                         <span className="text-sm font-medium">
-                          {format(currentTime, 'EEEE, dd. MMMM yyyy', { locale: de })}
+                          {format(new Date(), 'EEEE, dd. MMMM yyyy', { locale: de })}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
                         <Clock className="w-3.5 h-3.5 text-[#FE9100]" />
                         <span className="text-sm font-mono font-bold text-white">
-                          {format(currentTime, 'HH:mm:ss')}
+                          {format(new Date(), 'HH:mm:ss')}
                         </span>
                       </div>
                     </motion.div>
