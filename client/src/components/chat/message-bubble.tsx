@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { User, Volume2, VolumeX } from "lucide-react";
+import { User, Volume2, VolumeX, Copy, Check } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -168,6 +168,7 @@ export function MessageBubble({
 }: MessageBubbleProps) {
   const [displayedText, setDisplayedText] = useState(isAi && isNew ? "" : message);
   const [isTyping, setIsTyping] = useState(isAi && isNew);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (isAi && isNew && message) {
@@ -191,6 +192,16 @@ export function MessageBubble({
       setIsTyping(false);
     }
   }, [message, isAi, isNew]);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(message);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
 
   return (
     <motion.div
@@ -267,10 +278,27 @@ export function MessageBubble({
           
           <div className={`flex items-center mt-1 px-1.5 space-x-2 ${isAi ? '' : 'flex-row-reverse space-x-reverse'}`}>
             <p className="text-xs text-gray-500">{format(timestamp, 'HH:mm')}</p>
-            {isAi && onSpeak && (
-              <Button size="sm" variant="ghost" onClick={() => onSpeak(message)} className="h-6 w-6 p-0 hover:bg-white/10 rounded-lg" disabled={isSpeaking}>
-                {isSpeaking ? <VolumeX className="w-3.5 h-3.5 text-[#FE9100]" /> : <Volume2 className="w-3.5 h-3.5 text-gray-400 hover:text-[#FE9100]" />}
-              </Button>
+            {isAi && (
+              <>
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  onClick={handleCopy} 
+                  className="h-6 w-6 p-0 hover:bg-white/10 rounded-lg"
+                  title="Text kopieren"
+                >
+                  {copied ? (
+                    <Check className="w-3.5 h-3.5 text-green-500" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5 text-gray-400 hover:text-[#FE9100]" />
+                  )}
+                </Button>
+                {onSpeak && (
+                  <Button size="sm" variant="ghost" onClick={() => onSpeak(message)} className="h-6 w-6 p-0 hover:bg-white/10 rounded-lg" disabled={isSpeaking}>
+                    {isSpeaking ? <VolumeX className="w-3.5 h-3.5 text-[#FE9100]" /> : <Volume2 className="w-3.5 h-3.5 text-gray-400 hover:text-[#FE9100]" />}
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </div>

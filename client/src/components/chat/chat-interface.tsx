@@ -53,6 +53,35 @@ const CALL_TEMPLATES = [
 interface UploadedFile { name: string; type: string; size: number; content: string; }
 interface OptimisticMessage { id: string; message: string; isAi: boolean; timestamp: Date; isOptimistic: true; }
 
+const THINKING_PHASES = [
+  'Analysiert deine Anfrage',
+  'Recherchiert im Internet',
+  'Verarbeitet Informationen',
+  'Erstellt Antwort',
+];
+
+function ThinkingPhaseIndicator() {
+  const [phase, setPhase] = useState(0);
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPhase(prev => (prev + 1) % THINKING_PHASES.length);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+  
+  return (
+    <motion.div
+      key={phase}
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 10 }}
+    >
+      <span className="text-sm font-medium text-gray-300">{THINKING_PHASES[phase]}</span>
+    </motion.div>
+  );
+}
+
 export function ChatInterface() {
   const [message, setMessage] = useState("");
   const [isRecording, setIsRecording] = useState(false);
@@ -76,6 +105,7 @@ export function ChatInterface() {
   const [streamingMessage, setStreamingMessage] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [thinkingPhase, setThinkingPhase] = useState(0);
   
   const [shouldAnimateLastAiMessage, setShouldAnimateLastAiMessage] = useState(false);
   const previousMessagesLength = useRef(0);
@@ -527,7 +557,7 @@ export function ChatInterface() {
         </div>
       )}
 
-      <div ref={messagesContainerRef} className={`flex-1 overflow-y-auto relative z-10 aras-scroll ${!hasMessages ? 'flex items-center justify-center' : 'px-6 pt-8 pb-2 space-y-4'}`}>
+      <div ref={messagesContainerRef} className={`flex-1 overflow-y-auto relative z-10 aras-scroll ${!hasMessages ? 'flex items-center justify-center' : 'px-6 pt-4 pb-1 space-y-4'}`}>
         {!hasMessages ? (
           <div className="w-full flex flex-col items-center px-6">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center mb-8 w-full max-w-3xl">
@@ -862,26 +892,28 @@ export function ChatInterface() {
                   animate={{ scale: 1 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium text-gray-300">ARAS denkt nach</span>
-                    
-                    <div className="flex items-center gap-1.5 ml-2">
-                      {[0, 0.15, 0.3].map((delay, i) => (
-                        <motion.div
-                          key={i}
-                          className="w-2 h-2 rounded-full bg-[#FE9100]"
-                          animate={{ 
-                            scale: [0.6, 1, 0.6],
-                            opacity: [0.3, 1, 0.3]
-                          }} 
-                          transition={{ 
-                            duration: 1.2, 
-                            repeat: Infinity, 
-                            delay, 
-                            ease: 'easeInOut' 
-                          }}
-                        />
-                      ))}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-3">
+                      <ThinkingPhaseIndicator />
+                      
+                      <div className="flex items-center gap-1.5">
+                        {[0, 0.15, 0.3].map((delay, i) => (
+                          <motion.div
+                            key={i}
+                            className="w-2 h-2 rounded-full bg-[#FE9100]"
+                            animate={{ 
+                              scale: [0.6, 1, 0.6],
+                              opacity: [0.3, 1, 0.3]
+                            }} 
+                            transition={{ 
+                              duration: 1.2, 
+                              repeat: Infinity, 
+                              delay, 
+                              ease: 'easeInOut' 
+                            }}
+                          />
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -894,7 +926,7 @@ export function ChatInterface() {
       </div>
 
       {hasMessages && (
-        <div className="px-4 pt-3 pb-2 border-t border-white/5 bg-black/20 backdrop-blur-sm">
+        <div className="px-4 pt-2 pb-1 border-t border-white/5 bg-black/20 backdrop-blur-sm">
           {uploadedFiles.length > 0 && (
             <div className="mb-3 space-y-2 max-w-4xl mx-auto">
               {uploadedFiles.map((file, index) => (
@@ -985,7 +1017,7 @@ export function ChatInterface() {
             </Button>
           </div>
 
-          <div className="mt-2 mb-1 flex items-center justify-center gap-2 text-xs text-gray-500">
+          <div className="mt-1.5 mb-0.5 flex items-center justify-center gap-2 text-xs text-gray-500">
             <AlertCircle className="w-3 h-3 flex-shrink-0" />
             <p>ARAS AI ® kann Fehler machen. Bitte überprüfe daher jede Nachricht genauestens!</p>
           </div>
