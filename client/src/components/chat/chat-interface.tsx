@@ -557,7 +557,7 @@ export function ChatInterface() {
         </div>
       )}
 
-      <div ref={messagesContainerRef} className={`flex-1 overflow-y-auto relative z-10 aras-scroll ${!hasMessages ? 'flex items-center justify-center' : 'px-6 pt-4 pb-4 space-y-4'}`}>
+      <div ref={messagesContainerRef} className={`flex-1 overflow-y-auto relative z-10 aras-scroll ${!hasMessages ? 'flex items-center justify-center' : 'px-6 pt-4 pb-0 space-y-4'}`}>
         {!hasMessages ? (
           <div className="w-full flex flex-col items-center px-6">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center mb-8 w-full max-w-3xl">
@@ -926,7 +926,7 @@ export function ChatInterface() {
       </div>
 
       {hasMessages && (
-        <div className="px-4 pt-0 pb-0 -mt-40 border-t border-white/5 bg-black/20 backdrop-blur-sm relative z-20">
+        <div className="px-4 pt-3 pb-2 border-t border-white/5 bg-black/20 backdrop-blur-sm">
           {uploadedFiles.length > 0 && (
             <div className="mb-3 space-y-2 max-w-4xl mx-auto">
               {uploadedFiles.map((file, index) => (
