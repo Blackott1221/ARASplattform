@@ -123,7 +123,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <div className="dark aras-bg-animated relative min-h-screen">
-          {/* Video Background - scaled to 15% for very small, minimal pattern */}
+          {/* Video Background - scaled to 65% size, well visible and intense */}
           <div className="fixed inset-0 z-0 overflow-hidden">
             <video
               autoPlay
@@ -131,14 +131,14 @@ function App() {
               muted
               playsInline
               src={backgroundVideo}
-              className="absolute inset-0 w-full h-full object-cover opacity-40"
+              className="absolute inset-0 w-full h-full object-cover opacity-55"
               style={{
-                transform: 'scale(0.15)',
+                transform: 'scale(0.65)',
                 transformOrigin: 'center center'
               }}
             />
-            {/* 50% dark overlay for very subtle background */}
-            <div className="absolute inset-0 bg-black/50"></div>
+            {/* 35% dark overlay for balanced visibility */}
+            <div className="absolute inset-0 bg-black/35"></div>
           </div>
 
           {/* Content Wrapper - positioned above video */}
