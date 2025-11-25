@@ -926,7 +926,7 @@ export function ChatInterface() {
       </div>
 
       {hasMessages && (
-        <div className="px-4 pt-1 pb-1 -mt-20 border-t border-white/5 bg-black/20 backdrop-blur-sm relative z-20">
+        <div className="px-4 pt-0 pb-0 -mt-40 border-t border-white/5 bg-black/20 backdrop-blur-sm relative z-20">
           {uploadedFiles.length > 0 && (
             <div className="mb-3 space-y-2 max-w-4xl mx-auto">
               {uploadedFiles.map((file, index) => (
@@ -1017,7 +1017,7 @@ export function ChatInterface() {
             </Button>
           </div>
 
-          <div className="mt-1 mb-0 flex items-center justify-center gap-2 text-xs text-gray-500">
+          <div className="mt-0 mb-0 pb-1 flex items-center justify-center gap-2 text-xs text-gray-500">
             <AlertCircle className="w-3 h-3 flex-shrink-0" />
             <p>ARAS AI ® kann Fehler machen. Bitte überprüfe daher jede Nachricht genauestens!</p>
           </div>

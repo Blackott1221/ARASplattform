@@ -48,14 +48,15 @@ const VideoBackground = memo(() => {
         muted
         playsInline
         src={backgroundVideo}
-        className="absolute inset-0 w-full h-full object-cover opacity-55"
+        className="absolute inset-0 w-full h-full object-cover opacity-65"
         style={{
-          transform: 'scale(0.65)',
-          transformOrigin: 'center center'
+          transform: 'scale(1.0)',
+          transformOrigin: 'center center',
+          filter: 'contrast(1.1) brightness(1.05)' // Slightly enhanced for crispness
         }}
       />
-      {/* 35% dark overlay for balanced visibility */}
-      <div className="absolute inset-0 bg-black/35"></div>
+      {/* 25% dark overlay - subtle but visible background */}
+      <div className="absolute inset-0 bg-black/25"></div>
     </div>
   );
 });
