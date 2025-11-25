@@ -5,20 +5,142 @@ import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import arasAiImage from "@assets/ChatGPT Image 9. Apr. 2025_ 21_38_23_1754515368187.png";
 
-const cleanMarkdown = (text: string): string => {
-  let cleanText = text;
-  for (let i = 0; i < 5; i++) {
-    cleanText = cleanText
-      .replace(/\*\*(.*?)\*\*/g, '$1')
-      .replace(/\*(.*?)\*/g, '$1')
-      .replace(/__(.*?)__/g, '$1')
-      .replace(/_(.*?)_/g, '$1')
-      .replace(/`(.*?)`/g, '$1')
-      .replace(/~~(.*?)~~/g, '$1')
-      .replace(/\*\*/g, '')
-      .replace(/\*/g, '');
-  }
-  return cleanText.replace(/\*/g, '');
+// 🎨 BEAUTIFUL MARKDOWN RENDERER
+const renderMarkdown = (text: string) => {
+  const lines = text.split('\n');
+  const elements: JSX.Element[] = [];
+  let currentList: { items: string[]; ordered: boolean } | null = null;
+  let lineIndex = 0;
+
+  const flushList = () => {
+    if (currentList) {
+      const ListTag = currentList.ordered ? 'ol' : 'ul';
+      elements.push(
+        <ListTag key={`list-${lineIndex}`} className={currentList.ordered ? "list-decimal list-inside space-y-1.5 my-3 ml-2" : "list-disc list-inside space-y-1.5 my-3 ml-2"}>
+          {currentList.items.map((item, i) => (
+            <li key={i} className="text-gray-100 leading-relaxed">
+              <span className="ml-2">{parseInlineMarkdown(item)}</span>
+            </li>
+          ))}
+        </ListTag>
+      );
+      currentList = null;
+    }
+  };
+
+  const parseInlineMarkdown = (text: string) => {
+    const parts: (string | JSX.Element)[] = [];
+    let remaining = text;
+    let key = 0;
+
+    while (remaining) {
+      // Bold
+      const boldMatch = remaining.match(/\*\*(.*?)\*\*/);
+      if (boldMatch && boldMatch.index !== undefined) {
+        if (boldMatch.index > 0) parts.push(remaining.slice(0, boldMatch.index));
+        parts.push(<strong key={`bold-${key++}`} className="font-bold text-white">{boldMatch[1]}</strong>);
+        remaining = remaining.slice(boldMatch.index + boldMatch[0].length);
+        continue;
+      }
+
+      // Italic
+      const italicMatch = remaining.match(/\*(.*?)\*/);
+      if (italicMatch && italicMatch.index !== undefined) {
+        if (italicMatch.index > 0) parts.push(remaining.slice(0, italicMatch.index));
+        parts.push(<em key={`italic-${key++}`} className="italic text-gray-200">{italicMatch[1]}</em>);
+        remaining = remaining.slice(italicMatch.index + italicMatch[0].length);
+        continue;
+      }
+
+      // Inline code
+      const codeMatch = remaining.match(/`(.*?)`/);
+      if (codeMatch && codeMatch.index !== undefined) {
+        if (codeMatch.index > 0) parts.push(remaining.slice(0, codeMatch.index));
+        parts.push(
+          <code key={`code-${key++}`} className="px-1.5 py-0.5 rounded bg-white/10 text-[#FE9100] font-mono text-sm border border-white/10">
+            {codeMatch[1]}
+          </code>
+        );
+        remaining = remaining.slice(codeMatch.index + codeMatch[0].length);
+        continue;
+      }
+
+      parts.push(remaining);
+      break;
+    }
+
+    return parts;
+  };
+
+  lines.forEach((line, i) => {
+    lineIndex = i;
+
+    // Headers
+    if (line.startsWith('### ')) {
+      flushList();
+      elements.push(
+        <h3 key={`h3-${i}`} className="text-lg font-bold text-white mt-4 mb-2">
+          {parseInlineMarkdown(line.slice(4))}
+        </h3>
+      );
+      return;
+    }
+    if (line.startsWith('## ')) {
+      flushList();
+      elements.push(
+        <h2 key={`h2-${i}`} className="text-xl font-bold text-white mt-5 mb-3">
+          {parseInlineMarkdown(line.slice(3))}
+        </h2>
+      );
+      return;
+    }
+    if (line.startsWith('# ')) {
+      flushList();
+      elements.push(
+        <h1 key={`h1-${i}`} className="text-2xl font-bold text-white mt-6 mb-3">
+          {parseInlineMarkdown(line.slice(2))}
+        </h1>
+      );
+      return;
+    }
+
+    // Lists
+    const unorderedMatch = line.match(/^[-*]\s+(.+)/);
+    const orderedMatch = line.match(/^(\d+)\.\s+(.+)/);
+
+    if (unorderedMatch) {
+      if (!currentList || currentList.ordered) {
+        flushList();
+        currentList = { items: [], ordered: false };
+      }
+      currentList.items.push(unorderedMatch[1]);
+      return;
+    }
+
+    if (orderedMatch) {
+      if (!currentList || !currentList.ordered) {
+        flushList();
+        currentList = { items: [], ordered: true };
+      }
+      currentList.items.push(orderedMatch[2]);
+      return;
+    }
+
+    // Regular paragraph
+    flushList();
+    if (line.trim()) {
+      elements.push(
+        <p key={`p-${i}`} className="text-gray-100 leading-relaxed mb-3">
+          {parseInlineMarkdown(line)}
+        </p>
+      );
+    } else {
+      elements.push(<div key={`spacer-${i}`} className="h-2" />);
+    }
+  });
+
+  flushList();
+  return elements;
 };
 
 interface MessageBubbleProps {
@@ -44,32 +166,31 @@ export function MessageBubble({
   isSpeaking,
   isNew = false
 }: MessageBubbleProps) {
-  const cleanMessage = cleanMarkdown(message);
-  const [displayedText, setDisplayedText] = useState(isAi && isNew ? "" : cleanMessage);
+  const [displayedText, setDisplayedText] = useState(isAi && isNew ? "" : message);
   const [isTyping, setIsTyping] = useState(isAi && isNew);
 
   useEffect(() => {
-    if (isAi && isNew && cleanMessage) {
+    if (isAi && isNew && message) {
       let currentIndex = 0;
       setDisplayedText("");
       setIsTyping(true);
 
       const interval = setInterval(() => {
-        if (currentIndex < cleanMessage.length) {
-          setDisplayedText(cleanMessage.slice(0, currentIndex + 1));
+        if (currentIndex < message.length) {
+          setDisplayedText(message.slice(0, currentIndex + 1));
           currentIndex++;
         } else {
           setIsTyping(false);
           clearInterval(interval);
         }
-      }, 20);
+      }, 15);
 
       return () => clearInterval(interval);
     } else if (!isNew) {
-      setDisplayedText(cleanMessage);
+      setDisplayedText(message);
       setIsTyping(false);
     }
-  }, [cleanMessage, isAi, isNew]);
+  }, [message, isAi, isNew]);
 
   return (
     <motion.div
@@ -114,19 +235,31 @@ export function MessageBubble({
             )}
 
             <motion.div 
-              className={`relative px-4 py-3 rounded-xl ${isAi ? 'bg-transparent text-gray-100' : 'bg-transparent text-white'}`}
+              className={`relative px-5 py-4 rounded-2xl ${
+                isAi 
+                  ? 'bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 backdrop-blur-sm' 
+                  : 'bg-transparent text-white'
+              }`}
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="text-[14px] leading-relaxed break-words whitespace-pre-wrap">
-                {displayedText}
-                {isTyping && (
-                  <motion.span
-                    animate={{ opacity: [1, 0.3, 1] }}
-                    transition={{ duration: 0.8, repeat: Infinity }}
-                    className="inline-block w-[2px] h-[18px] bg-[#FE9100] ml-1 align-middle"
-                  />
+              <div className="text-[15px] leading-relaxed">
+                {isAi && !isTyping ? (
+                  <div className="space-y-2">
+                    {renderMarkdown(displayedText)}
+                  </div>
+                ) : (
+                  <div className="whitespace-pre-wrap break-words text-gray-100">
+                    {displayedText}
+                    {isTyping && (
+                      <motion.span
+                        animate={{ opacity: [1, 0.3, 1] }}
+                        transition={{ duration: 0.8, repeat: Infinity }}
+                        className="inline-block w-[2px] h-[18px] bg-[#FE9100] ml-1 align-middle"
+                      />
+                    )}
+                  </div>
                 )}
               </div>
             </motion.div>
@@ -135,7 +268,7 @@ export function MessageBubble({
           <div className={`flex items-center mt-1 px-1.5 space-x-2 ${isAi ? '' : 'flex-row-reverse space-x-reverse'}`}>
             <p className="text-xs text-gray-500">{format(timestamp, 'HH:mm')}</p>
             {isAi && onSpeak && (
-              <Button size="sm" variant="ghost" onClick={() => onSpeak(cleanMessage)} className="h-6 w-6 p-0 hover:bg-white/10 rounded-lg" disabled={isSpeaking}>
+              <Button size="sm" variant="ghost" onClick={() => onSpeak(message)} className="h-6 w-6 p-0 hover:bg-white/10 rounded-lg" disabled={isSpeaking}>
                 {isSpeaking ? <VolumeX className="w-3.5 h-3.5 text-[#FE9100]" /> : <Volume2 className="w-3.5 h-3.5 text-gray-400 hover:text-[#FE9100]" />}
               </Button>
             )}

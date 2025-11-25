@@ -842,27 +842,56 @@ export function ChatInterface() {
 
             {(isThinking || isStreaming) && (
               <motion.div 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.2 }}
-                className="flex items-start gap-4 px-1"
+                initial={{ opacity: 0, y: 10 }} 
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+                className="flex items-start gap-3 mb-3"
               >
-                <img src={arasAiImage} alt="ARAS AI" className="w-8 h-8 rounded-full flex-shrink-0 opacity-90" />
-                <div className="flex items-center gap-2 py-2">
-                  <span className="text-sm text-gray-500">denkt nach</span>
-                  <div className="flex items-center gap-0.5">
-                    {[0, 0.2, 0.4].map((delay, i) => (
-                      <motion.span
-                        key={i}
-                        className="text-gray-500 text-lg font-bold leading-none"
-                        animate={{ opacity: [0.2, 1, 0.2] }} 
-                        transition={{ duration: 1.5, repeat: Infinity, delay, ease: 'easeInOut' }}
-                      >
-                        .
-                      </motion.span>
-                    ))}
+                <motion.div 
+                  className="flex-shrink-0"
+                  animate={{ scale: [1, 1.05, 1] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                >
+                  <img src={arasAiImage} alt="ARAS AI" className="w-8 h-8 rounded-full object-cover ring-2 ring-[#FE9100]/30" />
+                </motion.div>
+                
+                <motion.div 
+                  className="relative px-5 py-4 rounded-2xl bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 backdrop-blur-sm"
+                  initial={{ scale: 0.95 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div className="flex items-center gap-3">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                    >
+                      <Sparkles className="w-4 h-4 text-[#FE9100]" />
+                    </motion.div>
+                    
+                    <span className="text-sm font-medium text-gray-300">ARAS denkt nach</span>
+                    
+                    <div className="flex items-center gap-1.5 ml-2">
+                      {[0, 0.15, 0.3].map((delay, i) => (
+                        <motion.div
+                          key={i}
+                          className="w-2 h-2 rounded-full bg-[#FE9100]"
+                          animate={{ 
+                            scale: [0.6, 1, 0.6],
+                            opacity: [0.3, 1, 0.3]
+                          }} 
+                          transition={{ 
+                            duration: 1.2, 
+                            repeat: Infinity, 
+                            delay, 
+                            ease: 'easeInOut' 
+                          }}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
+                </motion.div>
               </motion.div>
             )}
 
