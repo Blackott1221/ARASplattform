@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, memo } from "react";
 import backgroundVideo from "@/assets/background-video.mp4";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
@@ -30,6 +30,35 @@ import Billing from "@/pages/billing";
 import Settings from "@/pages/settings";
 import AuthPage from "@/pages/auth-page";
 import ArasMailingPage from "@/pages/aras-mailing";
+
+// Memoized video background component - never re-renders to keep video playing continuously
+const VideoBackground = memo(() => {
+  useEffect(() => {
+    const video = document.querySelector('video');
+    if (video) {
+      video.playbackRate = 0.5; // 50% speed
+    }
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-0 overflow-hidden">
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        src={backgroundVideo}
+        className="absolute inset-0 w-full h-full object-cover opacity-55"
+        style={{
+          transform: 'scale(0.65)',
+          transformOrigin: 'center center'
+        }}
+      />
+      {/* 35% dark overlay for balanced visibility */}
+      <div className="absolute inset-0 bg-black/35"></div>
+    </div>
+  );
+});
 
 function Router() {
   const { user, isLoading } = useAuth();
@@ -111,35 +140,12 @@ function App() {
     initializeAnalytics();
   }, []);
 
-  // Slow down video playback
-  useEffect(() => {
-    const video = document.querySelector('video');
-    if (video) {
-      video.playbackRate = 0.5; // 50% speed
-    }
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <div className="dark aras-bg-animated relative min-h-screen">
-          {/* Video Background - scaled to 65% size, well visible and intense */}
-          <div className="fixed inset-0 z-0 overflow-hidden">
-            <video
-              autoPlay
-              loop
-              muted
-              playsInline
-              src={backgroundVideo}
-              className="absolute inset-0 w-full h-full object-cover opacity-55"
-              style={{
-                transform: 'scale(0.65)',
-                transformOrigin: 'center center'
-              }}
-            />
-            {/* 35% dark overlay for balanced visibility */}
-            <div className="absolute inset-0 bg-black/35"></div>
-          </div>
+          {/* Persistent video background - never re-renders on route changes */}
+          <VideoBackground />
 
           {/* Content Wrapper - positioned above video */}
           <div className="relative z-10">
