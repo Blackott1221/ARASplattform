@@ -70,8 +70,8 @@ function Router() {
   // Show loading state while checking authentication
   if (isLoading) {
     return (
-      <div className="flex h-screen bg-background items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full"></div>
+      <div className="flex h-screen bg-black items-center justify-center">
+        <div className="animate-spin w-10 h-10 border-4 border-[#FE9100] border-t-transparent rounded-full"></div>
       </div>
     );
   }
