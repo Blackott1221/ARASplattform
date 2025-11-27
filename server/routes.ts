@@ -224,14 +224,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         services: services || currentUser?.ai_profile?.services,
       };
 
-      // Update users table with merged ai_profile (use sql.json for JSONB)
-      await client`
+      // Convert to JSON and escape for raw SQL (bypass postgres.js limitations)
+      const jsonString = JSON.stringify(updatedAiProfile).replace(/'/g, "''");
+
+      // Update users table with merged ai_profile using unsafe for JSONB
+      await client.unsafe(`
         UPDATE users
         SET 
-          ai_profile = ${client.json(updatedAiProfile)},
+          ai_profile = '${jsonString}'::jsonb,
           updated_at = NOW()
-        WHERE id = ${userId}
-      `;
+        WHERE id = '${userId}'
+      `);
 
       logger.info(`✅ AI Profile updated for user ${userId}`);
       res.json({ success: true, message: 'AI Profile updated successfully' });
