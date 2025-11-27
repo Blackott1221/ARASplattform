@@ -500,7 +500,7 @@ export function ChatInterface() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-black/30 backdrop-blur-sm relative overflow-hidden" onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave}>
+    <div className="flex flex-col h-full bg-black/20 relative overflow-hidden" onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave}>
       {isDragging && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-50 bg-[#FE9100]/5 backdrop-blur-sm flex items-center justify-center">
           <div className="text-center">
@@ -775,7 +775,7 @@ export function ChatInterface() {
                     onChange={(e) => setMessage(e.target.value)}
                     onKeyDown={handleKeyPress}
                     placeholder="Message ARAS AI"
-                    className="relative w-full min-h-[56px] max-h-[200px] bg-white/10 backdrop-blur-md text-white placeholder:text-gray-600 placeholder:opacity-50 border-0 rounded-3xl px-6 py-4 pr-14 focus:outline-none resize-none"
+                    className="relative w-full min-h-[56px] max-h-[200px] bg-black/40 text-white placeholder:text-gray-600 placeholder:opacity-50 border-0 rounded-3xl px-6 py-4 pr-14 focus:outline-none resize-none"
                     disabled={sendMessage.isPending}
                     rows={1}
                   />
@@ -894,7 +894,7 @@ export function ChatInterface() {
                 </motion.div>
                 
                 <motion.div 
-                  className="relative px-5 py-4 rounded-2xl bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 backdrop-blur-sm"
+                  className="relative px-5 py-4 rounded-2xl bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10"
                   initial={{ scale: 0.95 }}
                   animate={{ scale: 1 }}
                   transition={{ duration: 0.2 }}
@@ -933,7 +933,7 @@ export function ChatInterface() {
       </div>
 
       {hasMessages && (
-        <div className="px-4 pt-3 pb-4 border-t border-white/5 bg-black/20 backdrop-blur-sm">
+        <div className="px-4 pt-3 pb-4 border-t border-white/5 bg-black/15">
           {uploadedFiles.length > 0 && (
             <div className="mb-3 space-y-2 max-w-4xl mx-auto">
               {uploadedFiles.map((file, index) => (
@@ -973,7 +973,7 @@ export function ChatInterface() {
                 />
               </div>
 
-              <textarea ref={textareaRef} value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyPress} placeholder="Message ARAS AI" className="relative w-full min-h-[48px] max-h-[200px] bg-white/10 backdrop-blur-md text-white placeholder:text-gray-600 placeholder:opacity-50 border-0 rounded-2xl px-4 py-3 pr-12 focus:outline-none resize-none" disabled={sendMessage.isPending} rows={1} />
+              <textarea ref={textareaRef} value={message} onChange={(e) => setMessage(e.target.value)} onKeyDown={handleKeyPress} placeholder="Message ARAS AI" className="relative w-full min-h-[48px] max-h-[200px] bg-black/40 text-white placeholder:text-gray-600 placeholder:opacity-50 border-0 rounded-2xl px-4 py-3 pr-12 focus:outline-none resize-none" disabled={sendMessage.isPending} rows={1} />
 
               <Button onClick={isRecording ? stopRecording : startRecording} variant="ghost" size="sm" className="absolute right-2 top-2 w-9 h-9 rounded-full p-0 hover:bg-white/10" disabled={sendMessage.isPending}>
                 {isRecording ? (

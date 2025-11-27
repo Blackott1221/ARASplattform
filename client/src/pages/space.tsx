@@ -114,8 +114,8 @@ export default function Space() {
                 transition={{ duration: 0.4, ease: "easeOut" }}
                 className="relative overflow-hidden border-b border-white/5"
               >
-                {/* Subtle Gradient Background - very transparent */}
-                <div className="absolute inset-0 bg-gradient-to-r from-black/15 via-[#FE9100]/3 to-black/15 backdrop-blur-[2px]" />
+                {/* Subtle Gradient Background - very transparent, no blur */}
+                <div className="absolute inset-0 bg-gradient-to-r from-black/15 via-[#FE9100]/3 to-black/15" />
                 
                 {/* Ambient Glow - minimal */}
                 <div className="absolute inset-0 bg-[#FE9100]/2 blur-3xl" />

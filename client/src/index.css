@@ -69,6 +69,7 @@
     background: transparent;
     min-height: 100vh;
     overflow-x: hidden;
+    overflow-y: auto;
   }
   
   /* Desktop stability fixes */
