@@ -205,17 +205,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.session.userId;
       const { companyDescription, targetAudience, effectiveKeywords, competitors, services } = req.body;
 
-      // Update ai_profiles table directly
+      // Get current user to merge with existing ai_profile data
+      const [currentUser] = await client`
+        SELECT ai_profile FROM users WHERE id = ${userId}
+      `;
+
+      // Merge new data with existing ai_profile
+      const updatedAiProfile = {
+        ...(currentUser?.ai_profile || {}),
+        companyDescription: companyDescription || currentUser?.ai_profile?.companyDescription,
+        targetAudience: targetAudience || currentUser?.ai_profile?.targetAudience,
+        effectiveKeywords: effectiveKeywords && effectiveKeywords.length > 0 
+          ? effectiveKeywords 
+          : (currentUser?.ai_profile?.effectiveKeywords || []),
+        competitors: competitors && competitors.length > 0 
+          ? competitors 
+          : (currentUser?.ai_profile?.competitors || []),
+        services: services || currentUser?.ai_profile?.services,
+      };
+
+      // Update users table with merged ai_profile
       await client`
-        UPDATE ai_profiles
+        UPDATE users
         SET 
-          company_description = ${companyDescription || null},
-          target_audience = ${targetAudience || null},
-          effective_keywords = ${effectiveKeywords || []},
-          competitors = ${competitors || []},
-          services = ${services || null},
+          ai_profile = ${updatedAiProfile},
           updated_at = NOW()
-        WHERE user_id = ${userId}
+        WHERE id = ${userId}
       `;
 
       logger.info(`✅ AI Profile updated for user ${userId}`);
