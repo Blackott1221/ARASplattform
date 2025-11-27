@@ -155,6 +155,13 @@ export function ChatInterface() {
   }, [currentTextIndex, isTyping]);
 
   const { data: messages = [] } = useQuery<ChatMessage[]>({ queryKey: ["/api/chat/messages"], enabled: !!user && !authLoading, retry: false });
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isThinking, isStreaming]);
   const { data: chatSessions = [] } = useQuery<any[]>({ queryKey: ["/api/chat/sessions"], enabled: !!user && !authLoading, retry: false });
   const { data: subscriptionData } = useQuery<import("@shared/schema").SubscriptionResponse>({ queryKey: ["/api/user/subscription"], enabled: !!user && !authLoading, retry: false });
 
@@ -1017,7 +1024,7 @@ export function ChatInterface() {
             </Button>
           </div>
 
-          <div className="mt-3 pb-2 flex items-center justify-center gap-2 text-xs text-gray-500">
+          <div className="mt-6 pb-3 flex items-center justify-center gap-2 text-xs text-gray-500 max-w-4xl mx-auto text-center">
             <AlertCircle className="w-3 h-3 flex-shrink-0" />
             <p>ARAS AI ® kann Fehler machen. Bitte überprüfe daher jede Nachricht genauestens!</p>
           </div>

@@ -62,6 +62,8 @@ export default function Leads() {
   // Edit States
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editedProfile, setEditedProfile] = useState<any>({});
+  const [isEditingBusiness, setIsEditingBusiness] = useState(false);
+  const [editedBusiness, setEditedBusiness] = useState<any>({});
   const [expandedSections, setExpandedSections] = useState<{ [key: string]: boolean }>({
     profile: true,
     business: true,
@@ -794,38 +796,90 @@ Gib mir jetzt eine KRASSE 4-5 Satz Zusammenfassung die ${userProfile.firstName} 
                           className="overflow-hidden"
                         >
                           <div className="p-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {businessIntelligence.map((item, idx) => (
-                                <motion.div 
-                                  key={idx}
-                                  initial={{ opacity: 0, scale: 0.95 }}
-                                  animate={{ opacity: 1, scale: 1 }}
-                                  transition={{ delay: 0.8 + idx * 0.05 }}
-                                  whileHover={{ scale: 1.02, y: -3 }}
-                                  onClick={() => item.expandable && openDetailModal(item)}
-                                  className={`bg-gradient-to-br from-[#FE9100]/5 to-transparent rounded-xl p-5 border border-[#FE9100]/10 hover:border-[#FE9100]/30 transition-all cursor-pointer ${item.fullText ? 'md:col-span-2' : ''}`}
-                                >
-                                  <div className="flex items-center justify-between mb-3">
-                                    <p className="text-xs font-bold text-[#FE9100] uppercase tracking-wider">
-                                      {item.label}
-                                    </p>
-                                    <div className="flex items-center gap-2">
-                                      {item.badge && (
-                                        <Badge className="bg-gradient-to-r from-[#FE9100] to-[#a34e00] text-white border-0">
-                                          {item.badge}
-                                        </Badge>
-                                      )}
-                                      {item.expandable && (
-                                        <ExternalLink className="w-3 h-3 text-gray-500" />
-                                      )}
+                            {!isEditingBusiness ? (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {businessIntelligence.map((item, idx) => (
+                                  <motion.div 
+                                    key={idx}
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: 0.8 + idx * 0.05 }}
+                                    whileHover={{ scale: 1.02, y: -3 }}
+                                    onClick={() => item.expandable && openDetailModal(item)}
+                                    className={`bg-gradient-to-br from-[#FE9100]/5 to-transparent rounded-xl p-5 border border-[#FE9100]/10 hover:border-[#FE9100]/30 transition-all cursor-pointer ${item.fullText ? 'md:col-span-2' : ''}`}
+                                  >
+                                    <div className="flex items-center justify-between mb-3">
+                                      <p className="text-xs font-bold text-[#FE9100] uppercase tracking-wider">
+                                        {item.label}
+                                      </p>
+                                      <div className="flex items-center gap-2">
+                                        {item.badge && (
+                                          <Badge className="bg-gradient-to-r from-[#FE9100] to-[#a34e00] text-white border-0">
+                                            {item.badge}
+                                          </Badge>
+                                        )}
+                                        {item.expandable && (
+                                          <ExternalLink className="w-3 h-3 text-gray-500" />
+                                        )}
+                                      </div>
                                     </div>
+                                    <p className={`text-sm text-white/80 ${item.fullText ? 'leading-relaxed' : ''} line-clamp-2`}>
+                                      {item.value}
+                                    </p>
+                                  </motion.div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="space-y-4">
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-[#FE9100] uppercase tracking-wider">Company Intelligence</label>
+                                  <Textarea
+                                    value={editedBusiness.companyDescription || ''}
+                                    onChange={(e) => setEditedBusiness({ ...editedBusiness, companyDescription: e.target.value })}
+                                    className="bg-white/5 border-white/10 text-white min-h-[100px]"
+                                    placeholder="Beschreibung deines Unternehmens..."
+                                  />
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div className="space-y-2">
+                                    <label className="text-xs font-bold text-[#FE9100] uppercase tracking-wider">Target Audience</label>
+                                    <Input
+                                      value={editedBusiness.targetAudience || ''}
+                                      onChange={(e) => setEditedBusiness({ ...editedBusiness, targetAudience: e.target.value })}
+                                      className="bg-white/5 border-white/10 text-white"
+                                      placeholder="Zielgruppe..."
+                                    />
                                   </div>
-                                  <p className={`text-sm text-white/80 ${item.fullText ? 'leading-relaxed' : ''} line-clamp-2`}>
-                                    {item.value}
-                                  </p>
-                                </motion.div>
-                              ))}
-                            </div>
+                                  <div className="space-y-2">
+                                    <label className="text-xs font-bold text-[#FE9100] uppercase tracking-wider">Services</label>
+                                    <Input
+                                      value={editedBusiness.services || ''}
+                                      onChange={(e) => setEditedBusiness({ ...editedBusiness, services: e.target.value })}
+                                      className="bg-white/5 border-white/10 text-white"
+                                      placeholder="Dienstleistungen..."
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <label className="text-xs font-bold text-[#FE9100] uppercase tracking-wider">Effective Keywords (comma separated)</label>
+                                    <Input
+                                      value={editedBusiness.effectiveKeywords || ''}
+                                      onChange={(e) => setEditedBusiness({ ...editedBusiness, effectiveKeywords: e.target.value })}
+                                      className="bg-white/5 border-white/10 text-white"
+                                      placeholder="keyword1, keyword2, keyword3..."
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <label className="text-xs font-bold text-[#FE9100] uppercase tracking-wider">Competitors (comma separated)</label>
+                                    <Input
+                                      value={editedBusiness.competitors || ''}
+                                      onChange={(e) => setEditedBusiness({ ...editedBusiness, competitors: e.target.value })}
+                                      className="bg-white/5 border-white/10 text-white"
+                                      placeholder="competitor1, competitor2..."
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </motion.div>
                       )}
