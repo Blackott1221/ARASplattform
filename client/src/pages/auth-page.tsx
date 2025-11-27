@@ -169,12 +169,15 @@ export default function AuthPage() {
     return () => clearTimeout(timer);
   }, [typedText, isDeleting, typedIndex]);
 
-  if (!isLoading && user) {
-    setLocation("/welcome");
-    return null;
-  }
+  // Redirect after login
+  useEffect(() => {
+    if (!isLoading && user) {
+      setLocation("/welcome");
+    }
+  }, [isLoading, user, setLocation]);
 
-  if (isLoading) {
+  // Show loader during auth check or redirect
+  if (isLoading || (!isLoading && user)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <motion.div
