@@ -179,7 +179,7 @@ export default function AuthPage() {
   // Show loader during auth check or redirect
   if (isLoading || (!isLoading && user)) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-black">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
