@@ -1760,3 +1760,406 @@ export default function AuthPage() {
     </div>
   );
 }
+
+// 🚀 ARAS AI HERO SECTION - Ultra Premium Design
+export function ArasHeroSection() {
+  const [currentText, setCurrentText] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [displayedText, setDisplayedText] = useState('');
+  const [cursorBlink, setCursorBlink] = useState(true);
+  const [particleCount] = useState(8);
+  
+  const typewriterTexts = [
+    "a Software",
+    "a Token", 
+    "an Agent",
+    "an Ecosystem",
+    "a Revolution"
+  ];
+
+  // Typewriter Effect
+  useEffect(() => {
+    const currentWord = typewriterTexts[currentText];
+    const typingSpeed = isDeleting ? 50 : 100;
+    
+    const timer = setTimeout(() => {
+      if (!isDeleting && displayedText === currentWord) {
+        setTimeout(() => setIsDeleting(true), 2000);
+      } else if (!isDeleting) {
+        setDisplayedText(currentWord.substring(0, displayedText.length + 1));
+      } else if (displayedText.length > 0) {
+        setDisplayedText(currentWord.substring(0, displayedText.length - 1));
+      } else {
+        setIsDeleting(false);
+        setCurrentText((prev) => (prev + 1) % typewriterTexts.length);
+      }
+    }, typingSpeed);
+
+    return () => clearTimeout(timer);
+  }, [displayedText, isDeleting, currentText]);
+
+  // Cursor Blink
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCursorBlink(prev => !prev);
+    }, 500);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="relative w-full min-h-screen overflow-hidden" style={{ background: '#0f0f0f' }}>
+      {/* Radial Glow Background */}
+      <div 
+        className="absolute inset-0" 
+        style={{
+          background: 'radial-gradient(circle at 65% 75%, rgba(254, 145, 0, 0.2) 0%, transparent 50%)',
+          filter: 'blur(100px)'
+        }}
+      />
+
+      {/* Subtle Particles */}
+      <div className="absolute inset-0">
+        {[...Array(particleCount)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-1 h-1 rounded-full"
+            style={{
+              background: i % 2 === 0 ? '#FE9100' : '#e9d7c4',
+              opacity: 0.3,
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`
+            }}
+            animate={{
+              x: [0, Math.random() * 50 - 25, 0],
+              y: [0, Math.random() * 50 - 25, 0],
+              opacity: [0.3, 0.6, 0.3]
+            }}
+            transition={{
+              duration: 10 + Math.random() * 5,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: i * 0.5
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Main Container with Animated Border */}
+      <div className="relative mx-auto max-w-[1600px] px-[180px] py-[120px]">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1 }}
+          className="relative rounded-lg p-[1px]"
+          style={{
+            background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
+            backgroundSize: '400% 100%'
+          }}
+        >
+          <motion.div
+            animate={{
+              backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+            }}
+            transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
+            className="absolute inset-0 rounded-lg"
+            style={{
+              background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
+              backgroundSize: '400% 100%',
+              filter: 'blur(1px)'
+            }}
+          />
+
+          <div className="relative rounded-lg" style={{ background: '#0f0f0f' }}>
+            <div className="grid grid-cols-2 gap-20 items-center px-16 py-20">
+              
+              {/* Left Content */}
+              <motion.div 
+                initial={{ opacity: 0, x: -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.8, delay: 0.3 }}
+                className="space-y-8"
+              >
+                {/* Main Headline with Gold Gradient */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.5 }}
+                >
+                  <h1 
+                    className="font-black mb-4"
+                    style={{
+                      fontFamily: 'Orbitron, sans-serif',
+                      fontSize: 'clamp(2.5rem, 5vw, 4.5rem)',
+                      fontWeight: 700,
+                      lineHeight: 1.1,
+                      background: 'linear-gradient(135deg, #e9d7c4 0%, #FE9100 50%, #a34e00 100%)',
+                      backgroundClip: 'text',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundSize: '200% 200%',
+                      animation: 'gradientShift 8s ease infinite',
+                      textShadow: '0 0 30px rgba(254, 145, 0, 0.2)'
+                    }}
+                  >
+                    ARAS AI
+                  </h1>
+                  <style dangerouslySetInnerHTML={{
+                    __html: `
+                      @keyframes gradientShift {
+                        0% { background-position: 0% 50%; }
+                        50% { background-position: 100% 50%; }
+                        100% { background-position: 0% 50%; }
+                      }
+                    `
+                  }} />
+                  <p className="text-2xl text-white/90 font-light mt-2">
+                    The New Standard of Intelligent Communication
+                  </p>
+                </motion.div>
+
+                {/* Typewriter Subheadline */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.8 }}
+                  className="h-12 flex items-center"
+                >
+                  <span
+                    style={{
+                      fontFamily: 'Orbitron, sans-serif',
+                      fontSize: '1.25rem',
+                      fontWeight: 500,
+                      background: 'linear-gradient(90deg, #e9d7c4, #FE9100)',
+                      backgroundClip: 'text',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent'
+                    }}
+                  >
+                    ARAS is {displayedText}
+                    <span 
+                      className="inline-block ml-1 w-[3px] h-[24px] bg-[#FE9100] align-middle"
+                      style={{ opacity: cursorBlink ? 1 : 0 }}
+                    />
+                  </span>
+                </motion.div>
+
+                {/* Main Description */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 1 }}
+                  className="space-y-4 text-white/80 leading-relaxed"
+                >
+                  <p className="text-lg">
+                    Natürlich klingende KI-Telefonate, präzise Automation und Schweizer Datensicherheit.
+                  </p>
+                  <p className="text-base text-white/60">
+                    Eine Plattform für Unternehmen, die modern skalieren – nicht experimentieren.
+                  </p>
+                </motion.div>
+
+                {/* Alpha Phase Badge */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 1.2, type: 'spring' }}
+                  className="inline-flex items-center gap-3 px-5 py-3 rounded-full"
+                  style={{
+                    background: 'rgba(254, 145, 0, 0.1)',
+                    border: '1px solid rgba(254, 145, 0, 0.3)'
+                  }}
+                >
+                  <motion.div
+                    className="w-2 h-2 rounded-full bg-[#FE9100]"
+                    animate={{
+                      scale: [1, 1.5, 1],
+                      opacity: [1, 0.5, 1]
+                    }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  />
+                  <span className="text-sm font-bold text-[#FE9100]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                    ALPHA PHASE • LEBENSLANGE BESTPREISE
+                  </span>
+                </motion.div>
+
+                {/* CTA Buttons */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 1.4 }}
+                  className="flex gap-4 pt-4"
+                >
+                  <motion.button
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="px-9 py-4 rounded-lg font-semibold text-white transition-all"
+                    style={{
+                      fontFamily: 'Orbitron, sans-serif',
+                      background: 'linear-gradient(90deg, #FE9100, #a34e00)',
+                      border: '1px solid #FE9100',
+                      boxShadow: '0 0 12px rgba(254, 145, 0, 0.35)',
+                      letterSpacing: '1px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = '0 0 20px rgba(254, 145, 0, 0.45)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = '0 0 12px rgba(254, 145, 0, 0.35)';
+                    }}
+                  >
+                    → Zugang aktivieren
+                  </motion.button>
+
+                  <motion.button
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="px-9 py-4 rounded-lg font-semibold text-[#FE9100] transition-all"
+                    style={{
+                      fontFamily: 'Orbitron, sans-serif',
+                      background: 'transparent',
+                      border: '1px solid #FE9100'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(254, 145, 0, 0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    → Funktionen ansehen
+                  </motion.button>
+                </motion.div>
+
+                {/* Value Statement */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 1.6 }}
+                  className="pt-8 space-y-2"
+                >
+                  <p className="text-sm text-white/50 leading-relaxed">
+                    ARAS AI führt echte Outbound-Gespräche, qualifiziert Leads, liest E-Mails,<br/>
+                    versteht Kontext und verbindet sich nahtlos mit CRM- und Automatisierungs-Systemen.
+                  </p>
+                  <p className="text-xs text-[#FE9100]/60 font-bold uppercase tracking-wider" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                    Jetzt in der Alpha-Phase. Early Access. Dauerhaft günstige Preise.
+                  </p>
+                </motion.div>
+              </motion.div>
+
+              {/* Right Side - Animated Waveform */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.8, delay: 0.6 }}
+                className="relative h-[500px] flex items-center justify-center"
+              >
+                {/* Waveform Container */}
+                <div className="relative w-full h-64">
+                  {/* Voice Active Badge */}
+                  <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1 }}
+                    className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full mb-4"
+                  >
+                    <div className="flex items-center gap-2 px-4 py-2 rounded-full" 
+                      style={{ 
+                        border: '1px solid rgba(254, 145, 0, 0.3)',
+                        background: 'rgba(254, 145, 0, 0.05)'
+                      }}
+                    >
+                      <motion.div
+                        className="w-2 h-2 rounded-full bg-[#FE9100]"
+                        animate={{
+                          scale: [1, 1.3, 1],
+                          opacity: [1, 0.6, 1]
+                        }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                      />
+                      <span className="text-xs font-bold text-[#FE9100] uppercase tracking-wider" 
+                        style={{ fontFamily: 'Orbitron, sans-serif' }}
+                      >
+                        VOICE ACTIVE
+                      </span>
+                    </div>
+                  </motion.div>
+
+                  {/* Animated Waveform Lines */}
+                  <svg className="w-full h-full" viewBox="0 0 400 200">
+                    {[...Array(40)].map((_, i) => (
+                      <motion.line
+                        key={i}
+                        x1={i * 10}
+                        x2={i * 10}
+                        y1={100}
+                        y2={100}
+                        stroke={i % 3 === 0 ? '#FE9100' : '#e9d7c4'}
+                        strokeWidth="2"
+                        strokeOpacity={i % 3 === 0 ? 0.6 : 0.3}
+                        animate={{
+                          y2: [
+                            100,
+                            100 - Math.random() * 60 - 20,
+                            100 + Math.random() * 60 + 20,
+                            100
+                          ]
+                        }}
+                        transition={{
+                          duration: 2 + Math.random() * 2,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          delay: i * 0.05
+                        }}
+                      />
+                    ))}
+                  </svg>
+
+                  {/* Pulse Effect */}
+                  <motion.div
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      background: 'radial-gradient(circle, rgba(254, 145, 0, 0.1) 0%, transparent 70%)',
+                      filter: 'blur(40px)'
+                    }}
+                    animate={{
+                      scale: [1, 1.2, 1],
+                      opacity: [0.3, 0.6, 0.3]
+                    }}
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                  />
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Fine horizontal lines animation */}
+      <div className="absolute inset-0 pointer-events-none opacity-5">
+        {[...Array(3)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-full h-[1px]"
+            style={{
+              background: 'linear-gradient(90deg, transparent, #FE9100, transparent)',
+              top: `${30 + i * 20}%`
+            }}
+            animate={{
+              x: [-200, 200, -200]
+            }}
+            transition={{
+              duration: 10 + i * 2,
+              repeat: Infinity,
+              ease: "linear"
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
