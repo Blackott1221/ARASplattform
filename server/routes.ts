@@ -224,11 +224,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         services: services || currentUser?.ai_profile?.services,
       };
 
-      // Update users table with merged ai_profile
+      // Update users table with merged ai_profile (use sql.json for JSONB)
       await client`
         UPDATE users
         SET 
-          ai_profile = ${updatedAiProfile},
+          ai_profile = ${client.json(updatedAiProfile)},
           updated_at = NOW()
         WHERE id = ${userId}
       `;
