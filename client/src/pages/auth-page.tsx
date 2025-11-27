@@ -432,7 +432,7 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen text-white relative overflow-hidden">
-      {/* 🌊 ULTRA-SMOOTH WAVE BACKGROUND - SMALLER & MORE DISTANT */}
+      {/* Simple Dark Background with Subtle Glow */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {/* Film Grain Texture for Premium Look */}
         <div 
@@ -441,99 +441,6 @@ export default function AuthPage() {
             backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='2.5' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
           }}
         />
-
-        {/* Smooth Animated Wave - Lower Third Only */}
-        <motion.div
-          className="absolute inset-0"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 2 }}
-        >
-          <svg
-            className="absolute w-full h-full"
-            viewBox="0 0 1920 1080"
-            preserveAspectRatio="xMidYMax slice"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <defs>
-              {/* Ultra-Premium Gradient */}
-              <linearGradient id="waveGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style={{ stopColor: '#e9d7c4', stopOpacity: 0.15 }} />
-                <stop offset="40%" style={{ stopColor: '#FE9100', stopOpacity: 0.25 }} />
-                <stop offset="70%" style={{ stopColor: '#a34e00', stopOpacity: 0.2 }} />
-                <stop offset="100%" style={{ stopColor: '#e9d7c4', stopOpacity: 0.15 }} />
-              </linearGradient>
-              
-              {/* Soft Glow Filter */}
-              <filter id="softGlow">
-                <feGaussianBlur stdDeviation="40" result="coloredBlur"/>
-                <feBlend in="coloredBlur" in2="SourceGraphic" mode="normal"/>
-              </filter>
-            </defs>
-
-            {/* Layer 1 - Background Wave (Most Distant) */}
-            <motion.path
-              d="M0,800 C480,720 960,880 1440,800 C1920,720 2400,840 2880,800 L2880,1080 L0,1080 Z"
-              fill="url(#waveGradient)"
-              opacity="0.3"
-              filter="url(#softGlow)"
-              animate={{
-                d: [
-                  "M0,800 C480,720 960,880 1440,800 C1920,720 2400,840 2880,800 L2880,1080 L0,1080 Z",
-                  "M0,820 C480,740 960,860 1440,820 C1920,740 2400,820 2880,820 L2880,1080 L0,1080 Z",
-                  "M0,800 C480,720 960,880 1440,800 C1920,720 2400,840 2880,800 L2880,1080 L0,1080 Z"
-                ]
-              }}
-              transition={{
-                duration: 25,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
-            />
-
-            {/* Layer 2 - Middle Wave */}
-            <motion.path
-              d="M0,850 C400,780 800,920 1200,850 C1600,780 2000,890 2400,850 L2400,1080 L0,1080 Z"
-              fill="url(#waveGradient)"
-              opacity="0.4"
-              filter="url(#softGlow)"
-              animate={{
-                d: [
-                  "M0,850 C400,780 800,920 1200,850 C1600,780 2000,890 2400,850 L2400,1080 L0,1080 Z",
-                  "M0,870 C400,800 800,900 1200,870 C1600,800 2000,870 2400,870 L2400,1080 L0,1080 Z",
-                  "M0,850 C400,780 800,920 1200,850 C1600,780 2000,890 2400,850 L2400,1080 L0,1080 Z"
-                ]
-              }}
-              transition={{
-                duration: 30,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: 3
-              }}
-            />
-
-            {/* Layer 3 - Foreground Wave (Closest) */}
-            <motion.path
-              d="M0,900 C320,840 640,960 960,900 C1280,840 1600,940 1920,900 L1920,1080 L0,1080 Z"
-              fill="url(#waveGradient)"
-              opacity="0.5"
-              filter="url(#softGlow)"
-              animate={{
-                d: [
-                  "M0,900 C320,840 640,960 960,900 C1280,840 1600,940 1920,900 L1920,1080 L0,1080 Z",
-                  "M0,920 C320,860 640,940 960,920 C1280,860 1600,920 1920,920 L1920,1080 L0,1080 Z",
-                  "M0,900 C320,840 640,960 960,900 C1280,840 1600,940 1920,900 L1920,1080 L0,1080 Z"
-                ]
-              }}
-              transition={{
-                duration: 20,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: 1
-              }}
-            />
-          </svg>
-        </motion.div>
 
         {/* Premium Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/95 to-black/80" />
@@ -1757,6 +1664,574 @@ export default function AuthPage() {
       </div>
 
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    </div>
+  );
+}
+
+// 🔥 ARAS LANDING PAGE CONTENT - Complete Sections
+function ArasLandingContent() {
+  return (
+    <div className="w-full" style={{ background: '#0A0A0C' }}>
+      {/* Section 1 - Hero */}
+      <section className="relative w-full min-h-screen flex items-center justify-center overflow-hidden">
+        {/* Background Glow */}
+        <div 
+          className="absolute inset-0"
+          style={{
+            background: 'radial-gradient(circle at 65% 50%, rgba(255, 106, 0, 0.15) 0%, transparent 50%)'
+          }}
+        />
+
+        <div className="relative z-10 max-w-7xl mx-auto px-8 py-32">
+          <div className="grid lg:grid-cols-2 gap-20 items-center">
+            {/* Left Content */}
+            <motion.div
+              initial={{ opacity: 0, x: -50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8 }}
+              className="space-y-10"
+            >
+              <h1 
+                className="text-7xl font-black mb-6"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  background: 'linear-gradient(135deg, #fff 0%, #ff6a00 100%)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  lineHeight: 1.1
+                }}
+              >
+                ARAS AI
+              </h1>
+              <p className="text-3xl text-white/90 font-light leading-relaxed">
+                Die neue Generation der KI-Telefonie.
+              </p>
+              <p className="text-xl text-white/70 leading-relaxed">
+                Natürlich klingende Outbound-Calls, intelligente Chat-Automation und ein Schweizer Sicherheitsstandard, dem Unternehmen vertrauen.
+              </p>
+              <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-[#ff6a00]/10 border border-[#ff6a00]/30">
+                <motion.div
+                  className="w-2 h-2 rounded-full bg-[#ff6a00]"
+                  animate={{ scale: [1, 1.3, 1], opacity: [1, 0.6, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                />
+                <span className="text-sm font-bold text-[#ff6a00]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                  ALPHA-PHASE • BEGRENZTE PLÄTZE • LEBENSLANGE PREISE
+                </span>
+              </div>
+
+              {/* CTA Buttons */}
+              <div className="flex gap-4 pt-6">
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="px-8 py-4 rounded-lg font-bold text-white"
+                  style={{
+                    fontFamily: 'Orbitron, sans-serif',
+                    background: 'linear-gradient(135deg, #ff6a00, #ff4500)',
+                    boxShadow: '0 0 20px rgba(255, 106, 0, 0.4)'
+                  }}
+                >
+                  → Zugang aktivieren
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.03, background: 'rgba(255, 106, 0, 0.1)' }}
+                  whileTap={{ scale: 0.98 }}
+                  className="px-8 py-4 rounded-lg font-bold border-2 border-[#ff6a00] text-[#ff6a00]"
+                  style={{ fontFamily: 'Orbitron, sans-serif' }}
+                >
+                  → Dokumentation öffnen
+                </motion.button>
+              </div>
+            </motion.div>
+
+            {/* Right - Waveform */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8, delay: 0.3 }}
+              className="relative h-96"
+            >
+              <svg className="w-full h-full" viewBox="0 0 400 200">
+                {[...Array(40)].map((_, i) => (
+                  <motion.line
+                    key={i}
+                    x1={i * 10}
+                    x2={i * 10}
+                    y1={100}
+                    y2={100}
+                    stroke="#ff6a00"
+                    strokeWidth="2"
+                    strokeOpacity="0.4"
+                    animate={{
+                      y2: [100, 100 - Math.random() * 40 - 10, 100 + Math.random() * 40 + 10, 100]
+                    }}
+                    transition={{ duration: 2 + Math.random(), repeat: Infinity, ease: "easeInOut", delay: i * 0.03 }}
+                  />
+                ))}
+              </svg>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Section 2 - Warum ARAS */}
+      <section className="relative w-full py-32" style={{ background: '#070709' }}>
+        <div className="max-w-7xl mx-auto px-8">
+          <motion.h2 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-5xl font-black mb-20 text-center"
+            style={{ fontFamily: 'Orbitron, sans-serif' }}
+          >
+            Warum Unternehmen ARAS AI einsetzen
+          </motion.h2>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                icon: <Sparkles className="w-8 h-8" />,
+                title: "Menschliche Gesprächsqualität",
+                subtitle: "ohne Übertreibung",
+                desc: "ARAS AI führt natürliche, kontextbezogene Dialoge. Keine Roboter-Floskeln, keine starren Skripte."
+              },
+              {
+                icon: <Phone className="w-8 h-8" />,
+                title: "Skalierbare Telefonie",
+                subtitle: "24/7 einsatzbereit",
+                desc: "Von Einzelanrufen bis zu parallelen Outbound-Kampagnen. Eine Plattform, die mit deinem Unternehmen mitwächst."
+              },
+              {
+                icon: <Globe className="w-8 h-8" />,
+                title: "Schweizer Datensicherheit",
+                subtitle: "DSGVO-Konformität",
+                desc: "Hosting in zertifizierten EU-Rechenzentren + Schweizer Rechtsrahmen. Keine US-Datenübertragung."
+              }
+            ].map((item, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.2 }}
+                whileHover={{ scale: 1.03, y: -5 }}
+                className="p-8 rounded-2xl"
+                style={{
+                  background: '#000',
+                  border: '2px solid #ff6a00',
+                  boxShadow: '0 4px 20px rgba(255, 106, 0, 0.1)'
+                }}
+              >
+                <div className="mb-6 text-[#ff6a00]">{item.icon}</div>
+                <h3 className="text-2xl font-bold mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                  {item.title}
+                </h3>
+                <p className="text-sm text-[#ff6a00] mb-4 font-semibold">{item.subtitle}</p>
+                <p className="text-white/70 leading-relaxed">{item.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Section 3 - Alpha Features */}
+      <section className="relative w-full py-32" style={{ background: '#0A0A0C' }}>
+        <div className="max-w-7xl mx-auto px-8">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            {/* Left - Bulletpoints */}
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="space-y-8"
+            >
+              <h2 className="text-5xl font-black mb-6" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                Die ARAS Alpha-Version
+              </h2>
+              <p className="text-xl text-white/90 mb-8">
+                voll funktionsfähig, jeden Tag besser.
+              </p>
+              <p className="text-white/70 leading-relaxed mb-8">
+                Wir entwickeln ARAS seit 2021 – jetzt öffnen wir die Plattform erstmals für ausgewählte Unternehmen.
+              </p>
+
+              <div className="space-y-4">
+                {[
+                  "Outbound Calls mit natürlich klingender Stimme",
+                  "Chat-Automation (500–10.000 Nachrichten je nach Plan)",
+                  "Telefon-Workflows über Make, Zapier oder n8n",
+                  "Live-Metriken: Drop-Rate, STT-Qualität, Emotion, Erfolg",
+                  "Automatische Gesprächszusammenfassungen",
+                  "Erste Version der ARAS Voice Engine"
+                ].map((feature, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.1 }}
+                    className="flex items-start gap-3"
+                  >
+                    <CheckCircle2 className="w-6 h-6 text-[#ff6a00] flex-shrink-0 mt-1" />
+                    <p className="text-white/80">{feature}</p>
+                  </motion.div>
+                ))}
+              </div>
+
+              <div className="pt-8">
+                <div className="p-6 rounded-xl bg-[#ff6a00]/10 border border-[#ff6a00]/30">
+                  <p className="text-xl font-bold text-[#ff6a00] mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                    Dein Vorteil:
+                  </p>
+                  <p className="text-white/90">
+                    Alle Alpha-Nutzer behalten ihre jetzigen Preise – dauerhaft.
+                  </p>
+                </div>
+              </div>
+
+              <motion.button
+                whileHover={{ scale: 1.03 }}
+                className="px-8 py-4 rounded-lg font-bold text-white"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  background: 'linear-gradient(135deg, #ff6a00, #ff4500)',
+                  boxShadow: '0 0 20px rgba(255, 106, 0, 0.4)'
+                }}
+              >
+                Alpha-Zugang sichern
+              </motion.button>
+            </motion.div>
+
+            {/* Right - Dashboard Screenshot Placeholder */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="relative h-[600px] rounded-2xl overflow-hidden"
+              style={{
+                background: 'linear-gradient(135deg, rgba(255, 106, 0, 0.1), rgba(0, 0, 0, 0.5))',
+                border: '1px solid rgba(255, 106, 0, 0.3)',
+                boxShadow: '0 20px 60px rgba(255, 106, 0, 0.2)'
+              }}
+            >
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Target className="w-32 h-32 text-[#ff6a00]/20" />
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Section 4 - Pricing */}
+      <section className="relative w-full py-32" style={{ background: '#070709' }}>
+        <div className="max-w-7xl mx-auto px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-20"
+          >
+            <h2 className="text-5xl font-black mb-6" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+              Alpha-Phase: Du behältst deine Preise
+            </h2>
+            <p className="text-xl text-white/70">
+              auch wenn wir 2026 erhöhen.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-3 gap-8 mb-16">
+            {[
+              { name: "Starter", finalPrice: "€1.990", alphaPrice: "€59", calls: "1.000", features: ["Zusammenfassungen", "Voller Plattformzugang"] },
+              { name: "Pro", finalPrice: "€4.990", alphaPrice: "€249", calls: "2.500", features: ["200 parallel", "CRM-Integration", "Individuelle Stimme"] },
+              { name: "Enterprise", finalPrice: "€19.990", alphaPrice: "€1.990", calls: "30.000", features: ["500 parallel", "Eigene Instanz", "24/7 Onboarding"] }
+            ].map((plan, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                whileHover={{ scale: 1.02, y: -5 }}
+                className="relative p-8 rounded-2xl"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(255, 106, 0, 0.05), rgba(0, 0, 0, 0.8))',
+                  border: '2px solid #ff6a00',
+                  boxShadow: '0 10px 40px rgba(255, 106, 0, 0.15)'
+                }}
+              >
+                <div className="inline-block px-4 py-1 rounded-full bg-[#ff6a00] text-xs font-bold mb-6">
+                  FINALER PREIS 2026
+                </div>
+                <h3 className="text-3xl font-black mb-4" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                  {plan.name}
+                </h3>
+                <p className="text-4xl font-black text-white/40 line-through mb-2">{plan.finalPrice}</p>
+                <div className="flex items-baseline gap-2 mb-6">
+                  <p className="text-5xl font-black text-[#ff6a00]">{plan.alphaPrice}</p>
+                  <CheckCircle2 className="w-6 h-6 text-green-500" />
+                </div>
+                <p className="text-sm text-white/60 mb-6">{plan.calls} Anrufe pro Monat</p>
+                <div className="space-y-3">
+                  {plan.features.map((f, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <div className="w-1 h-1 rounded-full bg-[#ff6a00]" />
+                      <p className="text-sm text-white/70">{f}</p>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center p-10 rounded-2xl"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255, 106, 0, 0.1), transparent)',
+              border: '1px solid rgba(255, 106, 0, 0.3)'
+            }}
+          >
+            <p className="text-2xl font-bold mb-4" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+              Warum?
+            </p>
+            <p className="text-xl text-white/80">
+              Wir suchen ehrliches Feedback, keine kurzfristigen Einnahmen.
+            </p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Section 5 - Platform Features */}
+      <section className="relative w-full py-32" style={{ background: '#0A0A0C' }}>
+        <div className="max-w-7xl mx-auto px-8">
+          <motion.h2
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-5xl font-black mb-20 text-center"
+            style={{ fontFamily: 'Orbitron, sans-serif' }}
+          >
+            Was ARAS AI heute kann
+          </motion.h2>
+
+          <div className="grid md:grid-cols-2 gap-12">
+            {/* Left - Features */}
+            <div className="space-y-8">
+              {[
+                { title: "Outbound Telefonie", items: ["bis 500 parallele Calls", "menschliche Stimme (ARAS Voice)", "Einwandbehandlung", "Terminbuchung", "Gesprächszusammenfassungen"] },
+                { title: "Chat-Automation", items: ["Inbox-Verarbeitung", "Antworten im eigenen Sprachstil", "automatische Kategorisierung", "tägliche Zusammenfassungen"] },
+                { title: "Integrationen", items: ["Make", "Zapier", "n8n", "CRM-Sync (Salesforce, HubSpot, Bitrix24)"] },
+                { title: "Compliance", items: ["DSGVO", "Schweizer Datenschutz", "EU-Rechenzentren", "Protokollierung & Audit Trails"] }
+              ].map((category, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                >
+                  <div className="mb-4">
+                    <div className="h-px w-12 bg-[#ff6a00] mb-3" />
+                    <h3 className="text-2xl font-bold" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                      {category.title}
+                    </h3>
+                  </div>
+                  <div className="space-y-2">
+                    {category.items.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-2 text-white/70">
+                        <ArrowRight className="w-4 h-4 text-[#ff6a00]" />
+                        <p>{item}</p>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Right - Demo Window */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="relative h-[700px] rounded-2xl p-8 flex items-center justify-center"
+              style={{
+                background: 'linear-gradient(135deg, rgba(255, 106, 0, 0.05), rgba(0, 0, 0, 0.8))',
+                border: '1px solid rgba(255, 106, 0, 0.3)',
+                boxShadow: '0 0 60px rgba(255, 106, 0, 0.3)'
+              }}
+            >
+              <div className="text-center">
+                <motion.div
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  <Phone className="w-24 h-24 text-[#ff6a00] mx-auto mb-6" />
+                </motion.div>
+                <p className="text-xl font-bold" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                  Call läuft...
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Section 6 - Call Flow */}
+      <section className="relative w-full py-32" style={{ background: '#070709' }}>
+        <div className="max-w-5xl mx-auto px-8">
+          <motion.h2
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-5xl font-black mb-20 text-center"
+            style={{ fontFamily: 'Orbitron, sans-serif' }}
+          >
+            So telefoniert ARAS AI für dich
+          </motion.h2>
+
+          <div className="space-y-16">
+            {[
+              { step: "1", title: "Du gibst einen Auftrag ein", desc: "„Ruf alle Leads aus der Kampagne X an und qualifiziere sie nach Y.“" },
+              { step: "2", title: "ARAS analysiert Kontext & Daten", desc: "System erkennt Branche, Position, CRM-Einträge, Priorität." },
+              { step: "3", title: "Der Anruf startet automatisch", desc: "Natürlich klingende Stimme, dynamischer Dialog, Einwandbehandlung." },
+              { step: "4", title: "Ergebnis in Sekunden", desc: "Gesprächszusammenfassung • Gesprächston • Empfehlung für nächste Schritte" }
+            ].map((stage, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.2 }}
+                className="flex items-start gap-8"
+              >
+                <div 
+                  className="flex-shrink-0 w-16 h-16 rounded-full flex items-center justify-center font-black text-2xl"
+                  style={{
+                    background: 'linear-gradient(135deg, #ff6a00, #ff4500)',
+                    fontFamily: 'Orbitron, sans-serif',
+                    boxShadow: '0 0 30px rgba(255, 106, 0, 0.4)'
+                  }}
+                >
+                  {stage.step}
+                </div>
+                <div className="flex-1 pt-3">
+                  <h3 className="text-2xl font-bold mb-3" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                    {stage.title}
+                  </h3>
+                  <p className="text-lg text-white/70">{stage.desc}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Section 7 - Compliance */}
+      <section className="relative w-full py-32" style={{ background: '#0A0A0C' }}>
+        <div className="max-w-7xl mx-auto px-8">
+          <div 
+            className="p-12 rounded-2xl"
+            style={{
+              background: '#000',
+              borderTop: '3px solid #ff6a00'
+            }}
+          >
+            <motion.h2
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-5xl font-black mb-6 text-center"
+              style={{ fontFamily: 'Orbitron, sans-serif' }}
+            >
+              Warum ARAS AI für Compliance-Abteilungen akzeptabel ist
+            </motion.h2>
+            <motion.p
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              className="text-xl text-center text-white/70 mb-16 max-w-4xl mx-auto"
+            >
+              ARAS AI wird vollständig durch eine Schweizer Aktiengesellschaft betrieben. Alle Daten werden in zertifizierten europäischen Rechenzentren verarbeitet.
+            </motion.p>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[
+                { title: "DSGVO-konform", desc: "Datensparsamkeit, Zweckbindung, Löschkonzept." },
+                { title: "Swiss Data Hosting", desc: "ISO-27001 • SOC2 • End-to-End verschlüsselt." },
+                { title: "Keine US-Datenübertragung", desc: "Kein Transfer in amerikanische Clouds (Schrems II)." },
+                { title: "Revisionssichere Protokollierung", desc: "Zugriffe, Anrufe, Ereignisse – alles dokumentiert." },
+                { title: "Individuelles Einwilligungs-Management", desc: "Auf Wunsch mit Opt-in-Hinweis & Gesprächsmarkierung." }
+              ].map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  className="p-6 rounded-xl bg-white/5 border border-white/10"
+                >
+                  <h3 className="text-xl font-bold mb-3 text-[#ff6a00]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                    {item.title}
+                  </h3>
+                  <p className="text-white/60 leading-relaxed">{item.desc}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Section 8 - Final CTA */}
+      <section className="relative w-full py-32" style={{ background: '#070709' }}>
+        <div className="max-w-5xl mx-auto px-8 text-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            className="space-y-10"
+          >
+            <h2 
+              className="text-6xl font-black mb-8"
+              style={{
+                fontFamily: 'Orbitron, sans-serif',
+                background: 'linear-gradient(135deg, #fff, #ff6a00)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent'
+              }}
+            >
+              Teste ARAS AI jetzt in der Alpha
+            </h2>
+            <p className="text-2xl text-white/80 max-w-3xl mx-auto leading-relaxed">
+              Sichere dir lebenslange Early-Access-Preise.
+            </p>
+            <p className="text-xl text-white/60 max-w-2xl mx-auto">
+              Echte Technologie, reale Telefonate, sofort einsetzbar.
+            </p>
+
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="px-12 py-6 rounded-xl font-black text-xl text-white mt-8"
+              style={{
+                fontFamily: 'Orbitron, sans-serif',
+                background: 'linear-gradient(135deg, #ff6a00, #ff4500)',
+                boxShadow: '0 0 40px rgba(255, 106, 0, 0.5)'
+              }}
+            >
+              → JETZT ALPHA-ZUGANG SICHERN
+            </motion.button>
+
+            <p className="text-sm text-white/40 mt-8">
+              Begrenzte Plätze • Lebenslange Preise • Keine Vertragsbindung
+            </p>
+          </motion.div>
+        </div>
+      </section>
     </div>
   );
 }
