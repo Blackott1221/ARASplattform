@@ -199,6 +199,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update AI Profile (Business Intelligence) - User can edit their business data
+  app.patch('/api/user/ai-profile', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { companyDescription, targetAudience, effectiveKeywords, competitors, services } = req.body;
+
+      // Update ai_profiles table directly
+      await client`
+        UPDATE ai_profiles
+        SET 
+          company_description = ${companyDescription || null},
+          target_audience = ${targetAudience || null},
+          effective_keywords = ${effectiveKeywords || []},
+          competitors = ${competitors || []},
+          services = ${services || null},
+          updated_at = NOW()
+        WHERE user_id = ${userId}
+      `;
+
+      logger.info(`✅ AI Profile updated for user ${userId}`);
+      res.json({ success: true, message: 'AI Profile updated successfully' });
+    } catch (error) {
+      logger.error('❌ Error updating AI profile:', error);
+      res.status(500).json({ message: 'Failed to update AI profile' });
+    }
+  });
+
   // Leads routes
   app.get('/api/leads', requireAuth, async (req: any, res) => {
     try {

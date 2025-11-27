@@ -82,6 +82,78 @@ export default function Leads() {
     enabled: !!user && !authLoading,
   });
 
+  // Mutation to update AI profile (business intelligence)
+  const updateAiProfileMutation = useMutation({
+    mutationFn: async (updates: any) => {
+      const response = await fetch('/api/user/ai-profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+        credentials: 'include'
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update AI profile');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      // Refresh user data to show updated information
+      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      toast({ 
+        title: '✅ Erfolgreich gespeichert!', 
+        description: 'Deine Business Intelligence wurde in der Datenbank aktualisiert.',
+        duration: 3000
+      });
+      setIsEditingBusiness(false);
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: '❌ Fehler beim Speichern', 
+        description: error.message || 'Konnte nicht in der Datenbank gespeichert werden.', 
+        variant: 'destructive',
+        duration: 5000
+      });
+    }
+  });
+
+  // Start editing business intelligence
+  const startEditingBusiness = () => {
+    const userProfile = user as UserType;
+    const aiProfile = userProfile.aiProfile || {};
+    
+    setEditedBusiness({
+      companyDescription: aiProfile.companyDescription || '',
+      targetAudience: aiProfile.targetAudience || '',
+      effectiveKeywords: Array.isArray(aiProfile.effectiveKeywords) 
+        ? aiProfile.effectiveKeywords.join(', ') 
+        : '',
+      competitors: Array.isArray(aiProfile.competitors) 
+        ? aiProfile.competitors.join(', ') 
+        : '',
+      services: aiProfile.services || '',
+    });
+    setIsEditingBusiness(true);
+  };
+
+  // Save business intelligence to database
+  const saveBusinessIntelligence = () => {
+    const updates = {
+      companyDescription: editedBusiness.companyDescription,
+      targetAudience: editedBusiness.targetAudience,
+      effectiveKeywords: editedBusiness.effectiveKeywords
+        .split(',')
+        .map((k: string) => k.trim())
+        .filter(Boolean),
+      competitors: editedBusiness.competitors
+        .split(',')
+        .map((c: string) => c.trim())
+        .filter(Boolean),
+      services: editedBusiness.services,
+    };
+    updateAiProfileMutation.mutate(updates);
+  };
+
   // Update time every second with correct local timezone
   useEffect(() => {
     const updateTime = () => {
@@ -776,14 +848,47 @@ Gib mir jetzt eine KRASSE 4-5 Satz Zusammenfassung die ${userProfile.firstName} 
                         >
                           BUSINESS INTELLIGENCE
                         </h2>
-                        <motion.button
-                          whileHover={{ scale: 1.1, rotate: 90 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => toggleSection('business')}
-                          className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors"
-                        >
-                          {expandedSections.business ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
-                        </motion.button>
+                        <div className="flex items-center gap-2">
+                          {!isEditingBusiness ? (
+                            <Button
+                              onClick={startEditingBusiness}
+                              size="sm"
+                              className="bg-gradient-to-r from-[#FE9100] to-[#a34e00] hover:from-[#FE9100]/80 hover:to-[#a34e00]/80 text-white"
+                            >
+                              <Edit2 className="w-4 h-4 mr-2" />
+                              Bearbeiten
+                            </Button>
+                          ) : (
+                            <>
+                              <Button
+                                onClick={() => setIsEditingBusiness(false)}
+                                size="sm"
+                                variant="ghost"
+                                className="text-gray-400 hover:text-white"
+                              >
+                                <X className="w-4 h-4 mr-2" />
+                                Abbrechen
+                              </Button>
+                              <Button
+                                onClick={saveBusinessIntelligence}
+                                size="sm"
+                                className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white"
+                                disabled={updateAiProfileMutation.isPending}
+                              >
+                                <Save className="w-4 h-4 mr-2" />
+                                {updateAiProfileMutation.isPending ? 'Speichert...' : 'Speichern'}
+                              </Button>
+                            </>
+                          )}
+                          <motion.button
+                            whileHover={{ scale: 1.1, rotate: 90 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => toggleSection('business')}
+                            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors"
+                          >
+                            {expandedSections.business ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                          </motion.button>
+                        </div>
                       </div>
                     </div>
                     
