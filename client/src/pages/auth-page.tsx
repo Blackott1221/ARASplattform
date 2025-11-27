@@ -431,12 +431,7 @@ export default function AuthPage() {
   };
 
   return (
-    <>
-      {/* 🚀 NEW PREMIUM HERO SECTION */}
-      <ArasHeroSection />
-      
-      {/* EXISTING AUTH CONTENT */}
-      <div className="min-h-screen text-white relative overflow-hidden">
+    <div className="min-h-screen text-white relative overflow-hidden">
       {/* 🌊 ULTRA-SMOOTH WAVE BACKGROUND - SMALLER & MORE DISTANT */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {/* Film Grain Texture for Premium Look */}
@@ -1763,7 +1758,6 @@ export default function AuthPage() {
 
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
     </div>
-    </>
   );
 }
 
