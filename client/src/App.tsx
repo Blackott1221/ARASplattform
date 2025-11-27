@@ -37,6 +37,8 @@ const VideoBackground = memo(() => {
     const video = document.querySelector('video');
     if (video) {
       video.playbackRate = 0.5; // 50% speed
+      // Garantiere autoplay
+      video.play().catch(err => console.log('Video autoplay:', err));
     }
   }, []);
 
@@ -47,6 +49,7 @@ const VideoBackground = memo(() => {
         loop
         muted
         playsInline
+        preload="auto"
         src={backgroundVideo}
         className="absolute inset-0 w-full h-full object-cover opacity-70"
         style={{
