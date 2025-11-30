@@ -1666,6 +1666,104 @@ export default function AuthPage() {
         </div>
       </div>
 
+      {/* 🚀 NEW PREMIUM SECTION - ARAS AI Standard */}
+      <motion.div 
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 1, delay: 0.8 }}
+        className="relative w-full max-w-4xl mx-auto mt-24 mb-16 px-6"
+      >
+        {/* Premium Background Glow */}
+        <div className="absolute inset-0 bg-gradient-radial from-[#FE9100]/5 via-transparent to-transparent blur-3xl" />
+        
+        <div className="relative">
+          {/* Animated Border */}
+          <motion.div
+            className="absolute -inset-[1px] rounded-2xl"
+            style={{
+              background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
+              backgroundSize: '200% 100%',
+            }}
+            animate={{
+              backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+            }}
+            transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
+          />
+          
+          {/* Content Container */}
+          <div className="relative bg-[#0f0f0f]/95 backdrop-blur-xl rounded-2xl p-12">
+            {/* Main Headline */}
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.9 }}
+              className="text-4xl md:text-5xl font-black mb-6 text-center"
+              style={{
+                fontFamily: 'Orbitron, sans-serif',
+                background: 'linear-gradient(135deg, #e9d7c4 0%, #FE9100 50%, #a34e00 100%)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                textShadow: '0 0 40px rgba(254, 145, 0, 0.3)'
+              }}
+            >
+              ARAS AI – The New Standard of Intelligent Communication
+            </motion.h2>
+
+            {/* Description Text */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.8, delay: 1.0 }}
+              className="space-y-6 text-center max-w-3xl mx-auto"
+            >
+              <p className="text-lg md:text-xl text-gray-300 leading-relaxed">
+                ARAS AI kombiniert natürlich klingende KI-Telefonie, präzise Automatisierung und strikte Schweizer Datensicherheit in einer einzigen Plattform.
+              </p>
+              
+              <p className="text-lg md:text-xl text-gray-300 leading-relaxed">
+                Die Technologie führt reale Outbound-Gespräche, qualifiziert Leads, verarbeitet E-Mails und verbindet sich nahtlos mit Ihren bestehenden Systemen.
+              </p>
+              
+              <p className="text-lg md:text-xl text-gray-300 leading-relaxed font-semibold">
+                Für Unternehmen, die moderne Skalierung brauchen – nicht Experimente.
+              </p>
+            </motion.div>
+
+            {/* Alpha Badge & Price Lock */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 1.1 }}
+              className="mt-10 space-y-4"
+            >
+              {/* Alpha Badge */}
+              <div className="flex justify-center">
+                <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-[#FE9100]/20 to-[#a34e00]/10 border border-[#FE9100]/40">
+                  <motion.div
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="w-2 h-2 rounded-full bg-[#FE9100]"
+                  />
+                  <span className="text-sm font-black text-[#FE9100]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                    STRENG LIMITIERTE ALPHA-PHASE
+                  </span>
+                </div>
+              </div>
+              
+              {/* Price Lock Guarantee */}
+              <p className="text-center text-[#e9d7c4] text-lg font-bold" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                Alle Nutzer behalten ihre jetzigen Preise – dauerhaft.
+              </p>
+            </motion.div>
+
+            {/* Decorative Elements */}
+            <div className="absolute top-4 right-4 w-20 h-20 bg-[#FE9100]/10 rounded-full blur-2xl" />
+            <div className="absolute bottom-4 left-4 w-32 h-32 bg-[#a34e00]/10 rounded-full blur-3xl" />
+          </div>
+        </div>
+      </motion.div>
+
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
     </div>
   );
