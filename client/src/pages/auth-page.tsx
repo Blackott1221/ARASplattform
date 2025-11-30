@@ -434,7 +434,7 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen text-white relative overflow-hidden">
+    <div className="min-h-screen text-white relative">
       {/* Simple Dark Background with Subtle Glow */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {/* Film Grain Texture for Premium Look */}
