@@ -436,7 +436,7 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen text-white relative">
       {/* Simple Dark Background with Subtle Glow */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
         {/* Film Grain Texture for Premium Look */}
         <div 
           className="absolute inset-0 opacity-[0.015] mix-blend-overlay"
@@ -1666,6 +1666,11 @@ export default function AuthPage() {
             </div>
           </motion.div>
           </div>
+        </div>
+
+        {/* 🚨 DEBUG TEST BLOCK - DIESER MUSS SICHTBAR SEIN! */}
+        <div className="w-full h-screen bg-orange-500 flex items-center justify-center">
+          <h1 className="text-6xl font-black text-black">WENN DU DAS SIEHST, FUNKTIONIERT SCROLLING!</h1>
         </div>
 
         {/* 🚀 NEW PREMIUM SECTION - ARAS AI Standard */}
