@@ -458,8 +458,10 @@ export default function AuthPage() {
       </div>
 
       {/* CONTENT */}
-      <div className="relative z-10 min-h-screen flex flex-col p-8">
-        <div className="w-full max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
+      <div className="relative z-10 flex flex-col p-8">
+        {/* Auth Form Section - Centered */}
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="w-full max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
           
           {/* LEFT SIDE - Hero Content */}
           <motion.div
@@ -1663,10 +1665,10 @@ export default function AuthPage() {
               </div>
             </div>
           </motion.div>
+          </div>
         </div>
-      </div>
 
-      {/* 🚀 NEW PREMIUM SECTION - ARAS AI Standard */}
+        {/* 🚀 NEW PREMIUM SECTION - ARAS AI Standard */}
       <motion.div 
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1763,6 +1765,7 @@ export default function AuthPage() {
           </div>
         </div>
       </motion.div>
+      </div>
 
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
     </div>
