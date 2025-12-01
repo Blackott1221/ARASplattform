@@ -460,7 +460,7 @@ export default function AuthPage() {
       {/* CONTENT */}
       <div className="relative z-10 flex flex-col p-8">
         {/* Auth Form Section - Centered */}
-        <div className="min-h-screen flex items-center justify-center">
+        <div className="flex items-center justify-center py-20">
           <div className="w-full max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
           
           {/* LEFT SIDE - Hero Content */}
