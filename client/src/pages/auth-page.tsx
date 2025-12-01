@@ -1668,17 +1668,12 @@ export default function AuthPage() {
           </div>
         </div>
 
-        {/* 🚨 DEBUG TEST BLOCK - DIESER MUSS SICHTBAR SEIN! */}
-        <div className="w-full h-screen bg-orange-500 flex items-center justify-center">
-          <h1 className="text-6xl font-black text-black">WENN DU DAS SIEHST, FUNKTIONIERT SCROLLING!</h1>
-        </div>
-
         {/* 🚀 NEW PREMIUM SECTION - ARAS AI Standard */}
-      <motion.div 
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1, delay: 0.8 }}
-        className="relative w-full max-w-4xl mx-auto mt-24 mb-16 px-6"
+        <motion.div 
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, delay: 0.2 }}
+          className="relative z-20 w-full max-w-4xl mx-auto mt-24 mb-16 px-6"
       >
         {/* Premium Background Glow */}
         <div className="absolute inset-0 bg-gradient-radial from-[#FE9100]/5 via-transparent to-transparent blur-3xl" />
@@ -1769,7 +1764,7 @@ export default function AuthPage() {
             <div className="absolute bottom-4 left-4 w-32 h-32 bg-[#a34e00]/10 rounded-full blur-3xl" />
           </div>
         </div>
-      </motion.div>
+        </motion.div>
       </div>
 
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
