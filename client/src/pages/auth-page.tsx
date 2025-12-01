@@ -458,7 +458,7 @@ export default function AuthPage() {
       </div>
 
       {/* CONTENT */}
-      <div className="relative z-10 min-h-screen flex items-center justify-center p-8">
+      <div className="relative z-10 min-h-screen flex flex-col p-8">
         <div className="w-full max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
           
           {/* LEFT SIDE - Hero Content */}
