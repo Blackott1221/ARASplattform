@@ -1697,8 +1697,8 @@ export default function AuthPage() {
                 <br />
                 <motion.span
                   style={{
-                    background: 'linear-gradient(90deg, #666666, #e9d7c4, #FE9100, #e9d7c4, #666666)',
-                    backgroundSize: '200% 100%',
+                    background: 'linear-gradient(90deg, #666666, #e9d7c4, #FE9100, #ff8c00, #FE9100, #e9d7c4, #666666)',
+                    backgroundSize: '300% 100%',
                     backgroundClip: 'text',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent'
@@ -1706,23 +1706,33 @@ export default function AuthPage() {
                   initial={{ opacity: 0 }}
                   animate={{ 
                     opacity: 1,
-                    backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                    backgroundPosition: ['0% 50%', '50% 50%', '100% 50%', '50% 50%', '0% 50%']
                   }}
                   transition={{ 
                     opacity: { duration: 0.8, delay: 0.6 },
-                    backgroundPosition: { duration: 8, repeat: Infinity, ease: 'linear' }
+                    backgroundPosition: { duration: 12, repeat: Infinity, ease: 'easeInOut' }
                   }}
                 >
                   The New Standard
                 </motion.span>
               </h1>
-              
-              {/* Blinking Cursor */}
-              <motion.span
-                className="inline-block w-1 h-16 bg-white ml-2"
-                animate={{ opacity: [1, 0, 1] }}
-                transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
-              />
+            </motion.div>
+            
+            {/* Typing Animation Below */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 1.2 }}
+              className="mb-12 min-h-[40px] flex items-center justify-center"
+            >
+              <span className="text-2xl text-white/80" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                {typedText}
+                <motion.span
+                  className="inline-block w-0.5 h-6 bg-white ml-1"
+                  animate={{ opacity: [1, 0, 1] }}
+                  transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
+                />
+              </span>
             </motion.div>
             
             {/* Subtitle with Fade In */}
@@ -1769,7 +1779,9 @@ export default function AuthPage() {
               className={`flex gap-4 justify-center ${showFeaturesPanel ? 'opacity-40 pointer-events-none' : ''} transition-opacity duration-300`}
             >
               <motion.button
-                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                onClick={() => {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className="group relative px-12 py-5 text-lg font-bold overflow-hidden rounded-xl"
@@ -1818,26 +1830,197 @@ export default function AuthPage() {
               </motion.button>
             </motion.div>
             
-            {/* Subtle Scroll Indicator */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 1, delay: 2.5 }}
-              className="absolute bottom-12 left-1/2 -translate-x-1/2"
-            >
-              <motion.div
-                animate={{ y: [0, 10, 0] }}
-                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                className="w-6 h-10 rounded-full border-2 border-white/20 flex items-start justify-center p-2"
-              >
-                <motion.div
-                  animate={{ opacity: [0, 1, 0] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                  className="w-1 h-2 bg-white/40 rounded-full"
-                />
-              </motion.div>
-            </motion.div>
           </div>
+          
+          {/* Features Panel */}
+          <AnimatePresence>
+            {showFeaturesPanel && (
+              <>
+                {/* Backdrop */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+                  onClick={() => setShowFeaturesPanel(false)}
+                />
+                
+                {/* Slide-in Panel */}
+                <motion.div
+                  initial={{ x: '100%' }}
+                  animate={{ x: 0 }}
+                  exit={{ x: '100%' }}
+                  transition={{ duration: 0.45, ease: 'easeOut' }}
+                  className="fixed right-0 top-0 bottom-0 w-full md:w-[600px] z-50 overflow-y-auto"
+                  style={{
+                    background: 'rgba(15, 15, 15, 0.95)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    borderLeft: '2px solid transparent',
+                    borderImage: 'linear-gradient(180deg, #e9d7c4, #FE9100, #a34e00) 1'
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Animated Top Border */}
+                  <motion.div
+                    className="absolute top-0 left-0 right-0 h-[2px]"
+                    style={{
+                      background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
+                      backgroundSize: '200% 100%'
+                    }}
+                    animate={{
+                      backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                    }}
+                    transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                  />
+                  
+                  {/* Close Button */}
+                  <button
+                    onClick={() => setShowFeaturesPanel(false)}
+                    className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full border border-white/20 hover:bg-white/5 transition-colors z-10"
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <span className="text-white text-2xl">×</span>
+                  </button>
+                  
+                  <div className="p-12">
+                    {/* Header */}
+                    <motion.h2
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                      className="text-4xl font-black mb-4 text-white"
+                      style={{ fontFamily: 'Orbitron, sans-serif' }}
+                    >
+                      Funktionen von ARAS AI
+                    </motion.h2>
+                    <motion.p
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                      className="text-white/60 mb-12 text-lg"
+                    >
+                      Die komplette Plattform für intelligente Kommunikation
+                    </motion.p>
+                    
+                    {/* Features List */}
+                    <div className="space-y-10">
+                      {/* 1. Outbound-KI-Telefonie */}
+                      <motion.div
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.4 }}
+                      >
+                        <div className="flex items-center gap-3 mb-4">
+                          <Phone className="w-6 h-6 text-[#FE9100]" />
+                          <h3 className="text-xl font-bold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                            Outbound-KI-Telefonie
+                          </h3>
+                        </div>
+                        <ul className="space-y-2 pl-9">
+                          {['natürliche Stimme', 'Lead-Qualifizierung', 'Terminbuchung', 'Einwandbehandlung', 'parallele Anrufe'].map((item, i) => (
+                            <li key={i} className="text-white/70 flex items-center gap-2">
+                              <div className="w-1.5 h-1.5 rounded-full bg-[#FE9100]/60" />
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </motion.div>
+                      
+                      {/* 2. Chat-Automation */}
+                      <motion.div
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.5 }}
+                      >
+                        <div className="flex items-center gap-3 mb-4">
+                          <Sparkles className="w-6 h-6 text-[#FE9100]" />
+                          <h3 className="text-xl font-bold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                            Chat-Automation
+                          </h3>
+                        </div>
+                        <ul className="space-y-2 pl-9">
+                          {['Inbox-Verarbeitung', 'Antworten im eigenen Stil', 'tägliche Zusammenfassungen'].map((item, i) => (
+                            <li key={i} className="text-white/70 flex items-center gap-2">
+                              <div className="w-1.5 h-1.5 rounded-full bg-[#FE9100]/60" />
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </motion.div>
+                      
+                      {/* 3. Integrationen */}
+                      <motion.div
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.6 }}
+                      >
+                        <div className="flex items-center gap-3 mb-4">
+                          <Globe className="w-6 h-6 text-[#FE9100]" />
+                          <h3 className="text-xl font-bold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                            Integrationen
+                          </h3>
+                        </div>
+                        <ul className="space-y-2 pl-9">
+                          {['Make', 'Zapier', 'n8n', 'API', 'Salesforce / HubSpot / Bitrix24'].map((item, i) => (
+                            <li key={i} className="text-white/70 flex items-center gap-2">
+                              <div className="w-1.5 h-1.5 rounded-full bg-[#FE9100]/60" />
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </motion.div>
+                      
+                      {/* 4. Reporting & Analysen */}
+                      <motion.div
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.7 }}
+                      >
+                        <div className="flex items-center gap-3 mb-4">
+                          <TrendingUp className="w-6 h-6 text-[#FE9100]" />
+                          <h3 className="text-xl font-bold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                            Reporting & Analysen
+                          </h3>
+                        </div>
+                        <ul className="space-y-2 pl-9">
+                          {['Erfolg', 'Emotion', 'Drop-Rate', 'Call Insights'].map((item, i) => (
+                            <li key={i} className="text-white/70 flex items-center gap-2">
+                              <div className="w-1.5 h-1.5 rounded-full bg-[#FE9100]/60" />
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </motion.div>
+                      
+                      {/* 5. Sicherheit / Compliance */}
+                      <motion.div
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.8 }}
+                      >
+                        <div className="flex items-center gap-3 mb-4">
+                          <Shield className="w-6 h-6 text-[#FE9100]" />
+                          <h3 className="text-xl font-bold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                            Sicherheit / Compliance
+                          </h3>
+                        </div>
+                        <ul className="space-y-2 pl-9">
+                          {['Swiss Hosting', 'DSGVO', 'Audit Trails', 'kein US-Transfer'].map((item, i) => (
+                            <li key={i} className="text-white/70 flex items-center gap-2">
+                              <div className="w-1.5 h-1.5 rounded-full bg-[#FE9100]/60" />
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </motion.div>
+                    </div>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </section>
         
         {/* ⭐ SECTION 2 - DIE ALPHA-VORTEILE (Premium Price Comparison) */}
