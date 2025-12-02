@@ -66,14 +66,27 @@ export function useLanguage() {
 export function T({ children }: { children: string }) {
   const { language } = useLanguage();
   const [translatedText, setTranslatedText] = useState(children);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (language === 'de') {
       setTranslatedText(children);
+      setIsLoading(false);
       return;
     }
 
-    translateText(children, language).then(setTranslatedText);
+    setIsLoading(true);
+    translateText(children, language)
+      .then((translated) => {
+        console.log(`[T] Translated: "${children.substring(0, 30)}..." -> "${translated.substring(0, 30)}..."`);
+        setTranslatedText(translated);
+        setIsLoading(false);
+      })
+      .catch((error) => {
+        console.error('[T] Translation failed:', error);
+        setTranslatedText(children);
+        setIsLoading(false);
+      });
   }, [children, language]);
 
   return <>{translatedText}</>;
