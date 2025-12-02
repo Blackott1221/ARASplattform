@@ -1718,7 +1718,7 @@ export default function AuthPage() {
                     backgroundPosition: { duration: 12, repeat: Infinity, ease: 'easeInOut' }
                   }}
                 >
-                  The New Standard
+                  <T>The New Standard</T>
                 </motion.span>
               </h1>
             </motion.div>
@@ -1747,7 +1747,7 @@ export default function AuthPage() {
               transition={{ duration: 0.8, delay: 1 }}
               className="text-xl md:text-2xl text-white/70 leading-relaxed mb-8 max-w-4xl mx-auto"
             >
-              Natürlich klingende KI-Telefonate, präzise Automation und Schweizer Datensicherheit – entwickelt für Unternehmen, die skalieren wollen, ohne Kompromisse einzugehen.
+              <T>Natürlich klingende KI-Telefonate, präzise Automation und Schweizer Datensicherheit – entwickelt für Unternehmen, die skalieren wollen, ohne Kompromisse einzugehen.</T>
             </motion.p>
             
             {/* Value Props */}
@@ -1758,7 +1758,7 @@ export default function AuthPage() {
               className="text-lg text-white/60 leading-relaxed mb-6 max-w-3xl mx-auto"
             >
               <p>
-                ARAS AI führt echte Outbound-Gespräche, qualifiziert Leads, verarbeitet Nachrichten und integriert sich nahtlos in bestehende Systeme.
+                <T>ARAS AI führt echte Outbound-Gespräche, qualifiziert Leads, verarbeitet Nachrichten und integriert sich nahtlos in bestehende Systeme.</T>
               </p>
             </motion.div>
             
@@ -1771,7 +1771,7 @@ export default function AuthPage() {
             >
               <div className="px-6 py-3 rounded-full border border-white/20 bg-transparent">
                 <p className="text-sm text-white/80">
-                  Aktuell in der <span className="text-white font-bold">streng limitierten Alpha-Phase</span> – mit dauerhaft gesicherten Early-Access-Preisen
+                  <T>Aktuell in der streng limitierten Alpha-Phase – mit dauerhaft gesicherten Early-Access-Preisen</T>
                 </p>
               </div>
             </motion.div>
@@ -1809,7 +1809,7 @@ export default function AuthPage() {
                 
                 {/* Button Content */}
                 <span className="relative z-10 text-white group-hover:text-white transition-colors">
-                  → Zugang aktivieren
+                  <T>→ Zugang aktivieren</T>
                 </span>
                 
                 {/* Hover Glow */}
@@ -1898,7 +1898,7 @@ export default function AuthPage() {
                       className="text-4xl font-black mb-4 text-white"
                       style={{ fontFamily: 'Orbitron, sans-serif' }}
                     >
-                      Funktionen von ARAS AI
+                      <T>Funktionen von ARAS AI</T>
                     </motion.h2>
                     <motion.p
                       initial={{ opacity: 0, y: 20 }}
@@ -1906,7 +1906,7 @@ export default function AuthPage() {
                       transition={{ delay: 0.3 }}
                       className="text-white/60 mb-12 text-lg"
                     >
-                      Die komplette Plattform für intelligente Kommunikation
+                      <T>Die komplette Plattform für intelligente Kommunikation</T>
                     </motion.p>
                     
                     {/* Features List */}
@@ -1920,14 +1920,14 @@ export default function AuthPage() {
                         <div className="flex items-center gap-3 mb-4">
                           <Phone className="w-6 h-6 text-[#FE9100]" />
                           <h3 className="text-xl font-bold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                            Outbound-KI-Telefonie
+                            <T>Outbound-KI-Telefonie</T>
                           </h3>
                         </div>
                         <ul className="space-y-2 pl-9">
                           {['natürliche Stimme', 'Lead-Qualifizierung', 'Terminbuchung', 'Einwandbehandlung', 'parallele Anrufe'].map((item, i) => (
                             <li key={i} className="text-white/70 flex items-center gap-2">
                               <div className="w-1.5 h-1.5 rounded-full bg-[#FE9100]/60" />
-                              <span>{item}</span>
+                              <span><T>{item}</T></span>
                             </li>
                           ))}
                         </ul>
@@ -1942,14 +1942,14 @@ export default function AuthPage() {
                         <div className="flex items-center gap-3 mb-4">
                           <Sparkles className="w-6 h-6 text-[#FE9100]" />
                           <h3 className="text-xl font-bold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                            Chat-Automation
+                            <T>Chat-Automation</T>
                           </h3>
                         </div>
                         <ul className="space-y-2 pl-9">
                           {['Inbox-Verarbeitung', 'Antworten im eigenen Stil', 'tägliche Zusammenfassungen'].map((item, i) => (
                             <li key={i} className="text-white/70 flex items-center gap-2">
                               <div className="w-1.5 h-1.5 rounded-full bg-[#FE9100]/60" />
-                              <span>{item}</span>
+                              <span><T>{item}</T></span>
                             </li>
                           ))}
                         </ul>
@@ -1964,14 +1964,14 @@ export default function AuthPage() {
                         <div className="flex items-center gap-3 mb-4">
                           <Globe className="w-6 h-6 text-[#FE9100]" />
                           <h3 className="text-xl font-bold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                            Integrationen
+                            <T>Integrationen</T>
                           </h3>
                         </div>
                         <ul className="space-y-2 pl-9">
                           {['Make', 'Zapier', 'n8n', 'API', 'Salesforce / HubSpot / Bitrix24'].map((item, i) => (
                             <li key={i} className="text-white/70 flex items-center gap-2">
                               <div className="w-1.5 h-1.5 rounded-full bg-[#FE9100]/60" />
-                              <span>{item}</span>
+                              <span><T>{item}</T></span>
                             </li>
                           ))}
                         </ul>
@@ -1986,14 +1986,14 @@ export default function AuthPage() {
                         <div className="flex items-center gap-3 mb-4">
                           <TrendingUp className="w-6 h-6 text-[#FE9100]" />
                           <h3 className="text-xl font-bold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                            Reporting & Analysen
+                            <T>Reporting & Analysen</T>
                           </h3>
                         </div>
                         <ul className="space-y-2 pl-9">
                           {['Erfolg', 'Emotion', 'Drop-Rate', 'Call Insights'].map((item, i) => (
                             <li key={i} className="text-white/70 flex items-center gap-2">
                               <div className="w-1.5 h-1.5 rounded-full bg-[#FE9100]/60" />
-                              <span>{item}</span>
+                              <span><T>{item}</T></span>
                             </li>
                           ))}
                         </ul>
@@ -2008,14 +2008,14 @@ export default function AuthPage() {
                         <div className="flex items-center gap-3 mb-4">
                           <Shield className="w-6 h-6 text-[#FE9100]" />
                           <h3 className="text-xl font-bold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                            Sicherheit / Compliance
+                            <T>Sicherheit / Compliance</T>
                           </h3>
                         </div>
                         <ul className="space-y-2 pl-9">
                           {['Swiss Hosting', 'DSGVO', 'Audit Trails', 'kein US-Transfer'].map((item, i) => (
                             <li key={i} className="text-white/70 flex items-center gap-2">
                               <div className="w-1.5 h-1.5 rounded-full bg-[#FE9100]/60" />
-                              <span>{item}</span>
+                              <span><T>{item}</T></span>
                             </li>
                           ))}
                         </ul>
@@ -2393,7 +2393,7 @@ export default function AuthPage() {
                   ease: 'easeInOut'
                 }}
               >
-                Warum Unternehmen ARAS AI einsetzen
+                <T>Warum Unternehmen ARAS AI einsetzen</T>
               </motion.h2>
               
               {/* Typing Subtitle */}
@@ -2405,7 +2405,7 @@ export default function AuthPage() {
                 className="text-xl md:text-2xl text-white/80 max-w-4xl mx-auto leading-relaxed"
               >
                 <p className="mb-4">
-                  ARAS AI ist nicht experimentelle KI-Telefonie.
+                  <T>ARAS AI ist nicht experimentelle KI-Telefonie.</T>
                 </p>
                 <motion.p
                   initial={{ opacity: 0, y: 10 }}
@@ -2414,7 +2414,7 @@ export default function AuthPage() {
                   transition={{ delay: 0.8 }}
                   className="text-white/60"
                 >
-                  Es ist eine präzise, stabile, Schweizer Plattform für echte Geschäftsprozesse.
+                  <T>Es ist eine präzise, stabile, Schweizer Plattform für echte Geschäftsprozesse.</T>
                 </motion.p>
               </motion.div>
             </motion.div>
@@ -2484,7 +2484,7 @@ export default function AuthPage() {
                         className="text-2xl font-bold mb-3 text-white transition-all duration-300"
                         style={{ fontFamily: 'Orbitron, sans-serif' }}
                       >
-                        {item.title}
+                        <T>{item.title}</T>
                       </h3>
                       
                       {/* Subtitle */}
@@ -2498,13 +2498,13 @@ export default function AuthPage() {
                             WebkitTextFillColor: 'transparent'
                           }}
                         >
-                          {item.subtitle}
+                          <T>{item.subtitle}</T>
                         </motion.p>
                       )}
                       
                       {/* Description */}
                       <p className="text-white/70 leading-relaxed text-base">
-                        {item.desc}
+                        <T>{item.desc}</T>
                       </p>
                       
                       {/* Subtle Glow on Hover */}
