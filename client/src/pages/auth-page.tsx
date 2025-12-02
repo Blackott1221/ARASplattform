@@ -1675,7 +1675,7 @@ export default function AuthPage() {
         </div>
 
         {/* ⭐ HERO SECTION - Ultra Clean Minimal Design */}
-        <section className="relative min-h-screen w-full flex items-center justify-center" style={{ background: '#000000' }}>
+        <section className="relative min-h-screen w-full flex items-center justify-center" style={{ background: 'transparent' }}>
           <div className="relative max-w-5xl mx-auto px-8 text-center">
             
             {/* Typing Headline */}
