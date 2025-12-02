@@ -1668,212 +1668,186 @@ export default function AuthPage() {
           </div>
         </div>
 
-        {/* ⭐ HERO SECTION - ARAS AI Premium Design */}
-        <section className="relative min-h-screen w-full" style={{ background: '#0f0f0f' }}>
-          {/* Radial Glow Background */}
-          <div 
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background: 'radial-gradient(circle at 65% 75%, rgba(254, 145, 0, 0.18) 0%, transparent 50%)'
-            }}
-          />
-          
-          <div className="relative max-w-[1600px] mx-auto px-[180px] py-[120px]">
-            {/* Animated Border Container */}
+        {/* ⭐ HERO SECTION - Ultra Clean Minimal Design */}
+        <section className="relative min-h-screen w-full flex items-center justify-center" style={{ background: '#000000' }}>
+          <div className="relative max-w-5xl mx-auto px-8 text-center">
+            
+            {/* Typing Headline */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ duration: 1 }}
-              className="relative p-[1.5px] rounded-[10px]"
-              style={{
-                background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #e9d7c4)',
-                backgroundSize: '200% 100%'
-              }}
+              transition={{ duration: 0.5 }}
+              className="mb-12"
+            >
+              <h1 
+                className="text-5xl md:text-6xl lg:text-7xl font-black mb-6 leading-tight text-white"
+                style={{ fontFamily: 'Orbitron, sans-serif' }}
+              >
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.05, delay: 0 }}
+                >
+                  A
+                </motion.span>
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.05, delay: 0.05 }}
+                >
+                  R
+                </motion.span>
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.05, delay: 0.1 }}
+                >
+                  A
+                </motion.span>
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.05, delay: 0.15 }}
+                >
+                  S
+                </motion.span>
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.05, delay: 0.2 }}
+                >
+                  {' '}
+                </motion.span>
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.05, delay: 0.25 }}
+                >
+                  A
+                </motion.span>
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.05, delay: 0.3 }}
+                >
+                  I
+                </motion.span>
+                <br />
+                <motion.span
+                  className="text-white/40"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.8, delay: 0.6 }}
+                >
+                  The New Standard
+                </motion.span>
+              </h1>
+              
+              {/* Blinking Cursor */}
+              <motion.span
+                className="inline-block w-1 h-16 bg-white ml-2"
+                animate={{ opacity: [1, 0, 1] }}
+                transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
+              />
+            </motion.div>
+            
+            {/* Subtitle with Fade In */}
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 1 }}
+              className="text-xl md:text-2xl text-white/70 leading-relaxed mb-8 max-w-4xl mx-auto"
+            >
+              Natürlich klingende KI-Telefonate, präzise Automation und Schweizer Datensicherheit – entwickelt für Unternehmen, die skalieren wollen, ohne Kompromisse einzugehen.
+            </motion.p>
+            
+            {/* Value Props */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 1.3 }}
+              className="text-lg text-white/60 leading-relaxed mb-6 max-w-3xl mx-auto"
+            >
+              <p>
+                ARAS AI führt echte Outbound-Gespräche, qualifiziert Leads, verarbeitet Nachrichten und integriert sich nahtlos in bestehende Systeme.
+              </p>
+            </motion.div>
+            
+            {/* Alpha Badge */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6, delay: 1.6 }}
+              className="inline-block mb-12"
+            >
+              <div className="px-6 py-3 rounded-full border border-white/20 bg-transparent">
+                <p className="text-sm text-white/80">
+                  Aktuell in der <span className="text-white font-bold">streng limitierten Alpha-Phase</span> – mit dauerhaft gesicherten Early-Access-Preisen
+                </p>
+              </div>
+            </motion.div>
+            
+            {/* CTA Button - Animated */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 1.9 }}
+            >
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="group relative px-12 py-5 text-lg font-bold overflow-hidden rounded-xl"
+                style={{ fontFamily: 'Orbitron, sans-serif' }}
+              >
+                {/* Animated Border */}
+                <motion.div
+                  className="absolute inset-0 p-[2px] rounded-xl"
+                  style={{
+                    background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #e9d7c4)',
+                    backgroundSize: '200% 100%'
+                  }}
+                  animate={{
+                    backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                  }}
+                  transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                >
+                  <div className="w-full h-full bg-black rounded-xl" />
+                </motion.div>
+                
+                {/* Button Content */}
+                <span className="relative z-10 text-white group-hover:text-white transition-colors">
+                  → Zugang aktivieren
+                </span>
+                
+                {/* Hover Glow */}
+                <motion.div
+                  className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{
+                    background: 'radial-gradient(circle at center, rgba(254, 145, 0, 0.2), transparent 70%)',
+                    filter: 'blur(20px)'
+                  }}
+                />
+              </motion.button>
+            </motion.div>
+            
+            {/* Subtle Scroll Indicator */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 1, delay: 2.5 }}
+              className="absolute bottom-12 left-1/2 -translate-x-1/2"
             >
               <motion.div
-                className="absolute inset-0 rounded-[10px]"
-                animate={{
-                  backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
-                }}
-                transition={{ 
-                  duration: 12, 
-                  repeat: Infinity, 
-                  ease: [0.25, 0.8, 0.25, 1] 
-                }}
-                style={{
-                  background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #e9d7c4)',
-                  backgroundSize: '200% 100%'
-                }}
-              />
-              
-              <div className="relative bg-[#0f0f0f] rounded-[10px]">
-                <div className="grid grid-cols-2 gap-20 items-center p-20">
-                  
-                  {/* LEFT SIDE - Text Content */}
-                  <motion.div
-                    initial={{ opacity: 0, x: -50 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.8 }}
-                    className="space-y-8"
-                  >
-                    {/* Main Headline with Liquid Metal Effect */}
-                    <motion.h1
-                      className="font-bold"
-                      style={{
-                        fontFamily: 'Orbitron, sans-serif',
-                        fontWeight: 700,
-                        fontSize: 'clamp(4rem, 12vw, 8rem)',
-                        lineHeight: 1.1,
-                        background: 'linear-gradient(135deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
-                        backgroundSize: '200% 200%',
-                        backgroundClip: 'text',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent'
-                      }}
-                      animate={{
-                        backgroundPosition: ['0% 0%', '100% 100%', '0% 0%']
-                      }}
-                      transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
-                    >
-                      ARAS AI – The New Standard of Intelligent Communication
-                    </motion.h1>
-                    
-                    {/* Subheadline */}
-                    <p className="text-xl text-white/90 leading-relaxed">
-                      Natürlich klingende KI-Telefonate, präzise Automation und Schweizer Datensicherheit – entwickelt für Unternehmen, die skalieren wollen, ohne Kompromisse einzugehen.
-                    </p>
-                    
-                    {/* Value Statement */}
-                    <div className="space-y-3 text-white/70">
-                      <p>
-                        ARAS AI führt echte Outbound-Gespräche, qualifiziert Leads, verarbeitet Nachrichten und integriert sich nahtlos in bestehende Systeme.
-                      </p>
-                      <p className="text-[#FE9100] font-semibold">
-                        Aktuell in der streng limitierten Alpha-Phase – mit dauerhaft gesicherten Early-Access-Preisen.
-                      </p>
-                    </div>
-                    
-                    {/* CTAs */}
-                    <div className="flex gap-4 pt-6">
-                      <motion.button
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="px-8 py-4 rounded-lg font-bold text-white"
-                        style={{
-                          fontFamily: 'Orbitron, sans-serif',
-                          background: 'linear-gradient(135deg, #FE9100, #a34e00)',
-                          boxShadow: '0 0 30px rgba(254, 145, 0, 0.4)'
-                        }}
-                      >
-                        → Zugang aktivieren
-                      </motion.button>
-                      
-                      <motion.button
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="px-8 py-4 rounded-lg font-bold border-2 border-[#FE9100] text-[#FE9100]"
-                        style={{ fontFamily: 'Orbitron, sans-serif' }}
-                      >
-                        → Funktionen ansehen
-                      </motion.button>
-                    </div>
-                  </motion.div>
-                  
-                  {/* RIGHT SIDE - AI Voice Waveform */}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.8, delay: 0.3 }}
-                    className="relative h-[400px]"
-                  >
-                    {/* Voice Active Badge */}
-                    <motion.div
-                      initial={{ opacity: 0, y: -20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 1 }}
-                      className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full mb-8"
-                    >
-                      <div className="flex items-center gap-2 px-4 py-2 rounded-full border border-[#FE9100]/30 bg-[#FE9100]/5">
-                        <motion.div
-                          className="w-2 h-2 rounded-full bg-[#FE9100]"
-                          animate={{ scale: [1, 1.3, 1], opacity: [1, 0.6, 1] }}
-                          transition={{ duration: 1.5, repeat: Infinity }}
-                        />
-                        <span className="text-xs font-bold text-[#FE9100] uppercase tracking-wider"
-                          style={{ fontFamily: 'Orbitron, sans-serif' }}
-                        >
-                          VOICE ACTIVE
-                        </span>
-                      </div>
-                    </motion.div>
-                    
-                    {/* Waveform Visualization */}
-                    <svg className="w-full h-full" viewBox="0 0 400 200">
-                      {[...Array(40)].map((_, i) => (
-                        <motion.line
-                          key={i}
-                          x1={i * 10}
-                          x2={i * 10}
-                          y1={100}
-                          y2={100}
-                          stroke={`url(#waveGradient${i})`}
-                          strokeWidth="2"
-                          strokeOpacity={0.3 + (i % 3) * 0.2}
-                          animate={{
-                            y2: [
-                              100,
-                              100 - Math.random() * 60 - 20,
-                              100 + Math.random() * 60 + 20,
-                              100
-                            ]
-                          }}
-                          transition={{
-                            duration: 14 + Math.random() * 4,
-                            repeat: Infinity,
-                            ease: "easeInOut",
-                            delay: i * 0.05
-                          }}
-                        />
-                      ))}
-                      {/* Gradient Definitions */}
-                      <defs>
-                        {[...Array(40)].map((_, i) => (
-                          <linearGradient key={i} id={`waveGradient${i}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" stopColor="#e9d7c4" stopOpacity={0.5} />
-                            <stop offset="50%" stopColor="#FE9100" stopOpacity={0.3} />
-                            <stop offset="100%" stopColor="#a34e00" stopOpacity={0.1} />
-                          </linearGradient>
-                        ))}
-                      </defs>
-                    </svg>
-                    
-                    {/* Floating Particles */}
-                    {[...Array(8)].map((_, i) => (
-                      <motion.div
-                        key={i}
-                        className="absolute w-1 h-1 rounded-full"
-                        style={{
-                          background: i % 2 === 0 ? '#FE9100' : '#e9d7c4',
-                          opacity: 0.3,
-                          left: `${Math.random() * 100}%`,
-                          top: `${Math.random() * 100}%`
-                        }}
-                        animate={{
-                          x: [0, Math.random() * 50 - 25, 0],
-                          y: [0, Math.random() * 50 - 25, 0],
-                          opacity: [0.3, 0.6, 0.3]
-                        }}
-                        transition={{
-                          duration: 14 + Math.random() * 4,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                          delay: i * 0.5
-                        }}
-                      />
-                    ))}
-                  </motion.div>
-                </div>
-              </div>
+                animate={{ y: [0, 10, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                className="w-6 h-10 rounded-full border-2 border-white/20 flex items-start justify-center p-2"
+              >
+                <motion.div
+                  animate={{ opacity: [0, 1, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                  className="w-1 h-2 bg-white/40 rounded-full"
+                />
+              </motion.div>
             </motion.div>
           </div>
         </section>
