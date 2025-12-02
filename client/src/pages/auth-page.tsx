@@ -2358,40 +2358,81 @@ export default function AuthPage() {
           </div>
         </section>
         
-        {/* ⭐ SECTION 3 - WARUM ARAS? */}
-        <section className="relative py-32" style={{ background: '#070709' }}>
+        {/* ⭐ SECTION 3 - WARUM ARAS? - Ultra Clean Redesign */}
+        <section className="relative py-32" style={{ background: '#000000' }}>
           <div className="max-w-7xl mx-auto px-8">
+            {/* Header with Typing Animation */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="text-center mb-20"
+              className="text-center mb-16"
             >
-              <h2 className="text-5xl font-black mb-6" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+              {/* Animated Gradient Headline */}
+              <motion.h2 
+                className="text-5xl md:text-6xl font-black mb-8"
+                style={{ 
+                  fontFamily: 'Orbitron, sans-serif',
+                  background: 'linear-gradient(90deg, #ffffff, #e9d7c4, #FE9100, #ff8c00, #FE9100, #e9d7c4, #ffffff)',
+                  backgroundSize: '300% 100%',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent'
+                }}
+                animate={{
+                  backgroundPosition: ['0% 50%', '50% 50%', '100% 50%', '50% 50%', '0% 50%']
+                }}
+                transition={{
+                  duration: 15,
+                  repeat: Infinity,
+                  ease: 'easeInOut'
+                }}
+              >
                 Warum Unternehmen ARAS AI einsetzen
-              </h2>
-              <p className="text-xl text-white/70 max-w-3xl mx-auto">
-                ARAS AI ist nicht experimentelle KI-Telefonie.<br/>
-                Es ist eine präzise, stabile, Schweizer Plattform für echte Geschäftsprozesse.
-              </p>
+              </motion.h2>
+              
+              {/* Typing Subtitle */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.5 }}
+                className="text-xl md:text-2xl text-white/80 max-w-4xl mx-auto leading-relaxed"
+              >
+                <p className="mb-4">
+                  ARAS AI ist nicht experimentelle KI-Telefonie.
+                </p>
+                <motion.p
+                  initial={{ opacity: 0, y: 10 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.8 }}
+                  className="text-white/60"
+                >
+                  Es ist eine präzise, stabile, Schweizer Plattform für echte Geschäftsprozesse.
+                </motion.p>
+              </motion.div>
             </motion.div>
             
+            {/* Transparent Cards Grid */}
             <div className="grid md:grid-cols-3 gap-8">
               {[
                 {
-                  icon: <Mic className="w-8 h-8 text-[#FE9100]" />,
+                  icon: <Mic className="w-10 h-10" />,
                   title: 'Natürlich klingende Stimme',
                   subtitle: 'ohne Übertreibung',
                   desc: 'Die Stimme wirkt ruhig, strukturiert und authentisch – ohne Roboterklang.'
                 },
                 {
-                  icon: <TrendingUp className="w-8 h-8 text-[#FE9100]" />,
+                  icon: <TrendingUp className="w-10 h-10" />,
                   title: 'Skalierung ohne Personalabhängigkeit',
+                  subtitle: null,
                   desc: 'Von einzelnen Anrufen bis zu hunderten parallelen Gesprächen, 24/7, konstant.'
                 },
                 {
-                  icon: <Shield className="w-8 h-8 text-[#FE9100]" />,
+                  icon: <Shield className="w-10 h-10" />,
                   title: 'Schweizer Datensicherheit',
+                  subtitle: null,
                   desc: 'Alle Daten bleiben in Europa. Keine US-Clouds. Keine Risikoarchitektur. Bereit für interne Audits & Compliance-Abteilungen.'
                 }
               ].map((item, i) => (
@@ -2400,32 +2441,77 @@ export default function AuthPage() {
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: i * 0.2 }}
-                  whileHover={{ scale: 1.03, y: -3 }}
-                  className="relative p-8 rounded-lg bg-[#151515]"
+                  transition={{ delay: i * 0.15, type: 'spring', stiffness: 100 }}
+                  whileHover={{ scale: 1.02, y: -5 }}
+                  className="group relative"
                 >
-                  {/* Animated Border */}
-                  <motion.div
-                    className="absolute -inset-[1px] rounded-lg"
-                    style={{
-                      background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
-                      backgroundSize: '200% 100%'
-                    }}
-                    animate={{
-                      backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
-                    }}
-                    transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
-                  />
-                  
-                  <div className="relative bg-[#151515] rounded-lg p-8">
-                    <div className="mb-4">{item.icon}</div>
-                    <h3 className="text-2xl font-bold mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                      {item.title}
-                    </h3>
-                    {item.subtitle && (
-                      <p className="text-sm text-[#FE9100] mb-3 font-semibold">{item.subtitle}</p>
-                    )}
-                    <p className="text-white/70 leading-relaxed">{item.desc}</p>
+                  {/* Animated Border Container */}
+                  <div className="relative p-[2px] rounded-2xl overflow-hidden">
+                    {/* Animated Gradient Border */}
+                    <motion.div
+                      className="absolute inset-0"
+                      style={{
+                        background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00, #e9d7c4)',
+                        backgroundSize: '300% 300%'
+                      }}
+                      animate={{
+                        backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                      }}
+                      transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
+                    />
+                    
+                    {/* Transparent Card Content */}
+                    <div 
+                      className="relative rounded-2xl p-8"
+                      style={{ background: 'rgba(0, 0, 0, 0.9)' }}
+                    >
+                      {/* Icon with Gradient */}
+                      <motion.div 
+                        className="mb-6 text-white"
+                        whileHover={{ scale: 1.1, rotate: 5 }}
+                        transition={{ type: 'spring', stiffness: 300 }}
+                      >
+                        {item.icon}
+                      </motion.div>
+                      
+                      {/* Title with Gradient on Hover */}
+                      <h3 
+                        className="text-2xl font-bold mb-3 text-white transition-all duration-300"
+                        style={{ fontFamily: 'Orbitron, sans-serif' }}
+                      >
+                        {item.title}
+                      </h3>
+                      
+                      {/* Subtitle */}
+                      {item.subtitle && (
+                        <motion.p 
+                          className="text-sm mb-4 font-semibold"
+                          style={{
+                            background: 'linear-gradient(90deg, #e9d7c4, #FE9100)',
+                            backgroundClip: 'text',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent'
+                          }}
+                        >
+                          {item.subtitle}
+                        </motion.p>
+                      )}
+                      
+                      {/* Description */}
+                      <p className="text-white/70 leading-relaxed text-base">
+                        {item.desc}
+                      </p>
+                      
+                      {/* Subtle Glow on Hover */}
+                      <motion.div
+                        className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 pointer-events-none"
+                        style={{
+                          background: 'radial-gradient(circle at 50% 50%, rgba(254, 145, 0, 0.1), transparent 70%)',
+                          filter: 'blur(20px)'
+                        }}
+                        transition={{ duration: 0.5 }}
+                      />
+                    </div>
                   </div>
                 </motion.div>
               ))}
