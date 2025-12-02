@@ -17,6 +17,7 @@ import chatRouter from "./chat";
 import { requireAdmin } from "./middleware/admin";
 import { checkCallLimit, checkMessageLimit } from "./middleware/usage-limits";
 import { setupSimpleAuth } from "./simple-auth";
+import { setupTranslationRoute } from "./translate-route";
 
 const scryptAsync = promisify(scrypt);
 
@@ -126,6 +127,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // - Enhanced registration with company research
   // - AI Profile generation
   setupSimpleAuth(app);
+
+  // 🌍 Setup DeepL translation endpoint
+  setupTranslationRoute(app);
 
   // Debug route to check auth status
   app.get('/api/auth/status', (req: any, res) => {

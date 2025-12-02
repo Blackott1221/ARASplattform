@@ -8,6 +8,8 @@ import { Loader2, Eye, EyeOff, AlertCircle, CheckCircle2, ArrowRight, Phone, Cal
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { trackLogin, trackSignup, captureUTMParameters } from "@/lib/analytics";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { T } from "@/lib/auto-translate";
 
 const TYPED_LINES = [
   "Die Stimme, die verkauft.",
@@ -436,6 +438,9 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen w-full text-white relative overflow-x-hidden">
+      {/* Language Switcher */}
+      <LanguageSwitcher />
+      
       {/* Simple Dark Background with Subtle Glow */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         {/* Film Grain Texture for Premium Look */}

@@ -8,6 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { EarlyAccessBanner } from "@/components/ui/early-access-banner";
 import { useAuth } from "@/hooks/useAuth";
 import { initializeAnalytics } from "@/lib/analytics";
+import { LanguageProvider } from "@/lib/auto-translate";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Login from "@/pages/login";
@@ -146,8 +147,9 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <div className="dark aras-bg-animated relative min-h-screen">
+      <LanguageProvider>
+        <TooltipProvider>
+          <div className="dark aras-bg-animated relative min-h-screen">
           {/* Persistent video background - never re-renders on route changes */}
           <VideoBackground />
 
@@ -164,8 +166,9 @@ function App() {
               <Router />
             </div>
           </div>
-        </div>
-      </TooltipProvider>
+          </div>
+        </TooltipProvider>
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }
