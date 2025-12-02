@@ -18,6 +18,7 @@ const TYPED_LINES = [
 ];
 
 export default function AuthPage() {
+  const [showFeaturesPanel, setShowFeaturesPanel] = useState(false);
   const [, setLocation] = useLocation();
   const { user, isLoading, loginMutation, registerMutation } = useAuth();
   const { toast } = useToast();
@@ -1683,61 +1684,34 @@ export default function AuthPage() {
                 className="text-5xl md:text-6xl lg:text-7xl font-black mb-6 leading-tight text-white"
                 style={{ fontFamily: 'Orbitron, sans-serif' }}
               >
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.05, delay: 0 }}
-                >
-                  A
-                </motion.span>
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.05, delay: 0.05 }}
-                >
-                  R
-                </motion.span>
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.05, delay: 0.1 }}
-                >
-                  A
-                </motion.span>
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.05, delay: 0.15 }}
-                >
-                  S
-                </motion.span>
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.05, delay: 0.2 }}
-                >
-                  {' '}
-                </motion.span>
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.05, delay: 0.25 }}
-                >
-                  A
-                </motion.span>
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.05, delay: 0.3 }}
-                >
-                  I
-                </motion.span>
+                {'ARAS AI'.split('').map((char, i) => (
+                  <motion.span
+                    key={i}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.05, delay: i * 0.08 }}
+                  >
+                    {char}
+                  </motion.span>
+                ))}
                 <br />
                 <motion.span
-                  className="text-white/40"
+                  style={{
+                    background: 'linear-gradient(90deg, #666666, #e9d7c4, #FE9100, #e9d7c4, #666666)',
+                    backgroundSize: '200% 100%',
+                    backgroundClip: 'text',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent'
+                  }}
                   initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.8, delay: 0.6 }}
+                  animate={{ 
+                    opacity: 1,
+                    backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                  }}
+                  transition={{ 
+                    opacity: { duration: 0.8, delay: 0.6 },
+                    backgroundPosition: { duration: 8, repeat: Infinity, ease: 'linear' }
+                  }}
                 >
                   The New Standard
                 </motion.span>
@@ -1787,17 +1761,19 @@ export default function AuthPage() {
               </div>
             </motion.div>
             
-            {/* CTA Button - Animated */}
+            {/* CTA Buttons - Animated */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 1.9 }}
+              className={`flex gap-4 justify-center ${showFeaturesPanel ? 'opacity-40 pointer-events-none' : ''} transition-opacity duration-300`}
             >
               <motion.button
+                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className="group relative px-12 py-5 text-lg font-bold overflow-hidden rounded-xl"
-                style={{ fontFamily: 'Orbitron, sans-serif' }}
+                style={{ fontFamily: 'Orbitron, sans-serif', cursor: 'pointer' }}
               >
                 {/* Animated Border */}
                 <motion.div
@@ -1827,6 +1803,18 @@ export default function AuthPage() {
                     filter: 'blur(20px)'
                   }}
                 />
+              </motion.button>
+              
+              <motion.button
+                onClick={() => setShowFeaturesPanel(true)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="group relative px-12 py-5 text-lg font-bold overflow-hidden rounded-xl border border-white/20"
+                style={{ fontFamily: 'Orbitron, sans-serif', cursor: 'pointer', background: 'transparent' }}
+              >
+                <span className="relative z-10 text-white group-hover:text-white transition-colors">
+                  ARAS AI Funktionen
+                </span>
               </motion.button>
             </motion.div>
             
