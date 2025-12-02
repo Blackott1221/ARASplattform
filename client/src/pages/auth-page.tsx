@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
-import { Loader2, Eye, EyeOff, AlertCircle, CheckCircle2, ArrowRight, Phone, Calendar, Sparkles, Building, Globe, User, Target, ChevronLeft, Search } from "lucide-react";
+import { Loader2, Eye, EyeOff, AlertCircle, CheckCircle2, ArrowRight, Phone, Calendar, Sparkles, Building, Globe, User, Target, ChevronLeft, Search, Mic, TrendingUp, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { trackLogin, trackSignup, captureUTMParameters } from "@/lib/analytics";
@@ -1668,103 +1668,384 @@ export default function AuthPage() {
           </div>
         </div>
 
-        {/* 🚀 NEW PREMIUM SECTION - ARAS AI Standard */}
-        <motion.div 
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 0.2 }}
-          className="relative z-20 w-full max-w-4xl mx-auto mt-24 mb-16 px-6"
-      >
-        {/* Premium Background Glow */}
-        <div className="absolute inset-0 bg-gradient-radial from-[#FE9100]/5 via-transparent to-transparent blur-3xl" />
-        
-        <div className="relative">
-          {/* Animated Border */}
-          <motion.div
-            className="absolute -inset-[1px] rounded-2xl"
+        {/* ⭐ HERO SECTION - ARAS AI Premium Design */}
+        <section className="relative min-h-screen w-full" style={{ background: '#0f0f0f' }}>
+          {/* Radial Glow Background */}
+          <div 
+            className="absolute inset-0 pointer-events-none"
             style={{
-              background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
-              backgroundSize: '200% 100%',
+              background: 'radial-gradient(circle at 65% 75%, rgba(254, 145, 0, 0.18) 0%, transparent 50%)'
             }}
-            animate={{
-              backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
-            }}
-            transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
           />
           
-          {/* Content Container */}
-          <div className="relative bg-[#0f0f0f]/95 backdrop-blur-xl rounded-2xl p-12">
-            {/* Main Headline */}
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.9 }}
-              className="text-4xl md:text-5xl font-black mb-6 text-center"
-              style={{
-                fontFamily: 'Orbitron, sans-serif',
-                background: 'linear-gradient(135deg, #e9d7c4 0%, #FE9100 50%, #a34e00 100%)',
-                backgroundClip: 'text',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                textShadow: '0 0 40px rgba(254, 145, 0, 0.3)'
-              }}
-            >
-              ARAS AI – The New Standard of Intelligent Communication
-            </motion.h2>
-
-            {/* Description Text */}
+          <div className="relative max-w-[1600px] mx-auto px-[180px] py-[120px]">
+            {/* Animated Border Container */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ duration: 0.8, delay: 1.0 }}
-              className="space-y-6 text-center max-w-3xl mx-auto"
+              transition={{ duration: 1 }}
+              className="relative p-[1.5px] rounded-[10px]"
+              style={{
+                background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #e9d7c4)',
+                backgroundSize: '200% 100%'
+              }}
             >
-              <p className="text-lg md:text-xl text-gray-300 leading-relaxed">
-                ARAS AI kombiniert natürlich klingende KI-Telefonie, präzise Automatisierung und strikte Schweizer Datensicherheit in einer einzigen Plattform.
-              </p>
+              <motion.div
+                className="absolute inset-0 rounded-[10px]"
+                animate={{
+                  backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                }}
+                transition={{ 
+                  duration: 12, 
+                  repeat: Infinity, 
+                  ease: [0.25, 0.8, 0.25, 1] 
+                }}
+                style={{
+                  background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #e9d7c4)',
+                  backgroundSize: '200% 100%'
+                }}
+              />
               
-              <p className="text-lg md:text-xl text-gray-300 leading-relaxed">
-                Die Technologie führt reale Outbound-Gespräche, qualifiziert Leads, verarbeitet E-Mails und verbindet sich nahtlos mit Ihren bestehenden Systemen.
-              </p>
-              
-              <p className="text-lg md:text-xl text-gray-300 leading-relaxed font-semibold">
-                Für Unternehmen, die moderne Skalierung brauchen – nicht Experimente.
-              </p>
-            </motion.div>
-
-            {/* Alpha Badge & Price Lock */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 1.1 }}
-              className="mt-10 space-y-4"
-            >
-              {/* Alpha Badge */}
-              <div className="flex justify-center">
-                <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-[#FE9100]/20 to-[#a34e00]/10 border border-[#FE9100]/40">
+              <div className="relative bg-[#0f0f0f] rounded-[10px]">
+                <div className="grid grid-cols-2 gap-20 items-center p-20">
+                  
+                  {/* LEFT SIDE - Text Content */}
                   <motion.div
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                    className="w-2 h-2 rounded-full bg-[#FE9100]"
-                  />
-                  <span className="text-sm font-black text-[#FE9100]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                    STRENG LIMITIERTE ALPHA-PHASE
-                  </span>
+                    initial={{ opacity: 0, x: -50 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.8 }}
+                    className="space-y-8"
+                  >
+                    {/* Main Headline with Liquid Metal Effect */}
+                    <motion.h1
+                      className="font-bold"
+                      style={{
+                        fontFamily: 'Orbitron, sans-serif',
+                        fontWeight: 700,
+                        fontSize: 'clamp(4rem, 12vw, 8rem)',
+                        lineHeight: 1.1,
+                        background: 'linear-gradient(135deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
+                        backgroundSize: '200% 200%',
+                        backgroundClip: 'text',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent'
+                      }}
+                      animate={{
+                        backgroundPosition: ['0% 0%', '100% 100%', '0% 0%']
+                      }}
+                      transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
+                    >
+                      ARAS AI – The New Standard of Intelligent Communication
+                    </motion.h1>
+                    
+                    {/* Subheadline */}
+                    <p className="text-xl text-white/90 leading-relaxed">
+                      Natürlich klingende KI-Telefonate, präzise Automation und Schweizer Datensicherheit – entwickelt für Unternehmen, die skalieren wollen, ohne Kompromisse einzugehen.
+                    </p>
+                    
+                    {/* Value Statement */}
+                    <div className="space-y-3 text-white/70">
+                      <p>
+                        ARAS AI führt echte Outbound-Gespräche, qualifiziert Leads, verarbeitet Nachrichten und integriert sich nahtlos in bestehende Systeme.
+                      </p>
+                      <p className="text-[#FE9100] font-semibold">
+                        Aktuell in der streng limitierten Alpha-Phase – mit dauerhaft gesicherten Early-Access-Preisen.
+                      </p>
+                    </div>
+                    
+                    {/* CTAs */}
+                    <div className="flex gap-4 pt-6">
+                      <motion.button
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="px-8 py-4 rounded-lg font-bold text-white"
+                        style={{
+                          fontFamily: 'Orbitron, sans-serif',
+                          background: 'linear-gradient(135deg, #FE9100, #a34e00)',
+                          boxShadow: '0 0 30px rgba(254, 145, 0, 0.4)'
+                        }}
+                      >
+                        → Zugang aktivieren
+                      </motion.button>
+                      
+                      <motion.button
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="px-8 py-4 rounded-lg font-bold border-2 border-[#FE9100] text-[#FE9100]"
+                        style={{ fontFamily: 'Orbitron, sans-serif' }}
+                      >
+                        → Funktionen ansehen
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                  
+                  {/* RIGHT SIDE - AI Voice Waveform */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.8, delay: 0.3 }}
+                    className="relative h-[400px]"
+                  >
+                    {/* Voice Active Badge */}
+                    <motion.div
+                      initial={{ opacity: 0, y: -20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 1 }}
+                      className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full mb-8"
+                    >
+                      <div className="flex items-center gap-2 px-4 py-2 rounded-full border border-[#FE9100]/30 bg-[#FE9100]/5">
+                        <motion.div
+                          className="w-2 h-2 rounded-full bg-[#FE9100]"
+                          animate={{ scale: [1, 1.3, 1], opacity: [1, 0.6, 1] }}
+                          transition={{ duration: 1.5, repeat: Infinity }}
+                        />
+                        <span className="text-xs font-bold text-[#FE9100] uppercase tracking-wider"
+                          style={{ fontFamily: 'Orbitron, sans-serif' }}
+                        >
+                          VOICE ACTIVE
+                        </span>
+                      </div>
+                    </motion.div>
+                    
+                    {/* Waveform Visualization */}
+                    <svg className="w-full h-full" viewBox="0 0 400 200">
+                      {[...Array(40)].map((_, i) => (
+                        <motion.line
+                          key={i}
+                          x1={i * 10}
+                          x2={i * 10}
+                          y1={100}
+                          y2={100}
+                          stroke={`url(#waveGradient${i})`}
+                          strokeWidth="2"
+                          strokeOpacity={0.3 + (i % 3) * 0.2}
+                          animate={{
+                            y2: [
+                              100,
+                              100 - Math.random() * 60 - 20,
+                              100 + Math.random() * 60 + 20,
+                              100
+                            ]
+                          }}
+                          transition={{
+                            duration: 14 + Math.random() * 4,
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                            delay: i * 0.05
+                          }}
+                        />
+                      ))}
+                      {/* Gradient Definitions */}
+                      <defs>
+                        {[...Array(40)].map((_, i) => (
+                          <linearGradient key={i} id={`waveGradient${i}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#e9d7c4" stopOpacity={0.5} />
+                            <stop offset="50%" stopColor="#FE9100" stopOpacity={0.3} />
+                            <stop offset="100%" stopColor="#a34e00" stopOpacity={0.1} />
+                          </linearGradient>
+                        ))}
+                      </defs>
+                    </svg>
+                    
+                    {/* Floating Particles */}
+                    {[...Array(8)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        className="absolute w-1 h-1 rounded-full"
+                        style={{
+                          background: i % 2 === 0 ? '#FE9100' : '#e9d7c4',
+                          opacity: 0.3,
+                          left: `${Math.random() * 100}%`,
+                          top: `${Math.random() * 100}%`
+                        }}
+                        animate={{
+                          x: [0, Math.random() * 50 - 25, 0],
+                          y: [0, Math.random() * 50 - 25, 0],
+                          opacity: [0.3, 0.6, 0.3]
+                        }}
+                        transition={{
+                          duration: 14 + Math.random() * 4,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          delay: i * 0.5
+                        }}
+                      />
+                    ))}
+                  </motion.div>
                 </div>
               </div>
-              
-              {/* Price Lock Guarantee */}
-              <p className="text-center text-[#e9d7c4] text-lg font-bold" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                Alle Nutzer behalten ihre jetzigen Preise – dauerhaft.
+            </motion.div>
+          </div>
+        </section>
+        
+        {/* ⭐ SECTION 2 - WARUM ARAS? */}
+        <section className="relative py-32" style={{ background: '#070709' }}>
+          <div className="max-w-7xl mx-auto px-8">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mb-20"
+            >
+              <h2 className="text-5xl font-black mb-6" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                Warum Unternehmen ARAS AI einsetzen
+              </h2>
+              <p className="text-xl text-white/70 max-w-3xl mx-auto">
+                ARAS AI ist nicht experimentelle KI-Telefonie.<br/>
+                Es ist eine präzise, stabile, Schweizer Plattform für echte Geschäftsprozesse.
               </p>
             </motion.div>
-
-            {/* Decorative Elements */}
-            <div className="absolute top-4 right-4 w-20 h-20 bg-[#FE9100]/10 rounded-full blur-2xl" />
-            <div className="absolute bottom-4 left-4 w-32 h-32 bg-[#a34e00]/10 rounded-full blur-3xl" />
+            
+            <div className="grid md:grid-cols-3 gap-8">
+              {[
+                {
+                  icon: <Mic className="w-8 h-8 text-[#FE9100]" />,
+                  title: 'Natürlich klingende Stimme',
+                  subtitle: 'ohne Übertreibung',
+                  desc: 'Die Stimme wirkt ruhig, strukturiert und authentisch – ohne Roboterklang.'
+                },
+                {
+                  icon: <TrendingUp className="w-8 h-8 text-[#FE9100]" />,
+                  title: 'Skalierung ohne Personalabhängigkeit',
+                  desc: 'Von einzelnen Anrufen bis zu hunderten parallelen Gesprächen, 24/7, konstant.'
+                },
+                {
+                  icon: <Shield className="w-8 h-8 text-[#FE9100]" />,
+                  title: 'Schweizer Datensicherheit',
+                  desc: 'Alle Daten bleiben in Europa. Keine US-Clouds. Keine Risikoarchitektur. Bereit für interne Audits & Compliance-Abteilungen.'
+                }
+              ].map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.2 }}
+                  whileHover={{ scale: 1.03, y: -3 }}
+                  className="relative p-8 rounded-lg bg-[#151515]"
+                >
+                  {/* Animated Border */}
+                  <motion.div
+                    className="absolute -inset-[1px] rounded-lg"
+                    style={{
+                      background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
+                      backgroundSize: '200% 100%'
+                    }}
+                    animate={{
+                      backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                    }}
+                    transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
+                  />
+                  
+                  <div className="relative bg-[#151515] rounded-lg p-8">
+                    <div className="mb-4">{item.icon}</div>
+                    <h3 className="text-2xl font-bold mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                      {item.title}
+                    </h3>
+                    {item.subtitle && (
+                      <p className="text-sm text-[#FE9100] mb-3 font-semibold">{item.subtitle}</p>
+                    )}
+                    <p className="text-white/70 leading-relaxed">{item.desc}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </div>
-        </div>
-        </motion.div>
+        </section>
+        
+        {/* ⭐ SECTION 3 - DIE ALPHA-VORTEILE */}
+        <section className="relative py-32" style={{ background: '#0A0A0C' }}>
+          <div className="max-w-7xl mx-auto px-8">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mb-20"
+            >
+              <h2 className="text-5xl font-black mb-6" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                Die ARAS Alpha-Vorteile
+              </h2>
+              <p className="text-xl text-white/70 max-w-4xl mx-auto mb-4">
+                Die ARAS Alpha – für Unternehmen, die früh Zugang zur nächsten Generation der Kommunikation wollen.
+              </p>
+              <p className="text-2xl text-[#FE9100] font-bold">
+                Alle Alpha-Nutzer behalten ihre aktuellen Preise – auch wenn wir am 01.01.2026 auf Enterprise-Level-Preise umstellen.
+              </p>
+            </motion.div>
+            
+            {/* Pricing Cards */}
+            <div className="grid md:grid-cols-4 gap-6 mb-16">
+              {[
+                { name: 'ARAS Free', current: 'kostenlos', future: 'bleibt kostenlos' },
+                { name: 'ARAS Pro', current: '€59', future: 'bleibt €59' },
+                { name: 'ARAS Ultra', current: '€249', future: 'bleibt €249' },
+                { name: 'ARAS Ultimate', current: '€1.990', future: 'bleibt €1.990' }
+              ].map((plan, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  whileHover={{ y: -3 }}
+                  className="relative p-6 rounded-lg bg-black border border-[#FE9100]/30"
+                  style={{
+                    boxShadow: 'inset 0 2px 20px rgba(0, 0, 0, 0.5)'
+                  }}
+                >
+                  {/* Floating Stars/Particles */}
+                  {[...Array(3)].map((_, j) => (
+                    <motion.div
+                      key={j}
+                      className="absolute w-1 h-1 rounded-full bg-[#FE9100]"
+                      style={{
+                        left: `${20 + j * 30}%`,
+                        top: `${10 + j * 20}%`,
+                        opacity: 0.3
+                      }}
+                      animate={{
+                        y: [0, -10, 0],
+                        opacity: [0.3, 0.6, 0.3]
+                      }}
+                      transition={{
+                        duration: 3 + j,
+                        repeat: Infinity,
+                        ease: 'easeInOut'
+                      }}
+                    />
+                  ))}
+                  
+                  <h3 className="text-xl font-bold mb-4" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                    {plan.name}
+                  </h3>
+                  <div className="text-3xl font-black text-[#FE9100] mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                    {plan.current}
+                  </div>
+                  <p className="text-sm text-white/50">{plan.future}</p>
+                </motion.div>
+              ))}
+            </div>
+            
+            {/* Why Box */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="relative p-10 rounded-lg bg-black border border-[#FE9100]/30 text-center"
+              style={{
+                background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.05), transparent)',
+                boxShadow: 'inset 0 2px 20px rgba(0, 0, 0, 0.5)'
+              }}
+            >
+              <h3 className="text-2xl font-bold mb-4" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                Warum?
+              </h3>
+              <p className="text-xl text-white/80">
+                Wir suchen echtes Feedback, keine kurzfristigen Einnahmen.
+              </p>
+            </motion.div>
+          </div>
+        </section>
       </div>
 
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
