@@ -1878,7 +1878,331 @@ export default function AuthPage() {
           </div>
         </section>
         
-        {/* ⭐ SECTION 2 - WARUM ARAS? */}
+        {/* ⭐ SECTION 2 - DIE ALPHA-VORTEILE (Premium Price Comparison) */}
+        <section className="relative py-32 overflow-hidden" style={{ background: 'linear-gradient(180deg, #0A0A0C 0%, #070709 100%)' }}>
+          {/* Background Glow Effects */}
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#FE9100]/10 rounded-full blur-[120px] animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#a34e00]/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }} />
+          
+          <div className="relative max-w-7xl mx-auto px-8">
+            {/* Section Header with Typewriter Effect */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
+              className="text-center mb-16"
+            >
+              <motion.h2 
+                className="text-6xl font-black mb-8"
+                style={{ 
+                  fontFamily: 'Orbitron, sans-serif',
+                  background: 'linear-gradient(135deg, #e9d7c4 0%, #FE9100 50%, #a34e00 100%)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent'
+                }}
+              >
+                Die ARAS Alpha-Vorteile
+              </motion.h2>
+              
+              <motion.p 
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.3, duration: 0.8 }}
+                className="text-xl text-white/80 max-w-4xl mx-auto mb-6 leading-relaxed"
+              >
+                Die ARAS Alpha – für Unternehmen, die früh Zugang zur nächsten Generation der Kommunikation wollen.
+              </motion.p>
+              
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.6, duration: 0.8 }}
+                className="inline-block px-8 py-4 rounded-full border-2 border-[#FE9100] bg-[#FE9100]/5"
+              >
+                <p className="text-2xl text-[#FE9100] font-bold" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                  Alle Alpha-Nutzer behalten ihre aktuellen Preise – dauerhaft.
+                </p>
+              </motion.div>
+              
+              <motion.p
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.9, duration: 0.8 }}
+                className="text-lg text-white/60 mt-6"
+              >
+                Preisanpassung ab 01.01.2026 auf Enterprise-Level – Sie bleiben geschützt.
+              </motion.p>
+            </motion.div>
+            
+            {/* Premium Price Comparison Cards */}
+            <div className="grid md:grid-cols-3 gap-8 mb-20">
+              {[
+                { 
+                  name: 'Starter', 
+                  alphaPrice: '€59', 
+                  futurePrice: '€1.990',
+                  savings: '€1.931',
+                  gradient: 'from-[#FE9100]/20 to-[#a34e00]/5'
+                },
+                { 
+                  name: 'PRO', 
+                  alphaPrice: '€249', 
+                  futurePrice: '€4.990',
+                  savings: '€4.741',
+                  gradient: 'from-[#FE9100]/30 to-[#a34e00]/10',
+                  featured: true
+                },
+                { 
+                  name: 'Enterprise', 
+                  alphaPrice: '€1.990', 
+                  futurePrice: '€19.990',
+                  savings: '€18.000',
+                  gradient: 'from-[#FE9100]/20 to-[#a34e00]/5'
+                }
+              ].map((plan, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 50 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.2, duration: 0.8, type: 'spring' }}
+                  whileHover={{ y: -8, scale: 1.02 }}
+                  className={`relative group ${plan.featured ? 'md:-mt-4 md:mb-4' : ''}`}
+                >
+                  {/* Featured Badge */}
+                  {plan.featured && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: i * 0.2 + 0.3 }}
+                      className="absolute -top-4 left-1/2 -translate-x-1/2 z-10"
+                    >
+                      <div className="px-4 py-2 rounded-full bg-gradient-to-r from-[#FE9100] to-[#a34e00] text-white text-xs font-bold"
+                        style={{ fontFamily: 'Orbitron, sans-serif' }}
+                      >
+                        ⭐ BELIEBTESTE WAHL
+                      </div>
+                    </motion.div>
+                  )}
+                  
+                  {/* Animated Border Container */}
+                  <div className="relative p-[2px] rounded-2xl overflow-hidden">
+                    <motion.div
+                      className="absolute inset-0"
+                      style={{
+                        background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00, #e9d7c4)',
+                        backgroundSize: '300% 300%'
+                      }}
+                      animate={{
+                        backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                      }}
+                      transition={{ duration: 15, repeat: Infinity, ease: 'linear' }}
+                    />
+                    
+                    <div className={`relative bg-gradient-to-br ${plan.gradient} backdrop-blur-xl rounded-2xl p-8`}
+                      style={{ background: plan.featured ? 'linear-gradient(135deg, rgba(254, 145, 0, 0.15), rgba(163, 78, 0, 0.05))' : undefined }}
+                    >
+                      {/* Plan Name */}
+                      <h3 className="text-3xl font-black mb-6 text-center" 
+                        style={{ 
+                          fontFamily: 'Orbitron, sans-serif',
+                          background: 'linear-gradient(135deg, #e9d7c4, #FE9100)',
+                          backgroundClip: 'text',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent'
+                        }}
+                      >
+                        {plan.name}
+                      </h3>
+                      
+                      {/* Alpha Price - BIG */}
+                      <div className="text-center mb-4">
+                        <div className="text-sm text-white/50 mb-2 uppercase tracking-wider">Alpha-Preis (JETZT)</div>
+                        <motion.div 
+                          className="text-6xl font-black"
+                          style={{ 
+                            fontFamily: 'Orbitron, sans-serif',
+                            color: '#FE9100',
+                            textShadow: '0 0 30px rgba(254, 145, 0, 0.5)'
+                          }}
+                          whileInView={{ scale: [0.8, 1.1, 1] }}
+                          viewport={{ once: true }}
+                          transition={{ delay: i * 0.2 + 0.5, duration: 0.6 }}
+                        >
+                          {plan.alphaPrice}
+                        </motion.div>
+                        <div className="text-xs text-white/40 mt-2">pro Monat</div>
+                      </div>
+                      
+                      {/* Divider with Animation */}
+                      <div className="relative my-6">
+                        <div className="h-[1px] bg-gradient-to-r from-transparent via-[#FE9100]/50 to-transparent" />
+                        <motion.div
+                          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#0A0A0C] px-3"
+                          animate={{ scale: [1, 1.1, 1] }}
+                          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                        >
+                          <span className="text-xs text-[#FE9100] font-bold">VS</span>
+                        </motion.div>
+                      </div>
+                      
+                      {/* Future Price - Crossed Out */}
+                      <div className="text-center mb-6">
+                        <div className="text-sm text-white/50 mb-2 uppercase tracking-wider">Standard-Preis (ab 01.01.2026)</div>
+                        <div className="relative inline-block">
+                          <div className="text-4xl font-black text-white/30 line-through"
+                            style={{ fontFamily: 'Orbitron, sans-serif' }}
+                          >
+                            {plan.futurePrice}
+                          </div>
+                          <motion.div
+                            className="absolute inset-0 bg-red-500/20 blur-xl"
+                            animate={{ opacity: [0.3, 0.6, 0.3] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Savings Badge */}
+                      <motion.div
+                        whileInView={{ scale: [0, 1.1, 1] }}
+                        viewport={{ once: true }}
+                        transition={{ delay: i * 0.2 + 0.7, type: 'spring' }}
+                        className="bg-gradient-to-r from-green-500/20 to-green-600/10 border border-green-500/30 rounded-lg p-4 text-center"
+                      >
+                        <div className="text-xs text-green-400 mb-1 uppercase tracking-wider">Sie sparen</div>
+                        <div className="text-2xl font-black text-green-400" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                          {plan.savings}
+                        </div>
+                        <div className="text-xs text-green-400/60 mt-1">pro Monat · dauerhaft</div>
+                      </motion.div>
+                      
+                      {/* Floating Particles */}
+                      {[...Array(5)].map((_, j) => (
+                        <motion.div
+                          key={j}
+                          className="absolute w-1 h-1 rounded-full bg-[#FE9100]"
+                          style={{
+                            left: `${15 + j * 18}%`,
+                            top: `${20 + j * 15}%`,
+                            opacity: 0.2
+                          }}
+                          animate={{
+                            y: [0, -15, 0],
+                            opacity: [0.2, 0.5, 0.2],
+                            scale: [1, 1.3, 1]
+                          }}
+                          transition={{
+                            duration: 4 + j * 0.5,
+                            repeat: Infinity,
+                            ease: 'easeInOut',
+                            delay: j * 0.3
+                          }}
+                        />
+                      ))}
+                      
+                      {/* Glow Effect on Hover */}
+                      <motion.div
+                        className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                        style={{
+                          background: 'radial-gradient(circle at center, rgba(254, 145, 0, 0.15), transparent 70%)',
+                          filter: 'blur(20px)'
+                        }}
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+            
+            {/* Free Plan Callout */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.8 }}
+              className="max-w-2xl mx-auto mb-16"
+            >
+              <div className="relative p-[2px] rounded-xl overflow-hidden">
+                <motion.div
+                  className="absolute inset-0"
+                  style={{
+                    background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
+                    backgroundSize: '200% 100%'
+                  }}
+                  animate={{
+                    backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                  }}
+                  transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
+                />
+                <div className="relative bg-black/80 backdrop-blur-xl rounded-xl p-6 text-center">
+                  <p className="text-lg text-white/80">
+                    <span className="text-[#FE9100] font-bold" style={{ fontFamily: 'Orbitron, sans-serif' }}>ARAS Free</span>
+                    {' '}bleibt kostenlos – für immer.
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+            
+            {/* Why Box - Premium Version */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 1, duration: 0.8 }}
+              className="relative max-w-3xl mx-auto"
+            >
+              <div className="relative p-[2px] rounded-2xl overflow-hidden">
+                <motion.div
+                  className="absolute inset-0"
+                  style={{
+                    background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00, #e9d7c4)',
+                    backgroundSize: '300% 300%'
+                  }}
+                  animate={{
+                    backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                  }}
+                  transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
+                />
+                
+                <div className="relative bg-gradient-to-br from-[#FE9100]/10 to-[#a34e00]/5 backdrop-blur-xl rounded-2xl p-10 text-center"
+                  style={{ boxShadow: 'inset 0 2px 40px rgba(0, 0, 0, 0.6)' }}
+                >
+                  <motion.h3 
+                    className="text-3xl font-black mb-4"
+                    style={{ 
+                      fontFamily: 'Orbitron, sans-serif',
+                      background: 'linear-gradient(135deg, #e9d7c4, #FE9100)',
+                      backgroundClip: 'text',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent'
+                    }}
+                  >
+                    Warum?
+                  </motion.h3>
+                  <p className="text-xl text-white/80 leading-relaxed">
+                    Wir suchen echtes Feedback von Unternehmen, die mit uns wachsen wollen – keine kurzfristigen Einnahmen.
+                  </p>
+                  <motion.div
+                    className="mt-6 inline-block px-6 py-2 rounded-full border border-[#FE9100]/30 bg-[#FE9100]/5"
+                    animate={{ scale: [1, 1.05, 1] }}
+                    transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                  >
+                    <p className="text-sm text-[#FE9100] font-semibold">Alpha-Phase läuft – Plätze limitiert</p>
+                  </motion.div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </section>
+        
+        {/* ⭐ SECTION 3 - WARUM ARAS? */}
         <section className="relative py-32" style={{ background: '#070709' }}>
           <div className="max-w-7xl mx-auto px-8">
             <motion.div
@@ -1950,100 +2274,6 @@ export default function AuthPage() {
                 </motion.div>
               ))}
             </div>
-          </div>
-        </section>
-        
-        {/* ⭐ SECTION 3 - DIE ALPHA-VORTEILE */}
-        <section className="relative py-32" style={{ background: '#0A0A0C' }}>
-          <div className="max-w-7xl mx-auto px-8">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-center mb-20"
-            >
-              <h2 className="text-5xl font-black mb-6" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                Die ARAS Alpha-Vorteile
-              </h2>
-              <p className="text-xl text-white/70 max-w-4xl mx-auto mb-4">
-                Die ARAS Alpha – für Unternehmen, die früh Zugang zur nächsten Generation der Kommunikation wollen.
-              </p>
-              <p className="text-2xl text-[#FE9100] font-bold">
-                Alle Alpha-Nutzer behalten ihre aktuellen Preise – auch wenn wir am 01.01.2026 auf Enterprise-Level-Preise umstellen.
-              </p>
-            </motion.div>
-            
-            {/* Pricing Cards */}
-            <div className="grid md:grid-cols-4 gap-6 mb-16">
-              {[
-                { name: 'ARAS Free', current: 'kostenlos', future: 'bleibt kostenlos' },
-                { name: 'ARAS Pro', current: '€59', future: 'bleibt €59' },
-                { name: 'ARAS Ultra', current: '€249', future: 'bleibt €249' },
-                { name: 'ARAS Ultimate', current: '€1.990', future: 'bleibt €1.990' }
-              ].map((plan, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                  whileHover={{ y: -3 }}
-                  className="relative p-6 rounded-lg bg-black border border-[#FE9100]/30"
-                  style={{
-                    boxShadow: 'inset 0 2px 20px rgba(0, 0, 0, 0.5)'
-                  }}
-                >
-                  {/* Floating Stars/Particles */}
-                  {[...Array(3)].map((_, j) => (
-                    <motion.div
-                      key={j}
-                      className="absolute w-1 h-1 rounded-full bg-[#FE9100]"
-                      style={{
-                        left: `${20 + j * 30}%`,
-                        top: `${10 + j * 20}%`,
-                        opacity: 0.3
-                      }}
-                      animate={{
-                        y: [0, -10, 0],
-                        opacity: [0.3, 0.6, 0.3]
-                      }}
-                      transition={{
-                        duration: 3 + j,
-                        repeat: Infinity,
-                        ease: 'easeInOut'
-                      }}
-                    />
-                  ))}
-                  
-                  <h3 className="text-xl font-bold mb-4" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                    {plan.name}
-                  </h3>
-                  <div className="text-3xl font-black text-[#FE9100] mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                    {plan.current}
-                  </div>
-                  <p className="text-sm text-white/50">{plan.future}</p>
-                </motion.div>
-              ))}
-            </div>
-            
-            {/* Why Box */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              className="relative p-10 rounded-lg bg-black border border-[#FE9100]/30 text-center"
-              style={{
-                background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.05), transparent)',
-                boxShadow: 'inset 0 2px 20px rgba(0, 0, 0, 0.5)'
-              }}
-            >
-              <h3 className="text-2xl font-bold mb-4" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                Warum?
-              </h3>
-              <p className="text-xl text-white/80">
-                Wir suchen echtes Feedback, keine kurzfristigen Einnahmen.
-              </p>
-            </motion.div>
           </div>
         </section>
       </div>
