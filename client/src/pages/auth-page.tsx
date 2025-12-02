@@ -2029,7 +2029,7 @@ export default function AuthPage() {
         </section>
         
         {/* ⭐ SECTION 2 - DIE ALPHA-VORTEILE (Premium Price Comparison) */}
-        <section className="relative py-32 overflow-hidden" style={{ background: 'linear-gradient(180deg, #0A0A0C 0%, #070709 100%)' }}>
+        <section className="relative py-32 overflow-hidden" style={{ background: 'transparent' }}>
           
           <div className="relative max-w-7xl mx-auto px-8">
             {/* Section Header with Typewriter Effect */}
@@ -2364,7 +2364,7 @@ export default function AuthPage() {
         </section>
         
         {/* ⭐ SECTION 3 - WARUM ARAS? - Ultra Clean Redesign */}
-        <section className="relative py-32" style={{ background: '#000000' }}>
+        <section className="relative py-32" style={{ background: 'transparent' }}>
           <div className="max-w-7xl mx-auto px-8">
             {/* Header with Typing Animation */}
             <motion.div
@@ -2639,7 +2639,7 @@ function ArasLandingContent() {
       </section>
 
       {/* Section 2 - Warum ARAS */}
-      <section className="relative w-full py-32" style={{ background: '#070709' }}>
+      <section className="relative w-full py-32" style={{ background: 'transparent' }}>
         <div className="max-w-7xl mx-auto px-8">
           <motion.h2 
             initial={{ opacity: 0, y: 30 }}
