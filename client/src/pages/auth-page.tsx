@@ -1894,13 +1894,9 @@ export default function AuthPage() {
               className="text-center mb-16"
             >
               <motion.h2 
-                className="text-6xl font-black mb-8"
+                className="text-6xl font-black mb-8 text-white"
                 style={{ 
-                  fontFamily: 'Orbitron, sans-serif',
-                  background: 'linear-gradient(135deg, #e9d7c4 0%, #FE9100 50%, #a34e00 100%)',
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent'
+                  fontFamily: 'Orbitron, sans-serif'
                 }}
               >
                 Die ARAS Alpha-Vorteile
@@ -1921,9 +1917,9 @@ export default function AuthPage() {
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.6, duration: 0.8 }}
-                className="inline-block px-8 py-4 rounded-full border-2 border-[#FE9100] bg-[#FE9100]/5"
+                className="inline-block px-8 py-4 rounded-full border border-white/20 bg-transparent"
               >
-                <p className="text-2xl text-[#FE9100] font-bold" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                <p className="text-2xl text-white font-bold" style={{ fontFamily: 'Orbitron, sans-serif' }}>
                   Alle Alpha-Nutzer behalten ihre aktuellen Preise – dauerhaft.
                 </p>
               </motion.div>
@@ -1981,8 +1977,7 @@ export default function AuthPage() {
                       className="absolute -top-6 left-1/2 -translate-x-1/2 z-10"
                     >
                       <div className="relative">
-                        <div className="absolute inset-0 bg-gradient-to-r from-[#e9d7c4] via-[#FE9100] to-[#a34e00] blur-md opacity-40" />
-                        <div className="relative px-5 py-2.5 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 text-white text-xs font-bold uppercase tracking-widest"
+                        <div className="relative px-5 py-2.5 rounded-full bg-transparent backdrop-blur-xl border border-white/20 text-white text-xs font-bold uppercase tracking-widest"
                           style={{ fontFamily: 'Orbitron, sans-serif' }}
                         >
                           ⭐ Beliebteste Wahl
@@ -2007,29 +2002,23 @@ export default function AuthPage() {
                     />
                     
                     {/* Glass Card - Fully Transparent */}
-                    <div className="relative bg-black/20 backdrop-blur-2xl rounded-3xl p-10"
+                    <div className="relative backdrop-blur-2xl rounded-3xl p-10"
                       style={{
-                        background: 'rgba(0, 0, 0, 0.2)',
+                        background: 'transparent',
                         backdropFilter: 'blur(40px)',
                         WebkitBackdropFilter: 'blur(40px)'
                       }}
                     >
-                      {/* Subtle Inner Glow */}
-                      <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/[0.03] to-transparent pointer-events-none" />
                       
-                      {/* Plan Name - Elegant */}
+                      {/* Plan Name - Pure White */}
                       <motion.h3 
                         initial={{ opacity: 0 }}
                         whileInView={{ opacity: 1 }}
                         viewport={{ once: true }}
                         transition={{ delay: i * 0.15 + 0.5 }}
-                        className="text-4xl font-black mb-8 text-center tracking-tight" 
+                        className="text-4xl font-black mb-8 text-center tracking-tight text-white" 
                         style={{ 
-                          fontFamily: 'Orbitron, sans-serif',
-                          background: 'linear-gradient(135deg, #ffffff 0%, #e9d7c4 50%, #FE9100 100%)',
-                          backgroundClip: 'text',
-                          WebkitBackgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent'
+                          fontFamily: 'Orbitron, sans-serif'
                         }}
                       >
                         {plan.name}
@@ -2047,11 +2036,9 @@ export default function AuthPage() {
                           Alpha-Preis • Jetzt
                         </motion.div>
                         <motion.div 
-                          className="text-7xl font-black mb-2"
+                          className="text-7xl font-black mb-2 text-white"
                           style={{ 
-                            fontFamily: 'Orbitron, sans-serif',
-                            color: '#ffffff',
-                            textShadow: '0 0 60px rgba(233, 215, 196, 0.3)'
+                            fontFamily: 'Orbitron, sans-serif'
                           }}
                           initial={{ opacity: 0, scale: 0.5 }}
                           whileInView={{ opacity: 1, scale: 1 }}
@@ -2127,13 +2114,9 @@ export default function AuthPage() {
                         
                         <div className="relative">
                           <div className="text-[10px] text-white/40 mb-2 uppercase tracking-[0.25em] font-semibold">Sie sparen</div>
-                          <div className="text-3xl font-black mb-1" 
+                          <div className="text-3xl font-black mb-1 text-white" 
                             style={{ 
-                              fontFamily: 'Orbitron, sans-serif',
-                              background: 'linear-gradient(135deg, #e9d7c4, #FE9100)',
-                              backgroundClip: 'text',
-                              WebkitBackgroundClip: 'text',
-                              WebkitTextFillColor: 'transparent'
+                              fontFamily: 'Orbitron, sans-serif'
                             }}
                           >
                             {plan.savings}
@@ -2146,7 +2129,7 @@ export default function AuthPage() {
                       <motion.div
                         className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
                         style={{
-                          background: 'radial-gradient(circle at 50% 50%, rgba(233, 215, 196, 0.08), transparent 60%)',
+                          background: 'radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.03), transparent 60%)',
                           filter: 'blur(30px)'
                         }}
                       />
