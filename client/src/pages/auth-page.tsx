@@ -1998,12 +1998,10 @@ export default function AuthPage() {
                       transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
                     />
                     
-                    {/* Glass Card - Fully Transparent */}
-                    <div className="relative backdrop-blur-2xl rounded-3xl p-10"
+                    {/* Black Card - Only Border Visible */}
+                    <div className="relative rounded-3xl p-10"
                       style={{
-                        background: 'transparent',
-                        backdropFilter: 'blur(40px)',
-                        WebkitBackdropFilter: 'blur(40px)'
+                        background: '#000000'
                       }}
                     >
                       
@@ -2156,9 +2154,11 @@ export default function AuthPage() {
                   }}
                   transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
                 />
-                <div className="relative bg-black/80 backdrop-blur-xl rounded-xl p-6 text-center">
+                <div className="relative rounded-xl p-6 text-center"
+                  style={{ background: '#000000' }}
+                >
                   <p className="text-lg text-white/80">
-                    <span className="text-[#FE9100] font-bold" style={{ fontFamily: 'Orbitron, sans-serif' }}>ARAS Free</span>
+                    <span className="text-white font-bold" style={{ fontFamily: 'Orbitron, sans-serif' }}>ARAS Free</span>
                     {' '}bleibt kostenlos – für immer.
                   </p>
                 </div>
@@ -2186,17 +2186,13 @@ export default function AuthPage() {
                   transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
                 />
                 
-                <div className="relative bg-gradient-to-br from-[#FE9100]/10 to-[#a34e00]/5 backdrop-blur-xl rounded-2xl p-10 text-center"
-                  style={{ boxShadow: 'inset 0 2px 40px rgba(0, 0, 0, 0.6)' }}
+                <div className="relative rounded-2xl p-10 text-center"
+                  style={{ background: '#000000' }}
                 >
                   <motion.h3 
-                    className="text-3xl font-black mb-4"
+                    className="text-3xl font-black mb-4 text-white"
                     style={{ 
-                      fontFamily: 'Orbitron, sans-serif',
-                      background: 'linear-gradient(135deg, #e9d7c4, #FE9100)',
-                      backgroundClip: 'text',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent'
+                      fontFamily: 'Orbitron, sans-serif'
                     }}
                   >
                     Warum?
