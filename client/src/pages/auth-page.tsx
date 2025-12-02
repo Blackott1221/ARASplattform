@@ -1939,30 +1939,27 @@ export default function AuthPage() {
               </motion.p>
             </motion.div>
             
-            {/* Premium Price Comparison Cards */}
+            {/* Premium Glass Cards - Ultra Minimalist */}
             <div className="grid md:grid-cols-3 gap-8 mb-20">
               {[
                 { 
                   name: 'Starter', 
                   alphaPrice: '€59', 
                   futurePrice: '€1.990',
-                  savings: '€1.931',
-                  gradient: 'from-[#FE9100]/20 to-[#a34e00]/5'
+                  savings: '€1.931'
                 },
                 { 
                   name: 'PRO', 
                   alphaPrice: '€249', 
                   futurePrice: '€4.990',
                   savings: '€4.741',
-                  gradient: 'from-[#FE9100]/30 to-[#a34e00]/10',
                   featured: true
                 },
                 { 
                   name: 'Enterprise', 
                   alphaPrice: '€1.990', 
                   futurePrice: '€19.990',
-                  savings: '€18.000',
-                  gradient: 'from-[#FE9100]/20 to-[#a34e00]/5'
+                  savings: '€18.000'
                 }
               ].map((plan, i) => (
                 <motion.div
@@ -1970,149 +1967,187 @@ export default function AuthPage() {
                   initial={{ opacity: 0, y: 50 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: i * 0.2, duration: 0.8, type: 'spring' }}
-                  whileHover={{ y: -8, scale: 1.02 }}
-                  className={`relative group ${plan.featured ? 'md:-mt-4 md:mb-4' : ''}`}
+                  transition={{ delay: i * 0.15, duration: 1, type: 'spring', stiffness: 50 }}
+                  whileHover={{ y: -12 }}
+                  className={`relative group ${plan.featured ? 'md:-mt-6 md:mb-6' : ''}`}
                 >
-                  {/* Featured Badge */}
+                  {/* Featured Badge - Minimalist */}
                   {plan.featured && (
                     <motion.div
                       initial={{ opacity: 0, y: -20 }}
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: true }}
-                      transition={{ delay: i * 0.2 + 0.3 }}
-                      className="absolute -top-4 left-1/2 -translate-x-1/2 z-10"
+                      transition={{ delay: i * 0.15 + 0.4, duration: 0.8 }}
+                      className="absolute -top-6 left-1/2 -translate-x-1/2 z-10"
                     >
-                      <div className="px-4 py-2 rounded-full bg-gradient-to-r from-[#FE9100] to-[#a34e00] text-white text-xs font-bold"
-                        style={{ fontFamily: 'Orbitron, sans-serif' }}
-                      >
-                        ⭐ BELIEBTESTE WAHL
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#e9d7c4] via-[#FE9100] to-[#a34e00] blur-md opacity-40" />
+                        <div className="relative px-5 py-2.5 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 text-white text-xs font-bold uppercase tracking-widest"
+                          style={{ fontFamily: 'Orbitron, sans-serif' }}
+                        >
+                          ⭐ Beliebteste Wahl
+                        </div>
                       </div>
                     </motion.div>
                   )}
                   
                   {/* Animated Border Container */}
-                  <div className="relative p-[2px] rounded-2xl overflow-hidden">
+                  <div className="relative p-[1.5px] rounded-3xl overflow-hidden">
+                    {/* Animated Gradient Border */}
                     <motion.div
                       className="absolute inset-0"
                       style={{
-                        background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00, #e9d7c4)',
-                        backgroundSize: '300% 300%'
+                        background: 'linear-gradient(135deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
+                        backgroundSize: '400% 400%'
                       }}
                       animate={{
                         backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
                       }}
-                      transition={{ duration: 15, repeat: Infinity, ease: 'linear' }}
+                      transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
                     />
                     
-                    <div className={`relative bg-gradient-to-br ${plan.gradient} backdrop-blur-xl rounded-2xl p-8`}
-                      style={{ background: plan.featured ? 'linear-gradient(135deg, rgba(254, 145, 0, 0.15), rgba(163, 78, 0, 0.05))' : undefined }}
+                    {/* Glass Card - Fully Transparent */}
+                    <div className="relative bg-black/20 backdrop-blur-2xl rounded-3xl p-10"
+                      style={{
+                        background: 'rgba(0, 0, 0, 0.2)',
+                        backdropFilter: 'blur(40px)',
+                        WebkitBackdropFilter: 'blur(40px)'
+                      }}
                     >
-                      {/* Plan Name */}
-                      <h3 className="text-3xl font-black mb-6 text-center" 
+                      {/* Subtle Inner Glow */}
+                      <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/[0.03] to-transparent pointer-events-none" />
+                      
+                      {/* Plan Name - Elegant */}
+                      <motion.h3 
+                        initial={{ opacity: 0 }}
+                        whileInView={{ opacity: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: i * 0.15 + 0.5 }}
+                        className="text-4xl font-black mb-8 text-center tracking-tight" 
                         style={{ 
                           fontFamily: 'Orbitron, sans-serif',
-                          background: 'linear-gradient(135deg, #e9d7c4, #FE9100)',
+                          background: 'linear-gradient(135deg, #ffffff 0%, #e9d7c4 50%, #FE9100 100%)',
                           backgroundClip: 'text',
                           WebkitBackgroundClip: 'text',
                           WebkitTextFillColor: 'transparent'
                         }}
                       >
                         {plan.name}
-                      </h3>
+                      </motion.h3>
                       
-                      {/* Alpha Price - BIG */}
-                      <div className="text-center mb-4">
-                        <div className="text-sm text-white/50 mb-2 uppercase tracking-wider">Alpha-Preis (JETZT)</div>
+                      {/* Alpha Price Section */}
+                      <div className="text-center mb-8">
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          whileInView={{ opacity: 1 }}
+                          viewport={{ once: true }}
+                          transition={{ delay: i * 0.15 + 0.6 }}
+                          className="text-xs text-white/40 mb-3 uppercase tracking-[0.2em] font-semibold"
+                        >
+                          Alpha-Preis • Jetzt
+                        </motion.div>
                         <motion.div 
-                          className="text-6xl font-black"
+                          className="text-7xl font-black mb-2"
                           style={{ 
                             fontFamily: 'Orbitron, sans-serif',
-                            color: '#FE9100',
-                            textShadow: '0 0 30px rgba(254, 145, 0, 0.5)'
+                            color: '#ffffff',
+                            textShadow: '0 0 60px rgba(233, 215, 196, 0.3)'
                           }}
-                          whileInView={{ scale: [0.8, 1.1, 1] }}
+                          initial={{ opacity: 0, scale: 0.5 }}
+                          whileInView={{ opacity: 1, scale: 1 }}
                           viewport={{ once: true }}
-                          transition={{ delay: i * 0.2 + 0.5, duration: 0.6 }}
+                          transition={{ delay: i * 0.15 + 0.7, duration: 0.8, type: 'spring' }}
                         >
                           {plan.alphaPrice}
                         </motion.div>
-                        <div className="text-xs text-white/40 mt-2">pro Monat</div>
+                        <div className="text-xs text-white/30 tracking-wider">pro Monat</div>
                       </div>
                       
-                      {/* Divider with Animation */}
-                      <div className="relative my-6">
-                        <div className="h-[1px] bg-gradient-to-r from-transparent via-[#FE9100]/50 to-transparent" />
+                      {/* Elegant Divider */}
+                      <div className="relative my-8">
+                        <div className="h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
                         <motion.div
-                          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#0A0A0C] px-3"
-                          animate={{ scale: [1, 1.1, 1] }}
-                          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 py-1 bg-black/40 backdrop-blur-sm"
+                          animate={{ opacity: [0.5, 1, 0.5] }}
+                          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
                         >
-                          <span className="text-xs text-[#FE9100] font-bold">VS</span>
+                          <span className="text-[10px] text-white/50 font-bold tracking-widest">VS</span>
                         </motion.div>
                       </div>
                       
-                      {/* Future Price - Crossed Out */}
-                      <div className="text-center mb-6">
-                        <div className="text-sm text-white/50 mb-2 uppercase tracking-wider">Standard-Preis (ab 01.01.2026)</div>
+                      {/* Future Price - Minimal */}
+                      <div className="text-center mb-8">
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          whileInView={{ opacity: 1 }}
+                          viewport={{ once: true }}
+                          transition={{ delay: i * 0.15 + 0.9 }}
+                          className="text-xs text-white/30 mb-3 uppercase tracking-[0.2em]"
+                        >
+                          Standard ab 01.01.2026
+                        </motion.div>
                         <div className="relative inline-block">
-                          <div className="text-4xl font-black text-white/30 line-through"
+                          <motion.div 
+                            className="text-5xl font-black text-white/15 line-through"
                             style={{ fontFamily: 'Orbitron, sans-serif' }}
+                            initial={{ opacity: 0 }}
+                            whileInView={{ opacity: 0.15 }}
+                            viewport={{ once: true }}
+                            transition={{ delay: i * 0.15 + 1 }}
                           >
                             {plan.futurePrice}
-                          </div>
-                          <motion.div
-                            className="absolute inset-0 bg-red-500/20 blur-xl"
-                            animate={{ opacity: [0.3, 0.6, 0.3] }}
-                            transition={{ duration: 2, repeat: Infinity }}
-                          />
+                          </motion.div>
                         </div>
                       </div>
                       
-                      {/* Savings Badge */}
+                      {/* Savings - Clean Design */}
                       <motion.div
-                        whileInView={{ scale: [0, 1.1, 1] }}
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true }}
-                        transition={{ delay: i * 0.2 + 0.7, type: 'spring' }}
-                        className="bg-gradient-to-r from-green-500/20 to-green-600/10 border border-green-500/30 rounded-lg p-4 text-center"
+                        transition={{ delay: i * 0.15 + 1.1, type: 'spring' }}
+                        className="relative p-6 rounded-2xl border border-white/10 text-center overflow-hidden"
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.02)'
+                        }}
                       >
-                        <div className="text-xs text-green-400 mb-1 uppercase tracking-wider">Sie sparen</div>
-                        <div className="text-2xl font-black text-green-400" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                          {plan.savings}
-                        </div>
-                        <div className="text-xs text-green-400/60 mt-1">pro Monat · dauerhaft</div>
-                      </motion.div>
-                      
-                      {/* Floating Particles */}
-                      {[...Array(5)].map((_, j) => (
+                        {/* Subtle Shine Effect */}
                         <motion.div
-                          key={j}
-                          className="absolute w-1 h-1 rounded-full bg-[#FE9100]"
-                          style={{
-                            left: `${15 + j * 18}%`,
-                            top: `${20 + j * 15}%`,
-                            opacity: 0.2
-                          }}
+                          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent"
                           animate={{
-                            y: [0, -15, 0],
-                            opacity: [0.2, 0.5, 0.2],
-                            scale: [1, 1.3, 1]
+                            x: ['-100%', '200%']
                           }}
                           transition={{
-                            duration: 4 + j * 0.5,
+                            duration: 3,
                             repeat: Infinity,
-                            ease: 'easeInOut',
-                            delay: j * 0.3
+                            repeatDelay: 2,
+                            ease: 'easeInOut'
                           }}
                         />
-                      ))}
+                        
+                        <div className="relative">
+                          <div className="text-[10px] text-white/40 mb-2 uppercase tracking-[0.25em] font-semibold">Sie sparen</div>
+                          <div className="text-3xl font-black mb-1" 
+                            style={{ 
+                              fontFamily: 'Orbitron, sans-serif',
+                              background: 'linear-gradient(135deg, #e9d7c4, #FE9100)',
+                              backgroundClip: 'text',
+                              WebkitBackgroundClip: 'text',
+                              WebkitTextFillColor: 'transparent'
+                            }}
+                          >
+                            {plan.savings}
+                          </div>
+                          <div className="text-[10px] text-white/30 tracking-wider">pro Monat · dauerhaft geschützt</div>
+                        </div>
+                      </motion.div>
                       
-                      {/* Glow Effect on Hover */}
+                      {/* Minimal Hover Glow */}
                       <motion.div
-                        className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                        className="absolute inset-0 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
                         style={{
-                          background: 'radial-gradient(circle at center, rgba(254, 145, 0, 0.15), transparent 70%)',
-                          filter: 'blur(20px)'
+                          background: 'radial-gradient(circle at 50% 50%, rgba(233, 215, 196, 0.08), transparent 60%)',
+                          filter: 'blur(30px)'
                         }}
                       />
                     </div>
