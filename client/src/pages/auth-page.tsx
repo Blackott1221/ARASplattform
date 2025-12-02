@@ -1880,9 +1880,6 @@ export default function AuthPage() {
         
         {/* ⭐ SECTION 2 - DIE ALPHA-VORTEILE (Premium Price Comparison) */}
         <section className="relative py-32 overflow-hidden" style={{ background: 'linear-gradient(180deg, #0A0A0C 0%, #070709 100%)' }}>
-          {/* Background Glow Effects */}
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#FE9100]/10 rounded-full blur-[120px] animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#a34e00]/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }} />
           
           <div className="relative max-w-7xl mx-auto px-8">
             {/* Section Header with Typewriter Effect */}
@@ -2095,7 +2092,7 @@ export default function AuthPage() {
                         transition={{ delay: i * 0.15 + 1.1, type: 'spring' }}
                         className="relative p-6 rounded-2xl border border-white/10 text-center overflow-hidden"
                         style={{
-                          background: 'rgba(255, 255, 255, 0.02)'
+                          background: 'transparent'
                         }}
                       >
                         {/* Subtle Shine Effect */}
