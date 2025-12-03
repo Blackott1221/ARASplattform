@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { motion } from "framer-motion";
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from "framer-motion";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
-import { Upload, Megaphone, Users, Phone, Settings as SettingsIcon, Play, Pause, FileText } from 'lucide-react';
+import { Upload, Megaphone, Users, Phone, Settings as SettingsIcon, Play, Pause, FileText, Lightbulb, TrendingUp, Target, Zap } from 'lucide-react';
 import type { User, SubscriptionResponse } from "@shared/schema";
 import arasLogo from "@/assets/aras_logo_1755067745303.png";
 
@@ -36,6 +36,9 @@ export default function Campaigns() {
   const [followUpAction, setFollowUpAction] = useState('');
   const [specialOffers, setSpecialOffers] = useState('');
   const [objectionHandling, setObjectionHandling] = useState('');
+  
+  // Animierte Tipps State
+  const [currentTipIndex, setCurrentTipIndex] = useState(0);
 
   // Fetch subscription
   const { data: subscriptionData } = useQuery<SubscriptionResponse>({
@@ -132,6 +135,43 @@ export default function Campaigns() {
 
   const productSuggestions = getProductSuggestions();
   const audienceSuggestions = getAudienceSuggestions();
+
+  // Animierte Tipps Daten
+  const aiTips = [
+    {
+      icon: Target,
+      color: CI.orange,
+      title: "4% Echte Conversion-Rate",
+      text: "Im Schnitt werden 4% der kontaktierten Leads zu echten Kunden – deutlich über dem Branchendurchschnitt von 1-2%."
+    },
+    {
+      icon: Zap,
+      color: CI.goldLight,
+      title: "500 Quellen pro Kontakt",
+      text: "ARAS AI analysiert für jeden Kontakt bis zu 500 öffentliche Datenquellen: Webseite, Handelsregister, Presse, LinkedIn, Xing und mehr."
+    },
+    {
+      icon: TrendingUp,
+      color: CI.orange,
+      title: "Mehr Felder = Besserer Output",
+      text: "Je mehr optionale Felder Sie ausfüllen (Zielgruppe, USP, Einwände), desto präziser wird die KI Ihre Gespräche personalisieren."
+    },
+    {
+      icon: Lightbulb,
+      color: CI.goldLight,
+      title: "Ultra-Personalisierung",
+      text: "Jedes Gespräch wird individuell an Person, Firma, Branche und aktuelle Ereignisse angepasst – kein generisches Skript."
+    }
+  ];
+
+  // Auto-Rotation der Tipps
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTipIndex((prev) => (prev + 1) % aiTips.length);
+    }, 5000); // 5 Sekunden pro Tipp
+
+    return () => clearInterval(interval);
+  }, [aiTips.length]);
 
   if (authLoading) {
     return (
@@ -696,6 +736,135 @@ export default function Campaigns() {
                     </li>
                   </ul>
                 </div>
+
+                {/* NEUE: Animierte ARAS AI Tipps */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.8, duration: 0.5 }}
+                  className="rounded-xl overflow-hidden"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.12), rgba(233, 215, 196, 0.08))',
+                    border: '2px solid rgba(254, 145, 0, 0.25)',
+                  }}
+                >
+                  {/* Header */}
+                  <div className="px-5 py-3 flex items-center justify-between"
+                    style={{
+                      background: 'rgba(254, 145, 0, 0.15)',
+                      borderBottom: '1px solid rgba(254, 145, 0, 0.2)'
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                        style={{
+                          background: CI.orange,
+                          boxShadow: `0 0 15px ${CI.orange}60`
+                        }}
+                      >
+                        <Lightbulb className="w-4 h-4 text-black" />
+                      </div>
+                      <span className="text-xs font-bold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                        WIE ARAS AI ARBEITET
+                      </span>
+                    </div>
+                    {/* Tip Indicators */}
+                    <div className="flex gap-1.5">
+                      {aiTips.map((_, idx) => (
+                        <motion.div
+                          key={idx}
+                          className="w-1.5 h-1.5 rounded-full cursor-pointer"
+                          onClick={() => setCurrentTipIndex(idx)}
+                          animate={{
+                            backgroundColor: idx === currentTipIndex ? CI.orange : 'rgba(255,255,255,0.25)',
+                            scale: idx === currentTipIndex ? 1.3 : 1
+                          }}
+                          transition={{ duration: 0.3 }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Animated Tips Content */}
+                  <div className="relative h-32 overflow-hidden">
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={currentTipIndex}
+                        initial={{ opacity: 0, x: 50, rotateY: -15 }}
+                        animate={{ opacity: 1, x: 0, rotateY: 0 }}
+                        exit={{ opacity: 0, x: -50, rotateY: 15 }}
+                        transition={{ 
+                          duration: 0.6,
+                          ease: [0.25, 0.46, 0.45, 0.94]
+                        }}
+                        className="absolute inset-0 p-5"
+                      >
+                        <div className="flex items-start gap-4 h-full">
+                          {/* Icon */}
+                          <motion.div
+                            initial={{ scale: 0, rotate: -180 }}
+                            animate={{ scale: 1, rotate: 0 }}
+                            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                            className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                            style={{
+                              background: `linear-gradient(135deg, ${aiTips[currentTipIndex].color}25, ${aiTips[currentTipIndex].color}10)`,
+                              border: `1.5px solid ${aiTips[currentTipIndex].color}50`,
+                            }}
+                          >
+                            {React.createElement(aiTips[currentTipIndex].icon, {
+                              className: "w-6 h-6",
+                              style: { color: aiTips[currentTipIndex].color }
+                            })}
+                          </motion.div>
+
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <motion.h5
+                              initial={{ opacity: 0, y: -10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.3 }}
+                              className="text-sm font-bold mb-2"
+                              style={{ 
+                                color: aiTips[currentTipIndex].color,
+                                fontFamily: 'Orbitron, sans-serif'
+                              }}
+                            >
+                              {aiTips[currentTipIndex].title}
+                            </motion.h5>
+                            <motion.p
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ delay: 0.4 }}
+                              className="text-xs text-gray-300 leading-relaxed"
+                            >
+                              {aiTips[currentTipIndex].text}
+                            </motion.p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="h-1 bg-black/30 relative overflow-hidden">
+                    <motion.div
+                      className="absolute inset-y-0 left-0"
+                      style={{
+                        background: `linear-gradient(90deg, ${CI.orange}, ${CI.goldLight})`,
+                        boxShadow: `0 0 10px ${CI.orange}80`
+                      }}
+                      initial={{ width: '0%' }}
+                      animate={{ width: '100%' }}
+                      transition={{
+                        duration: 5,
+                        ease: 'linear',
+                        repeat: Infinity,
+                        repeatDelay: 0
+                      }}
+                      key={currentTipIndex}
+                    />
+                  </div>
+                </motion.div>
               </motion.div>
             </div>
           </div>
