@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from "framer-motion";
 import { CI } from '@/lib/constants';
+import '@/styles/glassmorphism.css';
 
 // Import Dashboard Components
 import {
@@ -14,10 +15,16 @@ import {
   HeatMap,
   LeadStory,
   Gamification,
-  AutoPilot
+  AutoPilot,
+  DemoModal
 } from "@/components/dashboard";
 
 export default function DashboardPage() {
+  const [showDemoModal, setShowDemoModal] = useState(() => {
+    // Check if user has seen demo modal before
+    const hasSeenDemo = localStorage.getItem('aras_demo_modal_seen');
+    return !hasSeenDemo;
+  });
   const [activeView, setActiveView] = useState('money');
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [autoPilotActive, setAutoPilotActive] = useState(false);
@@ -29,6 +36,11 @@ export default function DashboardPage() {
     followUps: 0,
     pipeline: 0
   });
+
+  const handleCloseDemoModal = () => {
+    localStorage.setItem('aras_demo_modal_seen', 'true');
+    setShowDemoModal(false);
+  };
 
   // Animate stats on mount
   useEffect(() => {
@@ -44,16 +56,83 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="flex-1 h-full overflow-y-auto custom-scrollbar bg-black relative">
-          {/* Background Gradient */}
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full opacity-5"
-              style={{ background: `radial-gradient(circle, ${CI.orange}, transparent)` }}
-            />
-            <div className="absolute bottom-0 right-1/4 w-96 h-96 rounded-full opacity-5"
-              style={{ background: `radial-gradient(circle, ${CI.goldLight}, transparent)` }}
-            />
-          </div>
+    <>
+      {/* Demo Modal */}
+      {showDemoModal && <DemoModal onClose={handleCloseDemoModal} />}
+
+      <div className="flex-1 h-full overflow-y-auto custom-scrollbar relative" style={{ background: '#000000' }}>
+        {/* Enhanced Background with Animated Gradients */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {/* Animated Gradient Orbs */}
+          <motion.div
+            className="absolute w-[600px] h-[600px] rounded-full"
+            style={{ 
+              background: `radial-gradient(circle, ${CI.orange}15, transparent 70%)`,
+              top: '-10%',
+              left: '10%',
+              filter: 'blur(60px)'
+            }}
+            animate={{
+              x: [0, 50, 0],
+              y: [0, 30, 0],
+              scale: [1, 1.1, 1]
+            }}
+            transition={{
+              duration: 15,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+          />
+          <motion.div
+            className="absolute w-[500px] h-[500px] rounded-full"
+            style={{ 
+              background: `radial-gradient(circle, ${CI.goldLight}10, transparent 70%)`,
+              bottom: '-5%',
+              right: '15%',
+              filter: 'blur(80px)'
+            }}
+            animate={{
+              x: [0, -30, 0],
+              y: [0, -50, 0],
+              scale: [1, 1.2, 1]
+            }}
+            transition={{
+              duration: 20,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 1
+            }}
+          />
+          <motion.div
+            className="absolute w-[400px] h-[400px] rounded-full"
+            style={{ 
+              background: `radial-gradient(circle, ${CI.orange}08, transparent 70%)`,
+              top: '40%',
+              right: '5%',
+              filter: 'blur(70px)'
+            }}
+            animate={{
+              x: [0, 40, 0],
+              y: [0, -40, 0],
+              scale: [1, 1.15, 1]
+            }}
+            transition={{
+              duration: 18,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 2
+            }}
+          />
+          
+          {/* Grid Overlay */}
+          <div 
+            className="absolute inset-0 opacity-[0.02]"
+            style={{
+              backgroundImage: `linear-gradient(${CI.orange}40 1px, transparent 1px), linear-gradient(90deg, ${CI.orange}40 1px, transparent 1px)`,
+              backgroundSize: '50px 50px'
+            }}
+          />
+        </div>
 
           <div className="relative p-6 space-y-6 max-w-[1800px] mx-auto">
             
@@ -193,6 +272,7 @@ export default function DashboardPage() {
 
       {/* Orbitron Font */}
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-    </div>
+      </div>
+    </>
   );
 }

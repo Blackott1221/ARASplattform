@@ -10,3 +10,4 @@ export { LeadStory } from './LeadStory';
 export { Gamification } from './Gamification';
 export { AutoPilot } from './AutoPilot';
 export { CommandHeader } from './CommandHeader';
+export { DemoModal } from './DemoModal';
