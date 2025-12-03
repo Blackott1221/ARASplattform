@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Bot, User, Phone, Mail, Calendar, CheckCircle, AlertCircle, Clock, Paperclip, Mic } from 'lucide-react';
-import { CI } from '@/pages/dashboard';
+import { CI } from '@/lib/constants';
 
 interface Message {
   id: number;

@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from "framer-motion";
 import { Activity, Play, Zap, Brain, Shield } from 'lucide-react';
-import { CI } from '@/pages/dashboard';
+import { CI } from '@/lib/constants';
 
 interface CommandHeaderProps {
   animatedStats: {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from "framer-motion";
 import { Brain, Check, X, AlertCircle, Sparkles, ChevronRight, Clock, Mail, Phone, FileText, MessageCircle, Mic, Calendar } from 'lucide-react';
-import { CI } from '@/pages/dashboard';
+import { CI } from '@/lib/constants';
 
 export function AriaAssistant() {
   const [showAria, setShowAria] = useState(true);

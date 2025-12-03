@@ -5,7 +5,7 @@ import {
   Phone, Calendar, CheckCircle, X, Settings, Info,
   AlertTriangle, Brain, Play, Pause
 } from 'lucide-react';
-import { CI } from '@/pages/dashboard';
+import { CI } from '@/lib/constants';
 
 interface AutoPilotProps {
   isActive: boolean;

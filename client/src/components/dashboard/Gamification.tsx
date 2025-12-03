@@ -4,7 +4,7 @@ import {
   Trophy, Target, Zap, Award, Star, TrendingUp, 
   Users, Crown, Medal, Gift, Flame, ChevronUp
 } from 'lucide-react';
-import { CI } from '@/pages/dashboard';
+import { CI } from '@/lib/constants';
 
 export function Gamification() {
   const [currentLevel, setCurrentLevel] = useState(47);

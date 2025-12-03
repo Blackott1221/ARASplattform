@@ -5,7 +5,7 @@ import {
   TrendingUp, TrendingDown, Clock, CheckCircle, AlertCircle,
   User, Building, DollarSign, Target, ChevronRight
 } from 'lucide-react';
-import { CI } from '@/pages/dashboard';
+import { CI } from '@/lib/constants';
 
 interface LeadStoryProps {
   lead: any;

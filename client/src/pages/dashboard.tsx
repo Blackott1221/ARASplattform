@@ -1,26 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from "framer-motion";
+import { CI } from '@/lib/constants';
 
 // Import Dashboard Components
-import { CommandHeader } from "@/components/dashboard/CommandHeader";
-import { HotLeads } from "@/components/dashboard/HotLeads";
-import { StatsBar } from "@/components/dashboard/StatsBar";
-import { AriaAssistant } from "@/components/dashboard/AriaAssistant";
-import { SmartViews } from "@/components/dashboard/SmartViews";
-import { ChatView } from "@/components/dashboard/ChatView";
-import { Predictions } from "@/components/dashboard/Predictions";
-import { HeatMap } from "@/components/dashboard/HeatMap";
-import { LeadStory } from "@/components/dashboard/LeadStory";
-import { Gamification } from "@/components/dashboard/Gamification";
-import { AutoPilot } from "@/components/dashboard/AutoPilot";
-
-// ARAS CI
-export const CI = {
-  goldLight: '#E9D7C4',
-  orange: '#FE9100',
-  goldDark: '#A34E00',
-  black: '#0a0a0a'
-};
+import {
+  CommandHeader,
+  HotLeads,
+  StatsBar,
+  AriaAssistant,
+  SmartViews,
+  ChatView,
+  Predictions,
+  HeatMap,
+  LeadStory,
+  Gamification,
+  AutoPilot
+} from "@/components/dashboard";
 
 export default function DashboardPage() {
   const [activeView, setActiveView] = useState('money');

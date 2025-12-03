@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from "framer-motion";
 import { Flame, Mail, Check, Clock, Pause, Phone, TrendingUp, AlertTriangle } from 'lucide-react';
-import { CI } from '@/pages/dashboard';
+import { CI } from '@/lib/constants';
 
 interface Lead {
   id: number;

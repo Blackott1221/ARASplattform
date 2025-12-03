@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from "framer-motion";
 import { DollarSign, Flame, Clock, TrendingDown, X as XIcon, Calendar, Sparkles, TrendingUp, ChevronRight, Star, Trophy, Target } from 'lucide-react';
-import { CI } from '@/pages/dashboard';
+import { CI } from '@/lib/constants';
 
 interface SmartViewsProps {
   activeView: string;

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from "framer-motion";
 import { BarChart3, TrendingUp, Clock, Calendar, Info, Zap, Target } from 'lucide-react';
-import { CI } from '@/pages/dashboard';
+import { CI } from '@/lib/constants';
 
 export function HeatMap() {
   const [selectedCell, setSelectedCell] = useState<{ day: number; hour: number } | null>(null);

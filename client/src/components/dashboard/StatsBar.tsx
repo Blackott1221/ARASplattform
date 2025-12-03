@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from "framer-motion";
 import { Phone, Calendar, Mail, DollarSign, ArrowUp, ArrowDown, TrendingUp, Users, Target, Zap } from 'lucide-react';
-import { CI } from '@/pages/dashboard';
+import { CI } from '@/lib/constants';
 
 interface StatsBarProps {
   animatedStats: {

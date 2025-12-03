@@ -5,7 +5,7 @@ import {
   DollarSign, Clock, ChevronRight, Sparkles, AlertTriangle,
   CheckCircle, Calendar, TrendingDown, RefreshCw
 } from 'lucide-react';
-import { CI } from '@/pages/dashboard';
+import { CI } from '@/lib/constants';
 
 export function Predictions() {
   const [currentPrediction, setCurrentPrediction] = useState(0);
