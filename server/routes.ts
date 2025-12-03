@@ -2462,6 +2462,53 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     }
   });
 
+  // 🔥 NEUE ROUTE: Prompt-Validierung mit Gemini 2.5 Flash
+  app.post('/api/aras-voice/validate-prompt', requireAuth, async (req: any, res) => {
+    try {
+      const { message, contactName, answers } = req.body;
+      const userId = req.session.userId;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(401).json({ error: 'Nicht authentifiziert' });
+      }
+
+      logger.info('[VALIDATE-PROMPT] Starting validation...', { 
+        userId, 
+        messageLength: message?.length,
+        hasAnswers: !!answers 
+      });
+
+      const { validateAndEnhancePrompt } = await import('./voice/prompt-validator');
+      
+      // Baue vollständigen User-Kontext mit ALLEN Daten
+      const result = await validateAndEnhancePrompt({
+        userInput: message,
+        contactName,
+        previousAnswers: answers || {},
+        userContext: {
+          userName: user.firstName || user.username,
+          company: user.company || undefined,
+          website: user.website || undefined,
+          industry: user.industry || undefined,
+          role: user.role || undefined,
+          language: user.language || undefined,
+          aiProfile: user.aiProfile || {}
+        }
+      });
+
+      logger.info('[VALIDATE-PROMPT] Validation complete', {
+        isComplete: result.isComplete,
+        hasQuestions: (result.questions?.length || 0) > 0
+      });
+
+      res.json(result);
+    } catch (error: any) {
+      logger.error('[VALIDATE-PROMPT] Error:', error);
+      res.status(500).json({ error: error.message || 'Validierung fehlgeschlagen' });
+    }
+  });
+
   app.post('/api/aras-voice/smart-call', requireAuth, checkCallLimit, async (req: any, res) => {
   try {
     const userId = req.session.userId;

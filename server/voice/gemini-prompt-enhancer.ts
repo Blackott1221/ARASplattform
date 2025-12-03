@@ -83,7 +83,7 @@ function determinePurpose(message: string): string {
   return 'Allgemeines Anliegen';
 }
 
-// Hilfsfunktion: Generiere menschlichen Prompt
+// Hilfsfunktion: Generiere menschlichen Prompt (EINFACHE VERSION für Fallback)
 function generateHumanPrompt(input: CallInput, context: UserContext): string {
   const purpose = determinePurpose(input.message);
   
@@ -113,3 +113,6 @@ Jetzt führe das Gespräch!`;
   
   return basePrompt;
 }
+
+// HINWEIS: Die ULTRA-PERSONALISIERTE Version wird jetzt vom prompt-validator.ts
+// mit generateFinalPrompt() generiert, der ALLE User-Daten nutzt!

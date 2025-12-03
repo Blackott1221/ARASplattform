@@ -10,6 +10,7 @@ import { de } from 'date-fns/locale';
 import { Lock } from 'lucide-react';
 import type { SubscriptionResponse } from "@shared/schema";
 import arasLogo from "@/assets/aras_logo_1755067745303.png";
+import { CallWizard } from '@/components/power/call-wizard';
 
 // ----------------- ARAS CI -----------------
 const CI = {
@@ -68,6 +69,9 @@ export default function Power() {
   // NEW (UI only, no backend): bulk campaign inputs
   const [campaignGoal, setCampaignGoal] = useState("");
   const [bulkFileName, setBulkFileName] = useState<string | null>(null);
+  
+  // 🔥 NEW: Wizard State
+  const [showWizard, setShowWizard] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -209,28 +213,49 @@ export default function Power() {
     // UI only – keine Verarbeitung
   };
 
-  // ----------------- CALL LOGIC WITH POLLING -----------------
-  const makeCall = async () => {
+  // ----------------- 🔥 NEUE CALL LOGIC MIT WIZARD -----------------
+  // Schritt 1: Starte Wizard-Prozess
+  const handleStartCallProcess = () => {
     if (!contactName || !phoneNumber || !message) {
-      toast({ title: "Fehlende Angaben", description: "Bitte fülle alle Pflichtfelder aus", variant: "destructive" });
+      toast({ 
+        title: "Fehlende Angaben", 
+        description: "Bitte fülle alle Pflichtfelder aus", 
+        variant: "destructive" 
+      });
       return;
     }
     if (!validatePhoneNumber(phoneNumber)) {
-      toast({ title: "Ungültige Telefonnummer", description: "Format: +4917661119320 (ohne Leerzeichen)", variant: "destructive" });
+      toast({ 
+        title: "Ungültige Telefonnummer", 
+        description: "Format: +4917661119320 (ohne Leerzeichen)", 
+        variant: "destructive" 
+      });
       return;
     }
+    
+    // Öffne Wizard statt direkt anzurufen
+    setShowWizard(true);
+  };
+
+  // Schritt 2: Nach Wizard-Abschluss mit optimiertem Prompt anrufen
+  const handleWizardComplete = async (wizardData: any) => {
+    setShowWizard(false);
     setLoading(true);
     setResult(null);
     setCallStatus('processing');
     setCallDuration(0);
 
     try {
-      // Start the call
+      // Jetzt mit dem OPTIMIERTEN Prompt anrufen
       const response = await fetch("/api/aras-voice/smart-call", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ name: contactName, phoneNumber, message })
+        body: JSON.stringify({ 
+          name: wizardData.contactName,
+          phoneNumber: wizardData.phoneNumber,
+          message: wizardData.enhancedPrompt // 🔥 OPTIMIERTER PROMPT!
+        })
       });
       const data = await response.json();
       
@@ -692,7 +717,7 @@ export default function Power() {
                     {/* Call button */}
                     <div className="pt-1">
                       <button
-                        onClick={makeCall}
+                        onClick={handleStartCallProcess}
                         disabled={loading || !phoneNumber || !contactName || !message || !!phoneError || callStatus !== 'idle'}
                         className="w-full py-3 rounded-full font-semibold text-sm transition-all"
                         style={{
@@ -1237,6 +1262,17 @@ export default function Power() {
         .premium-scroll::-webkit-scrollbar-thumb { background: rgba(254,145,0,0.28); border-radius: 10px; }
         .premium-scroll::-webkit-scrollbar-thumb:hover { background: rgba(254,145,0,0.45); }
       `}</style>
+
+      {/* 🔥 WIZARD MODAL */}
+      {showWizard && (
+        <CallWizard
+          contactName={contactName}
+          phoneNumber={phoneNumber}
+          initialMessage={message}
+          onCallReady={handleWizardComplete}
+          onCancel={() => setShowWizard(false)}
+        />
+      )}
     </div>
   );
 }
