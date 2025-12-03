@@ -1,10 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from "framer-motion";
-import { Sidebar } from "@/components/layout/sidebar";
-import { TopBar } from "@/components/layout/topbar";
-import { useAuth } from "@/hooks/useAuth";
-import { useQuery } from "@tanstack/react-query";
-import type { User, SubscriptionResponse } from "@shared/schema";
 
 // Import Dashboard Components
 import { CommandHeader } from "@/components/dashboard/CommandHeader";
@@ -28,8 +23,6 @@ export const CI = {
 };
 
 export default function DashboardPage() {
-  const { user, isLoading: authLoading } = useAuth();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeView, setActiveView] = useState('money');
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [autoPilotActive, setAutoPilotActive] = useState(false);
@@ -41,16 +34,6 @@ export default function DashboardPage() {
     followUps: 0,
     pipeline: 0
   });
-
-  // Fetch subscription
-  const { data: subscriptionData } = useQuery<SubscriptionResponse>({
-    queryKey: ["/api/user/subscription"],
-    enabled: !!user,
-  });
-
-  const handleSectionChange = (section: string) => {
-    window.location.href = section === 'space' ? '/app' : `/app/${section}`;
-  };
 
   // Animate stats on mount
   useEffect(() => {
@@ -65,37 +48,8 @@ export default function DashboardPage() {
     return () => clearTimeout(timer);
   }, []);
 
-  if (authLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-black">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-12 h-12 border-4 border-t-transparent rounded-full" 
-          style={{ borderColor: CI.orange, borderTopColor: 'transparent' }}
-        />
-      </div>
-    );
-  }
-
   return (
-    <div className="flex h-screen overflow-hidden bg-black">
-      <Sidebar 
-        activeSection="dashboard" 
-        onSectionChange={handleSectionChange}
-        isCollapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-      />
-      
-      <div className="flex-1 flex flex-col relative overflow-hidden">
-        <TopBar 
-          currentSection="dashboard"
-          subscriptionData={subscriptionData}
-          user={user as User}
-          isVisible={true}
-        />
-        
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
+    <div className="flex-1 h-full overflow-y-auto custom-scrollbar bg-black relative">
           {/* Background Gradient */}
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute top-0 left-1/4 w-96 h-96 rounded-full opacity-5"
@@ -223,8 +177,6 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
       {/* Custom Scrollbar Styles */}
       <style>{`

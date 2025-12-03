@@ -1,10 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
 import { ChatInterface } from "@/components/chat/chat-interface";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import type { User, SubscriptionResponse } from "@shared/schema";
+
+// Lazy load pages for better performance
+const Dashboard = lazy(() => import("@/pages/dashboard"));
+const PowerPage = lazy(() => import("@/pages/power"));
+const CampaignsPage = lazy(() => import("@/pages/campaigns"));
+const LeadsPage = lazy(() => import("@/pages/leads"));
+const BillingPage = lazy(() => import("@/pages/billing"));
+const SettingsPage = lazy(() => import("@/pages/settings"));
 
 export default function App() {
   const [activeSection, setActiveSection] = useState("space");
@@ -15,6 +23,28 @@ export default function App() {
     queryKey: ["/api/user/subscription"],
     enabled: !!user && !isLoading,
   });
+
+  // Render the active section content
+  const renderActiveSection = () => {
+    switch (activeSection) {
+      case "space":
+        return <ChatInterface />;
+      case "dashboard":
+        return <Dashboard />;
+      case "power":
+        return <PowerPage />;
+      case "campaigns":
+        return <CampaignsPage />;
+      case "leads":
+        return <LeadsPage />;
+      case "billing":
+        return <BillingPage />;
+      case "settings":
+        return <SettingsPage />;
+      default:
+        return <ChatInterface />;
+    }
+  };
 
   if (isLoading) {
     return (
@@ -38,10 +68,17 @@ export default function App() {
           currentSection={activeSection}
           subscriptionData={subscriptionData}
           user={user as User}
+          isVisible={true}
         />
         
         <div className="flex-1 overflow-hidden">
-          <ChatInterface />
+          <Suspense fallback={
+            <div className="flex items-center justify-center h-full bg-black">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FE9100]" />
+            </div>
+          }>
+            {renderActiveSection()}
+          </Suspense>
         </div>
       </div>
     </div>

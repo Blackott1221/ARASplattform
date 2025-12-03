@@ -17,10 +17,14 @@ export function TopBar({ currentSection, subscriptionData, user, isVisible }: To
     switch (section) {
       case "space":
         return "SPACE";
+      case "dashboard":
+        return "COMMAND CENTER";
       case "power":
         return "POWER";
+      case "campaigns":
+        return "KAMPAGNEN";
       case "leads":
-        return "DASHBOARD";
+        return "WISSENSDATENBANK";
       case "billing":
         return "IHR PLAN";
       case "settings":
