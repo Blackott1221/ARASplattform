@@ -1,4 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from "react";
+import { useLocation } from "wouter";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
 import { ChatInterface } from "@/components/chat/chat-interface";
@@ -15,9 +16,28 @@ const BillingPage = lazy(() => import("@/pages/billing"));
 const SettingsPage = lazy(() => import("@/pages/settings"));
 
 export default function App() {
-  const [activeSection, setActiveSection] = useState("space");
+  const [location, setLocation] = useLocation();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const { user, isLoading } = useAuth();
+  
+  // Determine active section from URL
+  const getActiveSectionFromUrl = () => {
+    if (location.includes('/dashboard')) return 'dashboard';
+    if (location.includes('/power')) return 'power';
+    if (location.includes('/campaigns')) return 'campaigns';
+    if (location.includes('/leads')) return 'leads';
+    if (location.includes('/billing')) return 'billing';
+    if (location.includes('/settings')) return 'settings';
+    return 'space';
+  };
+  
+  const [activeSection, setActiveSection] = useState(getActiveSectionFromUrl());
+  
+  // Update active section when URL changes
+  useEffect(() => {
+    const section = getActiveSectionFromUrl();
+    setActiveSection(section);
+  }, [location]);
 
   const { data: subscriptionData } = useQuery<SubscriptionResponse>({
     queryKey: ["/api/user/subscription"],
@@ -58,7 +78,10 @@ export default function App() {
     <div className="flex h-screen bg-black overflow-hidden">
       <Sidebar
         activeSection={activeSection}
-        onSectionChange={setActiveSection}
+        onSectionChange={(section) => {
+          setActiveSection(section);
+          setLocation(`/app/${section}`);
+        }}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />

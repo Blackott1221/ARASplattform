@@ -31,6 +31,7 @@ import Billing from "@/pages/billing";
 import Settings from "@/pages/settings";
 import AuthPage from "@/pages/auth-page";
 import ArasMailingPage from "@/pages/aras-mailing";
+import AppPage from "@/pages/app";
 
 // Memoized video background component - never re-renders to keep video playing continuously
 const VideoBackground = memo(() => {
@@ -108,11 +109,13 @@ function Router() {
       ) : (
         <>
           {/* Authenticated routes */}
-          <Route path="/" component={Space} />
-          <Route path="/app" component={Space} />
+          <Route path="/" component={AppPage} />
+          <Route path="/app" component={AppPage} />
           <Route path="/app/voice" component={VoiceCalls} />
           <Route path="/space" component={Space} />
           <Route path="/app/space" component={Space} />
+          <Route path="/dashboard" component={AppPage} />
+          <Route path="/app/dashboard" component={AppPage} />
           <Route path="/power" component={Power} />
           <Route path="/app/power" component={Power} />
           <Route path="/voice-agents" component={VoiceAgents} />
