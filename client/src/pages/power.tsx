@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Lock } from 'lucide-react';
+import { Lock, Phone } from 'lucide-react';
 import type { SubscriptionResponse } from "@shared/schema";
 import arasLogo from "@/assets/aras_logo_1755067745303.png";
 import { CallWizard } from '@/components/power/call-wizard';
@@ -1075,177 +1075,161 @@ export default function Power() {
                 </div>
               </motion.div>
 
-              {/* RIGHT: Bulk Campaign – Coming Soon (locked), upload + goal */}
+              {/* RIGHT: Call History & Audio Playback */}
               <motion.div
                 initial={{ opacity: 0, x: 14 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5 }}
               >
-                <div className="relative rounded-2xl p-7 overflow-hidden"
+                <div
+                  className="relative rounded-2xl p-7"
                   style={{
                     background: 'rgba(0,0,0,0.55)',
                     border: '1px solid rgba(255,255,255,0.10)',
                     backdropFilter: 'blur(16px)',
                   }}
                 >
-                  {/* Lock overlay */}
-                  <div className="absolute inset-0 pointer-events-none">
-                    <motion.div
-                      className="absolute inset-0"
-                      style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.0), rgba(0,0,0,0.25))' }}
-                      initial={{ opacity: 0.0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.6 }}
-                    />
-                  </div>
-
-                  {/* Lock Icon & Title */}
+                  {/* Header */}
                   <div className="mb-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="text-[13px] text-gray-400 tracking-wide uppercase">Massencalls</div>
-                      <motion.div
-                        animate={{
-                          scale: [1, 1.1, 1],
-                          rotate: [0, -5, 5, 0]
-                        }}
-                        transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-                        className="p-2 rounded-lg"
+                    <div className="flex items-center justify-between mb-2">
+                      <h3
+                        className="text-xl font-bold"
                         style={{
-                          background: 'rgba(254, 145, 0, 0.1)',
-                          border: '1px solid rgba(254, 145, 0, 0.3)'
+                          fontFamily: 'Orbitron, sans-serif',
+                          background: `linear-gradient(90deg, ${CI.goldLight}, ${CI.orange})`,
+                          WebkitBackgroundClip: 'text',
+                          backgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent'
                         }}
                       >
-                        <Lock className="w-5 h-5" style={{ color: CI.orange }} />
-                      </motion.div>
+                        Anrufverlauf
+                      </h3>
+                      <div className="text-xs text-gray-400">
+                        {callHistory.length} {callHistory.length === 1 ? 'Anruf' : 'Anrufe'}
+                      </div>
                     </div>
-                    <h3
-                      className="text-2xl font-bold"
-                      style={{
-                        fontFamily: 'Orbitron, sans-serif',
-                        background: `linear-gradient(90deg, ${CI.goldLight}, ${CI.orange})`,
-                        WebkitBackgroundClip: 'text',
-                        backgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent'
-                      }}
-                    >
-                      10.000 Anrufe gleichzeitig
-                    </h3>
+                    <p className="text-xs text-gray-400">Ihre letzten ausgeführten Anrufe</p>
                   </div>
 
-                  {/* Goal input (not a select) */}
-                  <div className="mb-5">
-                    <label className="block text-[12px] font-medium text-gray-300 mb-2">Ziel der Kampagne</label>
-                    <input
-                      type="text"
-                      value={campaignGoal}
-                      onChange={(e) => setCampaignGoal(e.target.value)}
-                      placeholder="Freiform – z. B. „Akquiriere Kunden für meine Dienstleistung XY“"
-                      className="w-full px-4 py-[11px] rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all"
-                      style={{
-                        background: 'rgba(255,255,255,0.03)',
-                        border: '1px solid rgba(255,255,255,0.10)'
-                      }}
-                      onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(254,145,0,0.45)'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(254,145,0,0.08)'; }}
-                      onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)'; e.currentTarget.style.boxShadow = 'none'; }}
-                    />
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {EXAMPLE_PROMPTS.map((p, i) => (
-                        <button
-                          key={i}
-                          onClick={() => setCampaignGoal(p.text)}
-                          className="px-3 py-1.5 rounded-full text-[12px] transition-all"
+                  {/* Call List */}
+                  <div className="space-y-3 max-h-[600px] overflow-y-auto premium-scroll">
+                    {callHistory.length === 0 ? (
+                      <div className="text-center py-12">
+                        <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center"
                           style={{
-                            background: 'rgba(255,255,255,0.03)',
-                            border: '1px solid rgba(255,255,255,0.10)',
-                            color: '#d1d5db'
-                          }}
-                          onMouseEnter={(e) => {
-                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(254,145,0,0.35)';
-                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(254,145,0,0.06)';
-                            (e.currentTarget as HTMLButtonElement).style.color = '#ffffff';
-                          }}
-                          onMouseLeave={(e) => {
-                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.10)';
-                            (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.03)';
-                            (e.currentTarget as HTMLButtonElement).style.color = '#d1d5db';
+                            background: `linear-gradient(135deg, ${CI.orange}15, ${CI.goldLight}10)`,
+                            border: `1px solid ${CI.orange}30`
                           }}
                         >
-                          {p.text}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Upload card */}
-                  <div
-                    className="rounded-xl p-5"
-                    style={{
-                      background: 'rgba(255,255,255,0.03)',
-                      border: '1px solid rgba(255,255,255,0.10)'
-                    }}
-                  >
-                    <div className="text-[12px] text-gray-400 mb-2">
-                      Liste hochladen (CSV oder XLSX) – Spalten: <span className="text-gray-300">Name</span>, <span className="text-gray-300">Firma</span>, <span className="text-gray-300">Telefon</span>
-                    </div>
-
-                    <div
-                      className="rounded-lg border-dashed p-6 text-center transition-all"
-                      style={{
-                        borderColor: 'rgba(255,255,255,0.12)',
-                        borderWidth: 1,
-                        background: 'rgba(0,0,0,0.25)'
-                      }}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        onBulkFilePick(e.dataTransfer.files?.[0]);
-                      }}
-                    >
-                      <input
-                        id="bulkfile"
-                        type="file"
-                        accept=".csv,.xlsx"
-                        className="hidden"
-                        onChange={(e) => onBulkFilePick(e.target.files?.[0] || undefined)}
-                      />
-                      <label htmlFor="bulkfile" className="cursor-pointer inline-block">
-                        <div className="text-sm text-gray-300">
-                          {bulkFileName ? (
-                            <span className="text-white">{bulkFileName}</span>
-                          ) : (
-                            <>
-                              Datei auswählen oder hier ablegen
-                            </>
-                          )}
+                          <Phone className="w-7 h-7 text-gray-500" />
                         </div>
-                      </label>
-                    </div>
+                        <p className="text-sm text-gray-400">Noch keine Anrufe getätigt</p>
+                        <p className="text-xs text-gray-500 mt-1">Starten Sie Ihren ersten Anruf!</p>
+                      </div>
+                    ) : (
+                      callHistory.map((call, idx) => (
+                        <motion.div
+                          key={call.id || idx}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.05 }}
+                          className="rounded-xl p-4 cursor-pointer transition-all"
+                          style={{
+                            background: expandedCall === call.id ? 'rgba(254, 145, 0, 0.08)' : 'rgba(255,255,255,0.03)',
+                            border: `1px solid ${expandedCall === call.id ? 'rgba(254, 145, 0, 0.3)' : 'rgba(255,255,255,0.08)'}`,
+                          }}
+                          onClick={() => setExpandedCall(expandedCall === call.id ? null : call.id)}
+                          onMouseEnter={(e) => {
+                            if (expandedCall !== call.id) {
+                              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (expandedCall !== call.id) {
+                              e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                            }
+                          }}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-semibold text-white truncate">{call.contactName || 'Unbekannt'}</span>
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                  call.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                                  call.status === 'failed' ? 'bg-red-500/20 text-red-400' :
+                                  'bg-yellow-500/20 text-yellow-400'
+                                }`}>
+                                  {call.status === 'completed' ? 'Abgeschlossen' :
+                                   call.status === 'failed' ? 'Fehlgeschlagen' :
+                                   'Ausstehend'}
+                                </span>
+                              </div>
+                              <div className="text-xs text-gray-400 truncate">{call.phoneNumber}</div>
+                              {call.createdAt && (
+                                <div className="text-xs text-gray-500 mt-1">
+                                  {formatDistanceToNow(new Date(call.createdAt), { addSuffix: true, locale: de })}
+                                </div>
+                              )}
+                            </div>
+                            <motion.div
+                              animate={{ rotate: expandedCall === call.id ? 180 : 0 }}
+                              transition={{ duration: 0.2 }}
+                            >
+                              <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </motion.div>
+                          </div>
 
-                    <div className="mt-3 text-[12px] text-gray-500 leading-relaxed">
-                      ARAS analysiert für jeden Kontakt bis zu <span style={{ color: CI.goldLight }}>500 Quellen</span>
-                      – Webseiten, Handelsregister, Presse, Social Profiles und mehr – und passt das Gespräch präzise an
-                      Person, Firma und Kontext an.
-                    </div>
-                  </div>
+                          {/* Expanded Details */}
+                          <AnimatePresence>
+                            {expandedCall === call.id && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="mt-4 pt-4 border-t border-gray-700/50 space-y-3"
+                              >
+                                {call.message && (
+                                  <div>
+                                    <div className="text-xs text-gray-500 mb-1">Nachricht:</div>
+                                    <div className="text-sm text-gray-300 leading-relaxed">{call.message}</div>
+                                  </div>
+                                )}
+                                
+                                {call.duration && (
+                                  <div>
+                                    <div className="text-xs text-gray-500 mb-1">Dauer:</div>
+                                    <div className="text-sm text-gray-300">{Math.floor(call.duration / 60)}:{(call.duration % 60).toString().padStart(2, '0')} Min</div>
+                                  </div>
+                                )}
 
-                  {/* Locked Badge */}
-                  <div className="mt-6">
-                    <div
-                      className="w-full rounded-xl px-4 py-3 text-center text-[13px] font-semibold tracking-wide flex items-center justify-center gap-3"
-                      style={{
-                        color: '#ffffff',
-                        background: 'linear-gradient(90deg, rgba(254,145,0,0.16), rgba(163,78,0,0.16))',
-                        border: '1px solid rgba(254,145,0,0.35)',
-                        boxShadow: '0 8px 28px rgba(254,145,0,0.12)',
-                        fontFamily: 'Orbitron, sans-serif'
-                      }}
-                    >
-                      <Lock className="w-4 h-4" style={{ color: CI.orange }} />
-                      <span>Nur für ARAS Ultimate – Enterprise Mode verfügbar</span>
-                    </div>
-                    <div className="text-[12px] text-gray-500 mt-2 text-center">
-                      Massencalls sind exklusiv für Enterprise-Kunden. Kontaktiere uns für ein individuelles Angebot.
-                    </div>
+                                {/* Audio Player Placeholder */}
+                                {call.recordingUrl && (
+                                  <div>
+                                    <div className="text-xs text-gray-500 mb-2">Aufnahme:</div>
+                                    <audio 
+                                      controls 
+                                      className="w-full"
+                                      style={{
+                                        height: '32px',
+                                        borderRadius: '8px'
+                                      }}
+                                    >
+                                      <source src={call.recordingUrl} type="audio/mpeg" />
+                                      Ihr Browser unterstützt keine Audio-Wiedergabe.
+                                    </audio>
+                                  </div>
+                                )}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </motion.div>
+                      ))
+                    )}
                   </div>
                 </div>
               </motion.div>

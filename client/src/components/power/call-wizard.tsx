@@ -178,21 +178,19 @@ export function CallWizard({
           
           {/* Content */}
           <div className="relative z-10">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-              className="w-16 h-16 mx-auto mb-6"
-              style={{
-                background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldLight})`,
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: `0 0 30px ${CI.orange}40`
-              }}
-            >
-              <Sparkles className="w-8 h-8 text-white" />
-            </motion.div>
+            {/* Simple Loading Circle */}
+            <div className="w-16 h-16 mx-auto mb-6 relative">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                className="w-full h-full rounded-full"
+                style={{
+                  border: `3px solid rgba(254, 145, 0, 0.2)`,
+                  borderTopColor: CI.orange,
+                  boxShadow: `0 0 20px ${CI.orange}30`
+                }}
+              />
+            </div>
             
             <motion.h3
               initial={{ opacity: 0, y: 10 }}
