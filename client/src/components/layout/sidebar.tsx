@@ -9,7 +9,7 @@ import {
   ChevronRight,
   ChevronDown,
   LogOut,
-  LayoutDashboard,
+  BookOpen,
   Zap,
   Megaphone
 } from "lucide-react";
@@ -38,7 +38,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
         { id: "campaigns", label: "Kampagnen", icon: Megaphone }
       ]
     },
-    { id: "leads", label: "Dashboard", icon: LayoutDashboard },
+    { id: "leads", label: "Wissensdatenbank", icon: BookOpen },
     { id: "billing", label: "Ihr Plan", icon: CreditCard },
     { id: "settings", label: "Einstellungen", icon: Settings },
   ];
