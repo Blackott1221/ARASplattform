@@ -7,8 +7,11 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   LogOut,
-  LayoutDashboard
+  LayoutDashboard,
+  Zap,
+  Megaphone
 } from "lucide-react";
 import { useState } from "react";
 import arasLogo from "@/assets/aras_logo_1755067745303.png";
@@ -22,14 +25,31 @@ interface SidebarProps {
 
 export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, onToggleCollapse }: SidebarProps) {
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(['power']); // Power ist initial aufgeklappt
 
   const navItems = [
     { id: "space", label: "Space", icon: MessageCircle },
-    { id: "power", label: "Power", icon: Phone },
+    { 
+      id: "power", 
+      label: "Power", 
+      icon: Phone,
+      subItems: [
+        { id: "power", label: "Einzelanruf", icon: Zap },
+        { id: "campaigns", label: "Kampagnen", icon: Megaphone }
+      ]
+    },
     { id: "leads", label: "Dashboard", icon: LayoutDashboard },
     { id: "billing", label: "Ihr Plan", icon: CreditCard },
     { id: "settings", label: "Einstellungen", icon: Settings },
   ];
+
+  const toggleMenu = (itemId: string) => {
+    setExpandedMenus(prev => 
+      prev.includes(itemId) 
+        ? prev.filter(id => id !== itemId)
+        : [...prev, itemId]
+    );
+  };
 
   return (
     <motion.div 
@@ -127,6 +147,8 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
               const Icon = item.icon;
               const isActive = activeSection === item.id;
               const isHovered = hoveredItem === item.id;
+              const hasSubItems = 'subItems' in item && item.subItems;
+              const isExpanded = expandedMenus.includes(item.id);
               
               return (
                 <motion.div
@@ -135,11 +157,18 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.03, duration: 0.3 }}
                 >
-                  <motion.a
-                    href={item.id === 'space' ? '/app' : `/app/${item.id}`}
+                  {/* Main Item */}
+                  <motion.div
+                    onClick={() => {
+                      if (hasSubItems && !isCollapsed) {
+                        toggleMenu(item.id);
+                      } else if (!hasSubItems) {
+                        window.location.href = item.id === 'space' ? '/app' : `/app/${item.id}`;
+                      }
+                    }}
                     onMouseEnter={() => setHoveredItem(item.id)}
                     onMouseLeave={() => setHoveredItem(null)}
-                    className="relative block group"
+                    className="relative block group cursor-pointer"
                     whileTap={{ scale: 0.98 }}
                   >
                     {/* Wave Border Animation Container */}
@@ -202,7 +231,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
                       {/* Label - ONLY VISIBLE WHEN OPEN */}
                       {!isCollapsed && (
                         <motion.span
-                          className="ml-3 text-[11px] font-medium tracking-wide"
+                          className="ml-3 text-[11px] font-medium tracking-wide flex-1"
                           style={{
                             fontFamily: 'Orbitron, sans-serif',
                             color: isActive ? '#FE9100' : isHovered ? '#e9d7c4' : '#9ca3af'
@@ -215,8 +244,21 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
                         </motion.span>
                       )}
 
+                      {/* Chevron für Untermenü */}
+                      {hasSubItems && !isCollapsed && (
+                        <motion.div
+                          animate={{ rotate: isExpanded ? 180 : 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <ChevronDown 
+                            className="w-3 h-3"
+                            style={{ color: isActive ? '#FE9100' : '#6b7280' }}
+                          />
+                        </motion.div>
+                      )}
+
                       {/* Active Dot Indicator */}
-                      {isActive && (
+                      {isActive && !hasSubItems && (
                         <motion.div
                           className={`absolute ${isCollapsed ? 'bottom-0.5 left-1/2 -translate-x-1/2' : 'right-2 top-1/2 -translate-y-1/2'} w-1 h-1 rounded-full`}
                           style={{
@@ -229,7 +271,79 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
                         />
                       )}
                     </div>
-                  </motion.a>
+                  </motion.div>
+
+                  {/* Submenu */}
+                  {hasSubItems && !isCollapsed && (
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden mt-2 ml-4 space-y-2"
+                        >
+                          {item.subItems.map((subItem: any) => {
+                            const SubIcon = subItem.icon;
+                            const isSubActive = activeSection === subItem.id;
+                            const isSubHovered = hoveredItem === subItem.id;
+
+                            return (
+                              <motion.a
+                                key={subItem.id}
+                                href={`/app/${subItem.id}`}
+                                onMouseEnter={() => setHoveredItem(subItem.id)}
+                                onMouseLeave={() => setHoveredItem(null)}
+                                className="relative block group"
+                                whileTap={{ scale: 0.98 }}
+                                initial={{ x: -10, opacity: 0 }}
+                                animate={{ x: 0, opacity: 1 }}
+                                transition={{ duration: 0.2 }}
+                              >
+                                <div className="relative flex items-center px-3 py-2 rounded-lg transition-all"
+                                  style={{
+                                    background: isSubActive 
+                                      ? 'rgba(254, 145, 0, 0.1)' 
+                                      : isSubHovered 
+                                        ? 'rgba(255, 255, 255, 0.03)' 
+                                        : 'transparent',
+                                    border: `1px solid ${isSubActive ? 'rgba(254, 145, 0, 0.3)' : 'transparent'}`
+                                  }}
+                                >
+                                  <SubIcon 
+                                    className="w-3.5 h-3.5"
+                                    style={{
+                                      color: isSubActive ? '#FE9100' : isSubHovered ? '#e9d7c4' : '#6b7280'
+                                    }}
+                                  />
+                                  <span
+                                    className="ml-2 text-[10px] font-medium tracking-wide"
+                                    style={{
+                                      fontFamily: 'Orbitron, sans-serif',
+                                      color: isSubActive ? '#FE9100' : isSubHovered ? '#e9d7c4' : '#9ca3af'
+                                    }}
+                                  >
+                                    {subItem.label}
+                                  </span>
+
+                                  {/* Active indicator für Subitem */}
+                                  {isSubActive && (
+                                    <motion.div
+                                      className="absolute right-2 w-1 h-1 rounded-full"
+                                      style={{ background: '#FE9100' }}
+                                      animate={{ opacity: [0.4, 1, 0.4] }}
+                                      transition={{ duration: 2, repeat: Infinity }}
+                                    />
+                                  )}
+                                </div>
+                              </motion.a>
+                            );
+                          })}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  )}
                 </motion.div>
               );
             })}
