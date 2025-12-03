@@ -19,6 +19,51 @@ const TYPED_LINES = [
   "Du hörst sie."
 ];
 
+// Live Date and Time Component
+function LiveDateTime() {
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000); // Update every second
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatDateTime = (date: Date) => {
+    const days = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+    const months = [
+      'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+      'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
+    ];
+
+    const dayName = days[date.getDay()];
+    const day = date.getDate();
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+
+    return `${dayName}. ${day}. ${month} ${year}, ${hours}:${minutes} Uhr`;
+  };
+
+  return (
+    <div
+      className="inline-block px-6 py-3 rounded-full text-sm font-bold"
+      style={{
+        fontFamily: 'Orbitron, sans-serif',
+        background: 'rgba(254, 145, 0, 0.1)',
+        border: '1px solid rgba(254, 145, 0, 0.3)',
+        color: '#e9d7c4',
+        backdropFilter: 'blur(10px)'
+      }}
+    >
+      {formatDateTime(currentTime)}
+    </div>
+  );
+}
+
 export default function AuthPage() {
   const [showFeaturesPanel, setShowFeaturesPanel] = useState(false);
   const [, setLocation] = useLocation();
@@ -476,6 +521,16 @@ export default function AuthPage() {
             transition={{ duration: 0.8, delay: 0.3 }}
             className="space-y-10"
           >
+            {/* Live Date and Time */}
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="text-center"
+            >
+              <LiveDateTime />
+            </motion.div>
+
             {/* Pre-Launch Badge */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
