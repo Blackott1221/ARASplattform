@@ -24,11 +24,18 @@ export default function Campaigns() {
 
   // Form State
   const [campaignName, setCampaignName] = useState('');
-  const [campaignGoal, setCampaignGoal] = useState('');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [tone, setTone] = useState('freundlich');
-  const [urgency, setUrgency] = useState('mittel');
   const [maxConcurrentCalls, setMaxConcurrentCalls] = useState(100);
+  
+  // Intelligente personalisierte Felder
+  const [targetProduct, setTargetProduct] = useState('');
+  const [callObjective, setCallObjective] = useState('');
+  const [targetAudience, setTargetAudience] = useState('');
+  const [keyMessage, setKeyMessage] = useState('');
+  const [desiredOutcome, setDesiredOutcome] = useState('');
+  const [followUpAction, setFollowUpAction] = useState('');
+  const [specialOffers, setSpecialOffers] = useState('');
+  const [objectionHandling, setObjectionHandling] = useState('');
 
   // Fetch subscription
   const { data: subscriptionData } = useQuery<SubscriptionResponse>({
@@ -73,10 +80,10 @@ export default function Campaigns() {
   };
 
   const handleStartCampaign = async () => {
-    if (!campaignName || !campaignGoal || !uploadedFile) {
+    if (!campaignName || !targetProduct || !callObjective || !uploadedFile) {
       toast({
         title: 'Fehlende Angaben',
-        description: 'Bitte füllen Sie alle Pflichtfelder aus und laden Sie eine Kontaktliste hoch.',
+        description: 'Bitte füllen Sie alle Pflichtfelder (*) aus und laden Sie eine Kontaktliste hoch.',
         variant: 'destructive'
       });
       return;
@@ -84,11 +91,44 @@ export default function Campaigns() {
 
     toast({
       title: 'Kampagne wird gestartet',
-      description: 'Ihre Massencall-Kampagne wird vorbereitet...'
+      description: 'ARAS AI analysiert Ihre Zielgruppe und passt Gespräche individuell an...'
     });
 
     // TODO: Implementiere Backend-Integration
   };
+
+  // Generiere personalisierte Vorschläge basierend auf User-Daten
+  const getProductSuggestions = () => {
+    const aiProfile = user?.aiProfile as any;
+    if (!aiProfile) return [];
+    
+    const suggestions = [];
+    if (aiProfile.products && aiProfile.products.length > 0) {
+      suggestions.push(...aiProfile.products.slice(0, 3));
+    }
+    if (aiProfile.services && aiProfile.services.length > 0) {
+      suggestions.push(...aiProfile.services.slice(0, 3));
+    }
+    return suggestions;
+  };
+
+  const getAudienceSuggestions = () => {
+    const aiProfile = user?.aiProfile as any;
+    if (!aiProfile) return [];
+    
+    const suggestions = [];
+    if (aiProfile.targetAudience) {
+      suggestions.push(aiProfile.targetAudience);
+    }
+    if (user?.industry) {
+      suggestions.push(`${user.industry}-Unternehmen`);
+      suggestions.push(`Entscheider in ${user.industry}`);
+    }
+    return suggestions;
+  };
+
+  const productSuggestions = getProductSuggestions();
+  const audienceSuggestions = getAudienceSuggestions();
 
   if (authLoading) {
     return (
@@ -188,7 +228,7 @@ export default function Campaigns() {
                   </div>
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-5">
                   {/* Campaign Name */}
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">Kampagnenname*</label>
@@ -197,7 +237,7 @@ export default function Campaigns() {
                       value={campaignName}
                       onChange={(e) => setCampaignName(e.target.value)}
                       placeholder="z.B. Q1 2025 Akquise"
-                      className="w-full px-4 py-3 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all"
+                      className="w-full px-4 py-2.5 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all text-sm"
                       style={{
                         background: 'rgba(255,255,255,0.03)',
                         border: '1px solid rgba(255,255,255,0.10)',
@@ -213,15 +253,236 @@ export default function Campaigns() {
                     />
                   </div>
 
-                  {/* Campaign Goal */}
+                  {/* Produkt/Dienstleistung - MIT VORSCHLÄGEN */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Kampagnenziel*</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Welches Produkt / Dienstleistung verkaufen?*
+                    </label>
+                    <input
+                      type="text"
+                      value={targetProduct}
+                      onChange={(e) => setTargetProduct(e.target.value)}
+                      placeholder={productSuggestions[0] || `z.B. ${user?.company ? user.company + ' Lösung' : 'Premium Software'}`}
+                      className="w-full px-4 py-2.5 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all text-sm"
+                      style={{
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(255,255,255,0.10)',
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'rgba(254,145,0,0.45)';
+                        e.currentTarget.style.boxShadow = '0 0 0 4px rgba(254,145,0,0.08)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    />
+                    {/* Schnellauswahl aus Profil */}
+                    {productSuggestions.length > 0 && !targetProduct && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {productSuggestions.map((suggestion, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setTargetProduct(suggestion)}
+                            className="px-3 py-1 rounded-full text-xs transition-all"
+                            style={{
+                              background: 'rgba(254,145,0,0.1)',
+                              border: '1px solid rgba(254,145,0,0.3)',
+                              color: CI.goldLight
+                            }}
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Anrufziel */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Was ist das Ziel des Anrufs?*
+                    </label>
+                    <select
+                      value={callObjective}
+                      onChange={(e) => setCallObjective(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl text-white text-sm focus:outline-none transition-all"
+                      style={{
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(255,255,255,0.10)',
+                      }}
+                    >
+                      <option value="">Ziel auswählen...</option>
+                      <option value="termin">Termin vereinbaren</option>
+                      <option value="demo">Produktdemo anbieten</option>
+                      <option value="angebot">Angebot unterbreiten</option>
+                      <option value="qualifikation">Lead qualifizieren</option>
+                      <option value="reaktivierung">Kunden reaktivieren</option>
+                      <option value="feedback">Feedback einholen</option>
+                      <option value="upsell">Upselling / Cross-Selling</option>
+                      <option value="event">Event-Einladung</option>
+                    </select>
+                  </div>
+
+                  {/* Zielgruppe */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      An wen richtet sich die Kampagne?
+                    </label>
+                    <input
+                      type="text"
+                      value={targetAudience}
+                      onChange={(e) => setTargetAudience(e.target.value)}
+                      placeholder={audienceSuggestions[0] || 'z.B. Geschäftsführer mittelständischer Unternehmen'}
+                      className="w-full px-4 py-2.5 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all text-sm"
+                      style={{
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(255,255,255,0.10)',
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'rgba(254,145,0,0.45)';
+                        e.currentTarget.style.boxShadow = '0 0 0 4px rgba(254,145,0,0.08)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    />
+                    {audienceSuggestions.length > 0 && !targetAudience && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {audienceSuggestions.map((suggestion, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setTargetAudience(suggestion)}
+                            className="px-3 py-1 rounded-full text-xs transition-all"
+                            style={{
+                              background: 'rgba(254,145,0,0.1)',
+                              border: '1px solid rgba(254,145,0,0.3)',
+                              color: CI.goldLight
+                            }}
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Kernbotschaft */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Kernbotschaft / USP
+                    </label>
                     <textarea
-                      value={campaignGoal}
-                      onChange={(e) => setCampaignGoal(e.target.value)}
-                      placeholder="z.B. Akquiriere Neukunden für unsere neue Dienstleistung XY..."
-                      rows={4}
-                      className="w-full px-4 py-3 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all resize-none"
+                      value={keyMessage}
+                      onChange={(e) => setKeyMessage(e.target.value)}
+                      placeholder="Was macht Ihr Angebot einzigartig? Was ist der Hauptnutzen?"
+                      rows={3}
+                      className="w-full px-4 py-2.5 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all resize-none text-sm"
+                      style={{
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(255,255,255,0.10)',
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'rgba(254,145,0,0.45)';
+                        e.currentTarget.style.boxShadow = '0 0 0 4px rgba(254,145,0,0.08)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    />
+                  </div>
+
+                  {/* Erwünschtes Ergebnis */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Gewünschtes Ergebnis
+                    </label>
+                    <input
+                      type="text"
+                      value={desiredOutcome}
+                      onChange={(e) => setDesiredOutcome(e.target.value)}
+                      placeholder="z.B. Termin in Kalender eintragen, Ja zur Demo"
+                      className="w-full px-4 py-2.5 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all text-sm"
+                      style={{
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(255,255,255,0.10)',
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'rgba(254,145,0,0.45)';
+                        e.currentTarget.style.boxShadow = '0 0 0 4px rgba(254,145,0,0.08)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    />
+                  </div>
+
+                  {/* Follow-Up Aktion */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Follow-Up Aktion
+                    </label>
+                    <input
+                      type="text"
+                      value={followUpAction}
+                      onChange={(e) => setFollowUpAction(e.target.value)}
+                      placeholder="z.B. Email mit Unterlagen senden, Rückruf vereinbaren"
+                      className="w-full px-4 py-2.5 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all text-sm"
+                      style={{
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(255,255,255,0.10)',
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'rgba(254,145,0,0.45)';
+                        e.currentTarget.style.boxShadow = '0 0 0 4px rgba(254,145,0,0.08)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    />
+                  </div>
+
+                  {/* Spezielle Angebote */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Spezielle Angebote / Aktionen
+                    </label>
+                    <input
+                      type="text"
+                      value={specialOffers}
+                      onChange={(e) => setSpecialOffers(e.target.value)}
+                      placeholder="z.B. 20% Rabatt für Erstbesteller, kostenloser Test"
+                      className="w-full px-4 py-2.5 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all text-sm"
+                      style={{
+                        background: 'rgba(255,255,255,0.03)',
+                        border: '1px solid rgba(255,255,255,0.10)',
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = 'rgba(254,145,0,0.45)';
+                        e.currentTarget.style.boxShadow = '0 0 0 4px rgba(254,145,0,0.08)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    />
+                  </div>
+
+                  {/* Einwandbehandlung */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Häufige Einwände & Antworten
+                    </label>
+                    <textarea
+                      value={objectionHandling}
+                      onChange={(e) => setObjectionHandling(e.target.value)}
+                      placeholder='z.B. "Zu teuer" → Wir bieten flexible Zahlungsmodelle'
+                      rows={3}
+                      className="w-full px-4 py-2.5 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all resize-none text-sm"
                       style={{
                         background: 'rgba(255,255,255,0.03)',
                         border: '1px solid rgba(255,255,255,0.10)',
@@ -241,7 +502,7 @@ export default function Campaigns() {
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">Kontaktliste (CSV/XLSX)*</label>
                     <div
-                      className="rounded-xl border-2 border-dashed p-8 text-center transition-all cursor-pointer"
+                      className="rounded-xl border-2 border-dashed p-6 text-center transition-all cursor-pointer"
                       style={{
                         borderColor: uploadedFile ? CI.orange + '60' : 'rgba(255,255,255,0.15)',
                         background: uploadedFile ? 'rgba(254,145,0,0.05)' : 'rgba(0,0,0,0.25)'
@@ -257,62 +518,25 @@ export default function Campaigns() {
                         className="hidden"
                         onChange={handleFileUpload}
                       />
-                      <Upload className="w-12 h-12 mx-auto mb-3" style={{ color: uploadedFile ? CI.orange : '#6b7280' }} />
+                      <Upload className="w-10 h-10 mx-auto mb-2" style={{ color: uploadedFile ? CI.orange : '#6b7280' }} />
                       {uploadedFile ? (
                         <>
-                          <p className="text-white font-medium">{uploadedFile.name}</p>
+                          <p className="text-white font-medium text-sm">{uploadedFile.name}</p>
                           <p className="text-xs text-gray-400 mt-1">{(uploadedFile.size / 1024).toFixed(2)} KB</p>
                         </>
                       ) : (
                         <>
-                          <p className="text-gray-300">Datei hier ablegen oder klicken</p>
-                          <p className="text-xs text-gray-500 mt-1">CSV oder XLSX (Spalten: Name, Firma, Telefon)</p>
+                          <p className="text-gray-300 text-sm">Datei hier ablegen oder klicken</p>
+                          <p className="text-xs text-gray-500 mt-1">CSV oder XLSX (Name, Firma, Telefon)</p>
                         </>
                       )}
                     </div>
                   </div>
 
-                  {/* Settings */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-400 mb-2">Tonalität</label>
-                      <select
-                        value={tone}
-                        onChange={(e) => setTone(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg text-white text-sm focus:outline-none"
-                        style={{
-                          background: 'rgba(255,255,255,0.05)',
-                          border: '1px solid rgba(255,255,255,0.10)',
-                        }}
-                      >
-                        <option value="formal">Formal</option>
-                        <option value="freundlich">Freundlich</option>
-                        <option value="neutral">Neutral</option>
-                        <option value="direkt">Direkt</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-400 mb-2">Dringlichkeit</label>
-                      <select
-                        value={urgency}
-                        onChange={(e) => setUrgency(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg text-white text-sm focus:outline-none"
-                        style={{
-                          background: 'rgba(255,255,255,0.05)',
-                          border: '1px solid rgba(255,255,255,0.10)',
-                        }}
-                      >
-                        <option value="niedrig">Niedrig</option>
-                        <option value="mittel">Mittel</option>
-                        <option value="hoch">Hoch</option>
-                      </select>
-                    </div>
-                  </div>
-
                   {/* Max Concurrent Calls */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-400 mb-2">
-                      Gleichzeitige Anrufe: <span style={{ color: CI.orange }}>{maxConcurrentCalls}</span>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Gleichzeitige Anrufe: <span style={{ color: CI.orange, fontWeight: 700 }}>{maxConcurrentCalls}</span>
                     </label>
                     <input
                       type="range"
@@ -333,18 +557,44 @@ export default function Campaigns() {
                     </div>
                   </div>
 
+                  {/* Personalisierungs-Hinweis */}
+                  <div className="rounded-xl p-4"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.08), rgba(233, 215, 196, 0.05))',
+                      border: '1px solid rgba(254, 145, 0, 0.2)',
+                    }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{
+                          background: 'rgba(254, 145, 0, 0.15)',
+                          border: '1px solid rgba(254, 145, 0, 0.3)'
+                        }}
+                      >
+                        <Users className="w-4 h-4" style={{ color: CI.orange }} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs font-semibold text-white mb-1">KI-Personalisierung aktiv</p>
+                        <p className="text-xs text-gray-400 leading-relaxed">
+                          ARAS AI nutzt Ihre Profildaten ({user?.company || 'Unternehmen'}, {user?.industry || 'Branche'}) 
+                          und analysiert für jeden Kontakt bis zu 500 Quellen für maximale Relevanz.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Start Button */}
                   <button
                     onClick={handleStartCampaign}
-                    disabled={!campaignName || !campaignGoal || !uploadedFile}
-                    className="w-full py-4 rounded-2xl font-bold text-lg transition-all hover:scale-[1.02] flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed"
+                    disabled={!campaignName || !targetProduct || !callObjective || !uploadedFile}
+                    className="w-full py-4 rounded-2xl font-bold text-base transition-all hover:scale-[1.02] flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{
-                      background: !campaignName || !campaignGoal || !uploadedFile
+                      background: !campaignName || !targetProduct || !callObjective || !uploadedFile
                         ? 'rgba(100, 100, 100, 0.3)'
                         : `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
-                      border: `1px solid ${!campaignName || !campaignGoal || !uploadedFile ? 'rgba(255, 255, 255, 0.1)' : CI.orange}`,
+                      border: `1px solid ${!campaignName || !targetProduct || !callObjective || !uploadedFile ? 'rgba(255, 255, 255, 0.1)' : CI.orange}`,
                       color: '#fff',
-                      boxShadow: !campaignName || !campaignGoal || !uploadedFile ? 'none' : `0 8px 30px ${CI.orange}40`,
+                      boxShadow: !campaignName || !targetProduct || !callObjective || !uploadedFile ? 'none' : `0 8px 30px ${CI.orange}40`,
                       fontFamily: 'Orbitron, sans-serif'
                     }}
                   >
