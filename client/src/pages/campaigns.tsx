@@ -99,30 +99,33 @@ export default function Campaigns() {
 
   // Generiere personalisierte Vorschläge basierend auf User-Daten
   const getProductSuggestions = () => {
-    const aiProfile = user?.aiProfile as any;
+    if (!user) return [];
+    const typedUser = user as User;
+    const aiProfile = typedUser.aiProfile as any;
     if (!aiProfile) return [];
     
-    const suggestions = [];
-    if (aiProfile.products && aiProfile.products.length > 0) {
+    const suggestions: string[] = [];
+    if (aiProfile.products && Array.isArray(aiProfile.products) && aiProfile.products.length > 0) {
       suggestions.push(...aiProfile.products.slice(0, 3));
     }
-    if (aiProfile.services && aiProfile.services.length > 0) {
+    if (aiProfile.services && Array.isArray(aiProfile.services) && aiProfile.services.length > 0) {
       suggestions.push(...aiProfile.services.slice(0, 3));
     }
     return suggestions;
   };
 
   const getAudienceSuggestions = () => {
-    const aiProfile = user?.aiProfile as any;
-    if (!aiProfile) return [];
+    if (!user) return [];
+    const typedUser = user as User;
+    const aiProfile = typedUser.aiProfile as any;
     
-    const suggestions = [];
-    if (aiProfile.targetAudience) {
+    const suggestions: string[] = [];
+    if (aiProfile && aiProfile.targetAudience) {
       suggestions.push(aiProfile.targetAudience);
     }
-    if (user?.industry) {
-      suggestions.push(`${user.industry}-Unternehmen`);
-      suggestions.push(`Entscheider in ${user.industry}`);
+    if (typedUser.industry) {
+      suggestions.push(`${typedUser.industry}-Unternehmen`);
+      suggestions.push(`Entscheider in ${typedUser.industry}`);
     }
     return suggestions;
   };
@@ -262,7 +265,7 @@ export default function Campaigns() {
                       type="text"
                       value={targetProduct}
                       onChange={(e) => setTargetProduct(e.target.value)}
-                      placeholder={productSuggestions[0] || `z.B. ${user?.company ? user.company + ' Lösung' : 'Premium Software'}`}
+                      placeholder={productSuggestions[0] || `z.B. ${(user as User)?.company ? (user as User).company + ' Lösung' : 'Premium Software'}`}
                       className="w-full px-4 py-2.5 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all text-sm"
                       style={{
                         background: 'rgba(255,255,255,0.03)',
@@ -576,7 +579,7 @@ export default function Campaigns() {
                       <div className="flex-1">
                         <p className="text-xs font-semibold text-white mb-1">KI-Personalisierung aktiv</p>
                         <p className="text-xs text-gray-400 leading-relaxed">
-                          ARAS AI nutzt Ihre Profildaten ({user?.company || 'Unternehmen'}, {user?.industry || 'Branche'}) 
+                          ARAS AI nutzt Ihre Profildaten ({(user as User)?.company || 'Unternehmen'}, {(user as User)?.industry || 'Branche'}) 
                           und analysiert für jeden Kontakt bis zu 500 Quellen für maximale Relevanz.
                         </p>
                       </div>
