@@ -19,14 +19,14 @@ const TYPED_LINES = [
   "Du hörst sie."
 ];
 
-// Live Date and Time Component
+// Live Date and Time Component with Milliseconds
 function LiveDateTime() {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-    }, 1000); // Update every second
+    }, 10); // Update every 10ms for smooth milliseconds
 
     return () => clearInterval(timer);
   }, []);
@@ -44,22 +44,94 @@ function LiveDateTime() {
     const year = date.getFullYear();
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
+    const seconds = date.getSeconds().toString().padStart(2, '0');
+    const milliseconds = Math.floor(date.getMilliseconds() / 10).toString().padStart(2, '0');
 
-    return `${dayName}. ${day}. ${month} ${year}, ${hours}:${minutes} Uhr`;
+    return {
+      date: `${dayName}. ${day}. ${month} ${year}`,
+      time: `${hours}:${minutes}:${seconds}`,
+      ms: milliseconds
+    };
   };
 
+  const { date, time, ms } = formatDateTime(currentTime);
+
   return (
-    <div
-      className="inline-block px-6 py-3 rounded-full text-sm font-bold"
-      style={{
-        fontFamily: 'Orbitron, sans-serif',
-        background: 'rgba(254, 145, 0, 0.1)',
-        border: '1px solid rgba(254, 145, 0, 0.3)',
-        color: '#e9d7c4',
-        backdropFilter: 'blur(10px)'
-      }}
-    >
-      {formatDateTime(currentTime)}
+    <div className="flex justify-center w-full">
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative"
+      >
+        {/* Glow Effect */}
+        <motion.div
+          className="absolute inset-0 rounded-2xl blur-xl"
+          style={{
+            background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.2), rgba(233, 215, 196, 0.2))',
+          }}
+          animate={{
+            opacity: [0.3, 0.6, 0.3]
+          }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        
+        {/* Main Container */}
+        <div
+          className="relative px-8 py-4 rounded-2xl backdrop-blur-md"
+          style={{
+            background: 'rgba(0, 0, 0, 0.2)',
+            border: '1px solid rgba(254, 145, 0, 0.2)',
+          }}
+        >
+          <div className="flex flex-col items-center gap-1">
+            {/* Date */}
+            <div
+              className="text-xs tracking-wider opacity-80"
+              style={{
+                fontFamily: 'Orbitron, sans-serif',
+                color: '#e9d7c4'
+              }}
+            >
+              {date}
+            </div>
+            
+            {/* Time with Milliseconds */}
+            <div className="flex items-center gap-2">
+              <span
+                className="text-2xl font-black"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  background: 'linear-gradient(135deg, #e9d7c4, #FE9100)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent'
+                }}
+              >
+                {time}
+              </span>
+              <span
+                className="text-sm font-bold opacity-60"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  color: '#FE9100'
+                }}
+              >
+                .{ms}
+              </span>
+              <span
+                className="text-xs tracking-wider"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  color: '#e9d7c4',
+                  opacity: 0.7
+                }}
+              >
+                Uhr
+              </span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 }
