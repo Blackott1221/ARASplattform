@@ -58,18 +58,27 @@ interface ValidationResult {
 
 export async function validateAndEnhancePrompt(input: ValidationInput): Promise<ValidationResult> {
   try {
+    // 🔑 API Key Check
+    if (!process.env.GOOGLE_GEMINI_API_KEY) {
+      logger.error('[PROMPT-VALIDATOR] ❌ GOOGLE_GEMINI_API_KEY fehlt!');
+      throw new Error('Gemini API Key nicht konfiguriert');
+    }
+
     logger.info('[PROMPT-VALIDATOR] 🔍 Analysiere User-Input mit voller Personalisierung...', { 
-      input: input.userInput.substring(0, 50),
+      input: input.userInput.substring(0, 100),
       hasAiProfile: !!input.userContext.aiProfile,
-      company: input.userContext.company
+      company: input.userContext.company,
+      contactName: input.contactName
     });
 
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash",
+      model: "gemini-2.0-flash-exp",
       generationConfig: {
-        temperature: 0.7,
+        temperature: 0.4,
         topP: 0.95,
+        topK: 40,
         maxOutputTokens: 2048,
+        responseMimeType: "application/json"
       }
     });
 
@@ -147,118 +156,259 @@ ${aiProfile.chatInsightsSummary}`;
       }
     }
 
-    const validationPrompt = `Du bist ein ULTRA-INTELLIGENTER Anruf-Qualitäts-Assistent für ARAS AI.
+    const validationPrompt = `Analysiere diese Anruf-Anfrage für maximale Qualität:
 
-**DEINE AUFGABE:**
-Analysiere die folgende Anruf-Anfrage und stelle sicher, dass ALLE notwendigen Informationen vorhanden sind, bevor ein HOCHPERSONALISIERTER, professioneller Anruf durchgeführt wird.
-
+ANRUFER-PROFIL:
 ${userContextString}
 
-**KONTAKT-PERSON:** ${input.contactName}
-
-**ANRUF-ANFRAGE:**
-"${input.userInput}"
+KONTAKT: ${input.contactName}
+ANFRAGE: "${input.userInput}"
 ${answersContext}
 
-**KRITISCHE ANALYSE-KRITERIEN:**
-1. **Zweck/Ziel**: Ist klar, WAS erreicht werden soll?
-2. **Details**: Sind alle relevanten Details vorhanden (Datum, Zeit, Grund, Alternativen, etc.)?
-3. **Kontext**: Ist der Kontext für den Empfänger verständlich und ausreichend?
-4. **Ausführbarkeit**: Kann die KI die Aufgabe ohne zusätzliche Infos professionell ausführen?
-5. **Personalisierung**: Können die Firmen- und Persönlichkeitsdaten optimal genutzt werden?
+ANALYSE-KRITERIEN:
+1. Ist das ZIEL klar? (z.B. Termin verschieben, Reservierung, Anfrage)
+2. Sind ALLE Details vorhanden? (Datum, Zeit, Grund, Alternativen)
+3. Ist es für ${input.contactName} verständlich?
+4. Kann die KI dies SOFORT professionell ausführen?
 
-**INTELLIGENTE VALIDIERUNGS-REGELN:**
-- Bei Terminanfragen: Datum, Uhrzeit, Grund, Alternative-Optionen ZWINGEND
-- Bei Verschiebungen: Alter Termin, Neuer Termin, Grund, Alternativen ZWINGEND
-- Bei Reservierungen: Datum, Uhrzeit, Personenzahl, Besonderheiten
-- Bei Anfragen: Klares Anliegen, erwartete Antwort, Deadline falls relevant
-- Bei Follow-ups: Bezug zum vorherigen Kontakt, neues Anliegen
-- IMMER: Klarer Call-to-Action oder erwartetes Ergebnis
+VALIDIERUNGS-REGELN nach ANRUF-TYP:
+- TERMINANFRAGE: Datum, Uhrzeit, Grund, 2+ Alternativen PFLICHT
+- VERSCHIEBUNG: Alter Termin, Neuer Termin, Grund, Alternativen PFLICHT
+- RESERVIERUNG: Datum, Uhrzeit, Anzahl Personen, Besonderheiten
+- ALLGEMEINE ANFRAGE: Klares Anliegen, erwartetes Ergebnis
+- FOLLOW-UP: Bezug zu vorherigem Kontakt, neues Anliegen
+- STORNIERUNG: Was genau? Grund? Alternativen?
+- RÜCKRUF-BITTE: Wann? Zu welchem Thema? Dringlichkeit?
 
-**DEINE ANTWORT (als VALIDES JSON):**
+ANTWORT-SCHEMA:
 {
-  "isComplete": true/false,
-  "detectedIntent": "Kurze präzise Beschreibung des erkannten Ziels",
-  "missingInfo": ["Liste fehlender kritischer Informationen"],
+  "isComplete": boolean,
+  "detectedIntent": "Präzise Beschreibung (z.B. 'Terminverschiebung für Geschäftsmeeting')",
+  "missingInfo": ["Konkrete fehlende Info 1", "Fehlende Info 2"],
   "questions": [
     {
-      "id": "unique_id",
-      "question": "Konkrete, klare Rückfrage",
-      "type": "text/date/time/choice",
-      "options": ["Option 1", "Option 2"],
-      "required": true/false,
-      "placeholder": "Hilfreicher Platzhalter"
+      "id": "spezifische_id",
+      "question": "Direkte Frage auf Deutsch",
+      "type": "text|date|time|choice",
+      "options": ["Nur bei choice"],
+      "required": true|false,
+      "placeholder": "Hilfreicher Beispieltext"
     }
   ],
   "suggestedSettings": {
-    "tone": "formal/freundlich/neutral/direkt",
-    "urgency": "hoch/mittel/niedrig",
+    "tone": "formal|freundlich|neutral|direkt",
+    "urgency": "hoch|mittel|niedrig",
     "maxDuration": 180
   },
-  "enhancedPrompt": "Nur wenn isComplete=true: Der vollständige HOCHPERSONALISIERTE Prompt"
+  "enhancedPrompt": "NUR bei isComplete=true: Vollständiger personalisierter Anruf-Prompt"
 }
 
-**WICHTIGE REGELN:**
-- Wenn Datum/Zeit erwähnt wird aber unklar ist: Frage SPEZIFISCH nach
-- Wenn Grund unklar ist: Frage nach dem genauen Anliegen
-- Wenn Alternativen fehlen: Frage nach Backup-Optionen
-- Sei STRENG aber hilfreich
-- Bei vagen Inputs: IMMER als INCOMPLETE markieren
+STRENGE REGELN:
+- Wenn Input VAGE ist → isComplete MUSS false sein
+- Stelle 2-5 SPEZIFISCHE Rückfragen basierend auf dem Anruf-Typ
+- Fragen MÜSSEN zum erkannten Intent passen (z.B. bei Terminverschiebung: alter Termin, neuer Termin, Grund, Alternativen)
+- Bei unklarem Datum/Zeit: Frage KONKRET nach (nicht "wann", sondern "An welchem Tag und zu welcher Uhrzeit")
+- placeholder MUSS ein konkretes Beispiel sein
+- detectedIntent MUSS den Kontext erfassen
 
-**BEISPIEL UNVOLLSTÄNDIG:**
+BEISPIELE:
+
+Input: "Testanruf"
+→ isComplete: false
+→ detectedIntent: "Testanruf ohne spezifisches Ziel"
+→ questions: [
+  {"id": "test_purpose", "question": "Was genau möchten Sie bei ${input.contactName} testen oder besprechen?", "type": "text", "required": true, "placeholder": "z.B. Produktdemo vereinbaren, Angebot anfragen, ..."},
+  {"id": "preferred_time", "question": "Wann ist ein guter Zeitpunkt für den Anruf?", "type": "choice", "options": ["Heute", "Morgen", "Diese Woche", "Nächste Woche"], "required": true},
+  {"id": "duration", "question": "Wie lange sollte das Gespräch maximal dauern?", "type": "choice", "options": ["5 Minuten", "10 Minuten", "15 Minuten"], "required": false}
+]
+
 Input: "Verschiebe meinen Termin"
 → isComplete: false
-→ Fragen: Welcher Termin? Auf wann? Grund? Alternativen?
+→ detectedIntent: "Terminverschiebung ohne Details"
+→ questions: [
+  {"id": "old_appointment", "question": "Welchen Termin möchten Sie verschieben? (Datum und Uhrzeit)", "type": "text", "required": true, "placeholder": "z.B. Montag, 8. Januar um 15:00 Uhr"},
+  {"id": "new_appointment", "question": "Auf welchen neuen Termin möchten Sie verschieben?", "type": "text", "required": true, "placeholder": "z.B. Dienstag, 9. Januar um 10:00 Uhr"},
+  {"id": "reason", "question": "Was ist der Grund für die Verschiebung?", "type": "text", "required": true, "placeholder": "z.B. Krankheit, anderer Termin, ..."},
+  {"id": "alternatives", "question": "Welche Alternativen sind für Sie möglich, falls der neue Termin nicht passt?", "type": "text", "required": false, "placeholder": "z.B. Mittwoch oder Donnerstag Vormittag"}
+]
 
-**BEISPIEL VOLLSTÄNDIG:**
-Input: "Verschiebe meinen Termin am Montag 15:00 Uhr auf Dienstag 10:00 Uhr wegen Krankheit. Falls nicht möglich, alternativ Mittwoch."
+Input: "Verschiebe meinen Termin am Montag 15:00 auf Dienstag 10:00 wegen Krankheit, alternativ Mittwoch"
 → isComplete: true
-→ Erstelle vollständigen personalisierten Prompt
+→ enhancedPrompt: "Du bist ARAS, der KI-Assistent von ${input.userContext.userName}..."
 
-Antworte NUR mit dem JSON-Objekt, nichts anderes!`;
+WICHTIG: Antworte NUR mit dem JSON-Objekt!`;
 
+    logger.info('[PROMPT-VALIDATOR] 📤 Sende Anfrage an Gemini 2.0 Flash...');
+    
     const result = await model.generateContent(validationPrompt);
     const responseText = result.response.text();
     
-    logger.info('[PROMPT-VALIDATOR] 🤖 Gemini Rohausgabe:', { 
-      response: responseText.substring(0, 200) 
+    logger.info('[PROMPT-VALIDATOR] 📥 Gemini Antwort erhalten', { 
+      responseLength: responseText.length,
+      firstChars: responseText.substring(0, 100)
     });
 
+    // Da responseMimeType auf "application/json" gesetzt ist, sollte die Antwort direkt JSON sein
     let cleanedJson = responseText.trim();
+    
+    // Entferne mögliche Markdown-Wrapper (zur Sicherheit)
     if (cleanedJson.startsWith('```json')) {
-      cleanedJson = cleanedJson.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+      cleanedJson = cleanedJson.replace(/```json\n?/g, '').replace(/```\n?$/g, '').trim();
     } else if (cleanedJson.startsWith('```')) {
-      cleanedJson = cleanedJson.replace(/```\n?/g, '');
+      cleanedJson = cleanedJson.replace(/```\n?/g, '').trim();
     }
 
-    const validationResult: ValidationResult = JSON.parse(cleanedJson);
+    logger.info('[PROMPT-VALIDATOR] 🔄 Parse JSON...', {
+      jsonLength: cleanedJson.length,
+      jsonPreview: cleanedJson.substring(0, 150)
+    });
 
-    logger.info('[PROMPT-VALIDATOR] ✅ Validierung abgeschlossen', {
+    let validationResult: ValidationResult;
+    try {
+      validationResult = JSON.parse(cleanedJson);
+    } catch (parseError: any) {
+      logger.error('[PROMPT-VALIDATOR] ❌ JSON Parse Fehler', {
+        error: parseError.message,
+        jsonPreview: cleanedJson.substring(0, 300)
+      });
+      throw new Error(`JSON Parse Fehler: ${parseError.message}`);
+    }
+
+    // Validiere dass alle erforderlichen Felder vorhanden sind
+    if (typeof validationResult.isComplete !== 'boolean') {
+      logger.error('[PROMPT-VALIDATOR] ❌ Ungültiges Validierungsergebnis: isComplete fehlt');
+      throw new Error('Ungültiges Validierungsergebnis');
+    }
+
+    logger.info('[PROMPT-VALIDATOR] ✅ Validierung erfolgreich abgeschlossen', {
       isComplete: validationResult.isComplete,
       questionsCount: validationResult.questions?.length || 0,
       detectedIntent: validationResult.detectedIntent,
+      missingInfoCount: validationResult.missingInfo?.length || 0,
+      hasEnhancedPrompt: !!validationResult.enhancedPrompt,
       usedPersonalization: !!aiProfile.companyDescription
     });
 
     return validationResult;
 
   } catch (error: any) {
-    logger.error('[PROMPT-VALIDATOR] ❌ Fehler bei Validierung', { 
+    logger.error('[PROMPT-VALIDATOR] ❌ KRITISCHER FEHLER bei Validierung', { 
       error: error.message,
-      stack: error.stack
+      errorType: error.name,
+      stack: error.stack,
+      userInput: input.userInput
+    });
+    
+    // Besserer Fallback: Analysiere Input um intelligentere Fragen zu stellen
+    const lowerInput = input.userInput.toLowerCase();
+    let detectedIntent = 'Allgemeine Anfrage';
+    let intelligentQuestions: any[] = [];
+    
+    if (lowerInput.includes('termin') || lowerInput.includes('meeting')) {
+      detectedIntent = 'Termin-bezogene Anfrage';
+      intelligentQuestions = [
+        {
+          id: 'appointment_type',
+          question: `Worum geht es bei dem Termin mit ${input.contactName}?`,
+          type: 'text',
+          required: true,
+          placeholder: 'z.B. Geschäftsmeeting, Produktdemo, Beratungsgespräch...'
+        },
+        {
+          id: 'appointment_datetime',
+          question: 'Wann soll der Termin stattfinden? (Datum und Uhrzeit)',
+          type: 'text',
+          required: true,
+          placeholder: 'z.B. Montag, 8. Januar 2025 um 14:00 Uhr'
+        },
+        {
+          id: 'appointment_duration',
+          question: 'Wie lange soll der Termin ungefähr dauern?',
+          type: 'choice',
+          options: ['30 Minuten', '1 Stunde', '1,5 Stunden', '2 Stunden'],
+          required: false
+        }
+      ];
+    } else if (lowerInput.includes('reserv') || lowerInput.includes('buchung')) {
+      detectedIntent = 'Reservierung';
+      intelligentQuestions = [
+        {
+          id: 'reservation_what',
+          question: 'Was genau möchten Sie reservieren?',
+          type: 'text',
+          required: true,
+          placeholder: 'z.B. Tisch, Raum, Equipment...'
+        },
+        {
+          id: 'reservation_when',
+          question: 'Für wann möchten Sie reservieren?',
+          type: 'text',
+          required: true,
+          placeholder: 'z.B. Freitag, 10. Januar um 19:00 Uhr'
+        },
+        {
+          id: 'reservation_details',
+          question: 'Weitere Details oder Besonderheiten?',
+          type: 'text',
+          required: false,
+          placeholder: 'z.B. Anzahl Personen, Sonderwünsche...'
+        }
+      ];
+    } else if (lowerInput.includes('test') || lowerInput.includes('demo')) {
+      detectedIntent = 'Test/Demo-Anruf';
+      intelligentQuestions = [
+        {
+          id: 'test_goal',
+          question: `Was möchten Sie bei ${input.contactName} erreichen oder testen?`,
+          type: 'text',
+          required: true,
+          placeholder: 'z.B. Produkt vorstellen, Interesse abfragen, Termin vereinbaren...'
+        },
+        {
+          id: 'test_context',
+          question: 'Gibt es spezifischen Kontext oder Hintergrund?',
+          type: 'text',
+          required: false,
+          placeholder: 'z.B. Vorherige Kommunikation, gemeinsame Kontakte...'
+        }
+      ];
+    } else {
+      // Komplett generischer Fallback
+      intelligentQuestions = [
+        {
+          id: 'call_purpose',
+          question: `Was ist das Ziel des Anrufs bei ${input.contactName}?`,
+          type: 'text',
+          required: true,
+          placeholder: 'z.B. Termin vereinbaren, Angebot einholen, Information erfragen...'
+        },
+        {
+          id: 'call_details',
+          question: 'Welche Details sind für den Anruf wichtig?',
+          type: 'text',
+          required: true,
+          placeholder: 'z.B. Datum, Zeitraum, spezifische Anforderungen...'
+        },
+        {
+          id: 'expected_outcome',
+          question: 'Was erwarten Sie als Ergebnis des Anrufs?',
+          type: 'text',
+          required: false,
+          placeholder: 'z.B. Zusage, Rückruf, konkrete Antwort...'
+        }
+      ];
+    }
+    
+    logger.warn('[PROMPT-VALIDATOR] ⚠️ Verwende intelligenten Fallback', {
+      detectedIntent,
+      questionsCount: intelligentQuestions.length
     });
     
     return {
       isComplete: false,
-      detectedIntent: 'Unbekanntes Anliegen',
-      missingInfo: ['Die Anfrage konnte nicht analysiert werden. Bitte versuchen Sie es erneut.'],
-      questions: [{
-        id: 'fallback_details',
-        question: 'Bitte beschreiben Sie Ihr Anliegen genauer mit allen relevanten Details (Datum, Zeit, Grund, Alternativen, etc.)',
-        type: 'text',
-        required: true,
-        placeholder: 'Beispiel: Verschiebe meinen Termin am Montag 15:00 auf Dienstag 10:00 wegen...'
-      }],
+      detectedIntent,
+      missingInfo: [`ARAS AI konnte die Anfrage "${input.userInput}" nicht vollständig analysieren. Bitte ergänzen Sie folgende Details:`],
+      questions: intelligentQuestions,
       suggestedSettings: {
         tone: 'freundlich',
         urgency: 'mittel',
