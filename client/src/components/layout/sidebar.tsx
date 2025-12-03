@@ -11,7 +11,8 @@ import {
   LogOut,
   BookOpen,
   Zap,
-  Megaphone
+  Megaphone,
+  LayoutDashboard
 } from "lucide-react";
 import { useState } from "react";
 import arasLogo from "@/assets/aras_logo_1755067745303.png";
@@ -29,6 +30,7 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
 
   const navItems = [
     { id: "space", label: "Space", icon: MessageCircle },
+    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { 
       id: "power", 
       label: "Power", 
