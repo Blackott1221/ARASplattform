@@ -311,89 +311,127 @@ export default function Contacts() {
               </motion.button>
             </motion.div>
 
-            {/* Stats */}
+            {/* Stats - CLEAN MINIMAL */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="grid grid-cols-3 gap-4 mb-8"
+              className="grid grid-cols-3 gap-3 mb-6"
             >
-              <div className="glass-card rounded-2xl p-4">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center"
-                    style={{
-                      background: `${CI.orange}20`,
-                      border: `1px solid ${CI.orange}40`
-                    }}
-                  >
-                    <Users className="w-6 h-6" style={{ color: CI.orange }} />
+              <motion.div
+                whileHover={{ y: -4, scale: 1.02 }}
+                className="relative overflow-hidden rounded-xl p-4"
+                style={{
+                  background: 'rgba(254, 145, 0, 0.04)',
+                  border: '1px solid rgba(254, 145, 0, 0.12)',
+                  backdropFilter: 'blur(12px)'
+                }}
+              >
+                <motion.div
+                  className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity"
+                  style={{
+                    background: `radial-gradient(circle at 50% 0%, ${CI.orange}15, transparent 60%)`
+                  }}
+                />
+                <div className="relative">
+                  <div className="text-3xl font-black mb-1" style={{ color: CI.orange }}>
+                    {contacts.length}
                   </div>
-                  <div>
-                    <div className="text-2xl font-black text-white">{contacts.length}</div>
-                    <div className="text-xs text-gray-400">Gesamt Kontakte</div>
+                  <div className="text-xs text-gray-500 uppercase tracking-wider font-medium">
+                    Gesamt
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
-              <div className="glass-card rounded-2xl p-4">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center"
-                    style={{
-                      background: `${CI.goldLight}20`,
-                      border: `1px solid ${CI.goldLight}40`
-                    }}
-                  >
-                    <Building2 className="w-6 h-6" style={{ color: CI.goldLight }} />
+              <motion.div
+                whileHover={{ y: -4, scale: 1.02 }}
+                className="relative overflow-hidden rounded-xl p-4"
+                style={{
+                  background: 'rgba(233, 215, 196, 0.04)',
+                  border: '1px solid rgba(233, 215, 196, 0.12)',
+                  backdropFilter: 'blur(12px)'
+                }}
+              >
+                <motion.div
+                  className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity"
+                  style={{
+                    background: `radial-gradient(circle at 50% 0%, ${CI.goldLight}10, transparent 60%)`
+                  }}
+                />
+                <div className="relative">
+                  <div className="text-3xl font-black mb-1" style={{ color: CI.goldLight }}>
+                    {contacts.filter(c => c.company).length}
                   </div>
-                  <div>
-                    <div className="text-2xl font-black text-white">
-                      {contacts.filter(c => c.company).length}
-                    </div>
-                    <div className="text-xs text-gray-400">Unternehmen</div>
+                  <div className="text-xs text-gray-500 uppercase tracking-wider font-medium">
+                    Firmen
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
-              <div className="glass-card rounded-2xl p-4">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center"
-                    style={{
-                      background: `${CI.orange}20`,
-                      border: `1px solid ${CI.orange}40`
-                    }}
-                  >
-                    <CheckCircle2 className="w-6 h-6" style={{ color: CI.orange }} />
+              <motion.div
+                whileHover={{ y: -4, scale: 1.02 }}
+                className="relative overflow-hidden rounded-xl p-4"
+                style={{
+                  background: 'rgba(254, 145, 0, 0.04)',
+                  border: '1px solid rgba(254, 145, 0, 0.12)',
+                  backdropFilter: 'blur(12px)'
+                }}
+              >
+                <motion.div
+                  className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity"
+                  style={{
+                    background: `radial-gradient(circle at 50% 0%, ${CI.orange}15, transparent 60%)`
+                  }}
+                />
+                <div className="relative">
+                  <div className="text-3xl font-black mb-1" style={{ color: CI.orange }}>
+                    {contacts.filter(c => c.phone && c.email).length}
                   </div>
-                  <div>
-                    <div className="text-2xl font-black text-white">
-                      {contacts.filter(c => c.phone && c.email).length}
-                    </div>
-                    <div className="text-xs text-gray-400">Vollständig</div>
+                  <div className="text-xs text-gray-500 uppercase tracking-wider font-medium">
+                    Komplett
                   </div>
                 </div>
-              </div>
+              </motion.div>
             </motion.div>
 
-            {/* Search Bar */}
+            {/* Search Bar - MINIMAL */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="glass-card rounded-2xl p-4 mb-6"
+              className="relative mb-6"
             >
-              <div className="flex items-center gap-3">
-                <Search className="w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Kontakte durchsuchen..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500"
-                />
-              </div>
+              <motion.div
+                whileFocus={{ scale: 1.01 }}
+                className="relative overflow-hidden rounded-xl"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid rgba(255, 255, 255, 0.06)',
+                  backdropFilter: 'blur(20px)'
+                }}
+              >
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <Search className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Suche nach Name, Firma oder E-Mail..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-600 text-sm"
+                  />
+                  {searchQuery && (
+                    <motion.button
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      exit={{ scale: 0 }}
+                      onClick={() => setSearchQuery('')}
+                      className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+                    >
+                      <X className="w-4 h-4 text-gray-500" />
+                    </motion.button>
+                  )}
+                </div>
+              </motion.div>
             </motion.div>
 
             {/* Add/Edit Form */}
@@ -617,81 +655,125 @@ export default function Contacts() {
                       layout
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, x: -100 }}
-                      transition={{ delay: index * 0.05 }}
-                      className="glass-card glass-card-hover rounded-2xl p-5"
+                      exit={{ opacity: 0, scale: 0.95, x: -20 }}
+                      transition={{ 
+                        delay: index * 0.03,
+                        type: "spring",
+                        stiffness: 300,
+                        damping: 24
+                      }}
+                      whileHover={{ 
+                        y: -4,
+                        transition: { duration: 0.2 }
+                      }}
+                      className="group relative overflow-hidden rounded-xl p-4 cursor-pointer"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px solid rgba(255, 255, 255, 0.06)',
+                        backdropFilter: 'blur(20px)'
+                      }}
                     >
-                      <div className="flex items-start gap-4">
-                        {/* Company Icon */}
-                        <div
-                          className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0"
+                      {/* Hover Glow Effect */}
+                      <motion.div
+                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                        style={{
+                          background: `radial-gradient(600px circle at var(--mouse-x) var(--mouse-y), ${CI.orange}08, transparent 40%)`,
+                          pointerEvents: 'none'
+                        }}
+                      />
+
+                      <div className="relative flex items-start gap-4">
+                        {/* Company Icon - MINIMAL */}
+                        <motion.div
+                          whileHover={{ rotate: 5, scale: 1.05 }}
+                          className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
                           style={{
-                            background: `linear-gradient(135deg, ${CI.orange}30, ${CI.goldDark}30)`,
-                            border: `1px solid ${CI.orange}40`
+                            background: `${CI.orange}12`,
+                            border: `1px solid ${CI.orange}20`
                           }}
                         >
-                          <Building2 className="w-7 h-7" style={{ color: CI.orange }} />
-                        </div>
+                          <Building2 className="w-6 h-6" style={{ color: CI.orange }} />
+                        </motion.div>
 
-                        {/* Contact Info */}
+                        {/* Contact Info - CLEANER */}
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-lg font-bold text-white mb-1">
+                          <h3 className="text-base font-bold text-white mb-2 group-hover:text-orange-400 transition-colors">
                             {contact.company}
                           </h3>
                           
-                          <div className="flex flex-wrap gap-4 text-sm text-gray-400">
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
                             {(contact.firstName || contact.lastName) && (
-                              <div className="flex items-center gap-2">
-                                <UserIcon className="w-4 h-4" />
+                              <div className="flex items-center gap-1.5">
+                                <UserIcon className="w-3.5 h-3.5" />
                                 <span>
                                   {[contact.firstName, contact.lastName].filter(Boolean).join(' ')}
                                 </span>
                               </div>
                             )}
                             {contact.phone && (
-                              <div className="flex items-center gap-2">
-                                <Phone className="w-4 h-4" />
+                              <div className="flex items-center gap-1.5">
+                                <Phone className="w-3.5 h-3.5" />
                                 <span>{contact.phone}</span>
                               </div>
                             )}
                             {contact.email && (
-                              <div className="flex items-center gap-2">
-                                <Mail className="w-4 h-4" />
-                                <span>{contact.email}</span>
+                              <div className="flex items-center gap-1.5">
+                                <Mail className="w-3.5 h-3.5" />
+                                <span className="truncate max-w-[200px]">{contact.email}</span>
                               </div>
                             )}
                           </div>
 
                           {contact.notes && (
-                            <p className="mt-2 text-sm text-gray-500 line-clamp-2">
+                            <motion.p 
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              className="mt-2 text-xs text-gray-600 line-clamp-1 italic"
+                            >
                               {contact.notes}
-                            </p>
+                            </motion.p>
                           )}
                         </div>
 
-                        {/* Actions */}
-                        <div className="flex gap-2 flex-shrink-0">
+                        {/* Actions - FLOATING ON HOVER */}
+                        <motion.div 
+                          className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
                           <motion.button
-                            whileHover={{ scale: 1.1 }}
+                            whileHover={{ scale: 1.15, y: -2 }}
                             whileTap={{ scale: 0.9 }}
-                            onClick={() => handleEdit(contact)}
-                            className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEdit(contact);
+                            }}
+                            className="p-2 rounded-lg transition-colors"
+                            style={{
+                              background: 'rgba(233, 215, 196, 0.1)',
+                              border: '1px solid rgba(233, 215, 196, 0.2)'
+                            }}
                             title="Bearbeiten"
                           >
-                            <Pencil className="w-5 h-5" style={{ color: CI.goldLight }} />
+                            <Pencil className="w-4 h-4" style={{ color: CI.goldLight }} />
                           </motion.button>
 
                           <motion.button
-                            whileHover={{ scale: 1.1 }}
+                            whileHover={{ scale: 1.15, y: -2 }}
                             whileTap={{ scale: 0.9 }}
-                            onClick={() => handleDelete(contact.id!)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(contact.id!);
+                            }}
                             disabled={deleteMutation.isPending}
-                            className="p-2 rounded-lg hover:bg-red-500/20 transition-colors"
+                            className="p-2 rounded-lg transition-colors"
+                            style={{
+                              background: 'rgba(239, 68, 68, 0.1)',
+                              border: '1px solid rgba(239, 68, 68, 0.2)'
+                            }}
                             title="Löschen"
                           >
-                            <Trash2 className="w-5 h-5 text-red-400" />
+                            <Trash2 className="w-4 h-4 text-red-400" />
                           </motion.button>
-                        </div>
+                        </motion.div>
                       </div>
                     </motion.div>
                   ))
