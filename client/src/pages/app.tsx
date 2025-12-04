@@ -12,9 +12,9 @@ const Dashboard = lazy(() => import("@/pages/dashboard"));
 const PowerPage = lazy(() => import("@/pages/power"));
 const CampaignsPage = lazy(() => import("@/pages/campaigns"));
 const Contacts = lazy(() => import('./contacts'));
-// Calendar is NOT lazy loaded to avoid Suspense errors
-import CalendarPageDirect from './calendar';
-const Calendar = CalendarPageDirect;
+// Calendar - TESTING MINIMAL VERSION
+import CalendarMinimal from './calendar-minimal';
+const Calendar = CalendarMinimal;
 const LeadsPage = lazy(() => import("@/pages/leads"));
 const BillingPage = lazy(() => import("@/pages/billing"));
 const SettingsPage = lazy(() => import("@/pages/settings"));
