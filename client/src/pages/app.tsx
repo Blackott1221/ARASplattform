@@ -47,7 +47,21 @@ export default function App() {
 
   const { data: subscriptionData } = useQuery<SubscriptionResponse>({
     queryKey: ["/api/user/subscription"],
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/user/subscription', { credentials: 'include' });
+        if (!res.ok) {
+          console.warn('[App] Subscription API Error:', res.status);
+          return null as any;
+        }
+        return await res.json();
+      } catch (err) {
+        console.error('[App] Subscription fetch error:', err);
+        return null as any;
+      }
+    },
     enabled: !!user && !isLoading,
+    retry: false,
   });
 
   // Render the active section content
