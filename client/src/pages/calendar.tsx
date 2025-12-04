@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Sidebar } from '@/components/layout/sidebar';
-import { TopBar } from '@/components/layout/topbar';
+// Sidebar and TopBar are handled by app.tsx - DO NOT IMPORT HERE
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -820,28 +819,11 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="flex h-screen relative overflow-hidden">
+    <div className="flex-1 overflow-y-auto p-6 relative">
       {/* Premium Background */}
       <div className="absolute inset-0 opacity-[0.08] pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-br from-[#FE9100]/10 via-transparent to-[#E9D7C4]/10" />
       </div>
-
-      <Sidebar
-        activeSection="calendar"
-        onSectionChange={(section) => window.location.href = `/app/${section}`}
-        isCollapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-      />
-
-      <div className="flex-1 flex flex-col relative overflow-hidden">
-        <TopBar
-          currentSection="calendar"
-          subscriptionData={subscriptionData}
-          user={user as any}
-          isVisible={true}
-        />
-
-        <div className="flex-1 overflow-y-auto p-6">
           <div className="max-w-6xl mx-auto">
             {/* Header */}
             <motion.div
@@ -1046,8 +1028,6 @@ export default function CalendarPage() {
               />
             )}
           </div>
-        </div>
-      </div>
 
       {/* Event Modal */}
       <EventModal
