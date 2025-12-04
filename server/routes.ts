@@ -2757,5 +2757,76 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     }
   });
 
+  // POST bulk import contacts from CSV
+  app.post("/api/contacts/bulk", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const { contacts: contactsData } = req.body;
+
+      // Validation
+      if (!Array.isArray(contactsData) || contactsData.length === 0) {
+        return res.status(400).json({ error: 'Contacts array is required' });
+      }
+
+      if (contactsData.length > 1000) {
+        return res.status(400).json({ error: 'Maximum 1000 contacts per import' });
+      }
+
+      // Validate and prepare contacts
+      const validContacts: any[] = [];
+      const errors: string[] = [];
+
+      for (let i = 0; i < contactsData.length; i++) {
+        const contact = contactsData[i];
+        
+        // Company is required
+        if (!contact.company || !contact.company.trim()) {
+          errors.push(`Row ${i + 1}: Company name is required`);
+          continue;
+        }
+
+        // Generate unique ID
+        const contactId = `contact_${Date.now()}_${Math.random().toString(36).substr(2, 9)}_${i}`;
+
+        validContacts.push({
+          id: contactId,
+          userId,
+          company: contact.company.trim(),
+          firstName: contact.firstName?.trim() || null,
+          lastName: contact.lastName?.trim() || null,
+          phone: contact.phone?.trim() || null,
+          email: contact.email?.trim() || null,
+          notes: contact.notes?.trim() || null,
+        });
+      }
+
+      if (validContacts.length === 0) {
+        return res.status(400).json({ 
+          error: 'No valid contacts found', 
+          details: errors 
+        });
+      }
+
+      // Batch insert
+      await db.insert(contacts).values(validContacts);
+
+      logger.info('[CONTACTS] Bulk import successful:', {
+        userId,
+        imported: validContacts.length,
+        skipped: errors.length
+      });
+
+      res.json({ 
+        success: true, 
+        imported: validContacts.length,
+        skipped: errors.length,
+        errors: errors.length > 0 ? errors.slice(0, 10) : [] // Return max 10 errors
+      });
+    } catch (error: any) {
+      logger.error('[CONTACTS] Error bulk importing contacts:', error);
+      res.status(500).json({ error: 'Failed to import contacts' });
+    }
+  });
+
   return httpServer;
 } 

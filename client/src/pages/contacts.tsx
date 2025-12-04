@@ -17,7 +17,9 @@ import {
   Pencil,
   Trash2,
   Save,
-  X
+  X,
+  Upload,
+  Download
 } from 'lucide-react';
 import type { User, SubscriptionResponse } from "@shared/schema";
 
@@ -49,6 +51,7 @@ export default function Contacts() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingContact, setEditingContact] = useState<ContactData | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState<ContactData>({
@@ -100,6 +103,36 @@ export default function Contacts() {
         description: 'Kontakt konnte nicht gespeichert werden.',
         variant: 'destructive'
       });
+    }
+  });
+
+  // Bulk import mutation
+  const bulkImportMutation = useMutation({
+    mutationFn: async (contacts: ContactData[]) => {
+      const res = await fetch('/api/contacts/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ contacts })
+      });
+      if (!res.ok) throw new Error('Failed to import contacts');
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      toast({
+        title: 'Import erfolgreich',
+        description: `${data.imported} Kontakte importiert.`
+      });
+      setIsUploading(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Import fehlgeschlagen',
+        description: error.message || 'CSV konnte nicht importiert werden.',
+        variant: 'destructive'
+      });
+      setIsUploading(false);
     }
   });
 
@@ -171,6 +204,114 @@ export default function Contacts() {
     }
   };
 
+  // CSV Upload Handler
+  const handleCSVUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.csv')) {
+      toast({
+        title: 'Ungültiges Format',
+        description: 'Bitte eine CSV-Datei hochladen.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        const lines = text.split('\n').filter(line => line.trim());
+        
+        if (lines.length < 2) {
+          throw new Error('CSV muss mindestens Header und eine Zeile enthalten');
+        }
+
+        // Parse Header
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        
+        // Parse Rows
+        const contacts: ContactData[] = [];
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(',').map(v => v.trim());
+          
+          const contact: ContactData = {
+            company: '',
+            firstName: '',
+            lastName: '',
+            phone: '',
+            email: '',
+            notes: ''
+          };
+
+          headers.forEach((header, index) => {
+            const value = values[index] || '';
+            if (header.includes('firma') || header.includes('company') || header.includes('unternehmen')) {
+              contact.company = value;
+            } else if (header.includes('vorname') || header.includes('firstname') || header.includes('first')) {
+              contact.firstName = value;
+            } else if (header.includes('nachname') || header.includes('lastname') || header.includes('last')) {
+              contact.lastName = value;
+            } else if (header.includes('telefon') || header.includes('phone') || header.includes('tel')) {
+              contact.phone = value;
+            } else if (header.includes('email') || header.includes('mail') || header.includes('e-mail')) {
+              contact.email = value;
+            } else if (header.includes('notiz') || header.includes('note') || header.includes('bemerkung')) {
+              contact.notes = value;
+            }
+          });
+
+          // Only add if company is present
+          if (contact.company.trim()) {
+            contacts.push(contact);
+          }
+        }
+
+        if (contacts.length === 0) {
+          throw new Error('Keine gültigen Kontakte gefunden (Firma ist Pflichtfeld)');
+        }
+
+        // Import
+        bulkImportMutation.mutate(contacts);
+
+      } catch (error: any) {
+        toast({
+          title: 'CSV Fehler',
+          description: error.message || 'Fehler beim Parsen der CSV-Datei.',
+          variant: 'destructive'
+        });
+        setIsUploading(false);
+      }
+    };
+
+    reader.onerror = () => {
+      toast({
+        title: 'Fehler',
+        description: 'Datei konnte nicht gelesen werden.',
+        variant: 'destructive'
+      });
+      setIsUploading(false);
+    };
+
+    reader.readAsText(file);
+    event.target.value = ''; // Reset input
+  };
+
+  // Download CSV Template
+  const downloadCSVTemplate = () => {
+    const template = 'Firma,Vorname,Nachname,Telefon,Email,Notizen\nBeispiel GmbH,Max,Mustermann,+49123456789,max@beispiel.de,Wichtiger Kunde';
+    const blob = new Blob([template], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'kontakte-vorlage.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const filteredContacts = contacts.filter(contact =>
     contact.company?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     contact.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -214,20 +355,51 @@ export default function Contacts() {
                 <p className="text-xs text-gray-600">{contacts.length} gespeichert</p>
               </div>
 
-              <button
-                onClick={() => {
-                  resetForm();
-                  setShowAddForm(true);
-                }}
-                className="px-3 py-1.5 text-xs font-medium rounded-md transition-all"
-                style={{
-                  background: CI.orange,
-                  color: 'black'
-                }}
-              >
-                <Plus className="w-3.5 h-3.5 inline mr-1" />
-                Neu
-              </button>
+              <div className="flex gap-2">
+                {/* CSV Upload */}
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleCSVUpload}
+                    disabled={isUploading}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    id="csv-upload"
+                  />
+                  <button
+                    disabled={isUploading}
+                    className="px-3 py-1.5 text-xs font-medium bg-white/5 hover:bg-white/10 text-white rounded-md transition-all border border-white/10 disabled:opacity-50"
+                  >
+                    <Upload className="w-3.5 h-3.5 inline mr-1" />
+                    {isUploading ? 'Import...' : 'CSV'}
+                  </button>
+                </div>
+
+                {/* Download Template */}
+                <button
+                  onClick={downloadCSVTemplate}
+                  className="px-3 py-1.5 text-xs font-medium bg-white/5 hover:bg-white/10 text-white rounded-md transition-all border border-white/10"
+                  title="Vorlage herunterladen"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                </button>
+
+                {/* Add Button */}
+                <button
+                  onClick={() => {
+                    resetForm();
+                    setShowAddForm(true);
+                  }}
+                  className="px-3 py-1.5 text-xs font-medium rounded-md transition-all"
+                  style={{
+                    background: CI.orange,
+                    color: 'black'
+                  }}
+                >
+                  <Plus className="w-3.5 h-3.5 inline mr-1" />
+                  Neu
+                </button>
+              </div>
             </div>
 
             {/* Search - FLAT */}
