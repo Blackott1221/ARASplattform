@@ -251,20 +251,20 @@ export default function Contacts() {
           isVisible={true}
         />
 
-        <div className="flex-1 overflow-y-auto px-8 py-10">
-          <div className="max-w-5xl mx-auto">
+        <div className="flex-1 overflow-y-auto px-8 py-8">
+          <div className="max-w-4xl mx-auto">
             {/* Header - ULTRA CLEAN */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex items-center justify-between mb-10"
+              className="flex items-center justify-between mb-8"
             >
               <div>
                 <motion.h1
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.1 }}
-                  className="text-4xl font-black mb-1.5 tracking-tight"
+                  className="text-3xl font-black mb-1 tracking-tighter"
                   style={{
                     fontFamily: 'Orbitron, sans-serif',
                     background: `linear-gradient(120deg, ${CI.orange}, ${CI.goldLight})`,
@@ -279,7 +279,7 @@ export default function Contacts() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.2 }}
-                  className="text-sm text-gray-500"
+                  className="text-xs text-gray-600"
                 >
                   {contacts.length} {contacts.length === 1 ? 'Kontakt' : 'Kontakte'} gespeichert
                 </motion.p>
@@ -331,7 +331,7 @@ export default function Contacts() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="grid grid-cols-3 gap-2 mb-6"
+              className="grid grid-cols-3 gap-1.5 mb-5"
             >
               <motion.div
                 whileHover={{ 
@@ -357,12 +357,26 @@ export default function Contacts() {
                   }}
                 />
                 <div className="relative" style={{ transform: 'translateZ(20px)' }}>
-                  <div className="text-2xl font-black mb-0.5" style={{ color: CI.orange }}>
+                  <motion.div 
+                    className="text-xl font-black mb-0.5"
+                    style={{ color: CI.orange }}
+                    whileHover={{ scale: 1.1, transition: { type: "spring", stiffness: 500 } }}
+                  >
                     {contacts.length}
-                  </div>
-                  <div className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold">
+                  </motion.div>
+                  <div className="text-[9px] text-gray-600 uppercase tracking-widest font-semibold">
                     Total
                   </div>
+                  {/* Gradient Border on Hover */}
+                  <motion.div
+                    className="absolute inset-0 rounded-md opacity-0 group-hover/stat:opacity-100"
+                    style={{
+                      background: `linear-gradient(135deg, ${CI.orange}40, transparent)`,
+                      filter: 'blur(8px)',
+                      transform: 'scale(1.1)'
+                    }}
+                    transition={{ duration: 0.3 }}
+                  />
                 </div>
               </motion.div>
 
@@ -437,25 +451,54 @@ export default function Contacts() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="relative mb-5"
+              className="relative mb-4"
             >
               <motion.div
                 whileFocus={{ scale: 1.005 }}
-                className="relative overflow-hidden rounded-lg"
+                className="relative overflow-hidden rounded-md group/search"
                 style={{
                   background: 'rgba(255, 255, 255, 0.015)',
                   border: '1px solid rgba(255, 255, 255, 0.04)',
                   backdropFilter: 'blur(16px)'
                 }}
               >
-                <div className="flex items-center gap-2.5 px-3.5 py-2.5">
-                  <Search className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                <div className="flex items-center gap-2 px-3 py-2">
+                  {/* Animated Border */}
+                  <motion.div
+                    className="absolute inset-0 rounded-md pointer-events-none"
+                    style={{
+                      background: `linear-gradient(90deg, transparent, ${CI.orange}20, transparent)`,
+                      opacity: 0
+                    }}
+                    animate={{
+                      x: ['-100%', '200%'],
+                      opacity: [0, 0.5, 0]
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      repeatDelay: 1,
+                      ease: "easeInOut"
+                    }}
+                  />
+                  <motion.div
+                    animate={{
+                      rotate: [0, 10, -10, 0]
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      repeatDelay: 3
+                    }}
+                  >
+                    <Search className="w-3.5 h-3.5 text-gray-600 flex-shrink-0" />
+                  </motion.div>
                   <input
                     type="text"
                     placeholder="Suchen..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-700 text-sm"
+                    className="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-700 text-xs"
                   />
                   {searchQuery && (
                     <motion.button
@@ -650,7 +693,7 @@ export default function Contacts() {
             </AnimatePresence>
 
             {/* Contacts List */}
-            <div className="space-y-3">
+            <div className="space-y-2">
               <AnimatePresence mode="popLayout">
                 {contactsLoading ? (
                   <div className="text-center py-12 text-gray-400">
@@ -713,7 +756,7 @@ export default function Contacts() {
                           damping: 15
                         }
                       }}
-                      className="group relative overflow-hidden rounded-lg p-3.5 cursor-pointer"
+                      className="group/card relative overflow-hidden rounded-md p-3 cursor-pointer"
                       style={{
                         background: 'rgba(255, 255, 255, 0.015)',
                         border: '1px solid rgba(255, 255, 255, 0.04)',
@@ -722,16 +765,50 @@ export default function Contacts() {
                         perspective: '1000px'
                       }}
                     >
+                      {/* Animated Gradient Border on Hover */}
+                      <motion.div
+                        className="absolute inset-0 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 pointer-events-none"
+                        style={{
+                          background: `linear-gradient(135deg, ${CI.orange}15, transparent, ${CI.goldLight}10)`,
+                          filter: 'blur(12px)'
+                        }}
+                      />
+                      
                       {/* Subtle Hover Glow */}
                       <motion.div
-                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                        className="absolute inset-0 opacity-0 group-hover/card:opacity-100 transition-opacity duration-500"
                         style={{
-                          background: `radial-gradient(400px circle at 50% 0%, ${CI.orange}04, transparent)`,
+                          background: `radial-gradient(300px circle at 50% 0%, ${CI.orange}03, transparent)`,
                           pointerEvents: 'none'
                         }}
                       />
+                      
+                      {/* Floating Particles on Hover */}
+                      <AnimatePresence>
+                        {[...Array(3)].map((_, i) => (
+                          <motion.div
+                            key={i}
+                            className="absolute w-0.5 h-0.5 rounded-full opacity-0 group-hover/card:opacity-100"
+                            style={{
+                              background: CI.orange,
+                              left: `${20 + i * 30}%`,
+                              top: '50%'
+                            }}
+                            animate={{
+                              y: [-10, -30, -10],
+                              opacity: [0, 0.6, 0],
+                              scale: [0, 1, 0]
+                            }}
+                            transition={{
+                              duration: 2,
+                              repeat: Infinity,
+                              delay: i * 0.3
+                            }}
+                          />
+                        ))}
+                      </AnimatePresence>
 
-                      <div className="relative flex items-start gap-3" style={{ transform: 'translateZ(10px)' }}>
+                      <div className="relative flex items-start gap-2.5" style={{ transform: 'translateZ(10px)' }}>
                         {/* Company Icon - MICRO */}
                         <motion.div
                           whileHover={{ 
@@ -739,31 +816,36 @@ export default function Contacts() {
                             scale: 1.08,
                             transition: { type: "spring", stiffness: 500 }
                           }}
-                          className="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0"
+                          className="w-9 h-9 rounded flex items-center justify-center flex-shrink-0"
                           style={{
                             background: `${CI.orange}08`,
                             border: `1px solid ${CI.orange}15`
                           }}
                         >
-                          <Building2 className="w-5 h-5" style={{ color: CI.orange }} />
+                          <Building2 className="w-4.5 h-4.5" style={{ color: CI.orange }} />
                         </motion.div>
 
                         {/* Contact Info - ULTRA CLEAN */}
                         <div className="flex-1 min-w-0">
                           <motion.h3 
-                            className="text-sm font-bold text-white mb-1.5 group-hover:text-orange-400 transition-colors duration-300"
-                            style={{ letterSpacing: '-0.01em' }}
+                            className="text-[13px] font-bold text-white mb-1 group-hover/card:text-orange-400 transition-colors duration-300"
+                            style={{ letterSpacing: '-0.02em' }}
+                            whileHover={{ x: 2, transition: { type: "spring", stiffness: 500 } }}
                           >
                             {contact.company}
                           </motion.h3>
                           
-                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-gray-600">
+                          <div className="flex flex-wrap gap-x-2.5 gap-y-0.5 text-[10px] text-gray-600">
                             {(contact.firstName || contact.lastName) && (
                               <motion.div 
-                                className="flex items-center gap-1"
-                                whileHover={{ x: 2, transition: { duration: 0.2 } }}
+                                className="flex items-center gap-0.5"
+                                whileHover={{ 
+                                  x: 3,
+                                  color: CI.orange,
+                                  transition: { type: "spring", stiffness: 500 } 
+                                }}
                               >
-                                <UserIcon className="w-3 h-3 flex-shrink-0" />
+                                <UserIcon className="w-2.5 h-2.5 flex-shrink-0" />
                                 <span className="truncate">
                                   {[contact.firstName, contact.lastName].filter(Boolean).join(' ')}
                                 </span>
@@ -771,19 +853,27 @@ export default function Contacts() {
                             )}
                             {contact.phone && (
                               <motion.div 
-                                className="flex items-center gap-1"
-                                whileHover={{ x: 2, transition: { duration: 0.2 } }}
+                                className="flex items-center gap-0.5"
+                                whileHover={{ 
+                                  x: 3,
+                                  color: CI.orange,
+                                  transition: { type: "spring", stiffness: 500 } 
+                                }}
                               >
-                                <Phone className="w-3 h-3 flex-shrink-0" />
+                                <Phone className="w-2.5 h-2.5 flex-shrink-0" />
                                 <span>{contact.phone}</span>
                               </motion.div>
                             )}
                             {contact.email && (
                               <motion.div 
-                                className="flex items-center gap-1"
-                                whileHover={{ x: 2, transition: { duration: 0.2 } }}
+                                className="flex items-center gap-0.5"
+                                whileHover={{ 
+                                  x: 3,
+                                  color: CI.orange,
+                                  transition: { type: "spring", stiffness: 500 } 
+                                }}
                               >
-                                <Mail className="w-3 h-3 flex-shrink-0" />
+                                <Mail className="w-2.5 h-2.5 flex-shrink-0" />
                                 <span className="truncate max-w-[180px]">{contact.email}</span>
                               </motion.div>
                             )}
@@ -793,19 +883,18 @@ export default function Contacts() {
                             <motion.p 
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
-                              className="mt-1.5 text-[10px] text-gray-700 line-clamp-1 italic"
+                              className="mt-1 text-[9px] text-gray-700 line-clamp-1 italic"
                             >
                               "{contact.notes}"
                             </motion.p>
                           )}
                         </div>
 
-                        {/* Actions - MICRO BUTTONS */}
+                        {/* Actions - MAGNETIC MICRO BUTTONS */}
                         <motion.div 
                           initial={{ opacity: 0, x: 10 }}
                           animate={{ opacity: 0, x: 0 }}
-                          whileHover={{ opacity: 1 }}
-                          className="flex gap-0.5 group-hover:opacity-100 transition-opacity duration-200"
+                          className="flex gap-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity duration-200"
                         >
                           <motion.button
                             whileHover={{ 
@@ -826,7 +915,7 @@ export default function Contacts() {
                             }}
                             title="Bearbeiten"
                           >
-                            <Pencil className="w-3.5 h-3.5" style={{ color: CI.goldLight }} />
+                            <Pencil className="w-3 h-3" style={{ color: CI.goldLight }} />
                           </motion.button>
 
                           <motion.button
@@ -849,7 +938,7 @@ export default function Contacts() {
                             }}
                             title="Löschen"
                           >
-                            <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                            <Trash2 className="w-3 h-3 text-red-400" />
                           </motion.button>
                         </motion.div>
                       </div>
