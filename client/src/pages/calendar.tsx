@@ -497,7 +497,7 @@ const EventModal = ({ show, onClose, eventForm, setEventForm, editingEvent, onSa
 };
 
 export default function CalendarPage() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -523,7 +523,7 @@ export default function CalendarPage() {
   });
 
   // Fetch Events
-  const { data: events = [], isLoading } = useQuery<CalendarEvent[]>({
+  const { data: events = [], isLoading, error } = useQuery<CalendarEvent[]>({
     queryKey: ['/api/calendar/events', currentMonth],
     queryFn: async () => {
       const start = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
@@ -534,7 +534,9 @@ export default function CalendarPage() {
       if (!res.ok) throw new Error('Failed to fetch events');
       return res.json();
     },
-    enabled: !!user
+    enabled: !!user,
+    retry: 1,
+    staleTime: 30000
   });
 
   // Create/Update Event
@@ -762,6 +764,20 @@ export default function CalendarPage() {
       setIsProcessingAI(false);
     }
   };
+
+  // Loading State
+  if (authLoading || !user) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-black">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+        >
+          <CalendarDays className="w-12 h-12" style={{ color: CI.orange }} />
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen relative overflow-hidden">
