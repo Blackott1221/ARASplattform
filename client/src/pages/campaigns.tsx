@@ -5,7 +5,7 @@ import { TopBar } from "@/components/layout/topbar";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
-import { Upload, Megaphone, Users, Phone, Settings as SettingsIcon, Play, Pause, FileText, Lightbulb, TrendingUp, Target, Zap } from 'lucide-react';
+import { Upload, Megaphone, Users, Phone, Settings as SettingsIcon, Play, Pause, FileText, Lightbulb, TrendingUp, Target, Zap, Lock, Crown, ArrowRight, Sparkles } from 'lucide-react';
 import type { User, SubscriptionResponse } from "@shared/schema";
 import arasLogo from "@/assets/aras_logo_1755067745303.png";
 
@@ -21,6 +21,7 @@ export default function Campaigns() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   // Form State
   const [campaignName, setCampaignName] = useState('');
@@ -45,6 +46,15 @@ export default function Campaigns() {
     queryKey: ["/api/user/subscription"],
     enabled: !!user,
   });
+
+  // Check if user has access to campaigns (Ultra or Ultimate plan)
+  const hasAccess = () => {
+    if (!subscriptionData?.subscription) return false;
+    const plan = subscriptionData.subscription.plan_id;
+    return plan === 'ultra' || plan === 'ultimate';
+  };
+
+  const isPremiumLocked = !hasAccess();
 
   const handleSectionChange = (section: string) => {
     window.location.href = section === 'space' ? '/app' : `/app/${section}`;
@@ -185,6 +195,185 @@ export default function Campaigns() {
 
   return (
     <div className="flex h-screen relative overflow-hidden">
+      {/* Premium Lock Modal */}
+      <AnimatePresence>
+        {isPremiumLocked && showUpgradeModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            style={{
+              background: 'rgba(0, 0, 0, 0.95)',
+              backdropFilter: 'blur(20px)'
+            }}
+            onClick={() => setShowUpgradeModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="relative max-w-2xl w-full rounded-3xl overflow-hidden"
+              style={{
+                background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.1) 0%, rgba(10, 10, 10, 0.95) 100%)',
+                border: `2px solid ${CI.orange}40`,
+                boxShadow: `0 0 80px ${CI.orange}30`
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Animated particles */}
+              <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                {[...Array(15)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    className="absolute w-1 h-1 rounded-full"
+                    style={{
+                      background: i % 2 === 0 ? CI.orange : CI.goldLight,
+                      left: `${Math.random() * 100}%`,
+                      top: `${Math.random() * 100}%`,
+                    }}
+                    animate={{
+                      y: [0, -30, 0],
+                      opacity: [0, 1, 0],
+                      scale: [0, 1.5, 0]
+                    }}
+                    transition={{
+                      duration: 3 + Math.random() * 2,
+                      repeat: Infinity,
+                      delay: Math.random() * 2
+                    }}
+                  />
+                ))}
+              </div>
+
+              <div className="relative p-10">
+                {/* Crown Icon */}
+                <motion.div
+                  className="w-20 h-20 mx-auto mb-6 rounded-2xl flex items-center justify-center"
+                  style={{
+                    background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
+                    boxShadow: `0 20px 60px ${CI.orange}50`
+                  }}
+                  animate={{
+                    rotate: [0, 5, -5, 0],
+                    scale: [1, 1.05, 1]
+                  }}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity
+                  }}
+                >
+                  <Crown className="w-10 h-10 text-black" strokeWidth={2.5} />
+                </motion.div>
+
+                {/* Title */}
+                <h2
+                  className="text-4xl font-black text-center mb-4"
+                  style={{
+                    fontFamily: 'Orbitron, sans-serif',
+                    background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldLight})`,
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent'
+                  }}
+                >
+                  PREMIUM FEATURE
+                </h2>
+
+                <p className="text-gray-300 text-center mb-8 text-lg">
+                  Kampagnen sind exklusiv für <span className="font-bold" style={{ color: CI.orange }}>ARAS Ultra</span> und <span className="font-bold" style={{ color: CI.orange }}>Ultimate</span> verfügbar
+                </p>
+
+                {/* Features */}
+                <div className="space-y-3 mb-8">
+                  {[
+                    { icon: Megaphone, text: 'Bis zu 10.000 gleichzeitige Anrufe' },
+                    { icon: Target, text: 'KI-gesteuerte Personalisierung' },
+                    { icon: TrendingUp, text: '500+ Datenquellen pro Kontakt' },
+                    { icon: Sparkles, text: '4% Conversion-Rate (2x Branchenschnitt)' }
+                  ].map((feature, idx) => (
+                    <motion.div
+                      key={idx}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.1 * idx }}
+                      className="flex items-center gap-4 p-4 rounded-xl"
+                      style={{
+                        background: 'rgba(254, 145, 0, 0.05)',
+                        border: `1px solid ${CI.orange}20`
+                      }}
+                    >
+                      <div
+                        className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{
+                          background: `${CI.orange}20`,
+                          border: `1px solid ${CI.orange}40`
+                        }}
+                      >
+                        <feature.icon className="w-5 h-5" style={{ color: CI.orange }} />
+                      </div>
+                      <span className="text-gray-300 font-medium">{feature.text}</span>
+                    </motion.div>
+                  ))}
+                </div>
+
+                {/* CTA Buttons */}
+                <div className="flex gap-4">
+                  <motion.button
+                    whileHover={{ scale: 1.05, y: -2 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => window.location.href = '/billing'}
+                    className="flex-1 py-4 px-6 rounded-xl font-bold text-black relative overflow-hidden group"
+                    style={{
+                      background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
+                      boxShadow: `0 10px 30px ${CI.orange}40`
+                    }}
+                  >
+                    <motion.div
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100"
+                      style={{
+                        background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)'
+                      }}
+                      animate={{
+                        x: ['-100%', '200%']
+                      }}
+                      transition={{
+                        duration: 1.5,
+                        repeat: Infinity,
+                        repeatDelay: 0.5
+                      }}
+                    />
+                    <span className="relative flex items-center justify-center gap-2">
+                      <Crown className="w-5 h-5" />
+                      Jetzt upgraden
+                      <ArrowRight className="w-5 h-5" />
+                    </span>
+                  </motion.button>
+
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setShowUpgradeModal(false)}
+                    className="px-6 py-4 rounded-xl font-bold text-gray-400 hover:text-white transition-colors"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)'
+                    }}
+                  >
+                    Schließen
+                  </motion.button>
+                </div>
+
+                {/* Plan Info */}
+                <div className="mt-6 text-center">
+                  <p className="text-sm text-gray-500">
+                    Ab <span className="font-bold" style={{ color: CI.orange }}>€249/Monat</span> • ARAS Ultra
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Premium ARAS background */}
       <div className="absolute inset-0 opacity-[0.14] pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-br from-[#FE9100]/10 via-transparent to-[#A34E00]/10" />
@@ -207,6 +396,151 @@ export default function Campaigns() {
       />
 
       <div className="flex-1 flex flex-col relative overflow-hidden content-zoom">
+        {/* Premium Lock Overlay */}
+        {isPremiumLocked && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute inset-0 z-50 flex items-center justify-center"
+            style={{
+              background: 'rgba(0, 0, 0, 0.85)',
+              backdropFilter: 'blur(10px)'
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              className="text-center max-w-xl mx-auto px-6"
+            >
+              {/* Giant Lock Icon */}
+              <motion.div
+                className="relative inline-block mb-8"
+                animate={{
+                  rotate: [0, -5, 5, -5, 0],
+                  scale: [1, 1.05, 1]
+                }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: 'easeInOut'
+                }}
+              >
+                <motion.div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background: `radial-gradient(circle, ${CI.orange}40, transparent 70%)`,
+                    filter: 'blur(30px)'
+                  }}
+                  animate={{
+                    scale: [1, 1.2, 1],
+                    opacity: [0.5, 0.8, 0.5]
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity
+                  }}
+                />
+                <div
+                  className="relative w-32 h-32 rounded-3xl flex items-center justify-center"
+                  style={{
+                    background: `linear-gradient(135deg, ${CI.orange}20, ${CI.goldDark}20)`,
+                    border: `3px solid ${CI.orange}`,
+                    boxShadow: `0 20px 60px ${CI.orange}60, inset 0 1px 2px rgba(255, 255, 255, 0.1)`
+                  }}
+                >
+                  <Lock className="w-16 h-16" style={{ color: CI.orange }} strokeWidth={2.5} />
+                </div>
+              </motion.div>
+
+              {/* Title */}
+              <motion.h2
+                className="text-5xl font-black mb-6"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldLight})`,
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  textShadow: `0 0 40px ${CI.orange}30`
+                }}
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                PREMIUM FEATURE
+              </motion.h2>
+
+              {/* Description */}
+              <motion.p
+                className="text-xl text-gray-300 mb-8 leading-relaxed"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+              >
+                Kampagnen mit <span className="font-bold" style={{ color: CI.orange }}>10.000+ gleichzeitigen Anrufen</span> sind exklusiv für
+                <br />
+                <span className="text-2xl font-black" style={{ color: CI.orange }}>ARAS Ultra</span> und{' '}
+                <span className="text-2xl font-black" style={{ color: CI.orange }}>Ultimate</span>
+              </motion.p>
+
+              {/* Unlock Button */}
+              <motion.button
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                whileHover={{ scale: 1.08, y: -4 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowUpgradeModal(true)}
+                className="px-8 py-5 rounded-2xl font-black text-lg text-black relative overflow-hidden group mx-auto"
+                style={{
+                  background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
+                  boxShadow: `0 20px 60px ${CI.orange}50`
+                }}
+              >
+                <motion.div
+                  className="absolute inset-0"
+                  style={{
+                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)'
+                  }}
+                  animate={{
+                    x: ['-100%', '200%']
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    repeatDelay: 0.5
+                  }}
+                />
+                <span className="relative flex items-center justify-center gap-3">
+                  <Crown className="w-6 h-6" />
+                  FEATURE FREISCHALTEN
+                  <ArrowRight className="w-6 h-6" />
+                </span>
+              </motion.button>
+
+              {/* Additional Info */}
+              <motion.div
+                className="mt-8 flex items-center justify-center gap-6 text-sm text-gray-400"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+              >
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4" style={{ color: CI.goldLight }} />
+                  <span>4% Conversion-Rate</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Target className="w-4 h-4" style={{ color: CI.goldLight }} />
+                  <span>500+ Datenquellen</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4" style={{ color: CI.goldLight }} />
+                  <span>KI-Personalisierung</span>
+                </div>
+              </motion.div>
+            </motion.div>
+          </motion.div>
+        )}
         <TopBar
           currentSection="campaigns"
           subscriptionData={subscriptionData}
