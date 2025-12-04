@@ -30,10 +30,19 @@ export function PricingCards({ subscription, onPaymentSetup, onPlanUpgrade }: Pr
   const { data: dbPlans, isLoading: plansLoading } = useQuery({
     queryKey: ['subscription-plans'],
     queryFn: async () => {
-      const response = await apiRequest('GET', '/api/subscription-plans');
-      if (!response.ok) throw new Error('Failed to fetch plans');
-      return response.json();
-    }
+      try {
+        const response = await apiRequest('GET', '/api/subscription-plans');
+        if (!response.ok) {
+          console.warn('[PricingCards] Failed to fetch plans:', response.status);
+          return null;
+        }
+        return await response.json();
+      } catch (err) {
+        console.error('[PricingCards] Error fetching plans:', err);
+        return null;
+      }
+    },
+    retry: false
   });
 
   // Map database plans to UI format with proper pricing

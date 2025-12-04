@@ -108,7 +108,13 @@ function PaymentSetupForm({ onSuccess, onClose }: { onSuccess: () => void; onClo
 
           if (!confirmResponse.ok) {
             const errorData = await confirmResponse.json();
-            throw new Error(errorData.message || "Failed to confirm payment method");
+            console.error('[PaymentSetup] Confirm failed:', errorData);
+            toast({
+              title: "Confirmation Failed",
+              description: errorData.message || "Failed to confirm payment method",
+              variant: "destructive",
+            });
+            return;
           }
 
           toast({

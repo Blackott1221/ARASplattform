@@ -233,7 +233,8 @@ export function ChatInterface() {
           setOptimisticMessages([]);
           return null;
         }
-        throw new Error('Failed to send message');
+        console.error('[ChatInterface] Failed to send message');
+        return null;
       }
 
       const reader = response.body?.getReader();
@@ -268,7 +269,8 @@ export function ChatInterface() {
                   description: data.error,
                   variant: "default",
                 });
-                throw new Error(data.error);
+                console.error('[ChatInterface] Stream error:', data.error);
+                return null;
               }
               
               if (data.content) {

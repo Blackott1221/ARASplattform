@@ -562,7 +562,10 @@ export default function CalendarPage() {
         body: JSON.stringify(data)
       });
       
-      if (!res.ok) throw new Error('Failed to save event');
+      if (!res.ok) {
+        console.error('[Calendar] Failed to save event');
+        return null;
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -590,7 +593,10 @@ export default function CalendarPage() {
         method: 'DELETE',
         credentials: 'include'
       });
-      if (!res.ok) throw new Error('Failed to delete event');
+      if (!res.ok) {
+        console.error('[Calendar] Failed to delete event');
+        return null;
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -769,7 +775,16 @@ export default function CalendarPage() {
         credentials: 'include'
       });
       
-      if (!res.ok) throw new Error('Failed to process calls');
+      if (!res.ok) {
+        console.error('[Calendar] Failed to process calls');
+        const errorText = await res.text();
+        toast({
+          title: 'Fehler',
+          description: errorText || 'AI Verarbeitung fehlgeschlagen.',
+          variant: 'destructive'
+        });
+        return;
+      }
       
       const data = await res.json();
       
