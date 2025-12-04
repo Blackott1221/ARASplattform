@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Lock, Phone, Contact, Plus, X, Building2, User, Mail, StickyNote, ChevronDown, Search } from 'lucide-react';
+import { Lock, Phone } from 'lucide-react';
 import type { SubscriptionResponse } from "@shared/schema";
 import arasLogo from "@/assets/aras_logo_1755067745303.png";
 import { CallWizard } from '@/components/power/call-wizard';
@@ -55,19 +55,6 @@ export default function Power() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [phoneError, setPhoneError] = useState("");
-  
-  // NEW: Kontaktbuch Integration
-  const [showContactPicker, setShowContactPicker] = useState(false);
-  const [showNewContactModal, setShowNewContactModal] = useState(false);
-  const [contactSearchQuery, setContactSearchQuery] = useState("");
-  const [newContactData, setNewContactData] = useState({
-    company: "",
-    firstName: "",
-    lastName: "",
-    phone: "",
-    email: "",
-    notes: ""
-  });
 
   // UI/typing
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
@@ -116,12 +103,6 @@ export default function Power() {
     enabled: !!user,
   });
 
-  // Fetch contacts from new API
-  const { data: contacts = [] } = useQuery<any[]>({
-    queryKey: ["/api/contacts"],
-    enabled: !!user,
-  });
-
   const subscriptionData = subscription || {
     plan: 'pro',
     status: 'active',
@@ -137,76 +118,37 @@ export default function Power() {
   };
 
   // ----------------- Minimal helper UI (unchanged networking) -----------------
-  // NEW: Select contact from phonebook
-  const handleSelectContact = (contact: any) => {
-    setContactName(contact.company || `${contact.firstName || ''} ${contact.lastName || ''}`.trim());
-    setPhoneNumber(contact.phone || contact.phoneNumber || '');
-    setShowContactPicker(false);
-    toast({
-      title: 'Kontakt ausgewählt',
-      description: `${contact.company || 'Kontakt'} wurde ausgewählt`
-    });
+  const checkContact = async (name: string) => {
+    if (!name) return;
+    try {
+      const response = await fetch(`/api/user/contacts/search?name=${encodeURIComponent(name)}`, { credentials: 'include' });
+      const data = await response.json();
+      if (data.found && data.contact) {
+        setPhoneNumber(data.contact.phoneNumber);
+        setShowSaveContact(false);
+      } else {
+        setShowSaveContact(true);
+      }
+    } catch {
+      /* silent */
+    }
   };
 
-  // NEW: Save new contact with all fields
-  const handleSaveNewContact = async () => {
-    if (!newContactData.company.trim()) {
-      toast({
-        title: 'Firma erforderlich',
-        description: 'Bitte geben Sie mindestens einen Firmennamen ein.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
+  const saveContact = async () => {
+    if (!contactName || !phoneNumber) return;
     try {
-      const response = await fetch('/api/contacts', {
+      await fetch('/api/user/contacts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(newContactData)
+        body: JSON.stringify({ name: contactName, phoneNumber })
       });
-
-      if (!response.ok) throw new Error('Save failed');
-
-      const savedContact = await response.json();
-      
-      // Fill form with new contact
-      setContactName(savedContact.company);
-      setPhoneNumber(savedContact.phone || '');
-      
-      // Reset and close
-      setNewContactData({
-        company: '',
-        firstName: '',
-        lastName: '',
-        phone: '',
-        email: '',
-        notes: ''
-      });
-      setShowNewContactModal(false);
-      
-      toast({
-        title: 'Kontakt gespeichert',
-        description: `${savedContact.company} wurde zu Ihrem Kontaktbuch hinzugefügt`
-      });
+      setShowSaveContact(false);
+      toast({ title: 'Kontakt gespeichert', description: `${contactName} wurde zu Ihrem Telefonbuch hinzugefügt` });
     } catch {
-      toast({
-        title: 'Fehler',
-        description: 'Kontakt konnte nicht gespeichert werden',
-        variant: 'destructive'
-      });
+      toast({ title: 'Fehler', description: 'Kontakt konnte nicht gespeichert werden', variant: 'destructive' });
     }
   };
-
-  // Filter contacts for picker
-  const filteredContacts = contacts.filter(c => 
-    contactSearchQuery === '' ||
-    c.company?.toLowerCase().includes(contactSearchQuery.toLowerCase()) ||
-    c.firstName?.toLowerCase().includes(contactSearchQuery.toLowerCase()) ||
-    c.lastName?.toLowerCase().includes(contactSearchQuery.toLowerCase()) ||
-    c.phone?.includes(contactSearchQuery)
-  );
 
   useEffect(() => {
     if (phoneNumber && validatePhoneNumber(phoneNumber)) {
@@ -677,46 +619,14 @@ export default function Power() {
                   </div>
 
                   <div className="space-y-5">
-                    {/* Contact - MODERN with Kontaktbuch */}
+                    {/* Contact */}
                     <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="block text-[12px] font-medium text-gray-300">Gesprächspartner</label>
-                        <div className="flex gap-1.5">
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => setShowContactPicker(true)}
-                            className="px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all flex items-center gap-1"
-                            style={{
-                              background: `linear-gradient(135deg, ${CI.goldLight}15, ${CI.orange}10)`,
-                              border: `1px solid ${CI.goldLight}30`,
-                              color: CI.goldLight
-                            }}
-                          >
-                            <Contact className="w-3 h-3" />
-                            Wählen
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => setShowNewContactModal(true)}
-                            className="px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all flex items-center gap-1"
-                            style={{
-                              background: `linear-gradient(135deg, ${CI.orange}15, ${CI.goldDark}10)`,
-                              border: `1px solid ${CI.orange}30`,
-                              color: CI.orange
-                            }}
-                          >
-                            <Plus className="w-3 h-3" />
-                            Neu
-                          </motion.button>
-                        </div>
-                      </div>
+                      <label className="block text-[12px] font-medium text-gray-300 mb-2">Gesprächspartner</label>
                       <input
                         type="text"
                         value={contactName}
-                        onChange={(e) => setContactName(e.target.value)}
-                        placeholder="Name oder Firma eingeben…"
+                        onChange={(e) => { setContactName(e.target.value); checkContact(e.target.value); }}
+                        placeholder="Name eingeben…"
                         className="w-full px-4 py-[11px] rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all"
                         style={{
                           background: 'rgba(255,255,255,0.03)',
@@ -726,6 +636,15 @@ export default function Power() {
                         onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(254,145,0,0.45)'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(254,145,0,0.08)'; }}
                         onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)'; e.currentTarget.style.boxShadow = 'none'; }}
                       />
+                      {showSaveContact && contactName && (
+                        <button
+                          onClick={saveContact}
+                          className="mt-2 text-[12px] font-medium"
+                          style={{ color: CI.orange }}
+                        >
+                          Kontakt speichern
+                        </button>
+                      )}
                     </div>
 
                     {/* Phone */}
@@ -1327,322 +1246,6 @@ export default function Power() {
         .premium-scroll::-webkit-scrollbar-thumb { background: rgba(254,145,0,0.28); border-radius: 10px; }
         .premium-scroll::-webkit-scrollbar-thumb:hover { background: rgba(254,145,0,0.45); }
       `}</style>
-
-      {/* 📱 KONTAKTBUCH PICKER MODAL */}
-      <AnimatePresence>
-        {showContactPicker && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}
-            onClick={() => setShowContactPicker(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              className="w-full max-w-2xl rounded-2xl p-6 relative"
-              style={{
-                background: 'rgba(10, 10, 10, 0.98)',
-                border: `1px solid ${CI.orange}30`,
-                backdropFilter: 'blur(20px)',
-                maxHeight: '80vh',
-                overflow: 'auto'
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-xl font-bold" style={{ 
-                    fontFamily: 'Orbitron, sans-serif',
-                    background: `linear-gradient(90deg, ${CI.goldLight}, ${CI.orange})`,
-                    WebkitBackgroundClip: 'text',
-                    backgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent'
-                  }}>
-                    Kontakt wählen
-                  </h3>
-                  <p className="text-xs text-gray-500 mt-1">{contacts.length} Kontakte verfügbar</p>
-                </div>
-                <button
-                  onClick={() => setShowContactPicker(false)}
-                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5 text-gray-400" />
-                </button>
-              </div>
-
-              {/* Search */}
-              <div className="mb-4 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
-                <input
-                  type="text"
-                  value={contactSearchQuery}
-                  onChange={(e) => setContactSearchQuery(e.target.value)}
-                  placeholder="Suchen..."
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all"
-                  style={{
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.1)'
-                  }}
-                />
-              </div>
-
-              {/* Contact List */}
-              <div className="space-y-2">
-                {filteredContacts.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Contact className="w-12 h-12 mx-auto mb-3 text-gray-700" />
-                    <p className="text-sm text-gray-500">Keine Kontakte gefunden</p>
-                  </div>
-                ) : (
-                  filteredContacts.map((contact) => (
-                    <motion.div
-                      key={contact.id}
-                      whileHover={{ scale: 1.01, x: 4 }}
-                      className="p-3 rounded-lg cursor-pointer transition-all"
-                      style={{
-                        background: 'rgba(255,255,255,0.03)',
-                        border: '1px solid rgba(255,255,255,0.08)'
-                      }}
-                      onClick={() => handleSelectContact(contact)}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{
-                            background: `${CI.orange}15`,
-                            border: `1px solid ${CI.orange}30`
-                          }}
-                        >
-                          <Building2 className="w-5 h-5" style={{ color: CI.orange }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-white text-sm mb-0.5">{contact.company}</div>
-                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500">
-                            {(contact.firstName || contact.lastName) && (
-                              <span>{[contact.firstName, contact.lastName].filter(Boolean).join(' ')}</span>
-                            )}
-                            {contact.phone && <span>{contact.phone}</span>}
-                            {contact.email && <span className="truncate max-w-[150px]">{contact.email}</span>}
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ➕ NEUER KONTAKT MODAL */}
-      <AnimatePresence>
-        {showNewContactModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}
-            onClick={() => setShowNewContactModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              className="w-full max-w-2xl rounded-2xl p-6 relative"
-              style={{
-                background: 'rgba(10, 10, 10, 0.98)',
-                border: `1px solid ${CI.orange}30`,
-                backdropFilter: 'blur(20px)',
-                maxHeight: '80vh',
-                overflow: 'auto'
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-xl font-bold" style={{ 
-                    fontFamily: 'Orbitron, sans-serif',
-                    background: `linear-gradient(90deg, ${CI.orange}, ${CI.goldDark})`,
-                    WebkitBackgroundClip: 'text',
-                    backgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent'
-                  }}>
-                    Neuer Kontakt
-                  </h3>
-                  <p className="text-xs text-gray-500 mt-1">Alle Felder ausfüllen und speichern</p>
-                </div>
-                <button
-                  onClick={() => setShowNewContactModal(false)}
-                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5 text-gray-400" />
-                </button>
-              </div>
-
-              {/* Form */}
-              <div className="space-y-4">
-                {/* Company - Required */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5">
-                    <Building2 className="w-3.5 h-3.5" style={{ color: CI.orange }} />
-                    Firma <span style={{ color: CI.orange }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newContactData.company}
-                    onChange={(e) => setNewContactData({ ...newContactData, company: e.target.value })}
-                    placeholder="Firmenname eingeben"
-                    className="w-full px-4 py-2.5 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all"
-                    style={{
-                      background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid rgba(255,255,255,0.1)'
-                    }}
-                  />
-                </div>
-
-                {/* Name Fields */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5" style={{ color: CI.goldLight }} />
-                      Vorname
-                    </label>
-                    <input
-                      type="text"
-                      value={newContactData.firstName}
-                      onChange={(e) => setNewContactData({ ...newContactData, firstName: e.target.value })}
-                      placeholder="Vorname"
-                      className="w-full px-4 py-2.5 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all"
-                      style={{
-                        background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid rgba(255,255,255,0.1)'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5" style={{ color: CI.goldLight }} />
-                      Nachname
-                    </label>
-                    <input
-                      type="text"
-                      value={newContactData.lastName}
-                      onChange={(e) => setNewContactData({ ...newContactData, lastName: e.target.value })}
-                      placeholder="Nachname"
-                      className="w-full px-4 py-2.5 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all"
-                      style={{
-                        background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid rgba(255,255,255,0.1)'
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Contact Fields */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5">
-                      <Phone className="w-3.5 h-3.5" style={{ color: CI.orange }} />
-                      Telefon
-                    </label>
-                    <input
-                      type="tel"
-                      value={newContactData.phone}
-                      onChange={(e) => setNewContactData({ ...newContactData, phone: e.target.value })}
-                      placeholder="+49..."
-                      className="w-full px-4 py-2.5 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all"
-                      style={{
-                        background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid rgba(255,255,255,0.1)'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5">
-                      <Mail className="w-3.5 h-3.5" style={{ color: CI.goldLight }} />
-                      E-Mail
-                    </label>
-                    <input
-                      type="email"
-                      value={newContactData.email}
-                      onChange={(e) => setNewContactData({ ...newContactData, email: e.target.value })}
-                      placeholder="email@beispiel.de"
-                      className="w-full px-4 py-2.5 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all"
-                      style={{
-                        background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid rgba(255,255,255,0.1)'
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Notes */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5">
-                    <StickyNote className="w-3.5 h-3.5" style={{ color: CI.goldLight }} />
-                    Notizen
-                  </label>
-                  <textarea
-                    value={newContactData.notes}
-                    onChange={(e) => setNewContactData({ ...newContactData, notes: e.target.value })}
-                    placeholder="Zusätzliche Informationen..."
-                    rows={3}
-                    className="w-full px-4 py-2.5 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all resize-none"
-                    style={{
-                      background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid rgba(255,255,255,0.1)'
-                    }}
-                  />
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-3 pt-2">
-                  <button
-                    onClick={handleSaveNewContact}
-                    className="flex-1 py-3 rounded-xl font-semibold text-sm transition-all"
-                    style={{
-                      background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
-                      color: '#000'
-                    }}
-                  >
-                    Kontakt speichern
-                  </button>
-                  <button
-                    onClick={() => {
-                      setNewContactData({
-                        company: '',
-                        firstName: '',
-                        lastName: '',
-                        phone: '',
-                        email: '',
-                        notes: ''
-                      });
-                      setShowNewContactModal(false);
-                    }}
-                    className="px-6 py-3 rounded-xl font-semibold text-sm transition-all"
-                    style={{
-                      background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      color: '#9ca3af'
-                    }}
-                  >
-                    Abbrechen
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* 🔥 WIZARD MODAL */}
       {showWizard && (
