@@ -61,6 +61,48 @@ export default function DashboardPage() {
       {showDemoModal && <DemoModal onClose={handleCloseDemoModal} />}
 
       <div className="flex-1 h-full overflow-y-auto custom-scrollbar relative" style={{ background: '#000000' }}>
+        {/* Floating Demo Badge */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0, rotate: -45 }}
+          animate={{ opacity: 1, scale: 1, rotate: 0 }}
+          transition={{ delay: 1, type: "spring", stiffness: 200 }}
+          className="fixed bottom-6 right-6 z-50 glass-orange rounded-2xl px-4 py-3 flex items-center gap-3 cursor-pointer group"
+          whileHover={{ scale: 1.05, y: -4 }}
+          style={{
+            boxShadow: `0 10px 40px ${CI.orange}40`
+          }}
+        >
+          <motion.div
+            className="w-2 h-2 rounded-full"
+            style={{ background: CI.orange }}
+            animate={{
+              scale: [1, 1.5, 1],
+              opacity: [1, 0.5, 1]
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity
+            }}
+          />
+          <span className="text-sm font-bold text-white">DEMO MODE</span>
+          <motion.div
+            className="text-xs px-2 py-1 rounded-lg"
+            style={{ 
+              background: 'rgba(0, 0, 0, 0.3)',
+              color: CI.goldLight 
+            }}
+            animate={{
+              opacity: [0.7, 1, 0.7]
+            }}
+            transition={{
+              duration: 3,
+              repeat: Infinity
+            }}
+          >
+            LIVE
+          </motion.div>
+        </motion.div>
+
         {/* Enhanced Background with Animated Gradients */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           {/* Animated Gradient Orbs */}
@@ -168,56 +210,118 @@ export default function DashboardPage() {
                 {/* ARIA AI Assistant */}
                 <AriaAssistant />
 
-                {/* Toggle between Smart Views and Chat View */}
-                <div className="flex items-center gap-2 mb-4">
+                {/* Premium View Switcher */}
+                <motion.div 
+                  className="glass-card rounded-2xl p-2 mb-6 inline-flex items-center gap-2"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.6 }}
+                >
                   <motion.button
-                    whileHover={{ scale: 1.05 }}
+                    whileHover={{ scale: 1.05, y: -2 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => { setShowChatView(false); setShowHeatMap(false); }}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                    className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all relative overflow-hidden ${
                       !showChatView && !showHeatMap ? 'text-black' : 'text-white'
                     }`}
                     style={{
                       background: !showChatView && !showHeatMap 
-                        ? CI.orange 
-                        : 'rgba(255,255,255,0.1)'
+                        ? `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`
+                        : 'transparent',
+                      boxShadow: !showChatView && !showHeatMap 
+                        ? `0 8px 24px ${CI.orange}40` 
+                        : 'none'
                     }}
                   >
-                    SMART VIEWS
+                    {!showChatView && !showHeatMap && (
+                      <motion.div
+                        className="absolute inset-0"
+                        style={{
+                          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)'
+                        }}
+                        animate={{
+                          x: ['-100%', '200%']
+                        }}
+                        transition={{
+                          duration: 2,
+                          repeat: Infinity,
+                          repeatDelay: 1
+                        }}
+                      />
+                    )}
+                    <span className="relative">SMART VIEWS</span>
                   </motion.button>
                   
                   <motion.button
-                    whileHover={{ scale: 1.05 }}
+                    whileHover={{ scale: 1.05, y: -2 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => { setShowChatView(true); setShowHeatMap(false); }}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                    className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all relative overflow-hidden ${
                       showChatView ? 'text-black' : 'text-white'
                     }`}
                     style={{
                       background: showChatView 
-                        ? CI.orange 
-                        : 'rgba(255,255,255,0.1)'
+                        ? `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`
+                        : 'transparent',
+                      boxShadow: showChatView 
+                        ? `0 8px 24px ${CI.orange}40` 
+                        : 'none'
                     }}
                   >
-                    CHAT-ANSICHT
+                    {showChatView && (
+                      <motion.div
+                        className="absolute inset-0"
+                        style={{
+                          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)'
+                        }}
+                        animate={{
+                          x: ['-100%', '200%']
+                        }}
+                        transition={{
+                          duration: 2,
+                          repeat: Infinity,
+                          repeatDelay: 1
+                        }}
+                      />
+                    )}
+                    <span className="relative">CHAT-ANSICHT</span>
                   </motion.button>
 
                   <motion.button
-                    whileHover={{ scale: 1.05 }}
+                    whileHover={{ scale: 1.05, y: -2 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => { setShowHeatMap(true); setShowChatView(false); }}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                    className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all relative overflow-hidden ${
                       showHeatMap ? 'text-black' : 'text-white'
                     }`}
                     style={{
                       background: showHeatMap 
-                        ? CI.orange 
-                        : 'rgba(255,255,255,0.1)'
+                        ? `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`
+                        : 'transparent',
+                      boxShadow: showHeatMap 
+                        ? `0 8px 24px ${CI.orange}40` 
+                        : 'none'
                     }}
                   >
-                    HEAT MAP
+                    {showHeatMap && (
+                      <motion.div
+                        className="absolute inset-0"
+                        style={{
+                          background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)'
+                        }}
+                        animate={{
+                          x: ['-100%', '200%']
+                        }}
+                        transition={{
+                          duration: 2,
+                          repeat: Infinity,
+                          repeatDelay: 1
+                        }}
+                      />
+                    )}
+                    <span className="relative">HEAT MAP</span>
                   </motion.button>
-                </div>
+                </motion.div>
 
                 {/* Conditional Rendering based on view */}
                 {showChatView ? (
