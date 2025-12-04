@@ -12,7 +12,8 @@ import {
   BookOpen,
   Zap,
   Megaphone,
-  LayoutDashboard
+  LayoutDashboard,
+  Contact
 } from "lucide-react";
 import { useState } from "react";
 import arasLogo from "@/assets/aras_logo_1755067745303.png";
@@ -37,7 +38,8 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
       icon: Phone,
       subItems: [
         { id: "power", label: "Einzelanruf", icon: Zap },
-        { id: "campaigns", label: "Kampagnen", icon: Megaphone }
+        { id: "campaigns", label: "Kampagnen", icon: Megaphone },
+        { id: "contacts", label: "Kontakte", icon: Contact }
       ]
     },
     { id: "leads", label: "Wissensdatenbank", icon: BookOpen },

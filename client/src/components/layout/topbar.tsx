@@ -23,6 +23,8 @@ export function TopBar({ currentSection, subscriptionData, user, isVisible }: To
         return "POWER";
       case "campaigns":
         return "KAMPAGNEN";
+      case "contacts":
+        return "KONTAKTE";
       case "leads":
         return "WISSENSDATENBANK";
       case "billing":

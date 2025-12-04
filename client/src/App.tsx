@@ -27,6 +27,7 @@ import Power from "@/pages/power";
 import VoiceAgents from "@/pages/voice-agents";
 import Leads from "@/pages/leads";
 import Campaigns from "@/pages/campaigns";
+import Contacts from "@/pages/contacts";
 import Billing from "@/pages/billing";
 import Settings from "@/pages/settings";
 import AuthPage from "@/pages/auth-page";
@@ -103,6 +104,7 @@ function Router() {
           <Route path="/voice-agents" component={AuthPage} />
           <Route path="/leads" component={AuthPage} />
           <Route path="/campaigns" component={AuthPage} />
+          <Route path="/contacts" component={AuthPage} />
           <Route path="/billing" component={AuthPage} />
           <Route path="/settings" component={AuthPage} />
         </>
@@ -128,6 +130,8 @@ function Router() {
           <Route path="/app/admin-dashboard" component={AdminDashboard} />
           <Route path="/campaigns" component={Campaigns} />
           <Route path="/app/campaigns" component={Campaigns} />
+          <Route path="/contacts" component={Contacts} />
+          <Route path="/app/contacts" component={Contacts} />
           <Route path="/billing" component={Billing} />
           <Route path="/app/billing" component={Billing} />
           <Route path="/settings" component={Settings} />
