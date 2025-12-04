@@ -12,7 +12,9 @@ const Dashboard = lazy(() => import("@/pages/dashboard"));
 const PowerPage = lazy(() => import("@/pages/power"));
 const CampaignsPage = lazy(() => import("@/pages/campaigns"));
 const Contacts = lazy(() => import('./contacts'));
-const Calendar = lazy(() => import('./calendar'));
+// Calendar is NOT lazy loaded to avoid Suspense errors
+import CalendarPageDirect from './calendar';
+const Calendar = CalendarPageDirect;
 const LeadsPage = lazy(() => import("@/pages/leads"));
 const BillingPage = lazy(() => import("@/pages/billing"));
 const SettingsPage = lazy(() => import("@/pages/settings"));

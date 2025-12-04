@@ -677,7 +677,23 @@ export default function CalendarPage() {
   // Subscription data
   const { data: subscription } = useQuery<SubscriptionResponse>({
     queryKey: ["/api/user/subscription"],
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/user/subscription', {
+          credentials: 'include'
+        });
+        if (!res.ok) {
+          console.warn('[Calendar] Subscription API Error:', res.status);
+          return null as any;
+        }
+        return await res.json();
+      } catch (err) {
+        console.error('[Calendar] Subscription fetch error:', err);
+        return null as any;
+      }
+    },
     enabled: !!user,
+    retry: false
   });
 
   const subscriptionData = subscription || {
