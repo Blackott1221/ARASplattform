@@ -46,7 +46,7 @@ export default function Contacts() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // sidebarCollapsed removed - handled by app.tsx
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingContact, setEditingContact] = useState<ContactData | null>(null);
@@ -64,11 +64,7 @@ export default function Contacts() {
     notes: ''
   });
 
-  // Fetch subscription
-  const { data: subscriptionData } = useQuery<SubscriptionResponse>({
-    queryKey: ["/api/user/subscription"],
-    enabled: !!user,
-  });
+  // subscription query removed - not needed without TopBar
 
   // Fetch contacts
   const { data: contacts = [], isLoading: contactsLoading } = useQuery<ContactData[]>({
@@ -171,10 +167,6 @@ export default function Contacts() {
       });
     }
   });
-
-  const handleSectionChange = (section: string) => {
-    window.location.href = section === 'space' ? '/app' : `/app/${section}`;
-  };
 
   const resetForm = () => {
     setFormData({

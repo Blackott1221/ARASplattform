@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, parseISO, isToday, isTomorrow, isPast, addHours, setHours, setMinutes } from 'date-fns';
 import { de } from 'date-fns/locale';
-import type { SubscriptionResponse } from "@shared/schema";
+// SubscriptionResponse import removed - not needed
 
 // ARAS CI
 const CI = {
@@ -499,7 +499,7 @@ export default function CalendarPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // sidebarCollapsed removed - handled by app.tsx
   
   // Calendar States
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -678,34 +678,6 @@ export default function CalendarPage() {
       status: 'scheduled'
     });
   };
-
-  // Subscription data
-  const { data: subscription } = useQuery<SubscriptionResponse>({
-    queryKey: ["/api/user/subscription"],
-    queryFn: async () => {
-      try {
-        const res = await fetch('/api/user/subscription', {
-          credentials: 'include'
-        });
-        if (!res.ok) {
-          console.warn('[Calendar] Subscription API Error:', res.status);
-          return null as any;
-        }
-        return await res.json();
-      } catch (err) {
-        console.error('[Calendar] Subscription fetch error:', err);
-        return null as any;
-      }
-    },
-    enabled: !!user,
-    retry: false
-  });
-
-  const subscriptionData = subscription || {
-    plan: 'pro',
-    status: 'active',
-    renewalDate: new Date().toISOString()
-  } as any;
 
   // Type colors
   const getTypeColor = (type: string) => {
