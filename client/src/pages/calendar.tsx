@@ -526,16 +526,25 @@ export default function CalendarPage() {
   const { data: events = [], isLoading, error } = useQuery<CalendarEvent[]>({
     queryKey: ['/api/calendar/events', currentMonth],
     queryFn: async () => {
-      const start = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
-      const end = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
-      const res = await fetch(`/api/calendar/events?start=${start}&end=${end}`, {
-        credentials: 'include'
-      });
-      if (!res.ok) throw new Error('Failed to fetch events');
-      return res.json();
+      try {
+        const start = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
+        const end = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
+        const res = await fetch(`/api/calendar/events?start=${start}&end=${end}`, {
+          credentials: 'include'
+        });
+        if (!res.ok) {
+          console.warn('[Calendar] API Error:', res.status, res.statusText);
+          return []; // Return empty array on error
+        }
+        const data = await res.json();
+        return Array.isArray(data) ? data : [];
+      } catch (err) {
+        console.error('[Calendar] Fetch error:', err);
+        return []; // Return empty array on exception
+      }
     },
     enabled: !!user,
-    retry: 1,
+    retry: false,
     staleTime: 30000
   });
 
