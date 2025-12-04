@@ -3104,7 +3104,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
               attendees: event.attendees || null,
               type: event.type || 'meeting',
               status: 'scheduled',
-              callId: call.id
+              callId: String(call.id)
             });
             
             eventsCreated++;

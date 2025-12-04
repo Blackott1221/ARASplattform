@@ -846,27 +846,71 @@ export default function CalendarPage() {
                 </div>
               </div>
 
+              {/* Quick Stats */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="grid grid-cols-4 gap-4 mt-6"
+              >
+                {[
+                  { label: 'Gesamt', value: events.length, icon: CalendarIcon, color: CI.goldLight },
+                  { label: 'Heute', value: getEventsForDay(new Date()).length, icon: Clock, color: CI.orange },
+                  { label: 'AI Events', value: events.filter(e => e.callId).length, icon: Sparkles, color: CI.orange },
+                  { label: 'Anstehend', value: events.filter(e => e.status === 'scheduled').length, icon: CalendarDays, color: CI.goldLight }
+                ].map((stat, idx) => (
+                  <motion.div
+                    key={stat.label}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.2 + idx * 0.05 }}
+                    className="p-4 rounded-xl"
+                    style={{
+                      background: 'rgba(0, 0, 0, 0.3)',
+                      border: `1px solid ${stat.color}20`,
+                      backdropFilter: 'blur(12px)'
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-2xl font-bold text-white">{stat.value}</div>
+                        <div className="text-xs text-gray-500 mt-1">{stat.label}</div>
+                      </div>
+                      <stat.icon className="w-8 h-8 opacity-30" style={{ color: stat.color }} />
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
+
               {/* Month Navigation */}
-              <div className="flex items-center justify-between mt-6">
+              <div className="flex items-center justify-between mt-8">
                 <div className="flex items-center gap-4">
                   <motion.button
-                    whileHover={{ scale: 1.05 }}
+                    whileHover={{ scale: 1.1, x: -2 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={handlePreviousMonth}
-                    className="p-2 rounded-lg hover:bg-white/5 transition-all"
+                    className="p-2.5 rounded-xl transition-all"
+                    style={{
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.1)'
+                    }}
                   >
                     <ChevronLeft className="w-5 h-5 text-gray-400" />
                   </motion.button>
                   
-                  <h2 className="text-xl font-semibold text-white min-w-[180px] text-center">
+                  <h2 className="text-2xl font-bold text-white min-w-[200px] text-center">
                     {format(currentMonth, 'MMMM yyyy', { locale: de })}
                   </h2>
                   
                   <motion.button
-                    whileHover={{ scale: 1.05 }}
+                    whileHover={{ scale: 1.1, x: 2 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={handleNextMonth}
-                    className="p-2 rounded-lg hover:bg-white/5 transition-all"
+                    className="p-2.5 rounded-xl transition-all"
+                    style={{
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.1)'
+                    }}
                   >
                     <ChevronRight className="w-5 h-5 text-gray-400" />
                   </motion.button>
