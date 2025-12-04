@@ -17,12 +17,21 @@ export default function UsageWidget() {
   const { data: usageData } = useQuery<{ success: boolean; usage: UsageData }>({
     queryKey: ["/api/user/usage"],
     queryFn: async () => {
-      const res = await fetch("/api/user/usage");
-      if (!res.ok) throw new Error("Failed to fetch usage");
-      return res.json();
+      try {
+        const res = await fetch("/api/user/usage", { credentials: 'include' });
+        if (!res.ok) {
+          console.warn('[UsageWidget] API Error:', res.status);
+          return null as any;
+        }
+        return await res.json();
+      } catch (err) {
+        console.error('[UsageWidget] Fetch error:', err);
+        return null as any;
+      }
     },
     refetchInterval: 30000, // Auto-refresh every 30 seconds
     refetchOnWindowFocus: true,
+    retry: false,
   });
 
   const usage = usageData?.usage;
