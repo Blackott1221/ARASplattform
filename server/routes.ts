@@ -2,10 +2,11 @@ import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { client, db, campaigns, chatMessages, chatSessions, contacts, calendarEvents, emails, leads, subscriptionPlans, users, usageTracking, voiceAgents, callLogs, userContacts } from "./db";
+import { client, db } from "./db";
+import { campaigns, chatMessages, chatSessions, contacts, calendarEvents, emails, leads, subscriptionPlans, users, usageTracking, voiceAgents, callLogs, userContacts } from "@shared/schema";
 import { logger } from "./logger";
 import { PerformanceMonitor, performanceMiddleware } from "./performance-monitor";
-import { insertLeadSchema, insertCampaignSchema, insertChatMessageSchema, insertContactSchema, sanitizeUser, contacts } from "@shared/schema";
+import { insertLeadSchema, insertCampaignSchema, insertChatMessageSchema, insertContactSchema, sanitizeUser } from "@shared/schema";
 import { eq, and, desc, gte, lte, isNull } from "drizzle-orm";
 import { z } from "zod";
 import Stripe from "stripe";
@@ -112,6 +113,22 @@ const upload = multer({
 const stripe = process.env.STRIPE_SECRET_KEY ? 
   new Stripe(process.env.STRIPE_SECRET_KEY) : 
   null;
+
+// Initialize Gemini AI
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || "");
+
+// Helper function to generate content with Gemini
+async function generateWithGemini(prompt: string): Promise<string> {
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    return response.text();
+  } catch (error) {
+    logger.error('[GEMINI] Error generating content:', error);
+    throw error;
+  }
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Trust proxy - required for Render.com and other reverse proxies
@@ -2566,6 +2583,111 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         originalMessage: message
       });
 
+      // 🔥 AUTO-PROCESS FOR CALENDAR: Schedule AI processing after call completes
+      // This will run asynchronously after response is sent
+      setImmediate(async () => {
+        try {
+          // Wait a bit for call to complete and get transcript
+          setTimeout(async () => {
+            logger.info('[CALENDAR-AUTO] Starting auto-processing for call:', callLogId);
+            
+            // Get call with transcript
+            const call = await db
+              .select()
+              .from(callLogs)
+              .where(eq(callLogs.id, callLogId))
+              .limit(1);
+            
+            if (call.length > 0 && call[0].transcript && !call[0].processedForCalendar) {
+              logger.info('[CALENDAR-AUTO] Call has transcript, processing with AI...');
+              
+              // Process with Gemini
+              const prompt = `
+                Analysiere dieses Telefongespräch und extrahiere alle vereinbarten Termine oder Follow-ups.
+                
+                Kontakt: ${name}
+                Transkript:
+                ${call[0].transcript}
+                
+                Extrahiere folgende Informationen für jeden Termin:
+                - Titel (kurz und prägnant)
+                - Datum (im Format YYYY-MM-DD, wenn nicht klar erwähnt, schätze basierend auf heute: ${new Date().toISOString().split('T')[0]})
+                - Uhrzeit (im Format HH:MM, wenn nicht erwähnt, schätze sinnvolle Business-Zeit)
+                - Dauer in Minuten (schätze wenn unklar, standard 60)
+                - Teilnehmer
+                - Ort (falls erwähnt)
+                - Typ (call, meeting, reminder, other)
+                
+                Antwort NUR als JSON-Array. Wenn keine Termine gefunden, leeres Array zurückgeben: []
+                
+                Beispiel:
+                [
+                  {
+                    "title": "Follow-up Meeting mit ${name}",
+                    "date": "2024-01-15",
+                    "time": "14:00",
+                    "duration": 60,
+                    "attendees": "${name}",
+                    "location": "Online",
+                    "type": "meeting"
+                  }
+                ]
+              `;
+              
+              try {
+                const geminiResponse = await generateWithGemini(prompt);
+                const events = JSON.parse(geminiResponse || '[]');
+                
+                logger.info('[CALENDAR-AUTO] Gemini extracted events:', events.length);
+                
+                // Create calendar events
+                for (const event of events) {
+                  const eventId = `event_auto_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                  
+                  await db.insert(calendarEvents).values({
+                    id: eventId,
+                    userId,
+                    title: event.title,
+                    description: `Automatisch erstellt aus Anruf mit ${name} vom ${new Date(call[0].createdAt).toLocaleDateString('de-DE')}`,
+                    date: event.date,
+                    time: event.time,
+                    duration: event.duration || 60,
+                    location: event.location || null,
+                    attendees: event.attendees || name,
+                    type: event.type || 'meeting',
+                    status: 'scheduled',
+                    callId: String(callLogId)
+                  });
+                  
+                  logger.info('[CALENDAR-AUTO] Created event:', eventId);
+                }
+                
+                // Mark call as processed
+                await db
+                  .update(callLogs)
+                  .set({ processedForCalendar: true })
+                  .where(eq(callLogs.id, callLogId));
+                
+                logger.info('[CALENDAR-AUTO] ✅ Auto-processing complete!', {
+                  callId: callLogId,
+                  eventsCreated: events.length
+                });
+                
+              } catch (aiError) {
+                logger.error('[CALENDAR-AUTO] AI processing failed:', aiError);
+              }
+            } else {
+              logger.info('[CALENDAR-AUTO] Call not ready for processing yet:', {
+                hasTranscript: !!call[0]?.transcript,
+                alreadyProcessed: call[0]?.processedForCalendar
+              });
+            }
+          }, 30000); // Wait 30 seconds for call to complete
+        } catch (error) {
+          logger.error('[CALENDAR-AUTO] Error in auto-processing:', error);
+        }
+      });
+
       logger.info('[SMART-CALL] ========== CALL FLOW COMPLETE ==========');
       logger.info('[SMART-CALL] ElevenLabs Response:', {
         conversationId: callResult.callId,
@@ -2767,24 +2889,19 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       const userId = (req.user as any).id;
       const { start, end } = req.query;
       
-      let query = db
-        .select()
-        .from(calendarEvents)
-        .where(eq(calendarEvents.userId, userId))
-        .orderBy(desc(calendarEvents.date));
+      // Build where conditions
+      const whereConditions = [eq(calendarEvents.userId, userId)];
       
-      // If date range provided, filter
       if (start && end) {
-        // Note: You might need to adjust this based on your date handling
-        query = query
-          .where(and(
-            eq(calendarEvents.userId, userId),
-            gte(calendarEvents.date, start as string),
-            lte(calendarEvents.date, end as string)
-          ));
+        whereConditions.push(gte(calendarEvents.date, start as string));
+        whereConditions.push(lte(calendarEvents.date, end as string));
       }
       
-      const events = await query;
+      const events = await db
+        .select()
+        .from(calendarEvents)
+        .where(and(...whereConditions))
+        .orderBy(desc(calendarEvents.date));
       
       logger.info('[CALENDAR] Fetched events:', {
         userId,

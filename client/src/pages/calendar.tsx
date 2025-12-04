@@ -144,9 +144,20 @@ const CalendarGrid = ({ days, currentMonth, selectedDate, onSelectDate, getEvent
 
               {/* AI Indicator */}
               {dayEvents.some((e: any) => e.callId) && (
-                <div className="absolute top-1 right-1">
+                <motion.div 
+                  className="absolute top-1 right-1"
+                  animate={{
+                    scale: [1, 1.2, 1],
+                    rotate: [0, 5, -5, 0]
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    repeatDelay: 3
+                  }}
+                >
                   <Sparkles className="w-3 h-3" style={{ color: CI.orange }} />
-                </div>
+                </motion.div>
               )}
             </div>
           </motion.div>

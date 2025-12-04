@@ -156,7 +156,7 @@ export const calendarEvents = pgTable("calendar_events", {
   userId: varchar("user_id").notNull().references(() => users.id),
   title: varchar("title").notNull(),
   description: text("description"),
-  date: date("date").notNull(),
+  date: varchar("date").notNull(), // Store as YYYY-MM-DD string
   time: varchar("time").notNull(),
   duration: integer("duration").notNull().default(60), // in minutes
   location: varchar("location"),
@@ -240,6 +240,7 @@ export const callLogs = pgTable("call_logs", {
   leadId: integer("lead_id").references(() => leads.id),
   voiceAgentId: integer("voice_agent_id").references(() => voiceAgents.id),
   phoneNumber: varchar("phone_number").notNull(),
+  contactName: varchar("contact_name"), // Name of contact for AI processing
   retellCallId: varchar("retell_call_id").unique(),
   status: varchar("status").default("initiated"),
   duration: integer("duration"),
@@ -247,6 +248,7 @@ export const callLogs = pgTable("call_logs", {
   customPrompt: text("custom_prompt"),
   recordingUrl: varchar("recording_url"),
   metadata: jsonb("metadata"),
+  processedForCalendar: boolean("processed_for_calendar").default(false), // AI calendar processing flag
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -351,12 +353,11 @@ export type PaymentSetupResponse = {
 };
 
 export type InsertLead = typeof leads.$inferInsert;
-export type CalendarEvent = InferSelectModel<typeof calendarEvents>;
-export type InsertCalendarEvent = InferInsertModel<typeof calendarEvents>;
+export type CalendarEvent = typeof calendarEvents.$inferSelect;
+export type InsertCalendarEvent = typeof calendarEvents.$inferInsert;
 
-export type Contact = InferSelectModel<typeof contacts>;
-export type InsertContact = InferInsertModel<typeof contacts>;
 export type Contact = typeof contacts.$inferSelect;
+export type InsertContact = typeof contacts.$inferInsert;
 export type InsertCampaign = typeof campaigns.$inferInsert;
 export type Campaign = typeof campaigns.$inferSelect;
 export type ChatMessage = typeof chatMessages.$inferSelect;
