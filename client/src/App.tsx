@@ -54,15 +54,15 @@ const VideoBackground = memo(() => {
         playsInline
         preload="auto"
         src={backgroundVideo}
-        className="absolute inset-0 w-full h-full object-cover opacity-25"
+        className="absolute inset-0 w-full h-full object-cover opacity-40"
         style={{
           transform: 'scale(1.0)',
           transformOrigin: 'center center',
-          filter: 'contrast(1.15) brightness(0.95) saturate(0.9) blur(1px)' // Subtle but visible
+          filter: 'contrast(1.2) brightness(1.0) saturate(1.0) blur(0.5px)' // Visible and clear
         }}
       />
-      {/* 70% dark overlay - visible but clean */}
-      <div className="absolute inset-0 bg-black/70"></div>
+      {/* 55% dark overlay - video clearly visible */}
+      <div className="absolute inset-0 bg-black/55"></div>
     </div>
   );
 });

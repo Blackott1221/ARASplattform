@@ -52,6 +52,8 @@ export default function Contacts() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingContact, setEditingContact] = useState<ContactData | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [showUploadTooltip, setShowUploadTooltip] = useState(false);
+  const [showTemplateTooltip, setShowTemplateTooltip] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState<ContactData>({
@@ -355,50 +357,214 @@ export default function Contacts() {
                 <p className="text-xs text-gray-600">{contacts.length} gespeichert</p>
               </div>
 
-              <div className="flex gap-2">
-                {/* CSV Upload */}
-                <div className="relative">
+              <div className="flex gap-3">
+                {/* CSV Upload - HIGH END */}
+                <motion.div 
+                  className="relative"
+                  onMouseEnter={() => setShowUploadTooltip(true)}
+                  onMouseLeave={() => setShowUploadTooltip(false)}
+                  whileHover={{ scale: 1.02 }}
+                >
                   <input
                     type="file"
                     accept=".csv"
                     onChange={handleCSVUpload}
                     disabled={isUploading}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
                     id="csv-upload"
                   />
-                  <button
+                  <motion.button
                     disabled={isUploading}
-                    className="px-3 py-1.5 text-xs font-medium bg-white/5 hover:bg-white/10 text-white rounded-md transition-all border border-white/10 disabled:opacity-50"
+                    className="group px-4 py-2 text-xs font-medium bg-white/8 hover:bg-white/12 text-white rounded-lg transition-all border border-white/20 disabled:opacity-50 relative overflow-hidden"
+                    whileTap={{ scale: 0.98 }}
                   >
-                    <Upload className="w-3.5 h-3.5 inline mr-1" />
-                    {isUploading ? 'Import...' : 'CSV'}
-                  </button>
-                </div>
+                    {/* Shimmer Effect */}
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                      animate={{
+                        x: ['-100%', '200%']
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        repeatDelay: 3
+                      }}
+                    />
+                    <div className="relative flex items-center gap-2">
+                      <motion.div
+                        animate={{
+                          y: isUploading ? [0, -3, 0] : 0
+                        }}
+                        transition={{
+                          duration: 0.6,
+                          repeat: isUploading ? Infinity : 0
+                        }}
+                      >
+                        <Upload className="w-4 h-4" />
+                      </motion.div>
+                      <span className="font-semibold">
+                        {isUploading ? 'Importiere...' : 'CSV hochladen'}
+                      </span>
+                    </div>
+                  </motion.button>
 
-                {/* Download Template */}
-                <button
-                  onClick={downloadCSVTemplate}
-                  className="px-3 py-1.5 text-xs font-medium bg-white/5 hover:bg-white/10 text-white rounded-md transition-all border border-white/10"
-                  title="Vorlage herunterladen"
+                  {/* Animated Tooltip */}
+                  <AnimatePresence>
+                    {showUploadTooltip && !isUploading && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                        className="absolute top-full mt-2 left-0 z-50 w-64"
+                      >
+                        <div 
+                          className="px-3 py-2 rounded-lg shadow-xl border"
+                          style={{
+                            background: 'rgba(0, 0, 0, 0.95)',
+                            borderColor: `${CI.orange}40`,
+                            backdropFilter: 'blur(20px)'
+                          }}
+                        >
+                          <div className="flex items-start gap-2">
+                            <div 
+                              className="p-1 rounded"
+                              style={{ background: `${CI.orange}20` }}
+                            >
+                              <Upload className="w-3 h-3" style={{ color: CI.orange }} />
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-white mb-0.5">CSV Datei hochladen</p>
+                              <p className="text-[10px] text-gray-400">Laden Sie hier Ihre Kontaktliste als CSV-Datei hoch. Bis zu 1000 Kontakte gleichzeitig.</p>
+                            </div>
+                          </div>
+                          {/* Arrow */}
+                          <div 
+                            className="absolute -top-1 left-4 w-2 h-2 rotate-45"
+                            style={{
+                              background: `${CI.orange}40`,
+                              borderLeft: `1px solid ${CI.orange}40`,
+                              borderTop: `1px solid ${CI.orange}40`
+                            }}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+
+                {/* Download Template - HIGH END */}
+                <motion.div
+                  className="relative"
+                  onMouseEnter={() => setShowTemplateTooltip(true)}
+                  onMouseLeave={() => setShowTemplateTooltip(false)}
+                  whileHover={{ scale: 1.02 }}
                 >
-                  <Download className="w-3.5 h-3.5" />
-                </button>
+                  <motion.button
+                    onClick={downloadCSVTemplate}
+                    className="group px-4 py-2 text-xs font-medium bg-white/8 hover:bg-white/12 text-white rounded-lg transition-all border border-white/20 relative overflow-hidden"
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    {/* Shimmer Effect */}
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                      animate={{
+                        x: ['-100%', '200%']
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        repeatDelay: 4,
+                        delay: 1
+                      }}
+                    />
+                    <div className="relative flex items-center gap-2">
+                      <motion.div
+                        whileHover={{ rotate: [0, -10, 10, 0] }}
+                        transition={{ duration: 0.5 }}
+                      >
+                        <Download className="w-4 h-4" />
+                      </motion.div>
+                      <span className="font-semibold">Vorlage</span>
+                    </div>
+                  </motion.button>
 
-                {/* Add Button */}
-                <button
+                  {/* Animated Tooltip */}
+                  <AnimatePresence>
+                    {showTemplateTooltip && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                        className="absolute top-full mt-2 left-0 z-50 w-64"
+                      >
+                        <div 
+                          className="px-3 py-2 rounded-lg shadow-xl border"
+                          style={{
+                            background: 'rgba(0, 0, 0, 0.95)',
+                            borderColor: `${CI.goldLight}40`,
+                            backdropFilter: 'blur(20px)'
+                          }}
+                        >
+                          <div className="flex items-start gap-2">
+                            <div 
+                              className="p-1 rounded"
+                              style={{ background: `${CI.goldLight}20` }}
+                            >
+                              <Download className="w-3 h-3" style={{ color: CI.goldLight }} />
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-white mb-0.5">Benötigen Sie eine Vorlage?</p>
+                              <p className="text-[10px] text-gray-400">Laden Sie unsere CSV-Vorlage herunter mit Beispieldaten und der richtigen Struktur.</p>
+                            </div>
+                          </div>
+                          {/* Arrow */}
+                          <div 
+                            className="absolute -top-1 left-4 w-2 h-2 rotate-45"
+                            style={{
+                              background: `${CI.goldLight}40`,
+                              borderLeft: `1px solid ${CI.goldLight}40`,
+                              borderTop: `1px solid ${CI.goldLight}40`
+                            }}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+
+                {/* Add Button - HIGH END */}
+                <motion.button
                   onClick={() => {
                     resetForm();
                     setShowAddForm(true);
                   }}
-                  className="px-3 py-1.5 text-xs font-medium rounded-md transition-all"
+                  className="px-4 py-2 text-xs font-semibold rounded-lg transition-all relative overflow-hidden group"
                   style={{
                     background: CI.orange,
                     color: 'black'
                   }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <Plus className="w-3.5 h-3.5 inline mr-1" />
-                  Neu
-                </button>
+                  {/* Shimmer Effect */}
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                    animate={{
+                      x: ['-100%', '200%']
+                    }}
+                    transition={{
+                      duration: 1.5,
+                      repeat: Infinity,
+                      repeatDelay: 2
+                    }}
+                  />
+                  <div className="relative flex items-center gap-1.5">
+                    <Plus className="w-4 h-4" />
+                    <span>Neu</span>
+                  </div>
+                </motion.button>
               </div>
             </div>
 
