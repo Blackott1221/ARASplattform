@@ -90,13 +90,14 @@ export function StatsBar({ animatedStats }: StatsBarProps) {
               }}
               whileHover={{ 
                 scale: 1.05,
-                boxShadow: `0 20px 40px ${stat.color}30`
+                y: -4,
+                boxShadow: `0 25px 50px ${stat.color}35`
               }}
-              className="rounded-2xl p-5 cursor-pointer relative overflow-hidden group"
+              className="glass-card rounded-3xl p-6 cursor-pointer relative overflow-hidden group glass-transition"
               style={{
                 background: stat.bgGradient,
-                border: `1px solid ${stat.color}20`,
-                backdropFilter: 'blur(20px)'
+                border: `1px solid ${stat.color}30`,
+                boxShadow: `0 10px 30px ${stat.color}15`
               }}
             >
               {/* Animated Background Pattern */}

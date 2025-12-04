@@ -91,10 +91,9 @@ export function HotLeads({ onSelectLead }: HotLeadsProps) {
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: 0.2 }}
-      className="rounded-2xl overflow-hidden relative"
+      className="glass-orange rounded-3xl overflow-hidden relative glass-transition"
       style={{
-        background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.12), rgba(233, 215, 196, 0.06))',
-        border: '2px solid rgba(254, 145, 0, 0.25)'
+        boxShadow: `0 20px 60px rgba(254, 145, 0, 0.15), inset 0 1px 2px rgba(255, 255, 255, 0.1)`
       }}
     >
       {/* Animated Background */}
@@ -161,13 +160,12 @@ export function HotLeads({ onSelectLead }: HotLeadsProps) {
                 }}
                 whileHover={{ 
                   scale: 1.02,
+                  y: -3,
                   transition: { duration: 0.2 }
                 }}
-                className="rounded-xl p-4 flex items-center justify-between cursor-pointer group"
+                className="glass-card glass-card-hover rounded-2xl p-4 flex items-center justify-between cursor-pointer group"
                 style={{
-                  background: 'rgba(0,0,0,0.5)',
-                  border: '1px solid rgba(254, 145, 0, 0.2)',
-                  backdropFilter: 'blur(10px)'
+                  border: `1px solid ${CI.orange}25`
                 }}
                 onClick={() => onSelectLead(lead)}
               >
