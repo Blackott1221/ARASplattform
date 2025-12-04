@@ -88,7 +88,10 @@ export default function Contacts() {
         credentials: 'include',
         body: JSON.stringify(contact)
       });
-      if (!res.ok) throw new Error('Failed to save contact');
+      if (!res.ok) {
+        console.error('[Contacts] Failed to save contact');
+        return null;
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -117,7 +120,10 @@ export default function Contacts() {
         credentials: 'include',
         body: JSON.stringify({ contacts })
       });
-      if (!res.ok) throw new Error('Failed to import contacts');
+      if (!res.ok) {
+        console.error('[Contacts] Failed to import contacts');
+        return null;
+      }
       return res.json();
     },
     onSuccess: (data) => {
@@ -145,7 +151,10 @@ export default function Contacts() {
         method: 'DELETE',
         credentials: 'include'
       });
-      if (!res.ok) throw new Error('Failed to delete contact');
+      if (!res.ok) {
+        console.error('[Contacts] Failed to delete contact');
+        return null;
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -229,7 +238,12 @@ export default function Contacts() {
         const lines = text.split('\n').filter(line => line.trim());
         
         if (lines.length < 2) {
-          throw new Error('CSV muss mindestens Header und eine Zeile enthalten');
+          toast({
+            title: 'Fehler',
+            description: 'CSV muss mindestens Header und eine Zeile enthalten',
+            variant: 'destructive'
+          });
+          return;
         }
 
         // Parse Header
@@ -273,7 +287,12 @@ export default function Contacts() {
         }
 
         if (contacts.length === 0) {
-          throw new Error('Keine gültigen Kontakte gefunden (Firma ist Pflichtfeld)');
+          toast({
+            title: 'Fehler',
+            description: 'Keine gültigen Kontakte gefunden (Firma ist Pflichtfeld)',
+            variant: 'destructive'
+          });
+          return;
         }
 
         // Import
