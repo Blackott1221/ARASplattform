@@ -252,182 +252,222 @@ export default function Contacts() {
         />
 
         <div className="flex-1 overflow-y-auto px-8 py-10">
-          <div className="max-w-7xl mx-auto">
-            {/* Header */}
+          <div className="max-w-5xl mx-auto">
+            {/* Header - ULTRA CLEAN */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex items-center justify-between mb-8"
+              className="flex items-center justify-between mb-10"
             >
               <div>
-                <h1
-                  className="text-5xl font-black mb-2"
+                <motion.h1
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-4xl font-black mb-1.5 tracking-tight"
                   style={{
                     fontFamily: 'Orbitron, sans-serif',
-                    background: `linear-gradient(90deg, ${CI.goldLight}, ${CI.orange}, ${CI.goldDark})`,
+                    background: `linear-gradient(120deg, ${CI.orange}, ${CI.goldLight})`,
                     WebkitBackgroundClip: 'text',
                     backgroundClip: 'text',
                     WebkitTextFillColor: 'transparent'
                   }}
                 >
-                  KONTAKTE
-                </h1>
-                <p className="text-gray-400">
-                  Verwalten Sie Ihre Unternehmenskontakte zentral
-                </p>
+                  Kontakte
+                </motion.h1>
+                <motion.p 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="text-sm text-gray-500"
+                >
+                  {contacts.length} {contacts.length === 1 ? 'Kontakt' : 'Kontakte'} gespeichert
+                </motion.p>
               </div>
 
               <motion.button
-                whileHover={{ scale: 1.05, y: -2 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={{ 
+                  scale: 1.02, 
+                  y: -3,
+                  rotateX: 5,
+                  rotateY: -5
+                }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => {
                   resetForm();
                   setShowAddForm(true);
                 }}
-                className="px-6 py-3 rounded-xl font-bold text-black relative overflow-hidden group"
+                className="px-5 py-2.5 rounded-lg font-semibold text-sm text-black relative overflow-hidden group"
                 style={{
                   background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
-                  boxShadow: `0 10px 30px ${CI.orange}40`
+                  boxShadow: `0 4px 12px ${CI.orange}30`,
+                  transformStyle: 'preserve-3d',
+                  perspective: '1000px'
                 }}
               >
                 <motion.div
                   className="absolute inset-0 opacity-0 group-hover:opacity-100"
                   style={{
-                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)'
+                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)'
                   }}
                   animate={{
                     x: ['-100%', '200%']
                   }}
                   transition={{
-                    duration: 1.5,
+                    duration: 1.2,
                     repeat: Infinity,
-                    repeatDelay: 0.5
+                    repeatDelay: 1
                   }}
                 />
-                <span className="relative flex items-center gap-2">
-                  <Plus className="w-5 h-5" />
-                  Neuer Kontakt
+                <span className="relative flex items-center gap-1.5">
+                  <Plus className="w-4 h-4" />
+                  Neu
                 </span>
               </motion.button>
             </motion.div>
 
-            {/* Stats - CLEAN MINIMAL */}
+            {/* Stats - ULTRA MINIMAL mit TILT */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="grid grid-cols-3 gap-3 mb-6"
+              className="grid grid-cols-3 gap-2 mb-6"
             >
               <motion.div
-                whileHover={{ y: -4, scale: 1.02 }}
-                className="relative overflow-hidden rounded-xl p-4"
+                whileHover={{ 
+                  y: -6, 
+                  rotateX: 8,
+                  rotateY: -8,
+                  scale: 1.03
+                }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                className="relative overflow-hidden rounded-lg p-3 cursor-pointer"
                 style={{
-                  background: 'rgba(254, 145, 0, 0.04)',
-                  border: '1px solid rgba(254, 145, 0, 0.12)',
-                  backdropFilter: 'blur(12px)'
+                  background: 'rgba(254, 145, 0, 0.03)',
+                  border: '1px solid rgba(254, 145, 0, 0.08)',
+                  backdropFilter: 'blur(8px)',
+                  transformStyle: 'preserve-3d',
+                  perspective: '1000px'
                 }}
               >
                 <motion.div
-                  className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity"
+                  className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-300"
                   style={{
-                    background: `radial-gradient(circle at 50% 0%, ${CI.orange}15, transparent 60%)`
+                    background: `linear-gradient(135deg, ${CI.orange}08, transparent)`
                   }}
                 />
-                <div className="relative">
-                  <div className="text-3xl font-black mb-1" style={{ color: CI.orange }}>
+                <div className="relative" style={{ transform: 'translateZ(20px)' }}>
+                  <div className="text-2xl font-black mb-0.5" style={{ color: CI.orange }}>
                     {contacts.length}
                   </div>
-                  <div className="text-xs text-gray-500 uppercase tracking-wider font-medium">
-                    Gesamt
+                  <div className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold">
+                    Total
                   </div>
                 </div>
               </motion.div>
 
               <motion.div
-                whileHover={{ y: -4, scale: 1.02 }}
-                className="relative overflow-hidden rounded-xl p-4"
+                whileHover={{ 
+                  y: -6,
+                  rotateX: 8,
+                  scale: 1.03
+                }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                className="relative overflow-hidden rounded-lg p-3 cursor-pointer"
                 style={{
-                  background: 'rgba(233, 215, 196, 0.04)',
-                  border: '1px solid rgba(233, 215, 196, 0.12)',
-                  backdropFilter: 'blur(12px)'
+                  background: 'rgba(233, 215, 196, 0.03)',
+                  border: '1px solid rgba(233, 215, 196, 0.08)',
+                  backdropFilter: 'blur(8px)',
+                  transformStyle: 'preserve-3d',
+                  perspective: '1000px'
                 }}
               >
                 <motion.div
-                  className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity"
+                  className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-300"
                   style={{
-                    background: `radial-gradient(circle at 50% 0%, ${CI.goldLight}10, transparent 60%)`
+                    background: `linear-gradient(135deg, ${CI.goldLight}06, transparent)`
                   }}
                 />
-                <div className="relative">
-                  <div className="text-3xl font-black mb-1" style={{ color: CI.goldLight }}>
+                <div className="relative" style={{ transform: 'translateZ(20px)' }}>
+                  <div className="text-2xl font-black mb-0.5" style={{ color: CI.goldLight }}>
                     {contacts.filter(c => c.company).length}
                   </div>
-                  <div className="text-xs text-gray-500 uppercase tracking-wider font-medium">
+                  <div className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold">
                     Firmen
                   </div>
                 </div>
               </motion.div>
 
               <motion.div
-                whileHover={{ y: -4, scale: 1.02 }}
-                className="relative overflow-hidden rounded-xl p-4"
+                whileHover={{ 
+                  y: -6,
+                  rotateX: 8,
+                  rotateY: 8,
+                  scale: 1.03
+                }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                className="relative overflow-hidden rounded-lg p-3 cursor-pointer"
                 style={{
-                  background: 'rgba(254, 145, 0, 0.04)',
-                  border: '1px solid rgba(254, 145, 0, 0.12)',
-                  backdropFilter: 'blur(12px)'
+                  background: 'rgba(254, 145, 0, 0.03)',
+                  border: '1px solid rgba(254, 145, 0, 0.08)',
+                  backdropFilter: 'blur(8px)',
+                  transformStyle: 'preserve-3d',
+                  perspective: '1000px'
                 }}
               >
                 <motion.div
-                  className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity"
+                  className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-300"
                   style={{
-                    background: `radial-gradient(circle at 50% 0%, ${CI.orange}15, transparent 60%)`
+                    background: `linear-gradient(135deg, ${CI.orange}08, transparent)`
                   }}
                 />
-                <div className="relative">
-                  <div className="text-3xl font-black mb-1" style={{ color: CI.orange }}>
+                <div className="relative" style={{ transform: 'translateZ(20px)' }}>
+                  <div className="text-2xl font-black mb-0.5" style={{ color: CI.orange }}>
                     {contacts.filter(c => c.phone && c.email).length}
                   </div>
-                  <div className="text-xs text-gray-500 uppercase tracking-wider font-medium">
-                    Komplett
+                  <div className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold">
+                    Voll
                   </div>
                 </div>
               </motion.div>
             </motion.div>
 
-            {/* Search Bar - MINIMAL */}
+            {/* Search Bar - ULTRA MINIMAL */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="relative mb-6"
+              className="relative mb-5"
             >
               <motion.div
-                whileFocus={{ scale: 1.01 }}
-                className="relative overflow-hidden rounded-xl"
+                whileFocus={{ scale: 1.005 }}
+                className="relative overflow-hidden rounded-lg"
                 style={{
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid rgba(255, 255, 255, 0.06)',
-                  backdropFilter: 'blur(20px)'
+                  background: 'rgba(255, 255, 255, 0.015)',
+                  border: '1px solid rgba(255, 255, 255, 0.04)',
+                  backdropFilter: 'blur(16px)'
                 }}
               >
-                <div className="flex items-center gap-3 px-4 py-3">
-                  <Search className="w-5 h-5 text-gray-500 flex-shrink-0" />
+                <div className="flex items-center gap-2.5 px-3.5 py-2.5">
+                  <Search className="w-4 h-4 text-gray-600 flex-shrink-0" />
                   <input
                     type="text"
-                    placeholder="Suche nach Name, Firma oder E-Mail..."
+                    placeholder="Suchen..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-600 text-sm"
+                    className="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-700 text-sm"
                   />
                   {searchQuery && (
                     <motion.button
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      exit={{ scale: 0 }}
+                      initial={{ scale: 0, rotate: -180 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      exit={{ scale: 0, rotate: 180 }}
+                      whileHover={{ scale: 1.1, rotate: 90 }}
+                      whileTap={{ scale: 0.9 }}
                       onClick={() => setSearchQuery('')}
-                      className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+                      className="p-1 hover:bg-white/5 rounded-md transition-colors"
                     >
-                      <X className="w-4 h-4 text-gray-500" />
+                      <X className="w-3.5 h-3.5 text-gray-600" />
                     </motion.button>
                   )}
                 </div>
@@ -655,123 +695,161 @@ export default function Contacts() {
                       layout
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, x: -20 }}
+                      exit={{ opacity: 0, scale: 0.9, x: -20 }}
                       transition={{ 
-                        delay: index * 0.03,
+                        delay: index * 0.02,
                         type: "spring",
-                        stiffness: 300,
-                        damping: 24
+                        stiffness: 400,
+                        damping: 20
                       }}
                       whileHover={{ 
-                        y: -4,
-                        transition: { duration: 0.2 }
+                        y: -8,
+                        rotateX: 5,
+                        rotateY: 2,
+                        scale: 1.01,
+                        transition: { 
+                          type: "spring",
+                          stiffness: 400,
+                          damping: 15
+                        }
                       }}
-                      className="group relative overflow-hidden rounded-xl p-4 cursor-pointer"
+                      className="group relative overflow-hidden rounded-lg p-3.5 cursor-pointer"
                       style={{
-                        background: 'rgba(255, 255, 255, 0.02)',
-                        border: '1px solid rgba(255, 255, 255, 0.06)',
-                        backdropFilter: 'blur(20px)'
+                        background: 'rgba(255, 255, 255, 0.015)',
+                        border: '1px solid rgba(255, 255, 255, 0.04)',
+                        backdropFilter: 'blur(16px)',
+                        transformStyle: 'preserve-3d',
+                        perspective: '1000px'
                       }}
                     >
-                      {/* Hover Glow Effect */}
+                      {/* Subtle Hover Glow */}
                       <motion.div
-                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
                         style={{
-                          background: `radial-gradient(600px circle at var(--mouse-x) var(--mouse-y), ${CI.orange}08, transparent 40%)`,
+                          background: `radial-gradient(400px circle at 50% 0%, ${CI.orange}04, transparent)`,
                           pointerEvents: 'none'
                         }}
                       />
 
-                      <div className="relative flex items-start gap-4">
-                        {/* Company Icon - MINIMAL */}
+                      <div className="relative flex items-start gap-3" style={{ transform: 'translateZ(10px)' }}>
+                        {/* Company Icon - MICRO */}
                         <motion.div
-                          whileHover={{ rotate: 5, scale: 1.05 }}
-                          className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
+                          whileHover={{ 
+                            rotate: -5, 
+                            scale: 1.08,
+                            transition: { type: "spring", stiffness: 500 }
+                          }}
+                          className="w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0"
                           style={{
-                            background: `${CI.orange}12`,
-                            border: `1px solid ${CI.orange}20`
+                            background: `${CI.orange}08`,
+                            border: `1px solid ${CI.orange}15`
                           }}
                         >
-                          <Building2 className="w-6 h-6" style={{ color: CI.orange }} />
+                          <Building2 className="w-5 h-5" style={{ color: CI.orange }} />
                         </motion.div>
 
-                        {/* Contact Info - CLEANER */}
+                        {/* Contact Info - ULTRA CLEAN */}
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-base font-bold text-white mb-2 group-hover:text-orange-400 transition-colors">
+                          <motion.h3 
+                            className="text-sm font-bold text-white mb-1.5 group-hover:text-orange-400 transition-colors duration-300"
+                            style={{ letterSpacing: '-0.01em' }}
+                          >
                             {contact.company}
-                          </h3>
+                          </motion.h3>
                           
-                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-gray-600">
                             {(contact.firstName || contact.lastName) && (
-                              <div className="flex items-center gap-1.5">
-                                <UserIcon className="w-3.5 h-3.5" />
-                                <span>
+                              <motion.div 
+                                className="flex items-center gap-1"
+                                whileHover={{ x: 2, transition: { duration: 0.2 } }}
+                              >
+                                <UserIcon className="w-3 h-3 flex-shrink-0" />
+                                <span className="truncate">
                                   {[contact.firstName, contact.lastName].filter(Boolean).join(' ')}
                                 </span>
-                              </div>
+                              </motion.div>
                             )}
                             {contact.phone && (
-                              <div className="flex items-center gap-1.5">
-                                <Phone className="w-3.5 h-3.5" />
+                              <motion.div 
+                                className="flex items-center gap-1"
+                                whileHover={{ x: 2, transition: { duration: 0.2 } }}
+                              >
+                                <Phone className="w-3 h-3 flex-shrink-0" />
                                 <span>{contact.phone}</span>
-                              </div>
+                              </motion.div>
                             )}
                             {contact.email && (
-                              <div className="flex items-center gap-1.5">
-                                <Mail className="w-3.5 h-3.5" />
-                                <span className="truncate max-w-[200px]">{contact.email}</span>
-                              </div>
+                              <motion.div 
+                                className="flex items-center gap-1"
+                                whileHover={{ x: 2, transition: { duration: 0.2 } }}
+                              >
+                                <Mail className="w-3 h-3 flex-shrink-0" />
+                                <span className="truncate max-w-[180px]">{contact.email}</span>
+                              </motion.div>
                             )}
                           </div>
 
                           {contact.notes && (
                             <motion.p 
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: 'auto' }}
-                              className="mt-2 text-xs text-gray-600 line-clamp-1 italic"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              className="mt-1.5 text-[10px] text-gray-700 line-clamp-1 italic"
                             >
-                              {contact.notes}
+                              "{contact.notes}"
                             </motion.p>
                           )}
                         </div>
 
-                        {/* Actions - FLOATING ON HOVER */}
+                        {/* Actions - MICRO BUTTONS */}
                         <motion.div 
-                          className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          initial={{ opacity: 0, x: 10 }}
+                          animate={{ opacity: 0, x: 0 }}
+                          whileHover={{ opacity: 1 }}
+                          className="flex gap-0.5 group-hover:opacity-100 transition-opacity duration-200"
                         >
                           <motion.button
-                            whileHover={{ scale: 1.15, y: -2 }}
-                            whileTap={{ scale: 0.9 }}
+                            whileHover={{ 
+                              scale: 1.2, 
+                              y: -3,
+                              rotate: -5,
+                              transition: { type: "spring", stiffness: 500 }
+                            }}
+                            whileTap={{ scale: 0.85 }}
                             onClick={(e) => {
                               e.stopPropagation();
                               handleEdit(contact);
                             }}
-                            className="p-2 rounded-lg transition-colors"
+                            className="p-1.5 rounded-md transition-colors"
                             style={{
-                              background: 'rgba(233, 215, 196, 0.1)',
-                              border: '1px solid rgba(233, 215, 196, 0.2)'
+                              background: 'rgba(233, 215, 196, 0.08)',
+                              border: '1px solid rgba(233, 215, 196, 0.15)'
                             }}
                             title="Bearbeiten"
                           >
-                            <Pencil className="w-4 h-4" style={{ color: CI.goldLight }} />
+                            <Pencil className="w-3.5 h-3.5" style={{ color: CI.goldLight }} />
                           </motion.button>
 
                           <motion.button
-                            whileHover={{ scale: 1.15, y: -2 }}
-                            whileTap={{ scale: 0.9 }}
+                            whileHover={{ 
+                              scale: 1.2, 
+                              y: -3,
+                              rotate: 5,
+                              transition: { type: "spring", stiffness: 500 }
+                            }}
+                            whileTap={{ scale: 0.85 }}
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDelete(contact.id!);
                             }}
                             disabled={deleteMutation.isPending}
-                            className="p-2 rounded-lg transition-colors"
+                            className="p-1.5 rounded-md transition-colors"
                             style={{
-                              background: 'rgba(239, 68, 68, 0.1)',
-                              border: '1px solid rgba(239, 68, 68, 0.2)'
+                              background: 'rgba(239, 68, 68, 0.08)',
+                              border: '1px solid rgba(239, 68, 68, 0.15)'
                             }}
                             title="Löschen"
                           >
-                            <Trash2 className="w-4 h-4 text-red-400" />
+                            <Trash2 className="w-3.5 h-3.5 text-red-400" />
                           </motion.button>
                         </motion.div>
                       </div>
