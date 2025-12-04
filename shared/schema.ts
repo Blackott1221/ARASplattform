@@ -151,6 +151,23 @@ export const leads = pgTable("leads", {
 });
 
 // Contacts table for user's business contacts
+export const calendarEvents = pgTable("calendar_events", {
+  id: varchar("id").primaryKey().notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  date: date("date").notNull(),
+  time: varchar("time").notNull(),
+  duration: integer("duration").notNull().default(60), // in minutes
+  location: varchar("location"),
+  attendees: text("attendees"),
+  type: varchar("type", { enum: ["call", "meeting", "reminder", "other"] }).notNull().default("meeting"),
+  status: varchar("status", { enum: ["scheduled", "completed", "cancelled"] }).notNull().default("scheduled"),
+  callId: varchar("call_id"), // Reference to call if created from call
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const contacts = pgTable("contacts", {
   id: varchar("id").primaryKey().notNull(),
   userId: varchar("user_id").notNull().references(() => users.id),
@@ -334,8 +351,11 @@ export type PaymentSetupResponse = {
 };
 
 export type InsertLead = typeof leads.$inferInsert;
-export type Lead = typeof leads.$inferSelect;
-export type InsertContact = typeof contacts.$inferInsert;
+export type CalendarEvent = InferSelectModel<typeof calendarEvents>;
+export type InsertCalendarEvent = InferInsertModel<typeof calendarEvents>;
+
+export type Contact = InferSelectModel<typeof contacts>;
+export type InsertContact = InferInsertModel<typeof contacts>;
 export type Contact = typeof contacts.$inferSelect;
 export type InsertCampaign = typeof campaigns.$inferInsert;
 export type Campaign = typeof campaigns.$inferSelect;

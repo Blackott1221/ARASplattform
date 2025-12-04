@@ -13,26 +13,18 @@ interface TopBarProps {
 }
 
 export function TopBar({ currentSection, subscriptionData, user, isVisible }: TopBarProps) {
-  const getSectionTitle = (section: string) => {
-    switch (section) {
-      case "space":
-        return "SPACE";
-      case "dashboard":
-        return "COMMAND CENTER";
-      case "power":
-        return "POWER";
-      case "campaigns":
-        return "KAMPAGNEN";
-      case "contacts":
-        return "KONTAKTE";
-      case "leads":
-        return "WISSENSDATENBANK";
-      case "billing":
-        return "IHR PLAN";
-      case "settings":
-        return "EINSTELLUNGEN";
-      default:
-        return "SPACE";
+  const getSectionTitle = (path: string) => {
+    switch (path) {
+      case 'dashboard': return 'DASHBOARD';
+      case 'space': return 'SPACE';
+      case 'leads': return 'WISSENSDATENBANK';
+      case 'power': return 'POWER - EINZELANRUF';
+      case 'campaigns': return 'POWER - KAMPAGNEN';
+      case 'contacts': return 'POWER - KONTAKTE';
+      case 'calendar': return 'POWER - KALENDER';
+      case 'billing': return 'IHR PLAN';
+      case 'settings': return 'EINSTELLUNGEN';
+      default: return 'ARAS AI';
     }
   };
 

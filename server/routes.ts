@@ -2,11 +2,11 @@ import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { client, db } from "./db";
+import { client, db, campaigns, chatMessages, chatSessions, contacts, calendarEvents, emails, leads, subscriptionPlans, users, usageTracking, voiceAgents, callLogs, userContacts } from "./db";
 import { logger } from "./logger";
 import { PerformanceMonitor, performanceMiddleware } from "./performance-monitor";
 import { insertLeadSchema, insertCampaignSchema, insertChatMessageSchema, insertContactSchema, sanitizeUser, contacts } from "@shared/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, gte, lte, isNull } from "drizzle-orm";
 import { z } from "zod";
 import Stripe from "stripe";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -2757,6 +2757,293 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     }
   });
 
+  // ========================================================
+  // CALENDAR EVENTS API
+  // ========================================================
+  
+  // GET calendar events
+  app.get("/api/calendar/events", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const { start, end } = req.query;
+      
+      let query = db
+        .select()
+        .from(calendarEvents)
+        .where(eq(calendarEvents.userId, userId))
+        .orderBy(desc(calendarEvents.date));
+      
+      // If date range provided, filter
+      if (start && end) {
+        // Note: You might need to adjust this based on your date handling
+        query = query
+          .where(and(
+            eq(calendarEvents.userId, userId),
+            gte(calendarEvents.date, start as string),
+            lte(calendarEvents.date, end as string)
+          ));
+      }
+      
+      const events = await query;
+      
+      logger.info('[CALENDAR] Fetched events:', {
+        userId,
+        count: events.length,
+        dateRange: { start, end }
+      });
+      
+      res.json(events);
+    } catch (error: any) {
+      logger.error('[CALENDAR] Error fetching events:', error);
+      res.status(500).json({ error: 'Failed to fetch events' });
+    }
+  });
+  
+  // POST create calendar event
+  app.post("/api/calendar/events", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const eventData = req.body;
+      
+      // Generate unique ID
+      const eventId = `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      const newEvent = {
+        id: eventId,
+        userId,
+        title: eventData.title,
+        description: eventData.description || null,
+        date: eventData.date,
+        time: eventData.time,
+        duration: eventData.duration || 60,
+        location: eventData.location || null,
+        attendees: eventData.attendees || null,
+        type: eventData.type || 'meeting',
+        status: eventData.status || 'scheduled',
+        callId: eventData.callId || null
+      };
+      
+      await db.insert(calendarEvents).values(newEvent);
+      
+      logger.info('[CALENDAR] Created event:', {
+        id: eventId,
+        userId,
+        title: eventData.title
+      });
+      
+      res.json({ ...newEvent, id: eventId });
+    } catch (error: any) {
+      logger.error('[CALENDAR] Error creating event:', error);
+      res.status(500).json({ error: 'Failed to create event' });
+    }
+  });
+  
+  // PUT update calendar event
+  app.put("/api/calendar/events/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const eventId = req.params.id;
+      const updates = req.body;
+      
+      // Check ownership
+      const existing = await db
+        .select()
+        .from(calendarEvents)
+        .where(and(eq(calendarEvents.id, eventId), eq(calendarEvents.userId, userId)))
+        .limit(1);
+      
+      if (existing.length === 0) {
+        return res.status(404).json({ error: 'Event not found' });
+      }
+      
+      await db
+        .update(calendarEvents)
+        .set({
+          ...updates,
+          updatedAt: new Date()
+        })
+        .where(and(eq(calendarEvents.id, eventId), eq(calendarEvents.userId, userId)));
+      
+      logger.info('[CALENDAR] Updated event:', {
+        id: eventId,
+        userId
+      });
+      
+      res.json({ success: true, message: 'Event updated' });
+    } catch (error: any) {
+      logger.error('[CALENDAR] Error updating event:', error);
+      res.status(500).json({ error: 'Failed to update event' });
+    }
+  });
+  
+  // DELETE calendar event
+  app.delete("/api/calendar/events/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const eventId = req.params.id;
+      
+      // Check ownership
+      const existing = await db
+        .select()
+        .from(calendarEvents)
+        .where(and(eq(calendarEvents.id, eventId), eq(calendarEvents.userId, userId)))
+        .limit(1);
+      
+      if (existing.length === 0) {
+        return res.status(404).json({ error: 'Event not found' });
+      }
+      
+      await db
+        .delete(calendarEvents)
+        .where(and(eq(calendarEvents.id, eventId), eq(calendarEvents.userId, userId)));
+      
+      logger.info('[CALENDAR] Deleted event:', {
+        id: eventId,
+        userId
+      });
+      
+      res.json({ success: true, message: 'Event deleted' });
+    } catch (error: any) {
+      logger.error('[CALENDAR] Error deleting event:', error);
+      res.status(500).json({ error: 'Failed to delete event' });
+    }
+  });
+  
+  // POST AI process calls to create calendar events
+  app.post("/api/calendar/ai-process-calls", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      
+      // Get recent unprocessed calls
+      const recentCalls = await db
+        .select()
+        .from(callLogs)
+        .where(and(
+          eq(callLogs.userId, userId),
+          eq(callLogs.status, 'completed'),
+          isNull(callLogs.processedForCalendar)
+        ))
+        .orderBy(desc(callLogs.createdAt))
+        .limit(10);
+      
+      if (recentCalls.length === 0) {
+        return res.json({ callsProcessed: 0, eventsCreated: 0 });
+      }
+      
+      let eventsCreated = 0;
+      
+      // Process each call with Gemini AI
+      for (const call of recentCalls) {
+        if (!call.transcript) continue;
+        
+        try {
+          // Use Gemini to extract calendar events from transcript
+          const prompt = `
+            Analysiere dieses Telefongespräch und extrahiere alle vereinbarten Termine oder Follow-ups.
+            
+            Transkript:
+            ${call.transcript}
+            
+            Extrahiere folgende Informationen für jeden Termin:
+            - Titel (kurz und prägnant)
+            - Datum (im Format YYYY-MM-DD, wenn nicht klar, schätze sinnvoll)
+            - Uhrzeit (im Format HH:MM)
+            - Dauer in Minuten (schätze wenn unklar)
+            - Teilnehmer
+            - Ort (falls erwähnt)
+            - Typ (call, meeting, reminder, other)
+            
+            Antwort als JSON-Array. Wenn keine Termine gefunden, leeres Array zurückgeben.
+            Beispiel:
+            [
+              {
+                "title": "Follow-up Meeting mit Max Mustermann",
+                "date": "2024-01-15",
+                "time": "14:00",
+                "duration": 60,
+                "attendees": "Max Mustermann",
+                "location": "Online",
+                "type": "meeting"
+              }
+            ]
+          `;
+          
+          const geminiResponse = await generateWithGemini(prompt);
+          const events = JSON.parse(geminiResponse || '[]');
+          
+          // Create calendar events
+          for (const event of events) {
+            const eventId = `event_ai_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            
+            await db.insert(calendarEvents).values({
+              id: eventId,
+              userId,
+              title: event.title,
+              description: `Automatisch erstellt aus Anruf vom ${new Date(call.createdAt).toLocaleDateString('de-DE')}`,
+              date: event.date,
+              time: event.time,
+              duration: event.duration || 60,
+              location: event.location || null,
+              attendees: event.attendees || null,
+              type: event.type || 'meeting',
+              status: 'scheduled',
+              callId: call.id
+            });
+            
+            eventsCreated++;
+          }
+          
+          // Mark call as processed
+          await db
+            .update(callLogs)
+            .set({ processedForCalendar: true })
+            .where(eq(callLogs.id, call.id));
+            
+        } catch (error) {
+          logger.error('[CALENDAR] Error processing call with AI:', error);
+        }
+      }
+      
+      logger.info('[CALENDAR] AI processed calls:', {
+        userId,
+        callsProcessed: recentCalls.length,
+        eventsCreated
+      });
+      
+      res.json({
+        callsProcessed: recentCalls.length,
+        eventsCreated
+      });
+    } catch (error: any) {
+      logger.error('[CALENDAR] Error in AI processing:', error);
+      res.status(500).json({ error: 'Failed to process calls with AI' });
+    }
+  });
+  
+  // GET check for recent unprocessed calls
+  app.get("/api/calendar/check-recent-calls", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      
+      const unprocessedCalls = await db
+        .select()
+        .from(callLogs)
+        .where(and(
+          eq(callLogs.userId, userId),
+          eq(callLogs.status, 'completed'),
+          isNull(callLogs.processedForCalendar)
+        ))
+        .limit(1);
+      
+      res.json({
+        hasUnprocessedCalls: unprocessedCalls.length > 0
+      });
+    } catch (error: any) {
+      logger.error('[CALENDAR] Error checking recent calls:', error);
+      res.status(500).json({ error: 'Failed to check recent calls' });
+    }
+  });
+  
   // POST bulk import contacts from CSV
   app.post("/api/contacts/bulk", requireAuth, async (req, res) => {
     try {

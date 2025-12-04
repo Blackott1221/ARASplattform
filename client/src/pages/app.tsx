@@ -11,7 +11,8 @@ import type { User, SubscriptionResponse } from "@shared/schema";
 const Dashboard = lazy(() => import("@/pages/dashboard"));
 const PowerPage = lazy(() => import("@/pages/power"));
 const CampaignsPage = lazy(() => import("@/pages/campaigns"));
-const ContactsPage = lazy(() => import("@/pages/contacts"));
+const Contacts = lazy(() => import('./contacts'));
+const Calendar = lazy(() => import('./calendar'));
 const LeadsPage = lazy(() => import("@/pages/leads"));
 const BillingPage = lazy(() => import("@/pages/billing"));
 const SettingsPage = lazy(() => import("@/pages/settings"));
@@ -27,6 +28,7 @@ export default function App() {
     if (location.includes('/power')) return 'power';
     if (location.includes('/campaigns')) return 'campaigns';
     if (location.includes('/contacts')) return 'contacts';
+    if (location.includes('/calendar')) return 'calendar';
     if (location.includes('/leads')) return 'leads';
     if (location.includes('/billing')) return 'billing';
     if (location.includes('/settings')) return 'settings';
@@ -58,7 +60,9 @@ export default function App() {
       case "campaigns":
         return <CampaignsPage />;
       case "contacts":
-        return <ContactsPage />;
+        return <Contacts />;
+      case "calendar":
+        return <Calendar />;
       case "leads":
         return <LeadsPage />;
       case "billing":

@@ -27,7 +27,9 @@ import Power from "@/pages/power";
 import VoiceAgents from "@/pages/voice-agents";
 import Leads from "@/pages/leads";
 import Campaigns from "@/pages/campaigns";
-import Contacts from "@/pages/contacts";
+import { lazy } from 'react';
+const Contacts = lazy(() => import('@/pages/contacts'));
+const Calendar = lazy(() => import('@/pages/calendar'));
 import Billing from "@/pages/billing";
 import Settings from "@/pages/settings";
 import AuthPage from "@/pages/auth-page";
@@ -132,6 +134,8 @@ function Router() {
           <Route path="/app/campaigns" component={Campaigns} />
           <Route path="/contacts" component={Contacts} />
           <Route path="/app/contacts" component={Contacts} />
+          <Route path="/calendar" component={Calendar} />
+          <Route path="/app/calendar" component={Calendar} />
           <Route path="/billing" component={Billing} />
           <Route path="/app/billing" component={Billing} />
           <Route path="/settings" component={Settings} />

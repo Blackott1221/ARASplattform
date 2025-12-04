@@ -1,19 +1,20 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   MessageCircle, 
+  LayoutDashboard,
   Phone, 
-  Users, 
+  Megaphone,
+  Contact,
+  Calendar,
+  Zap,
+  BookOpen, 
   CreditCard, 
-  Settings,
-  ChevronLeft,
+  Settings, 
   ChevronRight,
+  ChevronLeft,
   ChevronDown,
   LogOut,
-  BookOpen,
-  Zap,
-  Megaphone,
-  LayoutDashboard,
-  Contact
+  Users
 } from "lucide-react";
 import { useState } from "react";
 import arasLogo from "@/assets/aras_logo_1755067745303.png";
@@ -39,7 +40,8 @@ export function Sidebar({ activeSection, onSectionChange, isCollapsed = false, o
       subItems: [
         { id: "power", label: "Einzelanruf", icon: Zap },
         { id: "campaigns", label: "Kampagnen", icon: Megaphone },
-        { id: "contacts", label: "Kontakte", icon: Contact }
+        { id: "contacts", label: "Kontakte", icon: Contact },
+        { id: "calendar", label: "Kalender", icon: Calendar }
       ]
     },
     { id: "leads", label: "Wissensdatenbank", icon: BookOpen },
