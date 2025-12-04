@@ -150,6 +150,20 @@ export const leads = pgTable("leads", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Contacts table for user's business contacts
+export const contacts = pgTable("contacts", {
+  id: varchar("id").primaryKey().notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  company: varchar("company").notNull(), // Required field
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  phone: varchar("phone"),
+  email: varchar("email"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Campaigns table
 export const campaigns = pgTable("campaigns", {
   id: serial("id").primaryKey(),
@@ -321,6 +335,8 @@ export type PaymentSetupResponse = {
 
 export type InsertLead = typeof leads.$inferInsert;
 export type Lead = typeof leads.$inferSelect;
+export type InsertContact = typeof contacts.$inferInsert;
+export type Contact = typeof contacts.$inferSelect;
 export type InsertCampaign = typeof campaigns.$inferInsert;
 export type Campaign = typeof campaigns.$inferSelect;
 export type ChatMessage = typeof chatMessages.$inferSelect;
@@ -332,6 +348,12 @@ export type UsageTracking = typeof usageTracking.$inferSelect;
 
 // Insert schemas
 export const insertLeadSchema = createInsertSchema(leads).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertContactSchema = createInsertSchema(contacts).omit({
   id: true,
   createdAt: true,
   updatedAt: true,

@@ -2,10 +2,11 @@ import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { client } from "./db";
+import { client, db } from "./db";
 import { logger } from "./logger";
 import { PerformanceMonitor, performanceMiddleware } from "./performance-monitor";
-import { insertLeadSchema, insertCampaignSchema, insertChatMessageSchema, sanitizeUser } from "@shared/schema";
+import { insertLeadSchema, insertCampaignSchema, insertChatMessageSchema, insertContactSchema, sanitizeUser, contacts } from "@shared/schema";
+import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod";
 import Stripe from "stripe";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -2609,5 +2610,152 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     });
   }
 });
+
+  // ========================================
+  // CONTACTS API ENDPOINTS
+  // ========================================
+
+  // GET all contacts for current user
+  app.get("/api/contacts", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      
+      const userContacts = await db
+        .select()
+        .from(contacts)
+        .where(eq(contacts.userId, userId))
+        .orderBy(desc(contacts.createdAt));
+
+      res.json(userContacts);
+    } catch (error: any) {
+      logger.error('[CONTACTS] Error fetching contacts:', error);
+      res.status(500).json({ error: 'Failed to fetch contacts' });
+    }
+  });
+
+  // POST create new contact
+  app.post("/api/contacts", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const { company, firstName, lastName, phone, email, notes } = req.body;
+
+      // Validation
+      if (!company || !company.trim()) {
+        return res.status(400).json({ error: 'Company name is required' });
+      }
+
+      // Generate unique ID
+      const contactId = `contact_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      const newContact = await db
+        .insert(contacts)
+        .values({
+          id: contactId,
+          userId,
+          company: company.trim(),
+          firstName: firstName?.trim() || null,
+          lastName: lastName?.trim() || null,
+          phone: phone?.trim() || null,
+          email: email?.trim() || null,
+          notes: notes?.trim() || null,
+        })
+        .returning();
+
+      logger.info('[CONTACTS] Created new contact:', {
+        id: contactId,
+        userId,
+        company: company.trim()
+      });
+
+      res.json(newContact[0]);
+    } catch (error: any) {
+      logger.error('[CONTACTS] Error creating contact:', error);
+      res.status(500).json({ error: 'Failed to create contact' });
+    }
+  });
+
+  // PUT update existing contact
+  app.put("/api/contacts/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const contactId = req.params.id;
+      const { company, firstName, lastName, phone, email, notes } = req.body;
+
+      // Validation
+      if (!company || !company.trim()) {
+        return res.status(400).json({ error: 'Company name is required' });
+      }
+
+      // Check if contact exists and belongs to user
+      const existing = await db
+        .select()
+        .from(contacts)
+        .where(and(eq(contacts.id, contactId), eq(contacts.userId, userId)))
+        .limit(1);
+
+      if (existing.length === 0) {
+        return res.status(404).json({ error: 'Contact not found' });
+      }
+
+      const updated = await db
+        .update(contacts)
+        .set({
+          company: company.trim(),
+          firstName: firstName?.trim() || null,
+          lastName: lastName?.trim() || null,
+          phone: phone?.trim() || null,
+          email: email?.trim() || null,
+          notes: notes?.trim() || null,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(contacts.id, contactId), eq(contacts.userId, userId)))
+        .returning();
+
+      logger.info('[CONTACTS] Updated contact:', {
+        id: contactId,
+        userId,
+        company: company.trim()
+      });
+
+      res.json(updated[0]);
+    } catch (error: any) {
+      logger.error('[CONTACTS] Error updating contact:', error);
+      res.status(500).json({ error: 'Failed to update contact' });
+    }
+  });
+
+  // DELETE contact
+  app.delete("/api/contacts/:id", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const contactId = req.params.id;
+
+      // Check if contact exists and belongs to user
+      const existing = await db
+        .select()
+        .from(contacts)
+        .where(and(eq(contacts.id, contactId), eq(contacts.userId, userId)))
+        .limit(1);
+
+      if (existing.length === 0) {
+        return res.status(404).json({ error: 'Contact not found' });
+      }
+
+      await db
+        .delete(contacts)
+        .where(and(eq(contacts.id, contactId), eq(contacts.userId, userId)));
+
+      logger.info('[CONTACTS] Deleted contact:', {
+        id: contactId,
+        userId
+      });
+
+      res.json({ success: true, message: 'Contact deleted' });
+    } catch (error: any) {
+      logger.error('[CONTACTS] Error deleting contact:', error);
+      res.status(500).json({ error: 'Failed to delete contact' });
+    }
+  });
+
   return httpServer;
 } 
