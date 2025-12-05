@@ -11,8 +11,8 @@ import type { User, SubscriptionResponse } from "@shared/schema";
 const Dashboard = lazy(() => import("@/pages/dashboard"));
 const PowerPage = lazy(() => import("@/pages/power"));
 const CampaignsPage = lazy(() => import("@/pages/campaigns"));
-const Contacts = lazy(() => import('./test-simple')); // TEMP TEST
-const Calendar = lazy(() => import('./test-simple')); // TEMP TEST
+const Contacts = lazy(() => import('./contacts'));
+const Calendar = lazy(() => import('./calendar'));
 const LeadsPage = lazy(() => import("@/pages/leads"));
 const BillingPage = lazy(() => import("@/pages/billing"));
 const SettingsPage = lazy(() => import("@/pages/settings"));
