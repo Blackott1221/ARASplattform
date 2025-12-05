@@ -225,6 +225,7 @@ export default function AdminDashboard() {
   const [selectedDateRange, setSelectedDateRange] = useState({ from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), to: new Date() });
   const [aiInsightsLoading, setAiInsightsLoading] = useState(false);
   const [selectedMetric, setSelectedMetric] = useState<'revenue' | 'users' | 'activity'>('revenue');
+  const [userFilter, setUserFilter] = useState({ plan: 'all', status: 'all', search: '' });
 
   useEffect(() => {
     fetchAllData();
@@ -417,13 +418,21 @@ export default function AdminDashboard() {
     setAuditLogs(logs);
   };
   
-  // 👥 TEAM MEMBERS
+  // 👥 TEAM MEMBERS - KOMPLETTES SCHWARZOTT GLOBAL TEAM
   const generateTeamMembers = () => {
     const members = [
-      { id: 1, name: 'Justin Admin', role: 'Super Admin', email: 'justin@aras.ai', lastActive: new Date().toISOString(), permissions: ['all'] },
-      { id: 2, name: 'Sarah Support', role: 'Support Manager', email: 'sarah@aras.ai', lastActive: new Date(Date.now() - 3600000).toISOString(), permissions: ['users', 'support'] },
-      { id: 3, name: 'Mike Developer', role: 'Tech Lead', email: 'mike@aras.ai', lastActive: new Date(Date.now() - 7200000).toISOString(), permissions: ['system', 'api'] },
-      { id: 4, name: 'Lisa Marketing', role: 'Marketing Manager', email: 'lisa@aras.ai', lastActive: new Date(Date.now() - 10800000).toISOString(), permissions: ['analytics', 'campaigns'] }
+      { id: 1, name: 'Justin Schwarzott', role: 'Founder & CEO', email: 'justin.schwarzott@schwarzott-global.com', location: 'Remote', lastActive: new Date().toISOString(), permissions: ['all'], status: 'active' },
+      { id: 2, name: 'Martin Daschner', role: 'Co-Founder & CTO', email: 'martin.daschner@schwarzott-global.com', location: 'Remote', lastActive: new Date(Date.now() - 1800000).toISOString(), permissions: ['all'], status: 'active' },
+      { id: 3, name: 'Samuel Hejache', role: 'Head of AI Development', email: 'samuel.hejache@schwarzott-global.com', location: 'Remote', lastActive: new Date(Date.now() - 3600000).toISOString(), permissions: ['ai', 'development'], status: 'active' },
+      { id: 4, name: 'Sarah Müller', role: 'Lead Product Designer', email: 'sarah.mueller@schwarzott-global.com', location: 'Remote', lastActive: new Date(Date.now() - 7200000).toISOString(), permissions: ['design', 'ux'], status: 'active' },
+      { id: 5, name: 'Michael Wagner', role: 'Senior Backend Engineer', email: 'michael.wagner@schwarzott-global.com', location: 'Remote', lastActive: new Date(Date.now() - 5400000).toISOString(), permissions: ['backend', 'api'], status: 'active' },
+      { id: 6, name: 'Laura Schmidt', role: 'Head of Customer Success', email: 'laura.schmidt@schwarzott-global.com', location: 'Remote', lastActive: new Date(Date.now() - 10800000).toISOString(), permissions: ['support', 'users'], status: 'active' },
+      { id: 7, name: 'David Fischer', role: 'Senior Frontend Developer', email: 'david.fischer@schwarzott-global.com', location: 'Office', lastActive: new Date(Date.now() - 14400000).toISOString(), permissions: ['frontend', 'ui'], status: 'active' },
+      { id: 8, name: 'Nina Hoffmann', role: 'Marketing Director', email: 'nina.hoffmann@schwarzott-global.com', location: 'Remote', lastActive: new Date(Date.now() - 18000000).toISOString(), permissions: ['marketing', 'analytics'], status: 'active' },
+      { id: 9, name: 'Thomas Becker', role: 'DevOps Engineer', email: 'thomas.becker@schwarzott-global.com', location: 'Remote', lastActive: new Date(Date.now() - 21600000).toISOString(), permissions: ['infrastructure', 'deployment'], status: 'active' },
+      { id: 10, name: 'Anna Weber', role: 'Head of Sales', email: 'anna.weber@schwarzott-global.com', location: 'Remote', lastActive: new Date(Date.now() - 25200000).toISOString(), permissions: ['sales', 'crm'], status: 'active' },
+      { id: 11, name: 'Maximilian Klein', role: 'Data Scientist', email: 'maximilian.klein@schwarzott-global.com', location: 'Remote', lastActive: new Date(Date.now() - 28800000).toISOString(), permissions: ['data', 'analytics'], status: 'active' },
+      { id: 12, name: 'Lisa Zimmermann', role: 'QA & Testing Lead', email: 'lisa.zimmermann@schwarzott-global.com', location: 'Remote', lastActive: new Date(Date.now() - 32400000).toISOString(), permissions: ['qa', 'testing'], status: 'active' }
     ];
     setTeamMembers(members);
   };
@@ -627,10 +636,14 @@ export default function AdminDashboard() {
   const proUsers = parseInt(stats?.pro_users || "0");
   const totalCalls = parseInt(stats?.total_calls || "0");
 
-  const filteredUsers = users.filter(u => 
-    u.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.email?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // 🔍 ADVANCED USER FILTERING
+  const filteredUsers = users.filter(u => {
+    const matchesSearch = u.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.email?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesPlan = userFilter.plan === 'all' || u.subscription_plan === userFilter.plan;
+    const matchesStatus = userFilter.status === 'all' || u.subscription_status === userFilter.status;
+    return matchesSearch && matchesPlan && matchesStatus;
+  });
 
   const filteredChats = chats.filter(c =>
     c.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -673,17 +686,27 @@ export default function AdminDashboard() {
                 </motion.div>
                 <div>
                   <h1 
-                    className="text-6xl font-black mb-2"
+                    className="text-5xl font-black mb-2 animate-gradient"
                     style={{
-                      background: 'linear-gradient(135deg, #FFFFFF 0%, #fe9100 50%, #E9D7C4 100%)',
+                      fontFamily: 'Orbitron, sans-serif',
+                      background: 'linear-gradient(90deg, #FFFFFF 0%, #fe9100 25%, #ff6b00 50%, #fe9100 75%, #FFFFFF 100%)',
+                      backgroundSize: '200% auto',
                       backgroundClip: 'text',
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
-                      letterSpacing: '-0.02em'
+                      letterSpacing: '-0.01em',
+                      animation: 'gradient-flow 3s linear infinite'
                     }}
                   >
                     ARAS AI COMMAND
                   </h1>
+                  <style>{`
+                    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap');
+                    @keyframes gradient-flow {
+                      0% { background-position: 0% center; }
+                      100% { background-position: 200% center; }
+                    }
+                  `}</style>
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
                       <Zap className="w-5 h-5 text-[#fe9100]" />
@@ -865,6 +888,42 @@ export default function AdminDashboard() {
 
           {activeTab === "users" && (
             <motion.div key="users" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="bg-gray-900/50 border border-gray-800/50 rounded-2xl p-6">
+              {/* 🔍 FILTER BAR */}
+              <div className="mb-6 flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-3">
+                  <Filter className="w-5 h-5 text-gray-500" />
+                  <span className="text-gray-400 font-medium">Filter:</span>
+                </div>
+                <select 
+                  value={userFilter.plan}
+                  onChange={(e) => setUserFilter({...userFilter, plan: e.target.value})}
+                  className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-[#fe9100]"
+                >
+                  <option value="all">All Plans</option>
+                  <option value="free">Free</option>
+                  <option value="starter">Starter</option>
+                  <option value="pro">Pro</option>
+                  <option value="ultra">Ultra</option>
+                  <option value="ultimate">Ultimate</option>
+                </select>
+                <select 
+                  value={userFilter.status}
+                  onChange={(e) => setUserFilter({...userFilter, status: e.target.value})}
+                  className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-2 text-white text-sm focus:outline-none focus:border-[#fe9100]"
+                >
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="trialing">Trialing</option>
+                  <option value="trial_pending">Trial Pending</option>
+                  <option value="canceled">Canceled</option>
+                  <option value="past_due">Past Due</option>
+                </select>
+                <div className="flex-1" />
+                <div className="text-gray-400 text-sm">
+                  Showing <span className="text-white font-bold">{filteredUsers.length}</span> of <span className="text-white font-bold">{users.length}</span> users
+                </div>
+              </div>
+
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -902,77 +961,77 @@ export default function AdminDashboard() {
                         </td>
                         <td className="py-4 px-4 text-gray-300 text-sm">{user.ai_messages_used || 0}</td>
                         <td className="py-4 px-4 text-gray-300 text-sm">{user.voice_calls_used || 0}</td>
-                        <td className="py-4 px-4">
-                          <div className="flex items-center justify-center gap-2">
+                        <td className="py-3 px-4">
+                          <div className="flex flex-wrap items-center justify-center gap-2">
                             <motion.button 
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
                               onClick={() => {
                                 setShowUserDetailsModal(user);
                                 fetchUserDetails(user.id);
                               }} 
-                              className="p-2.5 rounded-xl transition-all"
+                              className="px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 text-xs font-medium"
                               style={{
-                                background: 'linear-gradient(135deg, rgba(59,130,246,0.2) 0%, rgba(147,51,234,0.2) 100%)',
-                                border: '1px solid rgba(59,130,246,0.3)'
+                                background: 'rgba(59,130,246,0.15)',
+                                border: '1px solid rgba(59,130,246,0.3)',
+                                color: '#60A5FA'
                               }}
-                              title="Details anzeigen"
                             >
-                              <Eye className="w-4 h-4 text-blue-400" />
+                              View Details
                             </motion.button>
                             <motion.button 
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
                               onClick={() => setShowUpgradeModal(user)} 
                               disabled={actionLoading === user.id} 
-                              className="p-2.5 rounded-xl transition-all"
+                              className="px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 text-xs font-medium"
                               style={{
-                                background: 'rgba(254,145,0,0.2)',
-                                border: '1px solid rgba(254,145,0,0.3)'
+                                background: 'rgba(254,145,0,0.15)',
+                                border: '1px solid rgba(254,145,0,0.3)',
+                                color: '#fe9100'
                               }}
-                              title="Plan ändern"
                             >
-                              <ArrowUpCircle className="w-4 h-4 text-[#fe9100]" />
+                              Change Plan
                             </motion.button>
                             <motion.button 
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
                               onClick={() => handleResetUsage(user.id)} 
                               disabled={actionLoading === user.id}
-                              className="p-2.5 rounded-xl transition-all"
+                              className="px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 text-xs font-medium"
                               style={{
-                                background: 'rgba(59,130,246,0.2)',
-                                border: '1px solid rgba(59,130,246,0.3)'
+                                background: 'rgba(16,185,129,0.15)',
+                                border: '1px solid rgba(16,185,129,0.3)',
+                                color: '#10B981'
                               }}
-                              title="Usage zurücksetzen"
                             >
-                              <Activity className="w-4 h-4 text-blue-400" />
+                              Reset Usage
                             </motion.button>
                             <motion.button 
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
                               onClick={() => setShowPasswordModal(user)} 
-                              className="p-2.5 rounded-xl transition-all"
+                              className="px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 text-xs font-medium"
                               style={{
-                                background: 'rgba(245,158,11,0.2)',
-                                border: '1px solid rgba(245,158,11,0.3)'
+                                background: 'rgba(245,158,11,0.15)',
+                                border: '1px solid rgba(245,158,11,0.3)',
+                                color: '#F59E0B'
                               }}
-                              title="Passwort ändern"
                             >
-                              <Key className="w-4 h-4 text-yellow-400" />
+                              Reset Password
                             </motion.button>
                             <motion.button 
-                              whileHover={{ scale: 1.1 }}
-                              whileTap={{ scale: 0.9 }}
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
                               onClick={() => setShowDeleteModal(user)} 
-                              className="p-2.5 rounded-xl transition-all"
+                              className="px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 text-xs font-medium"
                               style={{
-                                background: 'rgba(239,68,68,0.2)',
-                                border: '1px solid rgba(239,68,68,0.3)'
+                                background: 'rgba(239,68,68,0.15)',
+                                border: '1px solid rgba(239,68,68,0.3)',
+                                color: '#EF4444'
                               }}
-                              title="User löschen"
                             >
-                              <Trash2 className="w-4 h-4 text-red-400" />
+                              Delete User
                             </motion.button>
                           </div>
                         </td>
@@ -1323,24 +1382,55 @@ export default function AdminDashboard() {
                     Add Member
                   </button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   {teamMembers.map((member: any) => (
-                    <div key={member.id} className="p-4 bg-gray-800/30 rounded-xl hover:bg-gray-800/50 transition-all">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#fe9100] to-[#ff6b00] flex items-center justify-center text-white font-bold">
+                    <motion.div 
+                      key={member.id} 
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-5 rounded-2xl hover:scale-[1.02] transition-all"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.5) 100%)',
+                        border: '1px solid rgba(255,255,255,0.05)'
+                      }}
+                    >
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#fe9100] to-[#ff6b00] flex items-center justify-center text-white font-black text-lg">
                           {member.name.split(' ').map((n: string) => n[0]).join('')}
                         </div>
-                        <div>
-                          <h4 className="text-white font-bold">{member.name}</h4>
-                          <p className="text-gray-500 text-sm">{member.role}</p>
+                        <div className="flex-1">
+                          <h4 className="text-white font-bold text-sm leading-tight">{member.name}</h4>
+                          <p className="text-gray-500 text-xs">{member.role}</p>
                         </div>
                       </div>
-                      <p className="text-gray-400 text-sm mb-2">{member.email}</p>
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-500 text-xs">Last active: {new Date(member.lastActive).toLocaleTimeString()}</span>
-                        <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                      <div className="space-y-2 mb-3">
+                        <p className="text-gray-400 text-xs truncate">{member.email}</p>
+                        <div className="flex items-center justify-between">
+                          <span className={`px-2 py-1 rounded-md text-xs font-medium ${
+                            member.location === 'Remote' 
+                              ? 'bg-green-500/20 text-green-400' 
+                              : 'bg-blue-500/20 text-blue-400'
+                          }`}>
+                            📍 {member.location}
+                          </span>
+                          <span className={`px-2 py-1 rounded-md text-xs font-medium ${
+                            member.status === 'active' 
+                              ? 'bg-green-500/20 text-green-400' 
+                              : 'bg-gray-500/20 text-gray-400'
+                          }`}>
+                            ● {member.status}
+                          </span>
+                        </div>
                       </div>
-                    </div>
+                      <div className="text-gray-600 text-xs">
+                        Active: {new Date(member.lastActive).toLocaleString('de-DE', { 
+                          month: 'short', 
+                          day: 'numeric', 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        })}
+                      </div>
+                    </motion.div>
                   ))}
                 </div>
               </div>
