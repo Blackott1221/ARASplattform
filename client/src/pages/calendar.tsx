@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-// Sidebar and TopBar are handled by app.tsx - DO NOT IMPORT HERE
+import { Sidebar } from '@/components/layout/sidebar';
+import { TopBar } from '@/components/layout/topbar';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -26,7 +27,7 @@ import {
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, parseISO, isToday, isTomorrow, isPast, addHours, setHours, setMinutes } from 'date-fns';
 import { de } from 'date-fns/locale';
-// SubscriptionResponse import removed - not needed
+import type { SubscriptionResponse } from "@shared/schema";
 
 // ARAS CI
 const CI = {
@@ -499,7 +500,7 @@ export default function CalendarPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  // sidebarCollapsed removed - handled by app.tsx
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
   // Calendar States
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -689,6 +690,34 @@ export default function CalendarPage() {
     }
   };
 
+  // Subscription data
+  const { data: subscription } = useQuery<SubscriptionResponse>({
+    queryKey: ["/api/user/subscription"],
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/user/subscription', {
+          credentials: 'include'
+        });
+        if (!res.ok) {
+          console.warn('[Calendar] Subscription API Error:', res.status);
+          return null as any;
+        }
+        return await res.json();
+      } catch (err) {
+        console.error('[Calendar] Subscription fetch error:', err);
+        return null as any;
+      }
+    },
+    enabled: !!user && !authLoading,
+    retry: false
+  });
+
+  const subscriptionData = subscription || {
+    plan: 'pro',
+    status: 'active',
+    renewalDate: new Date().toISOString()
+  };
+
   // Quick Actions
   const quickActions = [
     { label: 'Meeting', type: 'meeting', icon: User, time: '10:00', duration: 60 },
@@ -791,11 +820,28 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 relative">
+    <div className="flex h-screen relative overflow-hidden">
       {/* Premium Background */}
       <div className="absolute inset-0 opacity-[0.08] pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-br from-[#FE9100]/10 via-transparent to-[#E9D7C4]/10" />
       </div>
+
+      <Sidebar
+        activeSection="calendar"
+        onSectionChange={(section) => window.location.href = `/app/${section}`}
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
+
+      <div className="flex-1 flex flex-col relative overflow-hidden">
+        <TopBar
+          currentSection="calendar"
+          subscriptionData={subscriptionData}
+          user={user as any}
+          isVisible={true}
+        />
+
+        <div className="flex-1 overflow-y-auto p-6">
           <div className="max-w-6xl mx-auto">
             {/* Header */}
             <motion.div
@@ -1000,6 +1046,8 @@ export default function CalendarPage() {
               />
             )}
           </div>
+        </div>
+      </div>
 
       {/* Event Modal */}
       <EventModal

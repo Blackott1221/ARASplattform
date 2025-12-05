@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from "framer-motion";
-// Sidebar and TopBar are handled by app.tsx - DO NOT IMPORT HERE
+import { Sidebar } from '@/components/layout/sidebar';
+import { TopBar } from '@/components/layout/topbar';
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -46,7 +47,7 @@ export default function Contacts() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  // sidebarCollapsed removed - handled by app.tsx
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingContact, setEditingContact] = useState<ContactData | null>(null);
@@ -64,7 +65,15 @@ export default function Contacts() {
     notes: ''
   });
 
-  // subscription query removed - not needed without TopBar
+  // Fetch subscription
+  const { data: subscriptionData } = useQuery<SubscriptionResponse>({
+    queryKey: ["/api/user/subscription"],
+    enabled: !!user,
+  });
+
+  const handleSectionChange = (section: string) => {
+    window.location.href = `/app/${section}`;
+  };
 
   // Fetch contacts
   const { data: contacts = [], isLoading: contactsLoading } = useQuery<ContactData[]>({
@@ -342,7 +351,23 @@ export default function Contacts() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-6 py-6 bg-black">
+    <div className="flex h-screen relative overflow-hidden bg-black">
+      <Sidebar
+        activeSection="contacts"
+        onSectionChange={handleSectionChange}
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
+
+      <div className="flex-1 flex flex-col relative overflow-hidden">
+        <TopBar
+          currentSection="contacts"
+          subscriptionData={subscriptionData}
+          user={user as User}
+          isVisible={true}
+        />
+
+        <div className="flex-1 overflow-y-auto px-6 py-6">
           <div className="max-w-3xl mx-auto">
             {/* Header - ULTRA MINIMAL */}
             <div className="flex items-center justify-between mb-6">
@@ -772,6 +797,8 @@ export default function Contacts() {
               )}
             </div>
           </div>
+        </div>
+      </div>
     </div>
   );
 }
