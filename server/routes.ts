@@ -1287,11 +1287,24 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   
   // ==================== ADMIN ENDPOINTS ====================
   
-  // Get all users
+  // Get all users - 🔥 ULTRA COMPLETE VERSION
   app.get('/api/admin/users', requireAdmin, async (req: any, res) => {
     try {
       const users = await client`
-        SELECT id, username, email, subscription_plan, subscription_status, created_at, ai_messages_used, voice_calls_used
+        SELECT 
+          id, username, email, first_name, last_name, 
+          company, website, industry, role, phone, 
+          subscription_plan, subscription_status, 
+          created_at, updated_at,
+          ai_messages_used, voice_calls_used,
+          monthly_reset_date, has_payment_method,
+          stripe_customer_id, stripe_subscription_id,
+          profile_image_url, language, primary_goal,
+          ai_profile, profile_enriched, last_enrichment_date,
+          notification_settings, privacy_settings,
+          trial_start_date, trial_end_date, trial_messages_used,
+          subscription_start_date, subscription_end_date,
+          thread_id, assistant_id
         FROM users
         ORDER BY created_at DESC
       `;
@@ -1387,7 +1400,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     }
   });
 
-  // Get detailed user data with full history
+  // Get detailed user data with full history - 🔥 ULTRA COMPLETE VERSION
   app.get('/api/admin/users/:userId/details', requireAdmin, async (req: any, res) => {
     try {
       const { userId } = req.params;
@@ -1404,44 +1417,114 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         SELECT 
           COUNT(DISTINCT cs.id) as total_chats,
           COUNT(DISTINCT cm.id) as total_messages,
-          COUNT(DISTINCT cl.id) as total_calls
+          COUNT(DISTINCT cl.id) as total_calls,
+          COUNT(DISTINCT l.id) as total_leads,
+          COUNT(DISTINCT c.id) as total_campaigns,
+          COUNT(DISTINCT ce.id) as total_calendar_events,
+          COUNT(DISTINCT co.id) as total_contacts,
+          SUM(CASE WHEN cl.duration IS NOT NULL THEN cl.duration ELSE 0 END) as total_call_duration
         FROM users u
         LEFT JOIN chat_sessions cs ON cs.user_id = u.id
         LEFT JOIN chat_messages cm ON cm.user_id = u.id
         LEFT JOIN call_logs cl ON cl.user_id = u.id
+        LEFT JOIN leads l ON l.user_id = u.id
+        LEFT JOIN campaigns c ON c.user_id = u.id
+        LEFT JOIN calendar_events ce ON ce.user_id = u.id
+        LEFT JOIN contacts co ON co.user_id = u.id
         WHERE u.id = ${userId}
         GROUP BY u.id`;
 
-      // Get recent messages
-      const recentMessages = await client`
+      // Get ALL chat sessions with messages
+      const chatSessions = await client`
+        SELECT cs.*, 
+          (SELECT COUNT(*) FROM chat_messages WHERE session_id = cs.id) as message_count
+        FROM chat_sessions cs
+        WHERE cs.user_id = ${userId}
+        ORDER BY cs.created_at DESC`;
+
+      // Get ALL messages
+      const allMessages = await client`
         SELECT cm.*, cs.title 
         FROM chat_messages cm
         LEFT JOIN chat_sessions cs ON cs.id = cm.session_id
         WHERE cm.user_id = ${userId}
-        ORDER BY cm.created_at DESC
-        LIMIT 10`;
+        ORDER BY cm.timestamp DESC`;
 
-      // Get recent calls
-      const recentCalls = await client`
-        SELECT * FROM call_logs
+      // Get ALL calls with FULL details (transcript, recording_url, metadata)
+      const allCalls = await client`
+        SELECT cl.*, 
+          l.name as lead_name,
+          va.name as agent_name
+        FROM call_logs cl
+        LEFT JOIN leads l ON l.id = cl.lead_id
+        LEFT JOIN voice_agents va ON va.id = cl.voice_agent_id
+        WHERE cl.user_id = ${userId}
+        ORDER BY cl.created_at DESC`;
+
+      // Get ALL leads
+      const allLeads = await client`
+        SELECT * FROM leads
         WHERE user_id = ${userId}
-        ORDER BY created_at DESC
-        LIMIT 10`;
+        ORDER BY created_at DESC`;
 
-      // Get subscription history
-      const subscriptionHistory = await client`
+      // Get ALL campaigns
+      const allCampaigns = await client`
+        SELECT * FROM campaigns
+        WHERE user_id = ${userId}
+        ORDER BY created_at DESC`;
+
+      // Get ALL calendar events
+      const calendarEvents = await client`
+        SELECT * FROM calendar_events
+        WHERE user_id = ${userId}
+        ORDER BY start_time DESC`;
+
+      // Get ALL contacts
+      const contacts = await client`
+        SELECT * FROM contacts
+        WHERE user_id = ${userId}
+        ORDER BY created_at DESC`;
+
+      // Get usage tracking history
+      const usageHistory = await client`
         SELECT * FROM usage_tracking
         WHERE user_id = ${userId}
-        ORDER BY created_at DESC
-        LIMIT 20`;
+        ORDER BY created_at DESC`;
+
+      // Get feedback submitted by this user
+      const userFeedback = await client`
+        SELECT * FROM feedback
+        WHERE user_id = ${userId}
+        ORDER BY created_at DESC`;
 
       res.json({
         success: true,
-        user,
-        stats: stats || { total_chats: 0, total_messages: 0, total_calls: 0 },
-        recentMessages,
-        recentCalls,
-        subscriptionHistory
+        user: {
+          ...user,
+          // Parse JSON fields if they're strings
+          aiProfile: typeof user.ai_profile === 'string' ? JSON.parse(user.ai_profile) : user.ai_profile,
+          notificationSettings: typeof user.notification_settings === 'string' ? JSON.parse(user.notification_settings) : user.notification_settings,
+          privacySettings: typeof user.privacy_settings === 'string' ? JSON.parse(user.privacy_settings) : user.privacy_settings
+        },
+        stats: stats || { 
+          total_chats: 0, 
+          total_messages: 0, 
+          total_calls: 0,
+          total_leads: 0,
+          total_campaigns: 0,
+          total_calendar_events: 0,
+          total_contacts: 0,
+          total_call_duration: 0
+        },
+        chatSessions,
+        allMessages,
+        allCalls,
+        allLeads,
+        allCampaigns,
+        calendarEvents,
+        contacts,
+        usageHistory,
+        userFeedback
       });
     } catch (error: any) {
       logger.error('[ADMIN] Get user details failed', { error: error.message });
