@@ -10,7 +10,7 @@ import {
   Calendar, TrendingDown, Award, Cpu, HardDrive, Wifi, PieChart,
   LineChart, BarChart2, UserCheck, UserX, CreditCard, Package,
   GitBranch, Code, Terminal, Layers, Grid, Send, MessageCircle,
-  BellRing, Lock, Unlock, ShieldCheck, AlertOctagon, Info
+  BellRing, Lock, Unlock, ShieldCheck, AlertOctagon, Info, Mic
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Line, Bar, Doughnut, Radar } from "react-chartjs-2";
@@ -638,58 +638,145 @@ export default function AdminDashboard() {
   );
 
   return (
-    <div className="min-h-screen text-white p-4 md:p-8">
-      <div className="max-w-[2000px] mx-auto">
-        {/* Header */}
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#fe9100] to-[#ff6b00] flex items-center justify-center shadow-lg shadow-[#fe9100]/20">
-                <Shield className="w-8 h-8 text-white" />
+    <div className="min-h-screen text-white" style={{ background: 'linear-gradient(135deg, #000000 0%, #0A0A0A 100%)' }}>
+      <div className="max-w-[2400px] mx-auto p-8">
+        {/* 🔥 ULTRA-MODERN HEADER */}
+        <motion.div 
+          initial={{ opacity: 0, y: -30 }} 
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-12 relative overflow-hidden rounded-3xl p-8"
+          style={{
+            background: 'linear-gradient(135deg, rgba(254,145,0,0.1) 0%, rgba(0,0,0,0.5) 100%)',
+            border: '1px solid rgba(254,145,0,0.2)',
+            boxShadow: '0 20px 60px rgba(254,145,0,0.15)'
+          }}
+        >
+          <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-[#fe9100]/20 to-transparent blur-3xl rounded-full" />
+          <div className="relative z-10">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+              <div className="flex items-center gap-6">
+                <motion.div 
+                  whileHover={{ scale: 1.05, rotate: 5 }}
+                  className="w-24 h-24 rounded-3xl flex items-center justify-center relative"
+                  style={{
+                    background: 'linear-gradient(135deg, #fe9100 0%, #ff6b00 100%)',
+                    boxShadow: '0 20px 40px rgba(254,145,0,0.4)'
+                  }}
+                >
+                  <Shield className="w-12 h-12 text-white" />
+                  <motion.div
+                    className="absolute -top-2 -right-2 w-6 h-6 rounded-full"
+                    style={{ background: '#10B981' }}
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  />
+                </motion.div>
+                <div>
+                  <h1 
+                    className="text-6xl font-black mb-2"
+                    style={{
+                      background: 'linear-gradient(135deg, #FFFFFF 0%, #fe9100 50%, #E9D7C4 100%)',
+                      backgroundClip: 'text',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      letterSpacing: '-0.02em'
+                    }}
+                  >
+                    ARAS AI COMMAND
+                  </h1>
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-5 h-5 text-[#fe9100]" />
+                      <span className="text-gray-400 font-mono text-sm">v3.0 ULTRA</span>
+                    </div>
+                    <span className="text-gray-600">•</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                      <span className="text-green-400 text-sm font-medium">All Systems Operational</span>
+                    </div>
+                    <span className="text-gray-600">•</span>
+                    <span className="text-gray-500 text-sm">{new Date().toLocaleString('de-DE')}</span>
+                  </div>
+                </div>
               </div>
-              <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-white via-[#fe9100] to-[#ff6b00] bg-clip-text text-transparent">
-                  Admin Command Center
-                </h1>
-                <p className="text-gray-500 flex items-center gap-2 mt-1">
-                  <Zap className="w-4 h-4 text-[#fe9100]" />
-                  Volle Kontrolle über die Plattform
-                </p>
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                  <input
+                    type="text"
+                    placeholder="Search everything..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="bg-black/50 border border-gray-800 rounded-2xl pl-12 pr-6 py-4 text-white placeholder-gray-600 focus:outline-none focus:border-[#fe9100] transition-all w-80 backdrop-blur-xl"
+                  />
+                </div>
+                <motion.button 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowCreateUser(true)} 
+                  className="rounded-2xl px-8 py-4 font-bold transition-all flex items-center gap-3 text-white shadow-lg"
+                  style={{
+                    background: 'linear-gradient(135deg, #fe9100 0%, #ff6b00 100%)',
+                    boxShadow: '0 10px 30px rgba(254,145,0,0.4)'
+                  }}
+                >
+                  <Plus className="w-5 h-5" />
+                  Create User
+                </motion.button>
               </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-600" />
-                <input
-                  type="text"
-                  placeholder="Suche..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-gray-900 border border-gray-800 rounded-xl pl-10 pr-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-[#fe9100] transition-colors w-64"
-                />
-              </div>
-              <button onClick={() => setShowCreateUser(true)} className="bg-gradient-to-r from-[#fe9100] to-[#ff6b00] hover:from-[#ff6b00] hover:to-[#fe9100] text-white rounded-xl px-6 py-2.5 font-medium transition-all flex items-center gap-2">
-                <Plus className="w-5 h-5" />
-                Neuer User
-              </button>
             </div>
           </div>
         </motion.div>
 
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* 🔥 ULTRA-MODERN KPI CARDS */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
           {[
-            { icon: Users, label: "Total Users", value: totalUsers },
-            { icon: Crown, label: "PRO Users", value: proUsers },
-            { icon: Phone, label: "Total Calls", value: totalCalls },
-            { icon: MessageSquare, label: "Messages", value: chats.length }
+            { icon: Users, label: "Total Users", value: totalUsers, color: '#3B82F6', trend: '+12%' },
+            { icon: Crown, label: "PRO Users", value: proUsers, color: '#F59E0B', trend: '+8%' },
+            { icon: Phone, label: "Total Calls", value: totalCalls, color: '#8B5CF6', trend: '+15%' },
+            { icon: MessageSquare, label: "Messages", value: chats.length, color: '#10B981', trend: '+23%' }
           ].map((kpi, idx) => (
-            <motion.div key={kpi.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.1 }} className="bg-gray-900/50 backdrop-blur-xl border border-gray-800/50 rounded-2xl p-6 hover:border-[#fe9100]/30 transition-all group cursor-pointer">
-              <div className="flex items-center justify-between mb-4">
-                <kpi.icon className="w-8 h-8 text-[#fe9100] group-hover:scale-110 transition-transform" />
-                <span className="text-3xl font-bold text-white">{kpi.value}</span>
+            <motion.div 
+              key={kpi.label} 
+              initial={{ opacity: 0, y: 30 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              transition={{ delay: idx * 0.1 }}
+              whileHover={{ y: -8, scale: 1.02 }}
+              className="relative overflow-hidden rounded-3xl p-8 cursor-pointer group"
+              style={{
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.6) 100%)',
+                border: '1px solid rgba(255,255,255,0.05)',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
+              }}
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 opacity-10 group-hover:opacity-20 transition-opacity">
+                <kpi.icon className="w-full h-full" style={{ color: kpi.color }} />
               </div>
-              <h3 className="text-gray-500 text-sm font-medium">{kpi.label}</h3>
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-6">
+                  <div 
+                    className="w-16 h-16 rounded-2xl flex items-center justify-center"
+                    style={{ 
+                      background: `${kpi.color}20`,
+                      boxShadow: `0 10px 20px ${kpi.color}30`
+                    }}
+                  >
+                    <kpi.icon className="w-8 h-8" style={{ color: kpi.color }} />
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/20">
+                    <ArrowUpCircle className="w-4 h-4 text-green-400" />
+                    <span className="text-green-400 font-bold text-sm">{kpi.trend}</span>
+                  </div>
+                </div>
+                <h3 className="text-gray-500 text-sm font-medium mb-2 uppercase tracking-wider">{kpi.label}</h3>
+                <p className="text-5xl font-black text-white">{kpi.value}</p>
+              </div>
+              <motion.div
+                className="absolute bottom-0 left-0 right-0 h-1"
+                style={{ background: `linear-gradient(90deg, transparent, ${kpi.color}, transparent)` }}
+                animate={{ x: [-200, 200] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+              />
             </motion.div>
           ))}
         </div>
@@ -817,36 +904,76 @@ export default function AdminDashboard() {
                         <td className="py-4 px-4 text-gray-300 text-sm">{user.voice_calls_used || 0}</td>
                         <td className="py-4 px-4">
                           <div className="flex items-center justify-center gap-2">
-                            <button 
+                            <motion.button 
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => {
+                                setShowUserDetailsModal(user);
+                                fetchUserDetails(user.id);
+                              }} 
+                              className="p-2.5 rounded-xl transition-all"
+                              style={{
+                                background: 'linear-gradient(135deg, rgba(59,130,246,0.2) 0%, rgba(147,51,234,0.2) 100%)',
+                                border: '1px solid rgba(59,130,246,0.3)'
+                              }}
+                              title="Details anzeigen"
+                            >
+                              <Eye className="w-4 h-4 text-blue-400" />
+                            </motion.button>
+                            <motion.button 
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
                               onClick={() => setShowUpgradeModal(user)} 
                               disabled={actionLoading === user.id} 
-                              className="p-2 bg-[#fe9100]/20 hover:bg-[#fe9100]/30 border border-[#fe9100]/30 rounded-lg transition-all group"
+                              className="p-2.5 rounded-xl transition-all"
+                              style={{
+                                background: 'rgba(254,145,0,0.2)',
+                                border: '1px solid rgba(254,145,0,0.3)'
+                              }}
                               title="Plan ändern"
                             >
-                              <ArrowUpCircle className="w-4 h-4 text-[#fe9100] group-hover:scale-110 transition-transform" />
-                            </button>
-                            <button 
+                              <ArrowUpCircle className="w-4 h-4 text-[#fe9100]" />
+                            </motion.button>
+                            <motion.button 
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
                               onClick={() => handleResetUsage(user.id)} 
                               disabled={actionLoading === user.id}
-                              className="p-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded-lg transition-all group"
+                              className="p-2.5 rounded-xl transition-all"
+                              style={{
+                                background: 'rgba(59,130,246,0.2)',
+                                border: '1px solid rgba(59,130,246,0.3)'
+                              }}
                               title="Usage zurücksetzen"
                             >
-                              <Activity className="w-4 h-4 text-blue-400 group-hover:scale-110 transition-transform" />
-                            </button>
-                            <button 
+                              <Activity className="w-4 h-4 text-blue-400" />
+                            </motion.button>
+                            <motion.button 
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
                               onClick={() => setShowPasswordModal(user)} 
-                              className="p-2 bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/30 rounded-lg transition-all group"
+                              className="p-2.5 rounded-xl transition-all"
+                              style={{
+                                background: 'rgba(245,158,11,0.2)',
+                                border: '1px solid rgba(245,158,11,0.3)'
+                              }}
                               title="Passwort ändern"
                             >
-                              <Key className="w-4 h-4 text-yellow-400 group-hover:scale-110 transition-transform" />
-                            </button>
-                            <button 
+                              <Key className="w-4 h-4 text-yellow-400" />
+                            </motion.button>
+                            <motion.button 
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
                               onClick={() => setShowDeleteModal(user)} 
-                              className="p-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 rounded-lg transition-all group"
+                              className="p-2.5 rounded-xl transition-all"
+                              style={{
+                                background: 'rgba(239,68,68,0.2)',
+                                border: '1px solid rgba(239,68,68,0.3)'
+                              }}
                               title="User löschen"
                             >
-                              <Trash2 className="w-4 h-4 text-red-400 group-hover:scale-110 transition-transform" />
-                            </button>
+                              <Trash2 className="w-4 h-4 text-red-400" />
+                            </motion.button>
                           </div>
                         </td>
                       </tr>
@@ -1486,6 +1613,298 @@ export default function AdminDashboard() {
                 <button onClick={handleDeleteUser} disabled={!!actionLoading} className="flex-1 bg-red-500 hover:bg-red-600 text-white rounded-xl px-6 py-3 font-medium transition-all disabled:opacity-50">
                   {actionLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Löschen"}
                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 🔥 ULTRA USER DETAILS MODAL - ALLE DATEN!!! */}
+      <AnimatePresence>
+        {showUserDetailsModal && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.95)' }}
+            onClick={() => setShowUserDetailsModal(null)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 50 }} 
+              animate={{ scale: 1, y: 0 }} 
+              exit={{ scale: 0.9, y: 50 }}
+              className="w-full max-w-7xl max-h-[95vh] overflow-hidden rounded-3xl"
+              style={{
+                background: 'linear-gradient(135deg, #0A0A0A 0%, #1A1A1A 100%)',
+                border: '1px solid rgba(254,145,0,0.3)',
+                boxShadow: '0 30px 80px rgba(254,145,0,0.2)'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div 
+                className="p-8 border-b relative overflow-hidden"
+                style={{ borderColor: 'rgba(254,145,0,0.2)' }}
+              >
+                <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-[#fe9100]/10 to-transparent blur-3xl" />
+                <div className="relative z-10 flex items-center justify-between">
+                  <div className="flex items-center gap-6">
+                    <motion.div
+                      whileHover={{ scale: 1.1, rotate: 5 }}
+                      className="w-20 h-20 rounded-2xl flex items-center justify-center text-4xl font-black text-white"
+                      style={{
+                        background: 'linear-gradient(135deg, #fe9100 0%, #ff6b00 100%)',
+                        boxShadow: '0 10px 30px rgba(254,145,0,0.4)'
+                      }}
+                    >
+                      {showUserDetailsModal.username[0].toUpperCase()}
+                    </motion.div>
+                    <div>
+                      <h2 className="text-4xl font-black text-white mb-2">{showUserDetailsModal.username}</h2>
+                      <div className="flex items-center gap-4">
+                        <span className="text-gray-400">{showUserDetailsModal.email}</span>
+                        <span className="text-gray-600">•</span>
+                        <span className={`px-3 py-1 rounded-full text-sm font-bold ${
+                          showUserDetailsModal.subscription_plan === 'pro' ? 'bg-[#fe9100]/20 text-[#fe9100]' :
+                          showUserDetailsModal.subscription_plan === 'ultra' ? 'bg-purple-500/20 text-purple-400' :
+                          showUserDetailsModal.subscription_plan === 'ultimate' ? 'bg-yellow-500/20 text-yellow-400' :
+                          'bg-gray-500/20 text-gray-400'
+                        }`}>
+                          {showUserDetailsModal.subscription_plan?.toUpperCase()}
+                        </span>
+                        <span className={`px-3 py-1 rounded-full text-sm font-bold ${
+                          showUserDetailsModal.subscription_status === 'active' ? 'bg-green-500/20 text-green-400' :
+                          'bg-blue-500/20 text-blue-400'
+                        }`}>
+                          {showUserDetailsModal.subscription_status}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => setShowUserDetailsModal(null)}
+                    className="p-3 rounded-xl transition-all"
+                    style={{
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.1)'
+                    }}
+                  >
+                    <X className="w-6 h-6 text-gray-400" />
+                  </motion.button>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-8 overflow-y-auto" style={{ maxHeight: 'calc(95vh - 180px)' }}>
+                {userDetails ? (
+                  <div className="space-y-8">
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                      {[
+                        { label: 'Total Chats', value: userDetails.stats?.total_chats || 0, icon: MessageSquare, color: '#3B82F6' },
+                        { label: 'Total Messages', value: userDetails.stats?.total_messages || 0, icon: MessageSquare, color: '#10B981' },
+                        { label: 'Total Calls', value: userDetails.stats?.total_calls || 0, icon: Phone, color: '#8B5CF6' },
+                        { label: 'Total Leads', value: userDetails.stats?.total_leads || 0, icon: Users, color: '#F59E0B' },
+                        { label: 'Campaigns', value: userDetails.stats?.total_campaigns || 0, icon: Target, color: '#EC4899' },
+                        { label: 'Contacts', value: userDetails.stats?.total_contacts || 0, icon: Users, color: '#6366F1' },
+                        { label: 'Events', value: userDetails.stats?.total_calendar_events || 0, icon: Calendar, color: '#14B8A6' },
+                        { label: 'Call Duration', value: `${Math.floor((userDetails.stats?.total_call_duration || 0) / 60)}min`, icon: Clock, color: '#F97316' }
+                      ].map((stat, idx) => (
+                        <motion.div
+                          key={stat.label}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.05 }}
+                          className="p-6 rounded-2xl"
+                          style={{
+                            background: 'rgba(255,255,255,0.02)',
+                            border: '1px solid rgba(255,255,255,0.05)'
+                          }}
+                        >
+                          <div className="flex items-center gap-3 mb-2">
+                            <div 
+                              className="w-10 h-10 rounded-xl flex items-center justify-center"
+                              style={{ background: `${stat.color}20` }}
+                            >
+                              <stat.icon className="w-5 h-5" style={{ color: stat.color }} />
+                            </div>
+                          </div>
+                          <p className="text-3xl font-black text-white mb-1">{stat.value}</p>
+                          <p className="text-gray-500 text-sm font-medium">{stat.label}</p>
+                        </motion.div>
+                      ))}
+                    </div>
+
+                    {/* AI Profile / Research Data */}
+                    {userDetails.user?.aiProfile && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="p-8 rounded-3xl"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(254,145,0,0.1) 0%, rgba(0,0,0,0.5) 100%)',
+                          border: '1px solid rgba(254,145,0,0.2)'
+                        }}
+                      >
+                        <div className="flex items-center gap-3 mb-6">
+                          <Brain className="w-8 h-8 text-[#fe9100]" />
+                          <h3 className="text-3xl font-black text-white">AI Research Profile</h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {userDetails.user.aiProfile.companyDescription && (
+                            <div>
+                              <p className="text-gray-500 text-sm font-bold mb-2">Company Description</p>
+                              <p className="text-white">{userDetails.user.aiProfile.companyDescription}</p>
+                            </div>
+                          )}
+                          {userDetails.user.aiProfile.products && userDetails.user.aiProfile.products.length > 0 && (
+                            <div>
+                              <p className="text-gray-500 text-sm font-bold mb-2">Products</p>
+                              <div className="flex flex-wrap gap-2">
+                                {userDetails.user.aiProfile.products.map((p: string, i: number) => (
+                                  <span key={i} className="px-3 py-1 rounded-full bg-[#fe9100]/20 text-[#fe9100] text-sm">{p}</span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {userDetails.user.aiProfile.ceoName && (
+                            <div>
+                              <p className="text-gray-500 text-sm font-bold mb-2">CEO</p>
+                              <p className="text-white">{userDetails.user.aiProfile.ceoName}</p>
+                            </div>
+                          )}
+                          {userDetails.user.aiProfile.employeeCount && (
+                            <div>
+                              <p className="text-gray-500 text-sm font-bold mb-2">Employees</p>
+                              <p className="text-white">{userDetails.user.aiProfile.employeeCount}</p>
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* Calls with Transcripts */}
+                    {userDetails.allCalls && userDetails.allCalls.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="p-8 rounded-3xl"
+                        style={{
+                          background: 'rgba(139,92,246,0.1)',
+                          border: '1px solid rgba(139,92,246,0.2)'
+                        }}
+                      >
+                        <div className="flex items-center gap-3 mb-6">
+                          <Phone className="w-8 h-8 text-purple-400" />
+                          <h3 className="text-3xl font-black text-white">Call History ({userDetails.allCalls.length})</h3>
+                        </div>
+                        <div className="space-y-4 max-h-96 overflow-y-auto">
+                          {userDetails.allCalls.map((call: any, idx: number) => (
+                            <motion.div
+                              key={idx}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: idx * 0.05 }}
+                              className="p-6 rounded-2xl"
+                              style={{
+                                background: 'rgba(0,0,0,0.3)',
+                                border: '1px solid rgba(255,255,255,0.05)'
+                              }}
+                            >
+                              <div className="flex items-center justify-between mb-4">
+                                <div>
+                                  <p className="text-white font-bold text-lg">{call.phone_number}</p>
+                                  <p className="text-gray-500 text-sm">{call.lead_name || 'Unknown Lead'} • {call.agent_name || 'No Agent'}</p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-purple-400 font-bold">{call.duration}s</p>
+                                  <p className="text-gray-500 text-sm">{call.status}</p>
+                                </div>
+                              </div>
+                              {call.transcript && (
+                                <div className="bg-black/30 rounded-xl p-4 mb-3">
+                                  <p className="text-gray-500 text-xs font-bold mb-2">📝 TRANSCRIPT</p>
+                                  <p className="text-gray-300 text-sm leading-relaxed">{call.transcript}</p>
+                                </div>
+                              )}
+                              {call.recording_url && (
+                                <div className="flex items-center gap-2">
+                                  <Mic className="w-4 h-4 text-purple-400" />
+                                  <a href={call.recording_url} target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:text-purple-300 text-sm font-medium">🎵 Audio Recording</a>
+                                </div>
+                              )}
+                              <p className="text-gray-600 text-xs mt-2">{new Date(call.created_at).toLocaleString('de-DE')}</p>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* Chat Messages */}
+                    {userDetails.allMessages && userDetails.allMessages.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="p-8 rounded-3xl"
+                        style={{
+                          background: 'rgba(16,185,129,0.1)',
+                          border: '1px solid rgba(16,185,129,0.2)'
+                        }}
+                      >
+                        <div className="flex items-center gap-3 mb-6">
+                          <MessageSquare className="w-8 h-8 text-green-400" />
+                          <h3 className="text-3xl font-black text-white">Chat History ({userDetails.allMessages.length})</h3>
+                        </div>
+                        <div className="space-y-3 max-h-96 overflow-y-auto">
+                          {userDetails.allMessages.slice(0, 20).map((msg: any, idx: number) => (
+                            <div key={idx} className={`p-4 rounded-xl ${msg.is_ai ? 'bg-[#fe9100]/10' : 'bg-blue-500/10'}`}>
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="font-bold text-sm">{msg.is_ai ? '🤖 ARAS AI' : '👤 User'}</span>
+                                <span className="text-gray-600">•</span>
+                                <span className="text-gray-500 text-xs">{new Date(msg.timestamp).toLocaleString('de-DE')}</span>
+                              </div>
+                              <p className="text-gray-300 text-sm">{msg.message}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* Leads */}
+                    {userDetails.allLeads && userDetails.allLeads.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="p-6 rounded-2xl"
+                        style={{
+                          background: 'rgba(245,158,11,0.1)',
+                          border: '1px solid rgba(245,158,11,0.2)'
+                        }}
+                      >
+                        <h3 className="text-2xl font-black text-white mb-4 flex items-center gap-3">
+                          <Users className="w-6 h-6 text-yellow-400" />
+                          Leads ({userDetails.allLeads.length})
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {userDetails.allLeads.map((lead: any, idx: number) => (
+                            <div key={idx} className="p-4 rounded-xl bg-black/30">
+                              <p className="text-white font-bold">{lead.name}</p>
+                              <p className="text-gray-400 text-sm">{lead.email}</p>
+                              <span className="text-yellow-400 text-xs">{lead.status}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center py-20">
+                    <Loader2 className="w-12 h-12 animate-spin text-[#fe9100]" />
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>
