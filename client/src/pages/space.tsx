@@ -5,7 +5,7 @@ import { ChatInterface } from "@/components/chat/chat-interface";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { X } from "lucide-react";
+import { X, Sparkles, Zap, Database, Brain, Rocket } from "lucide-react";
 import type { User, SubscriptionResponse } from "@shared/schema";
 
 export default function Space() {
@@ -14,6 +14,13 @@ export default function Space() {
   const [showTopBar, setShowTopBar] = useState(true);
   const [displayedText, setDisplayedText] = useState("");
   const [typedResearchIndex, setTypedResearchIndex] = useState(0);
+  
+  // 🔥 CINEMATIC INTRO STATE
+  const [showCinematicIntro, setShowCinematicIntro] = useState(false);
+  const [introPhase, setIntroPhase] = useState<'boot' | 'analysis' | 'ready'>('boot');
+  const [typedIntroText, setTypedIntroText] = useState("");
+  const [showStartButton, setShowStartButton] = useState(false);
+  
   const { user } = useAuth();
   
   // Get AI Profile from user
@@ -36,6 +43,64 @@ export default function Space() {
       window.location.href = `/${section}`;
     }
   };
+
+  // 🔥 CHECK IF THIS IS FIRST VISIT (SHOW CINEMATIC INTRO)
+  useEffect(() => {
+    if (!user) return;
+    
+    const userId = (user as any)?.id;
+    if (!userId) return;
+    
+    const hasSeenIntro = localStorage.getItem(`aras_intro_seen_${userId}`);
+    
+    // Show cinematic intro only on first visit after registration
+    if (!hasSeenIntro && aiProfile?.companyDescription) {
+      setShowCinematicIntro(true);
+      setShowWelcome(false); // Hide normal welcome
+      
+      // Mark as seen
+      localStorage.setItem(`aras_intro_seen_${userId}`, 'true');
+    }
+  }, [user, aiProfile]);
+
+  // 🔥 CINEMATIC INTRO SEQUENCE
+  useEffect(() => {
+    if (!showCinematicIntro) return;
+
+    // Phase 1: Boot sequence (0-1.5s)
+    const bootTimer = setTimeout(() => {
+      setIntroPhase('analysis');
+    }, 1500);
+
+    // Phase 2: Start typing analysis (1.5s)
+    const typingStartTimer = setTimeout(() => {
+      const analysisText = `Hallo ${(user as any)?.firstName || 'dort'}, ARAS AI hat soeben folgende Daten über ${(user as any)?.company || 'dein Unternehmen'} analysiert: "${aiProfile?.companyDescription || 'Innovatives Unternehmen mit großem Potenzial.'}"`;
+      
+      let currentIndex = 0;
+      const typingInterval = setInterval(() => {
+        if (currentIndex <= analysisText.length) {
+          setTypedIntroText(analysisText.slice(0, currentIndex));
+          currentIndex += 2; // Faster typing (2 chars at a time)
+        } else {
+          clearInterval(typingInterval);
+          setIntroPhase('ready');
+        }
+      }, 30); // Fast typing speed
+
+      return () => clearInterval(typingInterval);
+    }, 1500);
+
+    // Phase 3: Show start button (4s total)
+    const buttonTimer = setTimeout(() => {
+      setShowStartButton(true);
+    }, 4000);
+
+    return () => {
+      clearTimeout(bootTimer);
+      clearTimeout(typingStartTimer);
+      clearTimeout(buttonTimer);
+    };
+  }, [showCinematicIntro, user, aiProfile]);
 
   // Typewriter effect for subtitle
   useEffect(() => {
@@ -88,6 +153,279 @@ export default function Space() {
 
   return (
     <div className="flex h-screen overflow-hidden">
+      {/* 🔥 CINEMATIC INTRO OVERLAY */}
+      <AnimatePresence>
+        {showCinematicIntro && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8 }}
+            className="fixed inset-0 z-[99999] flex items-center justify-center"
+            style={{
+              background: 'linear-gradient(135deg, #000000 0%, #0A0A0A 50%, #000000 100%)',
+              backdropFilter: 'blur(40px)'
+            }}
+          >
+            {/* Animated Background Particles */}
+            <div className="absolute inset-0 overflow-hidden">
+              {[...Array(30)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  className="absolute w-1 h-1 rounded-full bg-[#FE9100]"
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`,
+                  }}
+                  animate={{
+                    opacity: [0, 1, 0],
+                    scale: [0, 1.5, 0],
+                  }}
+                  transition={{
+                    duration: 3 + Math.random() * 2,
+                    repeat: Infinity,
+                    delay: Math.random() * 2,
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Central Glow Effect */}
+            <motion.div
+              className="absolute inset-0"
+              style={{
+                background: 'radial-gradient(circle at 50% 50%, rgba(254,145,0,0.15) 0%, transparent 70%)',
+              }}
+              animate={{
+                opacity: [0.3, 0.6, 0.3],
+              }}
+              transition={{
+                duration: 4,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+            />
+
+            {/* Content Container */}
+            <div className="relative z-10 max-w-5xl mx-auto px-8 text-center">
+              {/* Phase 1: Boot Sequence */}
+              {introPhase === 'boot' && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                >
+                  {/* ARAS AI Logo Animation */}
+                  <motion.div
+                    className="mb-12 flex items-center justify-center gap-4"
+                    animate={{
+                      scale: [1, 1.05, 1],
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                  >
+                    <motion.div
+                      className="w-20 h-20 rounded-2xl flex items-center justify-center"
+                      style={{
+                        background: 'linear-gradient(135deg, #FE9100 0%, #ff6b00 100%)',
+                        boxShadow: '0 20px 60px rgba(254,145,0,0.6)'
+                      }}
+                      animate={{
+                        boxShadow: [
+                          '0 20px 60px rgba(254,145,0,0.6)',
+                          '0 25px 80px rgba(254,145,0,0.8)',
+                          '0 20px 60px rgba(254,145,0,0.6)'
+                        ],
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                      }}
+                    >
+                      <Brain className="w-10 h-10 text-white" />
+                    </motion.div>
+                  </motion.div>
+
+                  {/* Boot Text */}
+                  <motion.h1
+                    className="text-7xl font-black mb-6"
+                    style={{
+                      fontFamily: 'Orbitron, sans-serif',
+                      background: 'linear-gradient(90deg, #FFFFFF 0%, #FE9100 50%, #FFFFFF 100%)',
+                      backgroundSize: '200% auto',
+                      backgroundClip: 'text',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      letterSpacing: '-0.02em',
+                    }}
+                    animate={{
+                      backgroundPosition: ['0% center', '200% center'],
+                    }}
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      ease: "linear"
+                    }}
+                  >
+                    ARAS AI
+                  </motion.h1>
+
+                  {/* System Status */}
+                  <div className="space-y-3">
+                    {['Neuronales Netzwerk initialisiert', 'Systeme hochgefahren', 'Analysemodul bereit'].map((text, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.3, duration: 0.4 }}
+                        className="flex items-center justify-center gap-3"
+                      >
+                        <Zap className="w-4 h-4 text-[#FE9100]" />
+                        <span className="text-gray-400 text-sm font-mono">{text}</span>
+                        <motion.div
+                          className="w-2 h-2 rounded-full bg-green-400"
+                          animate={{ opacity: [0.5, 1, 0.5] }}
+                          transition={{ duration: 1, repeat: Infinity }}
+                        />
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Phase 2 & 3: Analysis & Ready */}
+              {(introPhase === 'analysis' || introPhase === 'ready') && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6 }}
+                >
+                  {/* Icon with Pulse */}
+                  <motion.div
+                    className="mb-8 flex items-center justify-center"
+                    animate={{
+                      scale: [1, 1.1, 1],
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                    }}
+                  >
+                    <div
+                      className="w-24 h-24 rounded-3xl flex items-center justify-center relative"
+                      style={{
+                        background: 'linear-gradient(135deg, #FE9100 0%, #ff6b00 100%)',
+                        boxShadow: '0 30px 80px rgba(254,145,0,0.5)'
+                      }}
+                    >
+                      <Sparkles className="w-12 h-12 text-white" />
+                      <motion.div
+                        className="absolute inset-0 rounded-3xl border-2 border-[#FE9100]"
+                        animate={{
+                          scale: [1, 1.5, 1],
+                          opacity: [0.8, 0, 0.8],
+                        }}
+                        transition={{
+                          duration: 2,
+                          repeat: Infinity,
+                        }}
+                      />
+                    </div>
+                  </motion.div>
+
+                  {/* Typing Text */}
+                  <motion.div
+                    className="mb-12 min-h-[180px] flex items-center justify-center"
+                  >
+                    <p
+                      className="text-3xl md:text-4xl font-bold leading-relaxed max-w-4xl"
+                      style={{
+                        fontFamily: 'Orbitron, sans-serif',
+                        color: '#FFFFFF',
+                        textShadow: '0 0 30px rgba(254,145,0,0.3)',
+                        letterSpacing: '-0.01em'
+                      }}
+                    >
+                      {typedIntroText}
+                      {typedIntroText.length > 0 && introPhase === 'analysis' && (
+                        <motion.span
+                          className="inline-block w-1 h-8 bg-[#FE9100] ml-2 align-middle"
+                          animate={{ opacity: [1, 0, 1] }}
+                          transition={{ duration: 0.8, repeat: Infinity }}
+                        />
+                      )}
+                    </p>
+                  </motion.div>
+
+                  {/* System Status - "Hochfahren" */}
+                  {introPhase === 'ready' && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5 }}
+                      className="mb-8"
+                    >
+                      <p className="text-[#FE9100] text-lg font-bold mb-4 flex items-center justify-center gap-2">
+                        <Database className="w-5 h-5 animate-pulse" />
+                        ARAS AI fährt gerade die Systeme hoch
+                      </p>
+                      
+                      {/* Progress Bar */}
+                      <div className="w-96 mx-auto h-1.5 bg-white/10 rounded-full overflow-hidden">
+                        <motion.div
+                          className="h-full bg-gradient-to-r from-[#FE9100] to-[#ff6b00]"
+                          initial={{ width: "0%" }}
+                          animate={{ width: "100%" }}
+                          transition={{ duration: 2, ease: "easeInOut" }}
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Start Button */}
+                  <AnimatePresence>
+                    {showStartButton && (
+                      <motion.button
+                        initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        whileHover={{ scale: 1.05, boxShadow: '0 20px 60px rgba(254,145,0,0.5)' }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setShowCinematicIntro(false)}
+                        className="px-12 py-5 rounded-2xl font-black text-xl text-white flex items-center gap-3 mx-auto"
+                        style={{
+                          background: 'linear-gradient(135deg, #FE9100 0%, #ff6b00 100%)',
+                          boxShadow: '0 20px 50px rgba(254,145,0,0.4)',
+                          fontFamily: 'Orbitron, sans-serif',
+                        }}
+                      >
+                        <Rocket className="w-6 h-6" />
+                        ARAS AI starten
+                        <motion.span
+                          animate={{ x: [0, 5, 0] }}
+                          transition={{ duration: 1.5, repeat: Infinity }}
+                        >
+                          →
+                        </motion.span>
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              )}
+            </div>
+
+            {/* Corner Accents */}
+            <div className="absolute top-0 left-0 w-32 h-32 border-t-2 border-l-2 border-[#FE9100]/30" />
+            <div className="absolute top-0 right-0 w-32 h-32 border-t-2 border-r-2 border-[#FE9100]/30" />
+            <div className="absolute bottom-0 left-0 w-32 h-32 border-b-2 border-l-2 border-[#FE9100]/30" />
+            <div className="absolute bottom-0 right-0 w-32 h-32 border-b-2 border-r-2 border-[#FE9100]/30" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <Sidebar 
         activeSection="space" 
         onSectionChange={handleSectionChange}

@@ -486,6 +486,9 @@ export default function AdminDashboard() {
         setShowCreateUser(false);
         setNewUser({ username: "", email: "", password: "", subscription_plan: "starter" });
         await fetchAllData();
+        alert('✅ User erfolgreich erstellt!');
+      } else {
+        alert('❌ Fehler beim Erstellen: ' + (data.message || 'Unbekannter Fehler'));
       }
     } catch (error) {
       console.error("Create user failed:", error);
@@ -506,6 +509,9 @@ export default function AdminDashboard() {
       if (data.success) {
         setShowUpgradeModal(null);
         await fetchAllData();
+        alert('✅ Plan erfolgreich geändert!');
+      } else {
+        alert('❌ Fehler beim Ändern: ' + (data.message || 'Unbekannter Fehler'));
       }
     } finally {
       setActionLoading(null);
@@ -525,8 +531,10 @@ export default function AdminDashboard() {
   const handleResetUsage = async (userId: string) => {
     setActionLoading(userId);
     try {
-      await fetch(`/api/admin/users/${userId}/reset-usage`, { method: "POST" });
+      const res = await fetch(`/api/admin/users/${userId}/reset-usage`, { method: "POST" });
+      const data = await res.json();
       await fetchAllData();
+      alert('✅ Usage erfolgreich zurückgesetzt!');
     } finally {
       setActionLoading(null);
     }
@@ -612,14 +620,16 @@ export default function AdminDashboard() {
     if (!showPasswordModal || !newPassword) return;
     setActionLoading(showPasswordModal.id);
     try {
-      await fetch(`/api/admin/users/${showPasswordModal.id}/reset-password`, {
+      const res = await fetch(`/api/admin/users/${showPasswordModal.id}/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ newPassword })
       });
+      const data = await res.json();
       setShowPasswordModal(null);
       setNewPassword("");
       await fetchAllData();
+      alert('✅ Passwort erfolgreich zurückgesetzt!');
     } finally {
       setActionLoading(null);
     }
@@ -629,9 +639,11 @@ export default function AdminDashboard() {
     if (!showDeleteModal) return;
     setActionLoading(showDeleteModal.id);
     try {
-      await fetch(`/api/admin/users/${showDeleteModal.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/admin/users/${showDeleteModal.id}`, { method: "DELETE" });
+      const data = await res.json();
       setShowDeleteModal(null);
       await fetchAllData();
+      alert('✅ User erfolgreich gelöscht!');
     } finally {
       setActionLoading(null);
     }
@@ -703,7 +715,7 @@ export default function AdminDashboard() {
   );
 
   return (
-    <div className="min-h-screen text-white" style={{ background: 'linear-gradient(135deg, #000000 0%, #0A0A0A 100%)' }}>
+    <div className="min-h-screen bg-black text-white">
       <div className="max-w-[2400px] mx-auto p-8">
         {/* 🔥 ULTRA-MODERN HEADER */}
         <motion.div 
@@ -1665,7 +1677,7 @@ export default function AdminDashboard() {
       {/* Modals - Create User */}
       <AnimatePresence>
         {showCreateUser && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setShowCreateUser(false)}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4" onClick={() => setShowCreateUser(false)}>
             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="bg-gray-900 border border-gray-800 rounded-3xl p-8 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
               <h2 className="text-2xl font-bold text-white mb-6">Neuen User erstellen</h2>
               <div className="space-y-4">
@@ -1692,7 +1704,7 @@ export default function AdminDashboard() {
       {/* Upgrade Modal */}
       <AnimatePresence>
         {showUpgradeModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setShowUpgradeModal(null)}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4" onClick={() => setShowUpgradeModal(null)}>
             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="bg-gray-900 border border-gray-800 rounded-3xl p-8 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
               <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
                 <Crown className="w-6 h-6 text-[#fe9100]" />
@@ -1750,7 +1762,7 @@ export default function AdminDashboard() {
       {/* Password Modal */}
       <AnimatePresence>
         {showPasswordModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setShowPasswordModal(null)}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4" onClick={() => setShowPasswordModal(null)}>
             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="bg-gray-900 border border-gray-800 rounded-3xl p-8 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
               <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
                 <Key className="w-6 h-6 text-[#fe9100]" />
@@ -1772,7 +1784,7 @@ export default function AdminDashboard() {
       {/* Delete Modal */}
       <AnimatePresence>
         {showDeleteModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setShowDeleteModal(null)}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4" onClick={() => setShowDeleteModal(null)}>
             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="bg-gray-900 border border-red-500/30 rounded-3xl p-8 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
@@ -1801,8 +1813,8 @@ export default function AdminDashboard() {
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
             exit={{ opacity: 0 }} 
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ background: 'rgba(0,0,0,0.95)' }}
+            className="fixed inset-0 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.85)' }}
             onClick={() => setShowUserDetailsModal(null)}
           >
             <motion.div 
@@ -2089,7 +2101,7 @@ export default function AdminDashboard() {
       {/* Chat Modal */}
       <AnimatePresence>
         {showChatModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setShowChatModal(null)}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4" onClick={() => setShowChatModal(null)}>
             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="bg-gray-900 border border-gray-800 rounded-3xl p-8 max-w-2xl w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
@@ -2120,7 +2132,7 @@ export default function AdminDashboard() {
       {/* Call Modal */}
       <AnimatePresence>
         {showCallModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" onClick={() => setShowCallModal(null)}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4" onClick={() => setShowCallModal(null)}>
             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="bg-gray-900 border border-gray-800 rounded-3xl p-8 max-w-3xl w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-bold text-white flex items-center gap-3">
@@ -2167,7 +2179,7 @@ export default function AdminDashboard() {
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
             exit={{ opacity: 0 }} 
-            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" 
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4" 
             onClick={() => setShowAddTeamMember(false)}
           >
             <motion.div 
@@ -2274,7 +2286,7 @@ export default function AdminDashboard() {
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
             exit={{ opacity: 0 }} 
-            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" 
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4" 
             onClick={() => setShowEditTeamMember(null)}
           >
             <motion.div 
@@ -2378,7 +2390,7 @@ export default function AdminDashboard() {
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
             exit={{ opacity: 0 }} 
-            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" 
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4" 
             onClick={() => setShowDeleteTeamMember(null)}
           >
             <motion.div 
