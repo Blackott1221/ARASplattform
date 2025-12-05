@@ -28,8 +28,8 @@ import VoiceAgents from "@/pages/voice-agents";
 import Leads from "@/pages/leads";
 import Campaigns from "@/pages/campaigns";
 import { lazy } from 'react';
-const Contacts = lazy(() => import('@/pages/contacts'));
-const Calendar = lazy(() => import('@/pages/calendar'));
+const Contacts = lazy(() => import('@/pages/contacts-simple')); // MINIMAL TEST VERSION
+const Calendar = lazy(() => import('@/pages/calendar-simple')); // MINIMAL TEST VERSION
 import Billing from "@/pages/billing";
 import Settings from "@/pages/settings";
 import AuthPage from "@/pages/auth-page";
