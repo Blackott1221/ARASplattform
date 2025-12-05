@@ -715,8 +715,18 @@ export default function CalendarPage() {
   const subscriptionData = subscription || {
     plan: 'pro',
     status: 'active',
-    renewalDate: new Date().toISOString()
-  };
+    aiMessagesUsed: 0,
+    voiceCallsUsed: 0,
+    aiMessagesLimit: null,
+    voiceCallsLimit: null,
+    renewalDate: new Date().toISOString(),
+    trialMessagesUsed: 0,
+    trialEndDate: null,
+    hasPaymentMethod: false,
+    requiresPaymentSetup: false,
+    isTrialActive: false,
+    canUpgrade: true
+  } as SubscriptionResponse;
 
   // Quick Actions
   const quickActions = [
