@@ -169,8 +169,8 @@ export default function Welcome() {
           </div>
 
           {/* Main CTA Button - ONLY Animated Border, Fully Transparent Inside */}
-          <Link href={user ? "/app/space" : "/auth"}>
-            <motion.div className="relative inline-block">
+          <Link href={user ? "/space" : "/auth"}>
+            <motion.div className="relative inline-block cursor-pointer">
               {/* Animated Border */}
               <motion.div
                 className="absolute -inset-[2px] rounded-full"
@@ -206,12 +206,12 @@ export default function Welcome() {
                 }}
               />
               
-              <motion.button
+              <motion.div
                 onClick={() => {
                   trackCTAClick(
                     'ARAS AI starten!',
                     'welcome',
-                    user ? '/app/space' : '/auth'
+                    user ? '/space' : '/auth'
                   );
                 }}
                 whileHover={{ scale: 1.05, y: -3 }}
@@ -221,14 +221,15 @@ export default function Welcome() {
                   fontFamily: 'Orbitron, sans-serif',
                   background: 'rgba(0, 0, 0, 0.3)',
                   color: '#e9d7c4',
-                  border: 'none'
+                  border: 'none',
+                  cursor: 'pointer'
                 }}
               >
                 <span className="relative flex items-center gap-3">
                   ARAS AI starten!
                   <ArrowRight className="w-6 h-6" />
                 </span>
-              </motion.button>
+              </motion.div>
             </motion.div>
           </Link>
         </motion.div>
