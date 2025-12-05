@@ -225,12 +225,12 @@ export function FeedbackWidget() {
             exit={{ scale: 0, opacity: 0 }}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            className="fixed bottom-36 right-8 z-40 px-6 py-3 rounded-full font-bold text-sm font-['Orbitron'] shadow-2xl"
+            className="fixed bottom-44 right-8 z-40 px-6 py-3 rounded-full font-bold text-sm font-['Orbitron'] shadow-2xl"
             style={{
               background: 'transparent',
               border: '3px solid',
               borderImageSlice: 1,
-              animation: 'border-flow-green 3s linear infinite',
+              animation: 'border-flow-green 3s linear infinite, glow-green 2s ease-in-out infinite',
               display: 'inline-block',
               textDecoration: 'none',
             }}
@@ -260,7 +260,7 @@ export function FeedbackWidget() {
               background: 'transparent',
               border: '3px solid',
               borderImageSlice: 1,
-              animation: 'border-flow 3s linear infinite, text-flow 3s linear infinite',
+              animation: 'border-flow 3s linear infinite, text-flow 3s linear infinite, glow-orange 2s ease-in-out infinite',
             }}
           >
             <span style={{ 
@@ -611,6 +611,24 @@ export function FeedbackWidget() {
           66% {
             color: #DCF8C6;
             text-shadow: 0 0 10px rgba(220, 248, 198, 0.6);
+          }
+        }
+
+        @keyframes glow-green {
+          0%, 100% {
+            box-shadow: 0 0 20px rgba(37, 211, 102, 0.4), 0 0 40px rgba(37, 211, 102, 0.2);
+          }
+          50% {
+            box-shadow: 0 0 30px rgba(37, 211, 102, 0.6), 0 0 60px rgba(37, 211, 102, 0.3);
+          }
+        }
+
+        @keyframes glow-orange {
+          0%, 100% {
+            box-shadow: 0 0 20px ${CI.orange}40, 0 0 40px ${CI.orange}20;
+          }
+          50% {
+            box-shadow: 0 0 30px ${CI.orange}60, 0 0 60px ${CI.orange}30;
           }
         }
       `}</style>
