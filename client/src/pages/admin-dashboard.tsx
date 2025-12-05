@@ -226,6 +226,19 @@ export default function AdminDashboard() {
   const [aiInsightsLoading, setAiInsightsLoading] = useState(false);
   const [selectedMetric, setSelectedMetric] = useState<'revenue' | 'users' | 'activity'>('revenue');
   const [userFilter, setUserFilter] = useState({ plan: 'all', status: 'all', search: '' });
+  
+  // 👥 TEAM MANAGEMENT STATE
+  const [showAddTeamMember, setShowAddTeamMember] = useState(false);
+  const [showEditTeamMember, setShowEditTeamMember] = useState<any>(null);
+  const [showDeleteTeamMember, setShowDeleteTeamMember] = useState<any>(null);
+  const [newTeamMember, setNewTeamMember] = useState({ 
+    name: '', 
+    role: '', 
+    email: '', 
+    location: 'Remote', 
+    status: 'active',
+    permissions: [] as string[]
+  });
 
   useEffect(() => {
     fetchAllData();
@@ -622,6 +635,45 @@ export default function AdminDashboard() {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  // 👥 TEAM MANAGEMENT HANDLERS
+  const handleAddTeamMember = () => {
+    if (!newTeamMember.name || !newTeamMember.role || !newTeamMember.email) {
+      alert('Bitte alle Felder ausfüllen!');
+      return;
+    }
+    const newMember = {
+      id: teamMembers.length + 1,
+      ...newTeamMember,
+      lastActive: new Date().toISOString()
+    };
+    setTeamMembers([...teamMembers, newMember]);
+    setShowAddTeamMember(false);
+    setNewTeamMember({ 
+      name: '', 
+      role: '', 
+      email: '', 
+      location: 'Remote', 
+      status: 'active',
+      permissions: []
+    });
+  };
+
+  const handleEditTeamMember = () => {
+    if (!showEditTeamMember) return;
+    const updatedMembers = teamMembers.map(m => 
+      m.id === showEditTeamMember.id ? { ...showEditTeamMember } : m
+    );
+    setTeamMembers(updatedMembers);
+    setShowEditTeamMember(null);
+  };
+
+  const handleDeleteTeamMember = () => {
+    if (!showDeleteTeamMember) return;
+    const updatedMembers = teamMembers.filter(m => m.id !== showDeleteTeamMember.id);
+    setTeamMembers(updatedMembers);
+    setShowDeleteTeamMember(null);
   };
 
   if (loading) {
@@ -1377,10 +1429,15 @@ export default function AdminDashboard() {
                     <Shield className="w-5 h-5 text-[#fe9100]" />
                     Team Members
                   </h3>
-                  <button className="px-4 py-2 bg-gradient-to-r from-[#fe9100] to-[#ff6b00] text-white rounded-lg hover:scale-105 transition-all flex items-center gap-2">
+                  <motion.button 
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setShowAddTeamMember(true)}
+                    className="px-4 py-2 bg-gradient-to-r from-[#fe9100] to-[#ff6b00] text-white rounded-lg transition-all flex items-center gap-2"
+                  >
                     <Plus className="w-4 h-4" />
                     Add Member
-                  </button>
+                  </motion.button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   {teamMembers.map((member: any) => (
@@ -1422,13 +1479,41 @@ export default function AdminDashboard() {
                           </span>
                         </div>
                       </div>
-                      <div className="text-gray-600 text-xs">
+                      <div className="text-gray-600 text-xs mb-3">
                         Active: {new Date(member.lastActive).toLocaleString('de-DE', { 
                           month: 'short', 
                           day: 'numeric', 
                           hour: '2-digit', 
                           minute: '2-digit' 
                         })}
+                      </div>
+                      <div className="flex items-center gap-2 pt-3 border-t border-gray-800">
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setShowEditTeamMember(member)}
+                          className="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                          style={{
+                            background: 'rgba(59,130,246,0.15)',
+                            border: '1px solid rgba(59,130,246,0.3)',
+                            color: '#60A5FA'
+                          }}
+                        >
+                          Edit
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setShowDeleteTeamMember(member)}
+                          className="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                          style={{
+                            background: 'rgba(239,68,68,0.15)',
+                            border: '1px solid rgba(239,68,68,0.3)',
+                            color: '#EF4444'
+                          }}
+                        >
+                          Delete
+                        </motion.button>
                       </div>
                     </motion.div>
                   ))}
@@ -2070,6 +2155,268 @@ export default function AdminDashboard() {
                   <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">{showCallModal.transcript}</p>
                 </div>
               )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 🔥 ADD TEAM MEMBER MODAL */}
+      <AnimatePresence>
+        {showAddTeamMember && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" 
+            onClick={() => setShowAddTeamMember(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9 }} 
+              animate={{ scale: 1 }} 
+              exit={{ scale: 0.9 }} 
+              className="bg-gray-900 border border-gray-800 rounded-3xl p-8 max-w-2xl w-full" 
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-3xl font-black text-white flex items-center gap-3">
+                  <Plus className="w-8 h-8 text-[#fe9100]" />
+                  Add Team Member
+                </h2>
+                <button onClick={() => setShowAddTeamMember(false)} className="p-2 hover:bg-gray-800 rounded-lg transition-colors">
+                  <X className="w-6 h-6 text-gray-400" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-gray-400 text-sm font-medium mb-2 block">Full Name *</label>
+                    <input 
+                      type="text" 
+                      placeholder="z.B. Max Mustermann" 
+                      value={newTeamMember.name}
+                      onChange={(e) => setNewTeamMember({...newTeamMember, name: e.target.value})}
+                      className="w-full bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#fe9100]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-sm font-medium mb-2 block">Job Title *</label>
+                    <input 
+                      type="text" 
+                      placeholder="z.B. Senior Developer" 
+                      value={newTeamMember.role}
+                      onChange={(e) => setNewTeamMember({...newTeamMember, role: e.target.value})}
+                      className="w-full bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#fe9100]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-gray-400 text-sm font-medium mb-2 block">Email *</label>
+                  <input 
+                    type="email" 
+                    placeholder="max.mustermann@schwarzott-global.com" 
+                    value={newTeamMember.email}
+                    onChange={(e) => setNewTeamMember({...newTeamMember, email: e.target.value})}
+                    className="w-full bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#fe9100]"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-gray-400 text-sm font-medium mb-2 block">Location</label>
+                    <select 
+                      value={newTeamMember.location}
+                      onChange={(e) => setNewTeamMember({...newTeamMember, location: e.target.value})}
+                      className="w-full bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#fe9100]"
+                    >
+                      <option value="Remote">Remote</option>
+                      <option value="Office">Office</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-sm font-medium mb-2 block">Status</label>
+                    <select 
+                      value={newTeamMember.status}
+                      onChange={(e) => setNewTeamMember({...newTeamMember, status: e.target.value})}
+                      className="w-full bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#fe9100]"
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button 
+                    onClick={() => setShowAddTeamMember(false)} 
+                    className="flex-1 bg-gray-800 hover:bg-gray-700 text-white rounded-xl px-6 py-3 font-medium transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handleAddTeamMember}
+                    className="flex-1 bg-gradient-to-r from-[#fe9100] to-[#ff6b00] text-white rounded-xl px-6 py-3 font-medium transition-all hover:scale-[1.02]"
+                  >
+                    Add Member
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 🔥 EDIT TEAM MEMBER MODAL */}
+      <AnimatePresence>
+        {showEditTeamMember && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" 
+            onClick={() => setShowEditTeamMember(null)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9 }} 
+              animate={{ scale: 1 }} 
+              exit={{ scale: 0.9 }} 
+              className="bg-gray-900 border border-gray-800 rounded-3xl p-8 max-w-2xl w-full" 
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-3xl font-black text-white flex items-center gap-3">
+                  <Settings className="w-8 h-8 text-blue-400" />
+                  Edit Team Member
+                </h2>
+                <button onClick={() => setShowEditTeamMember(null)} className="p-2 hover:bg-gray-800 rounded-lg transition-colors">
+                  <X className="w-6 h-6 text-gray-400" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-gray-400 text-sm font-medium mb-2 block">Full Name</label>
+                    <input 
+                      type="text" 
+                      value={showEditTeamMember.name}
+                      onChange={(e) => setShowEditTeamMember({...showEditTeamMember, name: e.target.value})}
+                      className="w-full bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-sm font-medium mb-2 block">Job Title</label>
+                    <input 
+                      type="text" 
+                      value={showEditTeamMember.role}
+                      onChange={(e) => setShowEditTeamMember({...showEditTeamMember, role: e.target.value})}
+                      className="w-full bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-400"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-gray-400 text-sm font-medium mb-2 block">Email</label>
+                  <input 
+                    type="email" 
+                    value={showEditTeamMember.email}
+                    onChange={(e) => setShowEditTeamMember({...showEditTeamMember, email: e.target.value})}
+                    className="w-full bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-400"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-gray-400 text-sm font-medium mb-2 block">Location</label>
+                    <select 
+                      value={showEditTeamMember.location}
+                      onChange={(e) => setShowEditTeamMember({...showEditTeamMember, location: e.target.value})}
+                      className="w-full bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-400"
+                    >
+                      <option value="Remote">Remote</option>
+                      <option value="Office">Office</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-gray-400 text-sm font-medium mb-2 block">Status</label>
+                    <select 
+                      value={showEditTeamMember.status}
+                      onChange={(e) => setShowEditTeamMember({...showEditTeamMember, status: e.target.value})}
+                      className="w-full bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-400"
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button 
+                    onClick={() => setShowEditTeamMember(null)} 
+                    className="flex-1 bg-gray-800 hover:bg-gray-700 text-white rounded-xl px-6 py-3 font-medium transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handleEditTeamMember}
+                    className="flex-1 bg-blue-500 hover:bg-blue-600 text-white rounded-xl px-6 py-3 font-medium transition-all"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 🔥 DELETE TEAM MEMBER MODAL */}
+      <AnimatePresence>
+        {showDeleteTeamMember && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" 
+            onClick={() => setShowDeleteTeamMember(null)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9 }} 
+              animate={{ scale: 1 }} 
+              exit={{ scale: 0.9 }} 
+              className="bg-gray-900 border border-red-500/30 rounded-3xl p-8 max-w-md w-full" 
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6 text-red-400" />
+                </div>
+                <h2 className="text-2xl font-bold text-white">Delete Team Member</h2>
+              </div>
+              
+              <p className="text-gray-400 mb-2">Are you sure you want to remove:</p>
+              <div className="bg-gray-800/50 rounded-xl p-4 mb-4">
+                <p className="text-white font-bold text-lg">{showDeleteTeamMember.name}</p>
+                <p className="text-gray-500 text-sm">{showDeleteTeamMember.role}</p>
+                <p className="text-gray-500 text-sm">{showDeleteTeamMember.email}</p>
+              </div>
+              <p className="text-red-400 text-sm mb-6">⚠️ This action cannot be undone!</p>
+              
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setShowDeleteTeamMember(null)} 
+                  className="flex-1 bg-gray-800 hover:bg-gray-700 text-white rounded-xl px-6 py-3 font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleDeleteTeamMember}
+                  className="flex-1 bg-red-500 hover:bg-red-600 text-white rounded-xl px-6 py-3 font-medium transition-all"
+                >
+                  Delete Member
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}
