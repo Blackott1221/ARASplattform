@@ -220,11 +220,11 @@ const DayEventsList = ({ selectedDate, events, onEditEvent, onDeleteEvent, onAdd
             key={event.id}
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
-            whileHover={{ x: 4 }}
+            whileHover={{ x: 4, scale: 1.01 }}
             className="p-4 rounded-xl cursor-pointer group"
             style={{
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.08)'
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.12)'
             }}
             onClick={() => onEditEvent(event)}
           >
@@ -728,11 +728,26 @@ export default function CalendarPage() {
     canUpgrade: true
   } as SubscriptionResponse;
 
-  // Quick Actions
+  // Quick Actions - NUR funktionierende Buttons!
   const quickActions = [
-    { label: 'Meeting', type: 'meeting', icon: User, time: '10:00', duration: 60 },
-    { label: 'Call', type: 'call', icon: Phone, time: '14:00', duration: 30 },
-    { label: 'Reminder', type: 'reminder', icon: AlertCircle, time: '09:00', duration: 15 }
+    { 
+      label: 'Termin erstellen', 
+      action: () => {
+        resetForm();
+        setShowEventModal(true);
+      },
+      icon: Plus,
+      color: CI.orange
+    },
+    { 
+      label: 'Übersicht', 
+      action: () => {
+        setViewMode('month');
+        setCurrentMonth(new Date());
+      },
+      icon: CalendarDays,
+      color: CI.goldLight
+    }
   ];
 
   // Check for recent calls and suggest AI processing
@@ -851,8 +866,8 @@ export default function CalendarPage() {
           isVisible={true}
         />
 
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-6xl mx-auto">
+        <div className="flex-1 overflow-y-auto p-6" style={{ background: 'linear-gradient(to bottom, #0a0a0a, #151515)' }}>
+          <div className="max-w-5xl mx-auto">
             {/* Header */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
@@ -877,7 +892,7 @@ export default function CalendarPage() {
                       Kalender
                     </span>
                   </h1>
-                  <p className="text-sm text-gray-500 mt-1">Intelligente Terminverwaltung mit AI</p>
+                  <p className="text-sm text-gray-400 mt-1">📞 Automatische Termine aus Anrufen • 🤖 AI-gestützt</p>
                 </div>
 
                 {/* Action Buttons */}
@@ -917,7 +932,7 @@ export default function CalendarPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="grid grid-cols-4 gap-4 mt-6"
+                className="grid grid-cols-4 gap-3 mt-6"
               >
                 {[
                   { label: 'Gesamt', value: events.length, icon: CalendarIcon, color: CI.goldLight },
@@ -932,15 +947,15 @@ export default function CalendarPage() {
                     transition={{ delay: 0.2 + idx * 0.05 }}
                     className="p-4 rounded-xl"
                     style={{
-                      background: 'rgba(0, 0, 0, 0.3)',
-                      border: `1px solid ${stat.color}20`,
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      border: `1px solid ${stat.color}25`,
                       backdropFilter: 'blur(12px)'
                     }}
                   >
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="text-2xl font-bold text-white">{stat.value}</div>
-                        <div className="text-xs text-gray-500 mt-1">{stat.label}</div>
+                        <div className="text-xs text-gray-400 mt-1">{stat.label}</div>
                       </div>
                       <stat.icon className="w-8 h-8 opacity-30" style={{ color: stat.color }} />
                     </div>
@@ -957,11 +972,11 @@ export default function CalendarPage() {
                     onClick={handlePreviousMonth}
                     className="p-2.5 rounded-xl transition-all"
                     style={{
-                      background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid rgba(255,255,255,0.1)'
+                      background: 'rgba(255,255,255,0.08)',
+                      border: '1px solid rgba(255,255,255,0.15)'
                     }}
                   >
-                    <ChevronLeft className="w-5 h-5 text-gray-400" />
+                    <ChevronLeft className="w-5 h-5 text-gray-300" />
                   </motion.button>
                   
                   <h2 className="text-2xl font-bold text-white min-w-[200px] text-center">
@@ -974,11 +989,11 @@ export default function CalendarPage() {
                     onClick={handleNextMonth}
                     className="p-2.5 rounded-xl transition-all"
                     style={{
-                      background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid rgba(255,255,255,0.1)'
+                      background: 'rgba(255,255,255,0.08)',
+                      border: '1px solid rgba(255,255,255,0.15)'
                     }}
                   >
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                    <ChevronRight className="w-5 h-5 text-gray-300" />
                   </motion.button>
 
                   <motion.button
@@ -998,30 +1013,22 @@ export default function CalendarPage() {
 
                 {/* Quick Actions */}
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 mr-2">Schnellaktionen:</span>
-                  {quickActions.map((action) => (
+                  <span className="text-xs text-gray-400 mr-2">Schnellaktionen:</span>
+                  {quickActions.map((quickAction) => (
                     <motion.button
-                      key={action.label}
-                      whileHover={{ scale: 1.05 }}
+                      key={quickAction.label}
+                      whileHover={{ scale: 1.05, y: -2 }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={() => {
-                        setEventForm({
-                          ...eventForm,
-                          type: action.type as any,
-                          time: action.time,
-                          duration: action.duration,
-                          date: format(selectedDate || new Date(), 'yyyy-MM-dd')
-                        });
-                        setShowEventModal(true);
-                      }}
-                      className="p-2 rounded-lg transition-all"
+                      onClick={quickAction.action}
+                      className="px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 text-xs font-medium"
                       style={{
-                        background: 'rgba(255,255,255,0.03)',
-                        border: '1px solid rgba(255,255,255,0.08)'
+                        background: `${quickAction.color}15`,
+                        border: `1px solid ${quickAction.color}30`,
+                        color: quickAction.color
                       }}
-                      title={action.label}
                     >
-                      <action.icon className="w-4 h-4" style={{ color: getTypeColor(action.type) }} />
+                      <quickAction.icon className="w-3.5 h-3.5" />
+                      {quickAction.label}
                     </motion.button>
                   ))}
                 </div>
