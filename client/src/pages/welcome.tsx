@@ -169,7 +169,7 @@ export default function Welcome() {
           </div>
 
           {/* Main CTA Button - ONLY Animated Border, Fully Transparent Inside */}
-          <Link href={user ? "/space" : "/auth"}>
+          <Link href="/space">
             <motion.div className="relative inline-block cursor-pointer">
               {/* Animated Border */}
               <motion.div
@@ -211,7 +211,7 @@ export default function Welcome() {
                   trackCTAClick(
                     'ARAS AI starten!',
                     'welcome',
-                    user ? '/space' : '/auth'
+                    '/space'
                   );
                 }}
                 whileHover={{ scale: 1.05, y: -3 }}
