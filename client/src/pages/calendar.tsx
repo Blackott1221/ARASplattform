@@ -88,22 +88,24 @@ const CalendarGrid = ({ days, currentMonth, selectedDate, onSelectDate, getEvent
         return (
           <motion.div
             key={idx}
-            whileHover={{ scale: 1.02 }}
+            whileHover={{ 
+              scale: 1.03,
+              boxShadow: `0 0 20px ${CI.orange}40`
+            }}
             onClick={() => onSelectDate(day)}
             className="aspect-square p-2 rounded-xl cursor-pointer transition-all relative overflow-hidden"
             style={{
               background: isSelected
-                ? `linear-gradient(135deg, ${CI.orange}20, ${CI.goldLight}15)`
+                ? `linear-gradient(135deg, ${CI.orange}25, ${CI.goldLight}20)`
                 : isToday_
-                ? 'rgba(254, 145, 0, 0.08)'
-                : 'rgba(255,255,255,0.02)',
-              border: `1px solid ${
-                isSelected
-                  ? `${CI.orange}40`
-                  : isToday_
-                  ? `${CI.orange}20`
-                  : 'rgba(255,255,255,0.06)'
-              }`,
+                ? `linear-gradient(135deg, ${CI.orange}12, ${CI.goldDark}08)`
+                : 'linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01))',
+              border: `2px solid transparent`,
+              backgroundImage: isSelected || isToday_
+                ? `linear-gradient(black, black), linear-gradient(135deg, ${CI.orange}, ${CI.goldLight})`
+                : 'none',
+              backgroundOrigin: 'border-box',
+              backgroundClip: 'padding-box, border-box',
               opacity: isCurrentMonth ? 1 : 0.3
             }}
           >
@@ -142,21 +144,25 @@ const CalendarGrid = ({ days, currentMonth, selectedDate, onSelectDate, getEvent
                 )}
               </div>
 
-              {/* AI Indicator */}
+              {/* AI Badge - NO ICON */}
               {dayEvents.some((e: any) => e.callId) && (
                 <motion.div 
-                  className="absolute top-1 right-1"
+                  className="absolute top-1 right-1 px-1.5 py-0.5 rounded text-[8px] font-bold"
+                  style={{
+                    background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
+                    color: '#000'
+                  }}
                   animate={{
-                    scale: [1, 1.2, 1],
-                    rotate: [0, 5, -5, 0]
+                    scale: [1, 1.1, 1],
+                    boxShadow: [`0 0 0px ${CI.orange}`, `0 0 8px ${CI.orange}`, `0 0 0px ${CI.orange}`]
                   }}
                   transition={{
                     duration: 2,
                     repeat: Infinity,
-                    repeatDelay: 3
+                    repeatDelay: 1
                   }}
                 >
-                  <Sparkles className="w-3 h-3" style={{ color: CI.orange }} />
+                  AI
                 </motion.div>
               )}
             </div>
@@ -309,30 +315,41 @@ const EventModal = ({ show, onClose, eventForm, setEventForm, editingEvent, onSa
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.9, y: 20 }}
           transition={{ type: "spring", stiffness: 300, damping: 25 }}
-          className="w-full max-w-2xl rounded-2xl p-6 relative"
+          className="w-full max-w-lg rounded-2xl p-7 relative"
           style={{
-            background: 'rgba(10, 10, 10, 0.98)',
-            border: `1px solid ${CI.orange}30`,
-            backdropFilter: 'blur(20px)'
+            background: `linear-gradient(135deg, rgba(10, 10, 10, 0.98), rgba(20, 20, 20, 0.98))`,
+            border: `2px solid transparent`,
+            backgroundImage: `linear-gradient(135deg, rgba(10,10,10,0.98), rgba(20,20,20,0.98)), linear-gradient(135deg, ${CI.orange}, ${CI.goldLight})`,
+            backgroundOrigin: 'border-box',
+            backgroundClip: 'padding-box, border-box',
+            backdropFilter: 'blur(20px)',
+            boxShadow: `0 0 40px ${CI.orange}20`
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-bold" style={{ 
-              background: `linear-gradient(90deg, ${CI.goldLight}, ${CI.orange})`,
+          {/* Header - NO ICON */}
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-2xl font-bold" style={{ 
+              background: `linear-gradient(135deg, ${CI.goldLight}, ${CI.orange})`,
               WebkitBackgroundClip: 'text',
               backgroundClip: 'text',
               WebkitTextFillColor: 'transparent'
             }}>
               {editingEvent ? 'Termin bearbeiten' : 'Neuer Termin'}
             </h3>
-            <button
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={onClose}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: CI.goldLight
+              }}
             >
-              <X className="w-5 h-5 text-gray-400" />
-            </button>
+              Schließen
+            </motion.button>
           </div>
 
           {/* Form */}
@@ -728,7 +745,7 @@ export default function CalendarPage() {
     canUpgrade: true
   } as SubscriptionResponse;
 
-  // Quick Actions - NUR funktionierende Buttons!
+  // Quick Actions - NUR funktionierende Buttons! NO ICONS!
   const quickActions = [
     { 
       label: 'Termin erstellen', 
@@ -736,7 +753,6 @@ export default function CalendarPage() {
         resetForm();
         setShowEventModal(true);
       },
-      icon: Plus,
       color: CI.orange
     },
     { 
@@ -745,7 +761,6 @@ export default function CalendarPage() {
         setViewMode('month');
         setCurrentMonth(new Date());
       },
-      icon: CalendarDays,
       color: CI.goldLight
     }
   ];
@@ -876,58 +891,58 @@ export default function CalendarPage() {
             >
               <div className="flex items-center justify-between mb-2">
                 <div>
-                  <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-                    <div className="p-2 rounded-xl" style={{ 
-                      background: `linear-gradient(135deg, ${CI.orange}20, ${CI.goldLight}15)`,
-                      border: `1px solid ${CI.orange}30`
-                    }}>
-                      <CalendarDays className="w-6 h-6" style={{ color: CI.orange }} />
-                    </div>
-                    <span style={{ 
-                      background: `linear-gradient(90deg, ${CI.goldLight}, ${CI.orange})`,
-                      WebkitBackgroundClip: 'text',
-                      backgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent'
-                    }}>
-                      Kalender
-                    </span>
+                  <h1 className="text-4xl font-bold mb-2" style={{ 
+                    background: `linear-gradient(135deg, ${CI.goldLight}, ${CI.orange}, ${CI.goldDark})`,
+                    WebkitBackgroundClip: 'text',
+                    backgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent'
+                  }}>
+                    Kalender
                   </h1>
-                  <p className="text-sm text-gray-400 mt-1">📞 Automatische Termine aus Anrufen • 🤖 AI-gestützt</p>
+                  <p className="text-sm font-medium" style={{ color: CI.goldLight }}>
+                    Automatische Termine aus Anrufen • AI-gestützt
+                  </p>
                 </div>
 
                 {/* Action Buttons */}
                 <div className="flex items-center gap-2">
                   {isProcessingAI && (
-                    <div className="px-4 py-2 rounded-xl flex items-center gap-2 text-sm"
+                    <motion.div 
+                      className="px-5 py-2.5 rounded-xl text-sm font-semibold"
                       style={{
-                        background: `${CI.orange}15`,
-                        border: `1px solid ${CI.orange}30`,
+                        background: `linear-gradient(135deg, ${CI.orange}20, ${CI.goldDark}15)`,
+                        border: `2px solid transparent`,
+                        backgroundImage: `linear-gradient(black, black), linear-gradient(135deg, ${CI.orange}, ${CI.goldLight})`,
+                        backgroundOrigin: 'border-box',
+                        backgroundClip: 'padding-box, border-box',
                         color: CI.orange
-                      }}>
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      }}
+                      animate={{ opacity: [0.7, 1, 0.7] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                    >
                       AI verarbeitet...
-                    </div>
+                    </motion.div>
                   )}
                   <motion.button
-                    whileHover={{ scale: 1.05 }}
+                    whileHover={{ scale: 1.05, boxShadow: `0 0 20px ${CI.orange}60` }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => {
                       resetForm();
                       setShowEventModal(true);
                     }}
-                    className="px-4 py-2 rounded-xl font-semibold text-sm flex items-center gap-2"
+                    className="px-6 py-3 rounded-xl font-bold text-sm"
                     style={{
                       background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
-                      color: '#000'
+                      color: '#000',
+                      boxShadow: `0 0 15px ${CI.orange}40`
                     }}
                   >
-                    <Plus className="w-4 h-4" />
                     Neuer Termin
                   </motion.button>
                 </div>
               </div>
 
-              {/* Quick Stats */}
+              {/* Quick Stats - NO ICONS */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -935,30 +950,33 @@ export default function CalendarPage() {
                 className="grid grid-cols-4 gap-3 mt-6"
               >
                 {[
-                  { label: 'Gesamt', value: events.length, icon: CalendarIcon, color: CI.goldLight },
-                  { label: 'Heute', value: getEventsForDay(new Date()).length, icon: Clock, color: CI.orange },
-                  { label: 'AI Events', value: events.filter(e => e.callId).length, icon: Sparkles, color: CI.orange },
-                  { label: 'Anstehend', value: events.filter(e => e.status === 'scheduled').length, icon: CalendarDays, color: CI.goldLight }
+                  { label: 'Gesamt', value: events.length, color: CI.goldLight },
+                  { label: 'Heute', value: getEventsForDay(new Date()).length, color: CI.orange },
+                  { label: 'AI Events', value: events.filter(e => e.callId).length, color: CI.orange },
+                  { label: 'Anstehend', value: events.filter(e => e.status === 'scheduled').length, color: CI.goldLight }
                 ].map((stat, idx) => (
                   <motion.div
                     key={stat.label}
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
+                    whileHover={{ scale: 1.03, y: -2 }}
                     transition={{ delay: 0.2 + idx * 0.05 }}
-                    className="p-4 rounded-xl"
+                    className="p-5 rounded-xl relative overflow-hidden"
                     style={{
-                      background: 'rgba(255, 255, 255, 0.04)',
-                      border: `1px solid ${stat.color}25`,
-                      backdropFilter: 'blur(12px)'
+                      background: `linear-gradient(135deg, ${stat.color}12, ${stat.color}05)`,
+                      border: `2px solid transparent`,
+                      backgroundImage: `linear-gradient(black, black), linear-gradient(135deg, ${stat.color}40, ${stat.color}20)`,
+                      backgroundOrigin: 'border-box',
+                      backgroundClip: 'padding-box, border-box'
                     }}
                   >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-2xl font-bold text-white">{stat.value}</div>
-                        <div className="text-xs text-gray-400 mt-1">{stat.label}</div>
-                      </div>
-                      <stat.icon className="w-8 h-8 opacity-30" style={{ color: stat.color }} />
-                    </div>
+                    <div className="text-3xl font-bold mb-1\" style={{
+                      background: `linear-gradient(135deg, ${stat.color}, ${CI.goldDark})`,
+                      WebkitBackgroundClip: 'text',
+                      backgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent'
+                    }}>{stat.value}</div>
+                    <div className="text-xs font-medium" style={{ color: stat.color }}>{stat.label}</div>
                   </motion.div>
                 ))}
               </motion.div>
@@ -967,33 +985,54 @@ export default function CalendarPage() {
               <div className="flex items-center justify-between mt-8">
                 <div className="flex items-center gap-4">
                   <motion.button
-                    whileHover={{ scale: 1.1, x: -2 }}
+                    whileHover={{ 
+                      scale: 1.05, 
+                      x: -2,
+                      boxShadow: `0 0 15px ${CI.orange}40`
+                    }}
                     whileTap={{ scale: 0.95 }}
                     onClick={handlePreviousMonth}
-                    className="p-2.5 rounded-xl transition-all"
+                    className="px-4 py-2 rounded-xl font-bold text-lg"
                     style={{
-                      background: 'rgba(255,255,255,0.08)',
-                      border: '1px solid rgba(255,255,255,0.15)'
+                      background: `linear-gradient(135deg, ${CI.orange}12, ${CI.goldLight}08)`,
+                      border: `2px solid transparent`,
+                      backgroundImage: `linear-gradient(black, black), linear-gradient(135deg, ${CI.orange}, ${CI.goldLight})`,
+                      backgroundOrigin: 'border-box',
+                      backgroundClip: 'padding-box, border-box',
+                      color: CI.goldLight
                     }}
                   >
-                    <ChevronLeft className="w-5 h-5 text-gray-300" />
+                    ←
                   </motion.button>
                   
-                  <h2 className="text-2xl font-bold text-white min-w-[200px] text-center">
+                  <h2 className="text-2xl font-bold min-w-[200px] text-center" style={{
+                    background: `linear-gradient(135deg, ${CI.goldLight}, ${CI.orange})`,
+                    WebkitBackgroundClip: 'text',
+                    backgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent'
+                  }}>
                     {format(currentMonth, 'MMMM yyyy', { locale: de })}
                   </h2>
                   
                   <motion.button
-                    whileHover={{ scale: 1.1, x: 2 }}
+                    whileHover={{ 
+                      scale: 1.05, 
+                      x: 2,
+                      boxShadow: `0 0 15px ${CI.orange}40`
+                    }}
                     whileTap={{ scale: 0.95 }}
                     onClick={handleNextMonth}
-                    className="p-2.5 rounded-xl transition-all"
+                    className="px-4 py-2 rounded-xl font-bold text-lg"
                     style={{
-                      background: 'rgba(255,255,255,0.08)',
-                      border: '1px solid rgba(255,255,255,0.15)'
+                      background: `linear-gradient(135deg, ${CI.orange}12, ${CI.goldLight}08)`,
+                      border: `2px solid transparent`,
+                      backgroundImage: `linear-gradient(black, black), linear-gradient(135deg, ${CI.orange}, ${CI.goldLight})`,
+                      backgroundOrigin: 'border-box',
+                      backgroundClip: 'padding-box, border-box',
+                      color: CI.goldLight
                     }}
                   >
-                    <ChevronRight className="w-5 h-5 text-gray-300" />
+                    →
                   </motion.button>
 
                   <motion.button
@@ -1011,23 +1050,28 @@ export default function CalendarPage() {
                   </motion.button>
                 </div>
 
-                {/* Quick Actions */}
+                {/* Quick Actions - NO ICONS */}
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-400 mr-2">Schnellaktionen:</span>
                   {quickActions.map((quickAction) => (
                     <motion.button
                       key={quickAction.label}
-                      whileHover={{ scale: 1.05, y: -2 }}
+                      whileHover={{ 
+                        scale: 1.05, 
+                        y: -2,
+                        boxShadow: `0 0 15px ${quickAction.color}40`
+                      }}
                       whileTap={{ scale: 0.95 }}
                       onClick={quickAction.action}
-                      className="px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 text-xs font-medium"
+                      className="px-4 py-2 rounded-lg text-xs font-bold"
                       style={{
-                        background: `${quickAction.color}15`,
-                        border: `1px solid ${quickAction.color}30`,
+                        background: `linear-gradient(135deg, ${quickAction.color}20, ${quickAction.color}10)`,
+                        border: `2px solid transparent`,
+                        backgroundImage: `linear-gradient(black, black), linear-gradient(135deg, ${quickAction.color}, ${CI.goldDark})`,
+                        backgroundOrigin: 'border-box',
+                        backgroundClip: 'padding-box, border-box',
                         color: quickAction.color
                       }}
                     >
-                      <quickAction.icon className="w-3.5 h-3.5" />
                       {quickAction.label}
                     </motion.button>
                   ))}
