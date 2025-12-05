@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { useMutation } from '@tanstack/react-query';
@@ -14,28 +14,6 @@ const CI = {
 
 type FeedbackType = 'feedback' | 'bug';
 
-// Typing Animation Hook
-const useTypingAnimation = (text: string, speed: number = 80) => {
-  const [displayText, setDisplayText] = useState('');
-  
-  useEffect(() => {
-    let index = 0;
-    setDisplayText('');
-    const timer = setInterval(() => {
-      if (index <= text.length) {
-        setDisplayText(text.slice(0, index));
-        index++;
-      } else {
-        clearInterval(timer);
-      }
-    }, speed);
-    
-    return () => clearInterval(timer);
-  }, [text, speed]);
-  
-  return displayText;
-};
-
 export function FeedbackWidget() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -47,9 +25,6 @@ export function FeedbackWidget() {
   const [description, setDescription] = useState('');
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
-
-  // Typing animations for titles
-  const feedbackTitle = useTypingAnimation(type === 'feedback' ? 'Feedback teilen' : 'Bug melden', 50);
 
   // Get browser info
   const getBrowserInfo = () => {
@@ -83,17 +58,22 @@ export function FeedbackWidget() {
   const captureScreenshot = async () => {
     setIsCapturing(true);
     try {
+      // Hide the widget temporarily
       setIsOpen(false);
+      
+      // Wait a bit for animation
       await new Promise(resolve => setTimeout(resolve, 300));
       
       const canvas = await html2canvas(document.body, {
         allowTaint: true,
         useCORS: true,
-        scale: 0.5,
+        scale: 0.5, // Reduce quality for smaller file size
       });
       
       const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
       setScreenshot(dataUrl);
+      
+      // Reopen widget
       setIsOpen(true);
       
       toast({
@@ -116,33 +96,24 @@ export function FeedbackWidget() {
   // Submit mutation
   const submitMutation = useMutation({
     mutationFn: async (data: any) => {
-      console.log('[Feedback] Submitting:', data);
       const res = await fetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(data),
       });
-      
-      const responseData = await res.json();
-      console.log('[Feedback] Response:', responseData);
-      
       if (!res.ok) {
-        throw new Error(responseData.message || 'Failed to submit');
+        const error = await res.json();
+        throw new Error(error.message || 'Failed to submit');
       }
-      return responseData;
+      return res.json();
     },
-    onSuccess: (data) => {
-      console.log('[Feedback] Success:', data);
+    onSuccess: () => {
       const username = (user as any)?.username || 'User';
-      
-      // Show success toast
       toast({
         title: type === 'bug' ? '🐛 Bug gemeldet!' : '⭐ Feedback gesendet!',
         description: `Vielen Dank für dein Feedback, ${username}! Wir melden uns innerhalb von 24-48h bei dir.`,
-        duration: 5000,
       });
-      
       // Reset form
       setType('feedback');
       setRating(0);
@@ -152,12 +123,10 @@ export function FeedbackWidget() {
       setIsOpen(false);
     },
     onError: (error: Error) => {
-      console.error('[Feedback] Error:', error);
       toast({
-        title: '❌ Fehler beim Senden',
-        description: error.message || 'Bitte versuche es erneut',
+        title: '❌ Fehler',
+        description: error.message,
         variant: 'destructive',
-        duration: 5000,
       });
     },
   });
@@ -181,7 +150,7 @@ export function FeedbackWidget() {
       return;
     }
 
-    const feedbackData = {
+    submitMutation.mutate({
       type,
       rating: type === 'feedback' ? rating : null,
       title: title || null,
@@ -190,45 +159,39 @@ export function FeedbackWidget() {
       pageUrl: window.location.href,
       userAgent: navigator.userAgent,
       browserInfo: getBrowserInfo(),
-    };
-
-    console.log('[Feedback] Submitting data:', feedbackData);
-    submitMutation.mutate(feedbackData);
+    });
   };
 
-  if (!user) return null;
+  if (!user) return null; // Only show for logged-in users
 
   return (
     <>
-      {/* Floating Button - REDESIGNED */}
+      {/* Floating Button */}
       <AnimatePresence>
         {!isOpen && (
           <motion.button
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
-            whileHover={{ scale: 1.1 }}
+            whileHover={{ 
+              scale: 1.1, 
+              boxShadow: `0 0 30px ${CI.orange}80, 0 0 60px ${CI.orange}40`
+            }}
             whileTap={{ scale: 0.9 }}
             onClick={() => setIsOpen(true)}
-            className="fixed bottom-24 right-8 z-40 px-6 py-3 rounded-full font-bold text-sm font-['Orbitron'] shadow-2xl"
+            className="fixed bottom-24 right-8 z-40 p-5 rounded-full font-bold text-sm shadow-2xl"
             style={{
-              background: 'transparent',
-              border: '3px solid',
-              borderImageSlice: 1,
-              animation: 'border-flow 3s linear infinite, text-flow 3s linear infinite',
+              background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
+              color: '#000',
+              boxShadow: `0 0 20px ${CI.orange}60`,
             }}
           >
-            <span style={{ 
-              animation: 'text-flow 3s linear infinite',
-              display: 'inline-block',
-            }}>
-              💬 Alpha Feedback
-            </span>
+            💬 Alpha Feedback
           </motion.button>
         )}
       </AnimatePresence>
 
-      {/* Modal - REDESIGNED: Kleiner, cleaner, transparenter */}
+      {/* Modal */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -236,101 +199,94 @@ export function FeedbackWidget() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ background: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(15px)' }}
+            style={{ background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)' }}
             onClick={() => setIsOpen(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, y: 30, opacity: 0 }}
-              animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.9, y: 30, opacity: 0 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              initial={{ scale: 0.8, y: 50 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.8, y: 50 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg rounded-3xl p-6 relative overflow-hidden"
+              className="w-full max-w-2xl rounded-3xl p-8 relative overflow-hidden"
               style={{
-                background: 'rgba(0,0,0,0.7)',
-                border: '2px solid',
-                borderImageSlice: 1,
-                boxShadow: `0 0 40px ${CI.orange}40`,
+                background: 'rgba(0,0,0,0.95)',
+                border: `2px solid ${CI.orange}`,
+                boxShadow: `0 0 40px ${CI.orange}60`,
                 backdropFilter: 'blur(20px)',
-                animation: 'border-flow 3s linear infinite',
               }}
             >
-              {/* Header - Typing Animation */}
-              <div className="mb-6">
-                <h2 className="text-3xl font-bold mb-2 font-['Orbitron'] min-h-[2.5rem]" style={{
+              {/* Header */}
+              <div className="mb-8">
+                <h2 className="text-4xl font-bold mb-3 font-['Orbitron']" style={{
                   background: `linear-gradient(135deg, ${CI.goldLight}, ${CI.orange})`,
                   WebkitBackgroundClip: 'text',
                   backgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                 }}>
-                  {feedbackTitle}<motion.span animate={{ opacity: [0, 1, 0] }} transition={{ duration: 0.8, repeat: Infinity }}>|</motion.span>
+                  Alpha Feedback
                 </h2>
-                <p className="text-sm" style={{ color: `${CI.goldLight}90` }}>
+                <p style={{ color: CI.goldLight }}>
                   Hilf uns, ARAS AI zu verbessern! 🚀
                 </p>
               </div>
 
-              {/* Type Selection - Kompakter */}
-              <div className="flex gap-3 mb-5">
+              {/* Type Selection */}
+              <div className="flex gap-4 mb-6">
                 {[
-                  { value: 'feedback', label: '⭐ Feedback' },
-                  { value: 'bug', label: '🐛 Bug' },
+                  { value: 'feedback', label: '⭐ Feedback', desc: 'Teile deine Meinung' },
+                  { value: 'bug', label: '🐛 Bug Report', desc: 'Melde einen Fehler' },
                 ].map((option) => (
                   <motion.button
                     key={option.value}
-                    whileHover={{ scale: 1.02, y: -2 }}
-                    whileTap={{ scale: 0.98 }}
+                    whileHover={{ scale: 1.03, y: -2 }}
+                    whileTap={{ scale: 0.97 }}
                     onClick={() => setType(option.value as FeedbackType)}
-                    className="flex-1 p-4 rounded-xl text-center font-bold font-['Orbitron']"
+                    className="flex-1 p-5 rounded-2xl text-left"
                     style={{
                       background: type === option.value
-                        ? `rgba(${parseInt(CI.orange.slice(1,3), 16)}, ${parseInt(CI.orange.slice(3,5), 16)}, ${parseInt(CI.orange.slice(5,7), 16)}, 0.2)`
-                        : 'rgba(255,255,255,0.02)',
+                        ? `linear-gradient(135deg, ${CI.orange}30, ${CI.goldDark}20)`
+                        : 'rgba(255,255,255,0.03)',
                       border: `2px solid ${type === option.value ? CI.orange : 'rgba(255,255,255,0.1)'}`,
-                      color: type === option.value ? CI.orange : CI.goldLight,
-                      boxShadow: type === option.value ? `0 0 15px ${CI.orange}30` : 'none',
+                      boxShadow: type === option.value ? `0 0 20px ${CI.orange}40` : 'none',
                     }}
                   >
-                    {option.label}
+                    <div className="text-2xl mb-2">{option.label}</div>
+                    <div className="text-sm" style={{ color: CI.goldLight }}>
+                      {option.desc}
+                    </div>
                   </motion.button>
                 ))}
               </div>
 
-              {/* Rating (nur für Feedback) - Kompakter */}
+              {/* Rating (nur für Feedback) */}
               {type === 'feedback' && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="mb-5"
-                >
-                  <label className="block text-xs font-bold mb-2" style={{ color: CI.goldLight }}>
+                <div className="mb-6">
+                  <label className="block text-sm font-bold mb-3" style={{ color: CI.goldLight }}>
                     Bewertung *
                   </label>
-                  <div className="flex gap-2 justify-center">
+                  <div className="flex gap-3">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <motion.button
                         key={star}
-                        whileHover={{ scale: 1.2, rotate: 10 }}
+                        whileHover={{ scale: 1.2, rotate: 15 }}
                         whileTap={{ scale: 0.9 }}
                         onClick={() => setRating(star)}
-                        className="text-3xl"
+                        className="text-5xl"
                         style={{
                           color: star <= rating ? CI.orange : 'rgba(255,255,255,0.2)',
                           textShadow: star <= rating ? `0 0 10px ${CI.orange}` : 'none',
-                          filter: star <= rating ? 'drop-shadow(0 0 5px rgba(254,145,0,0.5))' : 'none',
                         }}
                       >
                         ⭐
                       </motion.button>
                     ))}
                   </div>
-                </motion.div>
+                </div>
               )}
 
-              {/* Title - Kompakter */}
-              <div className="mb-4">
-                <label className="block text-xs font-bold mb-2" style={{ color: CI.goldLight }}>
+              {/* Title */}
+              <div className="mb-6">
+                <label className="block text-sm font-bold mb-3" style={{ color: CI.goldLight }}>
                   Titel (optional)
                 </label>
                 <input
@@ -338,99 +294,96 @@ export function FeedbackWidget() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Kurze Zusammenfassung..."
-                  className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none transition-all"
+                  className="w-full px-5 py-4 rounded-2xl text-white focus:outline-none"
                   style={{
-                    background: 'rgba(255,255,255,0.03)',
-                    border: `1px solid ${CI.orange}20`,
-                    backdropFilter: 'blur(10px)',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: `2px solid ${CI.orange}30`,
                   }}
                 />
               </div>
 
-              {/* Description - Kompakter */}
-              <div className="mb-4">
-                <label className="block text-xs font-bold mb-2" style={{ color: CI.goldLight }}>
+              {/* Description */}
+              <div className="mb-6">
+                <label className="block text-sm font-bold mb-3" style={{ color: CI.goldLight }}>
                   Beschreibung *
                 </label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder={type === 'bug' ? 'Was ist passiert? Welche Schritte führen zum Fehler?' : 'Was gefällt dir? Was könnten wir verbessern?'}
-                  className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none resize-none transition-all"
-                  rows={4}
+                  className="w-full px-5 py-4 rounded-2xl text-white focus:outline-none resize-none"
+                  rows={6}
                   style={{
-                    background: 'rgba(255,255,255,0.03)',
-                    border: `1px solid ${CI.orange}20`,
-                    backdropFilter: 'blur(10px)',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: `2px solid ${CI.orange}30`,
                   }}
                 />
               </div>
 
-              {/* Screenshot - Kompakter */}
-              <div className="mb-5">
+              {/* Screenshot */}
+              <div className="mb-8">
                 {screenshot ? (
                   <div className="relative">
                     <img
                       src={screenshot}
                       alt="Screenshot"
-                      className="w-full rounded-xl max-h-32 object-cover"
-                      style={{ border: `1px solid ${CI.orange}50` }}
+                      className="w-full rounded-2xl"
+                      style={{ border: `2px solid ${CI.orange}` }}
                     />
                     <motion.button
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
                       onClick={() => setScreenshot(null)}
-                      className="absolute top-2 right-2 px-3 py-1 rounded-lg font-bold text-xs"
+                      className="absolute top-3 right-3 px-4 py-2 rounded-xl font-bold text-sm"
                       style={{
                         background: 'rgba(255,0,0,0.9)',
                         color: '#fff',
                       }}
                     >
-                      ❌
+                      ❌ Entfernen
                     </motion.button>
                   </div>
                 ) : (
                   <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    whileHover={{ scale: 1.03, boxShadow: `0 0 20px ${CI.orange}40` }}
+                    whileTap={{ scale: 0.97 }}
                     onClick={captureScreenshot}
                     disabled={isCapturing}
-                    className="w-full p-3 rounded-xl font-bold text-xs"
+                    className="w-full p-5 rounded-2xl font-bold"
                     style={{
-                      background: 'rgba(255,255,255,0.03)',
-                      border: `1px dashed ${CI.orange}30`,
+                      background: 'rgba(255,255,255,0.05)',
+                      border: `2px dashed ${CI.orange}30`,
                       color: CI.goldLight,
                     }}
                   >
-                    {isCapturing ? '📸 Erfasse...' : '📸 Screenshot'}
+                    {isCapturing ? '📸 Erfasse...' : '📸 Screenshot hinzufügen (optional)'}
                   </motion.button>
                 )}
               </div>
 
-              {/* Actions - Kompakter */}
-              <div className="flex gap-3 mb-4">
+              {/* Actions */}
+              <div className="flex gap-4">
                 <motion.button
-                  whileHover={{ scale: 1.03 }}
+                  whileHover={{ scale: 1.03, boxShadow: `0 0 30px ${CI.orange}60` }}
                   whileTap={{ scale: 0.97 }}
                   onClick={handleSubmit}
                   disabled={submitMutation.isPending}
-                  className="flex-1 py-3 rounded-xl font-bold text-sm font-['Orbitron']"
+                  className="flex-1 py-4 rounded-2xl font-bold text-lg font-['Orbitron']"
                   style={{
                     background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
                     color: '#000',
                     opacity: submitMutation.isPending ? 0.5 : 1,
-                    boxShadow: `0 0 20px ${CI.orange}40`,
                   }}
                 >
-                  {submitMutation.isPending ? '⏳ Sende...' : type === 'bug' ? '🐛 Senden' : '⭐ Senden'}
+                  {submitMutation.isPending ? 'Sende...' : type === 'bug' ? '🐛 Bug melden' : '⭐ Feedback senden'}
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => setIsOpen(false)}
-                  className="px-6 py-3 rounded-xl font-bold text-sm font-['Orbitron']"
+                  className="px-8 py-4 rounded-2xl font-bold font-['Orbitron']"
                   style={{
-                    background: 'rgba(255,255,255,0.05)',
+                    background: 'rgba(255,255,255,0.1)',
                     color: CI.goldLight,
                   }}
                 >
@@ -438,16 +391,19 @@ export function FeedbackWidget() {
                 </motion.button>
               </div>
 
-              {/* Info - Kompakter */}
-              <div className="p-3 rounded-xl" style={{ 
-                background: `rgba(${parseInt(CI.orange.slice(1,3), 16)}, ${parseInt(CI.orange.slice(3,5), 16)}, ${parseInt(CI.orange.slice(5,7), 16)}, 0.08)`,
-                border: `1px solid ${CI.orange}20`,
+              {/* Info */}
+              <div className="mt-6 p-4 rounded-2xl" style={{ 
+                background: `rgba(${parseInt(CI.orange.slice(1,3), 16)}, ${parseInt(CI.orange.slice(3,5), 16)}, ${parseInt(CI.orange.slice(5,7), 16)}, 0.1)`,
+                border: `1px solid ${CI.orange}30`,
               }}>
-                <p className="text-xs font-bold mb-1" style={{ color: CI.goldLight }}>
+                <p className="text-xs mb-2 font-bold" style={{ color: CI.goldLight }}>
                   📡 Wohin kommt dein Feedback?
                 </p>
-                <p className="text-xs leading-relaxed" style={{ color: `${CI.goldLight}70` }}>
-                  Direkt in unsere Datenbank → Team wird benachrichtigt → Antwort in 24-48h
+                <p className="text-xs" style={{ color: `${CI.goldLight}80` }}>
+                  • Wird direkt in unserer Datenbank gespeichert<br />
+                  • ARAS AI Team wird sofort benachrichtigt<br />
+                  • Enthält automatisch: URL, Browser, Screenshot<br />
+                  • Antwort innerhalb von 24-48h an dich!
                 </p>
               </div>
             </motion.div>
@@ -469,33 +425,6 @@ export function FeedbackWidget() {
           />
         </div>
       )}
-
-      {/* CSS Animations */}
-      <style>{`
-        @keyframes border-flow {
-          0%, 100% {
-            border-image-source: linear-gradient(135deg, ${CI.orange}, ${CI.goldLight});
-          }
-          50% {
-            border-image-source: linear-gradient(135deg, ${CI.goldLight}, ${CI.orange});
-          }
-        }
-
-        @keyframes text-flow {
-          0%, 100% {
-            color: ${CI.goldLight};
-            text-shadow: 0 0 10px ${CI.goldLight}60;
-          }
-          33% {
-            color: ${CI.orange};
-            text-shadow: 0 0 10px ${CI.orange}60;
-          }
-          66% {
-            color: white;
-            text-shadow: 0 0 10px rgba(255,255,255,0.6);
-          }
-        }
-      `}</style>
     </>
   );
 }
