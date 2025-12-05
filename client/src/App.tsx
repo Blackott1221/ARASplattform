@@ -27,8 +27,8 @@ import Power from "@/pages/power";
 import VoiceAgents from "@/pages/voice-agents";
 import Leads from "@/pages/leads";
 import Campaigns from "@/pages/campaigns";
-import Contacts from '@/pages/contacts-simple'; // DIRECT IMPORT - NO LAZY!
-import Calendar from '@/pages/calendar-simple'; // DIRECT IMPORT - NO LAZY!
+import Contacts from '@/pages/contacts'; // DIRECT IMPORT - NO LAZY! (FULL VERSION)
+import Calendar from '@/pages/calendar'; // DIRECT IMPORT - NO LAZY! (FULL VERSION)
 import Billing from "@/pages/billing";
 import Settings from "@/pages/settings";
 import AuthPage from "@/pages/auth-page";
