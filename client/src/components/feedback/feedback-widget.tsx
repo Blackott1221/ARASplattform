@@ -109,9 +109,10 @@ export function FeedbackWidget() {
       return res.json();
     },
     onSuccess: () => {
+      const username = (user as any)?.username || 'User';
       toast({
         title: type === 'bug' ? '🐛 Bug gemeldet!' : '⭐ Feedback gesendet!',
-        description: 'Vielen Dank! Wir melden uns bei dir.',
+        description: `Vielen Dank für dein Feedback, ${username}! Wir melden uns innerhalb von 24-48h bei dir.`,
       });
       // Reset form
       setType('feedback');
@@ -178,19 +179,14 @@ export function FeedbackWidget() {
             }}
             whileTap={{ scale: 0.9 }}
             onClick={() => setIsOpen(true)}
-            className="fixed bottom-8 right-8 z-40 p-5 rounded-full font-bold text-sm shadow-2xl"
+            className="fixed bottom-24 right-8 z-40 p-5 rounded-full font-bold text-sm shadow-2xl"
             style={{
               background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
               color: '#000',
               boxShadow: `0 0 20px ${CI.orange}60`,
             }}
           >
-            <motion.div
-              animate={{ rotate: [0, 10, -10, 0] }}
-              transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-            >
-              💬 Alpha Feedback
-            </motion.div>
+            💬 Alpha Feedback
           </motion.button>
         )}
       </AnimatePresence>
@@ -400,9 +396,14 @@ export function FeedbackWidget() {
                 background: `rgba(${parseInt(CI.orange.slice(1,3), 16)}, ${parseInt(CI.orange.slice(3,5), 16)}, ${parseInt(CI.orange.slice(5,7), 16)}, 0.1)`,
                 border: `1px solid ${CI.orange}30`,
               }}>
-                <p className="text-xs" style={{ color: CI.goldLight }}>
-                  ℹ️ Dein Feedback wird automatisch mit Kontext-Informationen (URL, Browser, etc.) gesendet.
-                  Wir antworten dir innerhalb von 24-48h!
+                <p className="text-xs mb-2 font-bold" style={{ color: CI.goldLight }}>
+                  📡 Wohin kommt dein Feedback?
+                </p>
+                <p className="text-xs" style={{ color: `${CI.goldLight}80` }}>
+                  • Wird direkt in unserer Datenbank gespeichert<br />
+                  • ARAS AI Team wird sofort benachrichtigt<br />
+                  • Enthält automatisch: URL, Browser, Screenshot<br />
+                  • Antwort innerhalb von 24-48h an dich!
                 </p>
               </div>
             </motion.div>
