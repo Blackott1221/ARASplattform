@@ -49,16 +49,28 @@ export default function Space() {
     if (!user) return;
     
     const userId = (user as any)?.id;
+    const firstName = (user as any)?.firstName;
+    const company = (user as any)?.company;
+    
     if (!userId) return;
     
     const hasSeenIntro = localStorage.getItem(`aras_intro_seen_${userId}`);
     
-    // Show cinematic intro only on first visit after registration
-    if (!hasSeenIntro && aiProfile?.companyDescription) {
+    // CRITICAL: Only show cinematic intro if we have ALL required data
+    // This prevents black screen issues after registration
+    const hasValidData = firstName && company && aiProfile?.companyDescription && aiProfile.companyDescription.length > 50;
+    
+    if (!hasSeenIntro && hasValidData) {
+      console.log('[CINEMATIC-INTRO] Showing intro for:', firstName, company);
       setShowCinematicIntro(true);
       setShowWelcome(false); // Hide normal welcome
       
       // Mark as seen
+      localStorage.setItem(`aras_intro_seen_${userId}`, 'true');
+    } else if (!hasSeenIntro && !hasValidData) {
+      console.log('[CINEMATIC-INTRO] Skipping - insufficient data. HasProfile:', !!aiProfile, 'DescLength:', aiProfile?.companyDescription?.length || 0);
+      // If user just registered but profile not ready yet, mark as seen to show normal welcome
+      // They'll see the welcome banner instead
       localStorage.setItem(`aras_intro_seen_${userId}`, 'true');
     }
   }, [user, aiProfile]);
@@ -66,6 +78,13 @@ export default function Space() {
   // 🔥 CINEMATIC INTRO SEQUENCE
   useEffect(() => {
     if (!showCinematicIntro) return;
+    
+    // Safety check: If we somehow get here without data, abort
+    if (!user || !aiProfile?.companyDescription) {
+      console.error('[CINEMATIC-INTRO] Aborting - missing required data');
+      setShowCinematicIntro(false);
+      return;
+    }
 
     // Phase 1: Boot sequence (0-1.5s)
     const bootTimer = setTimeout(() => {
@@ -74,7 +93,11 @@ export default function Space() {
 
     // Phase 2: Start typing analysis (1.5s)
     const typingStartTimer = setTimeout(() => {
-      const analysisText = `Hallo ${(user as any)?.firstName || 'dort'}, ARAS AI hat soeben folgende Daten über ${(user as any)?.company || 'dein Unternehmen'} analysiert: "${aiProfile?.companyDescription || 'Innovatives Unternehmen mit großem Potenzial.'}"`;
+      const firstName = (user as any)?.firstName || 'dort';
+      const company = (user as any)?.company || 'dein Unternehmen';
+      const description = aiProfile?.companyDescription || 'Innovatives Unternehmen mit großem Potenzial.';
+      
+      const analysisText = `Hallo ${firstName}, ARAS AI hat soeben folgende Daten über ${company} analysiert: "${description}"`;
       
       let currentIndex = 0;
       const typingInterval = setInterval(() => {

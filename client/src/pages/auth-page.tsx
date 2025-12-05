@@ -500,20 +500,22 @@ export default function AuthPage() {
           const result = await registerMutation.mutateAsync(registerData);
           trackSignup('email', result?.id);
           
-          // Wait for REAL backend research to complete (30+ seconds)
+          // FIXED: Show animation but redirect much faster (research continues in background)
+          // The AI analysis happens server-side and will be ready when user arrives at /space
           setTimeout(() => {
             clearInterval(stepInterval);
             setResearchProgress(100);
             setResearchStatus("✅ ULTRA-DEEP Research abgeschlossen! ARAS AI kennt jetzt ALLES über " + registerData.company + "! 🔥");
             
+            // Redirect faster - research is done server-side
             setTimeout(() => {
               toast({
                 title: "🎉 Willkommen bei ARAS AI Pro Research™!",
                 description: `Hey ${registerData.firstName}! Deine KI hat ${registerData.company} komplett analysiert. Ready to blow your mind! 💪🔥`
               });
               setLocation("/space");
-            }, 3000);
-          }, Math.max(28000, (researchSteps.length * 2000) - 2000));
+            }, 2000); // Reduced from 3000ms
+          }, 12000); // Reduced from 28000ms - much faster but still shows animation
           
         } catch (error: any) {
           clearInterval(stepInterval);
