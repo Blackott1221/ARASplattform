@@ -1981,6 +1981,75 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     }
   });
 
+  // ========================================================
+  // FEEDBACK & BUG REPORTS (Alpha Phase)
+  // ========================================================
+
+  // Submit feedback or bug report
+  app.post('/api/feedback', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { type, rating, title, description, screenshot, pageUrl, userAgent, browserInfo } = req.body;
+
+      if (!type || !description || !pageUrl) {
+        return res.status(400).json({ message: 'Type, description, and pageUrl are required' });
+      }
+
+      if (type !== 'feedback' && type !== 'bug') {
+        return res.status(400).json({ message: 'Type must be "feedback" or "bug"' });
+      }
+
+      const [newFeedback] = await client`
+        INSERT INTO feedback (
+          user_id, type, rating, title, description, screenshot, 
+          page_url, user_agent, browser_info, status, priority
+        )
+        VALUES (
+          ${userId}, ${type}, ${rating || null}, ${title || null}, ${description},
+          ${screenshot || null}, ${pageUrl}, ${userAgent || null}, 
+          ${JSON.stringify(browserInfo || {})}, 'new', 
+          ${type === 'bug' ? 'high' : 'medium'}
+        )
+        RETURNING *
+      `;
+
+      console.log('[Feedback] New submission:', { id: newFeedback.id, type, userId });
+
+      res.json({ 
+        success: true, 
+        message: type === 'bug' ? 'Bug report submitted!' : 'Feedback submitted!',
+        feedbackId: newFeedback.id
+      });
+    } catch (error) {
+      console.error('[Feedback] Submit error:', error);
+      res.status(500).json({ message: 'Failed to submit feedback' });
+    }
+  });
+
+  // Get all feedback (for admin dashboard later)
+  app.get('/api/admin/feedback', requireAdmin, async (req: any, res) => {
+    try {
+      const { status, type } = req.query;
+      
+      let query = client`SELECT * FROM feedback`;
+      
+      if (status) {
+        query = client`SELECT * FROM feedback WHERE status = ${status}`;
+      }
+      
+      if (type) {
+        query = client`SELECT * FROM feedback WHERE type = ${type}`;
+      }
+      
+      const feedbackList = await query;
+      
+      res.json({ feedback: feedbackList });
+    } catch (error) {
+      console.error('[Feedback] Get all error:', error);
+      res.status(500).json({ message: 'Failed to fetch feedback' });
+    }
+  });
+
   app.get('/api/debug/users/all', async (req: any, res) => {
     try {
       const allUsers = await client`SELECT id, username, email, subscription_plan, ai_messages_used, voice_calls_used FROM users LIMIT 20`;

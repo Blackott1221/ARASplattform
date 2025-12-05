@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
 import { ChatInterface } from "@/components/chat/chat-interface";
+import { FeedbackWidget } from "@/components/feedback/feedback-widget";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import type { User, SubscriptionResponse } from "@shared/schema";
@@ -126,6 +127,9 @@ export default function App() {
           </Suspense>
         </div>
       </div>
+
+      {/* Feedback Widget - Always visible for Alpha users */}
+      <FeedbackWidget />
     </div>
   );
 }

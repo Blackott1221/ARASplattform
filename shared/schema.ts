@@ -433,6 +433,34 @@ export function sanitizeUser(user: User): SafeUser {
   return safeUser;
 }
 
+// 🎈 FEEDBACK & BUG REPORTS (Alpha Phase)
+export const feedback = pgTable("feedback", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id),
+  type: varchar("type").notNull(), // 'feedback' or 'bug'
+  rating: integer("rating"), // 1-5 stars (nur für feedback)
+  title: varchar("title"),
+  description: text("description").notNull(),
+  screenshot: text("screenshot"), // base64 data URL
+  pageUrl: varchar("page_url").notNull(),
+  userAgent: text("user_agent"),
+  browserInfo: jsonb("browser_info").$type<{
+    browser?: string;
+    version?: string;
+    os?: string;
+    screen?: string;
+  }>(),
+  status: varchar("status").default("new"), // new, in_progress, resolved, closed
+  priority: varchar("priority").default("medium"), // low, medium, high, critical
+  assignedTo: varchar("assigned_to"),
+  tags: jsonb("tags").$type<string[]>(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type Feedback = typeof feedback.$inferSelect;
+export type InsertFeedback = typeof feedback.$inferInsert;
+
 export const insertCallLogSchema = createInsertSchema(callLogs).omit({
   id: true,
   createdAt: true,
