@@ -131,6 +131,19 @@ export const users = pgTable("users", {
   profileEnriched: boolean("profile_enriched").default(false),
   lastEnrichmentDate: timestamp("last_enrichment_date"),
   
+  // User Settings
+  notificationSettings: jsonb("notification_settings").$type<{
+    emailNotifications?: boolean;
+    campaignAlerts?: boolean;
+    weeklyReports?: boolean;
+    aiSuggestions?: boolean;
+  }>(),
+  privacySettings: jsonb("privacy_settings").$type<{
+    dataCollection?: boolean;
+    analytics?: boolean;
+    thirdPartySharing?: boolean;
+  }>(),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

@@ -3,7 +3,7 @@ import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { client, db } from "./db";
-import { campaigns, chatMessages, chatSessions, contacts, calendarEvents, emails, leads, subscriptionPlans, users, usageTracking, voiceAgents, callLogs, userContacts } from "@shared/schema";
+import { campaigns, chatMessages, chatSessions, contacts, calendarEvents, leads, subscriptionPlans, users, usageTracking, voiceAgents, callLogs } from "@shared/schema";
 import { logger } from "./logger";
 import { PerformanceMonitor, performanceMiddleware } from "./performance-monitor";
 import { insertLeadSchema, insertCampaignSchema, insertChatMessageSchema, insertContactSchema, sanitizeUser } from "@shared/schema";
