@@ -292,7 +292,7 @@ export default function AuthPage() {
   // Redirect after login
   useEffect(() => {
     if (!isLoading && user) {
-      setLocation("/welcome");
+      setLocation("/space");
     }
   }, [isLoading, user, setLocation]);
 
@@ -319,7 +319,7 @@ export default function AuthPage() {
         title: "Welcome back!",
         description: "You have been successfully logged in."
       });
-      setLocation("/welcome");
+      setLocation("/space");
     } catch (error: any) {
       toast({
         title: "Login Failed",
@@ -511,7 +511,7 @@ export default function AuthPage() {
                 title: "🎉 Willkommen bei ARAS AI Pro Research™!",
                 description: `Hey ${registerData.firstName}! Deine KI hat ${registerData.company} komplett analysiert. Ready to blow your mind! 💪🔥`
               });
-              setLocation("/welcome");
+              setLocation("/space");
             }, 3000);
           }, Math.max(28000, (researchSteps.length * 2000) - 2000));
           

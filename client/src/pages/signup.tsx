@@ -101,8 +101,8 @@ export default function Signup() {
         description: "Welcome to ARAS AI! Your account has been created successfully.",
       });
       
-      // Redirect to welcome page after successful signup
-      setLocation("/welcome");
+      // Redirect directly to space after successful signup
+      setLocation("/space");
     } catch (error: any) {
       console.error('Signup error:', error);
       toast({
