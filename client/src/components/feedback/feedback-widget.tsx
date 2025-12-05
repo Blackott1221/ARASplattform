@@ -47,9 +47,17 @@ export function FeedbackWidget() {
   const [description, setDescription] = useState('');
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   // Typing animations for titles
   const feedbackTitle = useTypingAnimation(type === 'feedback' ? 'Feedback teilen' : 'Bug melden', 50);
+  
+  // Success message typing animation
+  const username = (user as any)?.username || 'User';
+  const successMessage = type === 'bug' 
+    ? `Vielen Dank für deinen Bug Report, ${username}! Das hilft uns sehr weiter. Der Bug sollte in den nächsten Stunden behoben sein.`
+    : `Vielen Dank für dein Feedback, ${username}! Das hilft uns sehr weiter. Wir melden uns innerhalb von 24-48h bei dir.`;
+  const successText = useTypingAnimation(showSuccess ? successMessage : '', 30);
 
   // Get browser info
   const getBrowserInfo = () => {
@@ -134,22 +142,27 @@ export function FeedbackWidget() {
     },
     onSuccess: (data) => {
       console.log('[Feedback] Success:', data);
-      const username = (user as any)?.username || 'User';
       
-      // Show success toast
+      // Show success screen
+      setShowSuccess(true);
+      
+      // Also show toast
       toast({
         title: type === 'bug' ? '🐛 Bug gemeldet!' : '⭐ Feedback gesendet!',
-        description: `Vielen Dank für dein Feedback, ${username}! Wir melden uns innerhalb von 24-48h bei dir.`,
+        description: `Vielen Dank, ${username}!`,
         duration: 5000,
       });
       
-      // Reset form
-      setType('feedback');
-      setRating(0);
-      setTitle('');
-      setDescription('');
-      setScreenshot(null);
-      setIsOpen(false);
+      // Close after success message is shown (5 seconds)
+      setTimeout(() => {
+        setShowSuccess(false);
+        setType('feedback');
+        setRating(0);
+        setTitle('');
+        setDescription('');
+        setScreenshot(null);
+        setIsOpen(false);
+      }, 6000);
     },
     onError: (error: Error) => {
       console.error('[Feedback] Error:', error);
@@ -255,6 +268,55 @@ export function FeedbackWidget() {
                 animation: 'border-flow 3s linear infinite',
               }}
             >
+              {/* SUCCESS SCREEN */}
+              {showSuccess && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="absolute inset-0 flex flex-col items-center justify-center p-8 z-50"
+                  style={{
+                    background: 'rgba(0,0,0,0.95)',
+                    backdropFilter: 'blur(20px)',
+                    borderRadius: '1.5rem',
+                  }}
+                >
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1, rotate: [0, 10, -10, 0] }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                    className="text-7xl mb-6"
+                  >
+                    {type === 'bug' ? '🐛' : '⭐'}
+                  </motion.div>
+                  
+                  <h3 className="text-2xl font-bold mb-4 text-center font-['Orbitron']" style={{
+                    background: `linear-gradient(135deg, ${CI.goldLight}, ${CI.orange})`,
+                    WebkitBackgroundClip: 'text',
+                    backgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                  }}>
+                    {type === 'bug' ? 'Bug gemeldet!' : 'Feedback gesendet!'}
+                  </h3>
+                  
+                  <p className="text-base text-center leading-relaxed mb-6 min-h-[4rem]" style={{ color: CI.goldLight }}>
+                    {successText}
+                    <motion.span 
+                      animate={{ opacity: [0, 1, 0] }} 
+                      transition={{ duration: 0.8, repeat: Infinity }}
+                    >
+                      |
+                    </motion.span>
+                  </p>
+                  
+                  <motion.div
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ duration: 1, repeat: Infinity }}
+                    className="text-4xl"
+                  >
+                    ✨
+                  </motion.div>
+                </motion.div>
+              )}
               {/* Header - Typing Animation */}
               <div className="mb-6">
                 <h2 className="text-3xl font-bold mb-2 font-['Orbitron'] min-h-[2.5rem]" style={{
