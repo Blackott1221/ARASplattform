@@ -213,6 +213,38 @@ export function FeedbackWidget() {
 
   return (
     <>
+      {/* Live-Chat Button - WhatsApp */}
+      <AnimatePresence>
+        {!isOpen && (
+          <motion.a
+            href="https://chat.whatsapp.com/GWx5JKr4RDfGduidjkzZfj?mode=hqrc"
+            target="_blank"
+            rel="noopener noreferrer"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            className="fixed bottom-36 right-8 z-40 px-6 py-3 rounded-full font-bold text-sm font-['Orbitron'] shadow-2xl"
+            style={{
+              background: 'transparent',
+              border: '3px solid',
+              borderImageSlice: 1,
+              animation: 'border-flow-green 3s linear infinite',
+              display: 'inline-block',
+              textDecoration: 'none',
+            }}
+          >
+            <span style={{ 
+              animation: 'text-flow-green 3s linear infinite',
+              display: 'inline-block',
+            }}>
+              💚 Live-Chat
+            </span>
+          </motion.a>
+        )}
+      </AnimatePresence>
+
       {/* Floating Button - REDESIGNED */}
       <AnimatePresence>
         {!isOpen && (
@@ -555,6 +587,30 @@ export function FeedbackWidget() {
           66% {
             color: white;
             text-shadow: 0 0 10px rgba(255,255,255,0.6);
+          }
+        }
+
+        @keyframes border-flow-green {
+          0%, 100% {
+            border-image-source: linear-gradient(135deg, #25D366, #128C7E);
+          }
+          50% {
+            border-image-source: linear-gradient(135deg, #128C7E, #25D366);
+          }
+        }
+
+        @keyframes text-flow-green {
+          0%, 100% {
+            color: #25D366;
+            text-shadow: 0 0 10px rgba(37, 211, 102, 0.6);
+          }
+          33% {
+            color: #128C7E;
+            text-shadow: 0 0 10px rgba(18, 140, 126, 0.6);
+          }
+          66% {
+            color: #DCF8C6;
+            text-shadow: 0 0 10px rgba(220, 248, 198, 0.6);
           }
         }
       `}</style>
