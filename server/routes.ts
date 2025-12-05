@@ -13,6 +13,7 @@ import Stripe from "stripe";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
+import bcrypt from "bcryptjs";
 import multer from "multer";
 import twilio from "twilio";
 import chatRouter from "./chat";
@@ -1836,6 +1837,149 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     });
   });
 
+  // ========================================================
+  // USER SETTINGS & PROFILE
+  // ========================================================
+
+  // Update user profile
+  app.put('/api/user/profile', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { username, email, firstName, lastName } = req.body;
+
+      if (!username) {
+        return res.status(400).json({ message: 'Username is required' });
+      }
+
+      await client`
+        UPDATE users 
+        SET 
+          username = ${username},
+          email = ${email || null},
+          first_name = ${firstName || null},
+          last_name = ${lastName || null},
+          updated_at = NOW()
+        WHERE id = ${userId}
+      `;
+
+      res.json({ success: true, message: 'Profile updated successfully' });
+    } catch (error) {
+      console.error('[Settings] Profile update error:', error);
+      res.status(500).json({ message: 'Failed to update profile' });
+    }
+  });
+
+  // Change password
+  app.post('/api/user/change-password', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { currentPassword, newPassword, confirmPassword } = req.body;
+
+      if (!currentPassword || !newPassword || !confirmPassword) {
+        return res.status(400).json({ message: 'All fields are required' });
+      }
+
+      if (newPassword !== confirmPassword) {
+        return res.status(400).json({ message: 'Passwords do not match' });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: 'Password must be at least 6 characters' });
+      }
+
+      // Get user
+      const [user] = await client`SELECT * FROM users WHERE id = ${userId}`;
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Verify current password
+      const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: 'Current password is incorrect' });
+      }
+
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update password
+      await client`
+        UPDATE users 
+        SET password = ${hashedPassword}, updated_at = NOW()
+        WHERE id = ${userId}
+      `;
+
+      res.json({ success: true, message: 'Password changed successfully' });
+    } catch (error) {
+      console.error('[Settings] Password change error:', error);
+      res.status(500).json({ message: 'Failed to change password' });
+    }
+  });
+
+  // Update notification settings
+  app.put('/api/user/notification-settings', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const settings = req.body;
+
+      await client`
+        UPDATE users 
+        SET 
+          notification_settings = ${JSON.stringify(settings)},
+          updated_at = NOW()
+        WHERE id = ${userId}
+      `;
+
+      res.json({ success: true, message: 'Notification settings updated' });
+    } catch (error) {
+      console.error('[Settings] Notification settings error:', error);
+      res.status(500).json({ message: 'Failed to update settings' });
+    }
+  });
+
+  // Update privacy settings
+  app.put('/api/user/privacy-settings', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const settings = req.body;
+
+      await client`
+        UPDATE users 
+        SET 
+          privacy_settings = ${JSON.stringify(settings)},
+          updated_at = NOW()
+        WHERE id = ${userId}
+      `;
+
+      res.json({ success: true, message: 'Privacy settings updated' });
+    } catch (error) {
+      console.error('[Settings] Privacy settings error:', error);
+      res.status(500).json({ message: 'Failed to update settings' });
+    }
+  });
+
+  // Delete account
+  app.delete('/api/user/delete-account', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+
+      // Delete user's data (contacts, calls, etc.)
+      await client`DELETE FROM contacts WHERE user_id = ${userId}`;
+      await client`DELETE FROM voice_tasks WHERE user_id = ${userId}`;
+      await client`DELETE FROM calendar_events WHERE user_id = ${userId}`;
+      
+      // Delete user
+      await client`DELETE FROM users WHERE id = ${userId}`;
+
+      // Destroy session
+      req.session.destroy();
+
+      res.json({ success: true, message: 'Account deleted successfully' });
+    } catch (error) {
+      console.error('[Settings] Delete account error:', error);
+      res.status(500).json({ message: 'Failed to delete account' });
+    }
+  });
 
   app.get('/api/debug/users/all', async (req: any, res) => {
     try {
