@@ -521,25 +521,40 @@ export default function AuthPage() {
           clearInterval(stepInterval);
           setIsResearching(false);
           
-          // Better error messages from server
-          let errorMessage = "Ups, da ist was schief gelaufen. Versuch's nochmal!";
+          console.error('[REGISTER-ERROR]', error);
           
-          if (error.message?.includes('email')) {
-            errorMessage = "Diese E-Mail ist schon bei uns registriert. Willst du dich einloggen?";
-          } else if (error.message?.includes('username') || error.message?.includes('Benutzername')) {
-            errorMessage = "Dieser Username ist leider schon vergeben. Wähle einen anderen!";
-          } else if (error.message) {
-            errorMessage = error.message;
+          // Better error messages from server with DETAILED feedback
+          let errorMessage = "Ups, da ist was schief gelaufen. Versuch's nochmal!";
+          let errorTitle = "Registrierung fehlgeschlagen 😕";
+          
+          // Check if error message contains specific keywords
+          const errorText = error.message || error.toString() || '';
+          
+          if (errorText.includes('email') || errorText.includes('E-Mail')) {
+            errorTitle = "E-Mail bereits registriert! 📧";
+            errorMessage = `Die E-Mail-Adresse "${registerData.email}" ist bereits bei uns registriert. Möchtest du dich stattdessen einloggen?`;
+          } else if (errorText.includes('username') || errorText.includes('Benutzername')) {
+            errorTitle = "Username bereits vergeben! 👤";
+            errorMessage = `Der Username "${registerData.username}" ist leider schon vergeben. Bitte wähle einen anderen!`;
+          } else if (errorText) {
+            errorMessage = errorText;
           }
           
+          // Show PROMINENT error toast
           toast({
-            title: "Registrierung fehlgeschlagen 😕",
+            title: errorTitle,
             description: errorMessage,
-            variant: "destructive"
+            variant: "destructive",
+            duration: 8000 // Show longer for errors
           });
           
-          // Go back to step 3 on error
-          setRegistrationStep(3);
+          // Go back to appropriate step based on error
+          if (errorText.includes('email') || errorText.includes('username')) {
+            setRegistrationStep(1); // Go back to step 1 for user info
+          } else {
+            setRegistrationStep(3); // Go back to step 3 for other errors
+          }
+          
           setResearchStatus("");
           setResearchProgress(0);
         }

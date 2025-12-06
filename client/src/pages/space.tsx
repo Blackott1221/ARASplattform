@@ -56,22 +56,31 @@ export default function Space() {
     
     const hasSeenIntro = localStorage.getItem(`aras_intro_seen_${userId}`);
     
-    // CRITICAL: Only show cinematic intro if we have ALL required data
-    // This prevents black screen issues after registration
-    const hasValidData = firstName && company && aiProfile?.companyDescription && aiProfile.companyDescription.length > 50;
+    // CRITICAL: Only show cinematic intro if we have required data
+    // Relaxed validation - just check if description exists and has some content
+    const hasValidData = firstName && company && aiProfile?.companyDescription && aiProfile.companyDescription.length > 20;
+    
+    console.log('[CINEMATIC-INTRO-DEBUG] Check:', {
+      userId,
+      firstName,
+      company,
+      hasProfile: !!aiProfile,
+      descLength: aiProfile?.companyDescription?.length || 0,
+      hasSeenIntro,
+      hasValidData
+    });
     
     if (!hasSeenIntro && hasValidData) {
-      console.log('[CINEMATIC-INTRO] Showing intro for:', firstName, company);
+      console.log('[CINEMATIC-INTRO] ✅ STARTING INTRO for:', firstName, company);
       setShowCinematicIntro(true);
       setShowWelcome(false); // Hide normal welcome
       
       // Mark as seen
       localStorage.setItem(`aras_intro_seen_${userId}`, 'true');
     } else if (!hasSeenIntro && !hasValidData) {
-      console.log('[CINEMATIC-INTRO] Skipping - insufficient data. HasProfile:', !!aiProfile, 'DescLength:', aiProfile?.companyDescription?.length || 0);
-      // If user just registered but profile not ready yet, mark as seen to show normal welcome
-      // They'll see the welcome banner instead
-      localStorage.setItem(`aras_intro_seen_${userId}`, 'true');
+      console.log('[CINEMATIC-INTRO] ⚠️ Skipping - waiting for data...');
+      // Don't mark as seen yet - wait for data to load
+      // User will see intro on next render when data arrives
     }
   }, [user, aiProfile]);
 
