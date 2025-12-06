@@ -21,7 +21,7 @@ export default function Space() {
   const [typedIntroText, setTypedIntroText] = useState("");
   const [showStartButton, setShowStartButton] = useState(false);
   
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   
   // Get AI Profile from user
   const aiProfile = (user as any)?.aiProfile || {};
@@ -31,12 +31,15 @@ export default function Space() {
   const fullText = companyDescription || "Womit kann ich dir heute helfen?";
   
   // Fetch user's subscription data
-  const { data: userSubscription } = useQuery<SubscriptionResponse>({
+  const { data: userSubscription, isLoading: subscriptionLoading } = useQuery<SubscriptionResponse>({
     queryKey: ["/api/user/subscription"],
     enabled: !!user,
   });
   
   const subscriptionData: SubscriptionResponse | undefined = userSubscription || undefined;
+  
+  // 🔥 LOADING STATE - Prevent black screen
+  const isPageLoading = authLoading || (!!user && subscriptionLoading);
 
   const handleSectionChange = (section: string) => {
     if (section !== "space") {
@@ -182,6 +185,24 @@ export default function Space() {
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
+
+  // 🔥 SHOW LOADING SCREEN - Prevents black screen
+  if (isPageLoading) {
+    return (
+      <div className="flex h-screen bg-black items-center justify-center">
+        <div className="text-center space-y-4">
+          <motion.div
+            className="w-16 h-16 border-4 border-[#FE9100] border-t-transparent rounded-full mx-auto"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          />
+          <p className="text-gray-400 text-sm" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+            ARAS AI lädt...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden">

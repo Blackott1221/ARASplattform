@@ -165,6 +165,9 @@ export default function AuthPage() {
   const [typedText, setTypedText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const [emailError, setEmailError] = useState("");
+  const [usernameError, setUsernameError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [websiteError, setWebsiteError] = useState("");
   const [passwordStrength, setPasswordStrength] = useState<'weak' | 'medium' | 'strong' | null>(null);
   const [registrationStep, setRegistrationStep] = useState(1); // 1: Personal, 2: Business, 3: AI Config, 4: Live Research
   const [isResearching, setIsResearching] = useState(false);
@@ -235,6 +238,7 @@ export default function AuthPage() {
     };
   }, []);
 
+  // Real-time validators for ALL fields
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email) {
@@ -242,24 +246,67 @@ export default function AuthPage() {
       return true;
     }
     if (!emailRegex.test(email)) {
-      setEmailError("Ungültige E-Mail-Adresse");
+      setEmailError("❌ Ungültige E-Mail (z.B. max@firma.de)");
       return false;
     }
-    setEmailError("");
+    setEmailError("✅ E-Mail ist gültig");
+    return true;
+  };
+
+  const validateUsername = (username: string) => {
+    if (!username) {
+      setUsernameError("");
+      return true;
+    }
+    if (username.length < 3) {
+      setUsernameError("❌ Mindestens 3 Zeichen");
+      return false;
+    }
+    if (username.length > 50) {
+      setUsernameError("❌ Maximal 50 Zeichen");
+      return false;
+    }
+    setUsernameError("✅ Username ist verfügbar");
+    return true;
+  };
+
+  const validateWebsite = (website: string) => {
+    if (!website || website.trim() === '') {
+      setWebsiteError("");
+      return true; // Optional field
+    }
+    
+    // FLEXIBLE URL VALIDATION - accepts ALL formats
+    // - https://firma.de
+    // - http://firma.de
+    // - www.firma.de
+    // - firma.de
+    const flexibleUrlRegex = /^(https?:\/\/)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/;
+    
+    if (!flexibleUrlRegex.test(website)) {
+      setWebsiteError("❌ Ungültig (z.B. firma.de oder www.firma.de)");
+      return false;
+    }
+    
+    setWebsiteError("✅ Website ist gültig");
     return true;
   };
 
   const checkPasswordStrength = (password: string) => {
     if (!password) {
       setPasswordStrength(null);
+      setPasswordError("");
       return;
     }
     if (password.length < 6) {
       setPasswordStrength('weak');
+      setPasswordError("⚠️ Zu kurz - mindestens 6 Zeichen");
     } else if (password.length < 10) {
       setPasswordStrength('medium');
+      setPasswordError("✅ Akzeptabel - besser wären 10+ Zeichen");
     } else {
       setPasswordStrength('strong');
+      setPasswordError("✅ Stark und sicher!");
     }
   };
 
@@ -428,17 +475,16 @@ export default function AuthPage() {
       
       // Website validation (optional, but if provided must be valid)
       if (registerData.website && registerData.website.trim() !== '') {
-        const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/{0-9a-zA-Z\.-]*)*\/?$/;
-        if (!urlRegex.test(registerData.website)) {
+        if (!validateWebsite(registerData.website)) {
           toast({
             title: "Website-Format nicht korrekt 🌐",
-            description: "Bitte gib eine gültige URL ein (z.B. firma.de oder https://firma.de)",
+            description: "Bitte gib eine gültige URL ein (z.B. firma.de, www.firma.de oder https://firma.de). Alle Formate sind akzeptiert!",
             variant: "destructive"
           });
           return;
         }
-        // Auto-add https:// if missing
-        if (!registerData.website.startsWith('http')) {
+        // Auto-add https:// ONLY if no protocol is present
+        if (!registerData.website.startsWith('http://') && !registerData.website.startsWith('https://')) {
           setRegisterData(prev => ({ 
             ...prev, 
             website: `https://${prev.website}` 
@@ -1262,7 +1308,10 @@ export default function AuthPage() {
                             <Input
                               type="text"
                               value={registerData.username}
-                              onChange={(e) => setRegisterData(prev => ({ ...prev, username: e.target.value }))}
+                              onChange={(e) => {
+                                setRegisterData(prev => ({ ...prev, username: e.target.value }));
+                                validateUsername(e.target.value);
+                              }}
                               placeholder="Wähle einen Username"
                               required
                               className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2 text-xs"
@@ -1271,6 +1320,22 @@ export default function AuthPage() {
                               }}
                             />
                           </div>
+                          <AnimatePresence>
+                            {usernameError && (
+                              <motion.p
+                                initial={{ opacity: 0, y: -3 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -3 }}
+                                className={`text-[10px] flex items-center gap-1 ${
+                                  usernameError.startsWith('✅') ? 'text-green-400' : 'text-red-400'
+                                }`}
+                              >
+                                {!usernameError.startsWith('✅') && <AlertCircle className="w-2.5 h-2.5" />}
+                                {!usernameError.startsWith('✅') && <CheckCircle2 className="w-2.5 h-2.5" />}
+                                {usernameError}
+                              </motion.p>
+                            )}
+                          </AnimatePresence>
                         </div>
 
                         <div className="space-y-1.5">
@@ -1308,9 +1373,12 @@ export default function AuthPage() {
                                 initial={{ opacity: 0, y: -3 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -3 }}
-                                className="text-[10px] text-red-400 flex items-center gap-1"
+                                className={`text-[10px] flex items-center gap-1 ${
+                                  emailError.startsWith('✅') ? 'text-green-400' : 'text-red-400'
+                                }`}
                               >
-                                <AlertCircle className="w-2.5 h-2.5" />
+                                {!emailError.startsWith('✅') && <AlertCircle className="w-2.5 h-2.5" />}
+                                {emailError.startsWith('✅') && <CheckCircle2 className="w-2.5 h-2.5" />}
                                 {emailError}
                               </motion.p>
                             )}
@@ -1363,29 +1431,42 @@ export default function AuthPage() {
                                 initial={{ opacity: 0, y: -3 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -3 }}
-                                className="flex items-center gap-1.5 text-[10px]"
+                                className="space-y-1.5"
                               >
-                                <div className="flex gap-0.5 flex-1">
-                                  {[1, 2, 3].map((i) => (
-                                    <div
-                                      key={i}
-                                      className="h-0.5 flex-1 rounded-full"
-                                      style={{
-                                        background: i <= (passwordStrength === 'weak' ? 1 : passwordStrength === 'medium' ? 2 : 3)
-                                          ? passwordStrength === 'weak' ? '#ef4444' : passwordStrength === 'medium' ? '#f59e0b' : '#22c55e'
-                                          : 'rgba(255,255,255,0.1)'
-                                      }}
-                                    />
-                                  ))}
+                                <div className="flex items-center gap-1.5 text-[10px]">
+                                  <div className="flex gap-0.5 flex-1">
+                                    {[1, 2, 3].map((i) => (
+                                      <div
+                                        key={i}
+                                        className="h-0.5 flex-1 rounded-full"
+                                        style={{
+                                          background: i <= (passwordStrength === 'weak' ? 1 : passwordStrength === 'medium' ? 2 : 3)
+                                            ? passwordStrength === 'weak' ? '#ef4444' : passwordStrength === 'medium' ? '#f59e0b' : '#22c55e'
+                                            : 'rgba(255,255,255,0.1)'
+                                        }}
+                                      />
+                                    ))}
+                                  </div>
+                                  <span
+                                    className="font-semibold"
+                                    style={{
+                                      color: passwordStrength === 'weak' ? '#ef4444' : passwordStrength === 'medium' ? '#f59e0b' : '#22c55e'
+                                    }}
+                                  >
+                                    {passwordStrength === 'weak' ? 'Schwach' : passwordStrength === 'medium' ? 'Mittel' : 'Stark'}
+                                  </span>
                                 </div>
-                                <span
-                                  className="font-semibold"
-                                  style={{
-                                    color: passwordStrength === 'weak' ? '#ef4444' : passwordStrength === 'medium' ? '#f59e0b' : '#22c55e'
-                                  }}
-                                >
-                                  {passwordStrength === 'weak' ? 'Schwach' : passwordStrength === 'medium' ? 'Mittel' : 'Stark'}
-                                </span>
+                                {passwordError && (
+                                  <motion.p
+                                    initial={{ opacity: 0, y: -3 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className={`text-[10px] flex items-center gap-1 ${
+                                      passwordError.startsWith('✅') ? 'text-green-400' : passwordError.startsWith('⚠️') ? 'text-yellow-400' : 'text-red-400'
+                                    }`}
+                                  >
+                                    {passwordError}
+                                  </motion.p>
+                                )}
                               </motion.div>
                             )}
                           </AnimatePresence>
@@ -1439,16 +1520,35 @@ export default function AuthPage() {
                                   transition={{ duration: 3, repeat: Infinity }}
                                 />
                                 <Input
-                                  type="url"
+                                  type="text"
                                   value={registerData.website}
-                                  onChange={(e) => setRegisterData(prev => ({ ...prev, website: e.target.value }))}
-                                  placeholder="https://www.example.com"
+                                  onChange={(e) => {
+                                    setRegisterData(prev => ({ ...prev, website: e.target.value }));
+                                    validateWebsite(e.target.value);
+                                  }}
+                                  placeholder="firma.de oder www.firma.de"
                                   className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2 text-xs"
                                   style={{
                                     boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
                                   }}
                                 />
                               </div>
+                              <AnimatePresence>
+                                {websiteError && (
+                                  <motion.p
+                                    initial={{ opacity: 0, y: -3 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -3 }}
+                                    className={`text-[10px] flex items-center gap-1 ${
+                                      websiteError.startsWith('✅') ? 'text-green-400' : 'text-red-400'
+                                    }`}
+                                  >
+                                    {!websiteError.startsWith('✅') && <AlertCircle className="w-2.5 h-2.5" />}
+                                    {websiteError.startsWith('✅') && <CheckCircle2 className="w-2.5 h-2.5" />}
+                                    {websiteError}
+                                  </motion.p>
+                                )}
+                              </AnimatePresence>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
