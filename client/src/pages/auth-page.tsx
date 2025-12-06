@@ -168,6 +168,9 @@ export default function AuthPage() {
   const [usernameError, setUsernameError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [websiteError, setWebsiteError] = useState("");
+  const [firstNameError, setFirstNameError] = useState("");
+  const [lastNameError, setLastNameError] = useState("");
+  const [companyError, setCompanyError] = useState("");
   const [passwordStrength, setPasswordStrength] = useState<'weak' | 'medium' | 'strong' | null>(null);
   const [registrationStep, setRegistrationStep] = useState(1); // 1: Personal, 2: Business, 3: AI Config, 4: Live Research
   const [isResearching, setIsResearching] = useState(false);
@@ -289,6 +292,45 @@ export default function AuthPage() {
     }
     
     setWebsiteError("✅ Website ist gültig");
+    return true;
+  };
+
+  const validateFirstName = (name: string) => {
+    if (!name || name.trim() === '') {
+      setFirstNameError("❌ Vorname ist erforderlich");
+      return false;
+    }
+    if (name.trim().length < 2) {
+      setFirstNameError("❌ Mindestens 2 Zeichen");
+      return false;
+    }
+    setFirstNameError("✅ Sieht gut aus!");
+    return true;
+  };
+
+  const validateLastName = (name: string) => {
+    if (!name || name.trim() === '') {
+      setLastNameError("❌ Nachname ist erforderlich");
+      return false;
+    }
+    if (name.trim().length < 2) {
+      setLastNameError("❌ Mindestens 2 Zeichen");
+      return false;
+    }
+    setLastNameError("✅ Sieht gut aus!");
+    return true;
+  };
+
+  const validateCompany = (company: string) => {
+    if (!company || company.trim() === '') {
+      setCompanyError("❌ Firmenname ist erforderlich");
+      return false;
+    }
+    if (company.trim().length < 2) {
+      setCompanyError("❌ Mindestens 2 Zeichen");
+      return false;
+    }
+    setCompanyError("✅ Perfekt!");
     return true;
   };
 
@@ -1251,7 +1293,12 @@ export default function AuthPage() {
                               <Input
                                 type="text"
                                 value={registerData.firstName}
-                                onChange={(e) => setRegisterData(prev => ({ ...prev, firstName: e.target.value }))}
+                                onChange={(e) => {
+                                  setRegisterData(prev => ({ ...prev, firstName: e.target.value }));
+                                  if (e.target.value) validateFirstName(e.target.value);
+                                  else setFirstNameError("");
+                                }}
+                                onBlur={(e) => validateFirstName(e.target.value)}
                                 placeholder="Vorname"
                                 required
                                 className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2 text-xs"
@@ -1260,6 +1307,22 @@ export default function AuthPage() {
                                 }}
                               />
                             </div>
+                            <AnimatePresence>
+                              {firstNameError && (
+                                <motion.p
+                                  initial={{ opacity: 0, y: -3 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -3 }}
+                                  className={`text-[10px] flex items-center gap-1 ${
+                                    firstNameError.startsWith('✅') ? 'text-green-400' : 'text-red-400'
+                                  }`}
+                                >
+                                  {!firstNameError.startsWith('✅') && <AlertCircle className="w-2.5 h-2.5" />}
+                                  {firstNameError.startsWith('✅') && <CheckCircle2 className="w-2.5 h-2.5" />}
+                                  {firstNameError}
+                                </motion.p>
+                              )}
+                            </AnimatePresence>
                           </div>
 
                           <div className="space-y-1.5">
@@ -1279,7 +1342,12 @@ export default function AuthPage() {
                               <Input
                                 type="text"
                                 value={registerData.lastName}
-                                onChange={(e) => setRegisterData(prev => ({ ...prev, lastName: e.target.value }))}
+                                onChange={(e) => {
+                                  setRegisterData(prev => ({ ...prev, lastName: e.target.value }));
+                                  if (e.target.value) validateLastName(e.target.value);
+                                  else setLastNameError("");
+                                }}
+                                onBlur={(e) => validateLastName(e.target.value)}
                                 placeholder="Nachname"
                                 required
                                 className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2 text-xs"
@@ -1288,6 +1356,22 @@ export default function AuthPage() {
                                 }}
                               />
                             </div>
+                            <AnimatePresence>
+                              {lastNameError && (
+                                <motion.p
+                                  initial={{ opacity: 0, y: -3 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -3 }}
+                                  className={`text-[10px] flex items-center gap-1 ${
+                                    lastNameError.startsWith('✅') ? 'text-green-400' : 'text-red-400'
+                                  }`}
+                                >
+                                  {!lastNameError.startsWith('✅') && <AlertCircle className="w-2.5 h-2.5" />}
+                                  {lastNameError.startsWith('✅') && <CheckCircle2 className="w-2.5 h-2.5" />}
+                                  {lastNameError}
+                                </motion.p>
+                              )}
+                            </AnimatePresence>
                           </div>
                         </div>
 
@@ -1494,7 +1578,12 @@ export default function AuthPage() {
                                 <Input
                                   type="text"
                                   value={registerData.company}
-                                  onChange={(e) => setRegisterData(prev => ({ ...prev, company: e.target.value }))}
+                                  onChange={(e) => {
+                                    setRegisterData(prev => ({ ...prev, company: e.target.value }));
+                                    if (e.target.value) validateCompany(e.target.value);
+                                    else setCompanyError("");
+                                  }}
+                                  onBlur={(e) => validateCompany(e.target.value)}
                                   placeholder="Deine Firma"
                                   required
                                   className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2 text-xs"
@@ -1503,6 +1592,22 @@ export default function AuthPage() {
                                   }}
                                 />
                               </div>
+                              <AnimatePresence>
+                                {companyError && (
+                                  <motion.p
+                                    initial={{ opacity: 0, y: -3 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -3 }}
+                                    className={`text-[10px] flex items-center gap-1 ${
+                                      companyError.startsWith('✅') ? 'text-green-400' : 'text-red-400'
+                                    }`}
+                                  >
+                                    {!companyError.startsWith('✅') && <AlertCircle className="w-2.5 h-2.5" />}
+                                    {companyError.startsWith('✅') && <CheckCircle2 className="w-2.5 h-2.5" />}
+                                    {companyError}
+                                  </motion.p>
+                                )}
+                              </AnimatePresence>
                             </div>
 
                             <div className="space-y-1.5">
