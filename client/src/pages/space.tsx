@@ -5,7 +5,7 @@ import { ChatInterface } from "@/components/chat/chat-interface";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Sparkles, Zap, Database, Brain, Rocket } from "lucide-react";
+import { X } from "lucide-react";
 import type { User, SubscriptionResponse } from "@shared/schema";
 
 export default function Space() {
@@ -109,18 +109,24 @@ export default function Space() {
       const company = (user as any)?.company || 'dein Unternehmen';
       const description = aiProfile?.companyDescription || 'Innovatives Unternehmen mit großem Potenzial.';
       
-      const analysisText = `Hallo ${firstName}, ARAS AI hat soeben folgende Daten über ${company} analysiert: "${description}"`;
+      // 🔥 VIEL KÜRZER - nur erste 120 Zeichen + "..."
+      const shortDescription = description.length > 120 
+        ? description.substring(0, 120).trim() + '...' 
+        : description;
+      
+      // 🔥 KOMPAKTER TEXT - Fokus auf NAME und COMPANY
+      const analysisText = `${firstName.toUpperCase()}, ARAS AI analysiert ${company.toUpperCase()}: ${shortDescription}`;
       
       let currentIndex = 0;
       const typingInterval = setInterval(() => {
         if (currentIndex <= analysisText.length) {
           setTypedIntroText(analysisText.slice(0, currentIndex));
-          currentIndex += 2; // Faster typing (2 chars at a time)
+          currentIndex += 3; // Schneller (3 chars)
         } else {
           clearInterval(typingInterval);
           setIntroPhase('ready');
         }
-      }, 30); // Fast typing speed
+      }, 20); // Schnellere typing speed
 
       return () => clearInterval(typingInterval);
     }, 1500);
@@ -261,208 +267,176 @@ export default function Space() {
 
             {/* Content Container */}
             <div className="relative z-10 max-w-5xl mx-auto px-8 text-center">
-              {/* Phase 1: Boot Sequence */}
+              {/* Phase 1: Boot Sequence - NO ICONS, PURE WOW */}
               {introPhase === 'boot' && (
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
+                  initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
+                  transition={{ duration: 0.6 }}
                 >
-                  {/* ARAS AI Logo Animation */}
-                  <motion.div
-                    className="mb-12 flex items-center justify-center gap-4"
-                    animate={{
-                      scale: [1, 1.05, 1],
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: "easeInOut"
-                    }}
-                  >
-                    <motion.div
-                      className="w-20 h-20 rounded-2xl flex items-center justify-center"
-                      style={{
-                        background: 'linear-gradient(135deg, #FE9100 0%, #ff6b00 100%)',
-                        boxShadow: '0 20px 60px rgba(254,145,0,0.6)'
-                      }}
-                      animate={{
-                        boxShadow: [
-                          '0 20px 60px rgba(254,145,0,0.6)',
-                          '0 25px 80px rgba(254,145,0,0.8)',
-                          '0 20px 60px rgba(254,145,0,0.6)'
-                        ],
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                      }}
-                    >
-                      <Brain className="w-10 h-10 text-white" />
-                    </motion.div>
-                  </motion.div>
-
-                  {/* Boot Text */}
+                  {/* 🔥 MASSIVE ARAS AI TEXT - NO ICONS */}
                   <motion.h1
-                    className="text-7xl font-black mb-6"
+                    className="text-[12rem] font-black mb-8 leading-none"
                     style={{
                       fontFamily: 'Orbitron, sans-serif',
-                      background: 'linear-gradient(90deg, #FFFFFF 0%, #FE9100 50%, #FFFFFF 100%)',
+                      background: 'linear-gradient(135deg, #FE9100 0%, #ff6b00 50%, #FE9100 100%)',
                       backgroundSize: '200% auto',
                       backgroundClip: 'text',
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
-                      letterSpacing: '-0.02em',
+                      letterSpacing: '-0.05em',
+                      textShadow: '0 0 80px rgba(254,145,0,0.5)',
+                      filter: 'drop-shadow(0 0 30px rgba(254,145,0,0.8))'
                     }}
                     animate={{
-                      backgroundPosition: ['0% center', '200% center'],
+                      backgroundPosition: ['0% 50%', '200% 50%'],
+                      scale: [1, 1.02, 1],
                     }}
                     transition={{
-                      duration: 3,
-                      repeat: Infinity,
-                      ease: "linear"
+                      backgroundPosition: { duration: 2, repeat: Infinity, ease: "linear" },
+                      scale: { duration: 2, repeat: Infinity, ease: "easeInOut" }
                     }}
                   >
                     ARAS AI
                   </motion.h1>
 
-                  {/* System Status */}
-                  <div className="space-y-3">
-                    {['Neuronales Netzwerk initialisiert', 'Systeme hochgefahren', 'Analysemodul bereit'].map((text, i) => (
-                      <motion.div
-                        key={i}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.3, duration: 0.4 }}
-                        className="flex items-center justify-center gap-3"
-                      >
-                        <Zap className="w-4 h-4 text-[#FE9100]" />
-                        <span className="text-gray-400 text-sm font-mono">{text}</span>
-                        <motion.div
-                          className="w-2 h-2 rounded-full bg-green-400"
-                          animate={{ opacity: [0.5, 1, 0.5] }}
-                          transition={{ duration: 1, repeat: Infinity }}
-                        />
-                      </motion.div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-
-              {/* Phase 2 & 3: Analysis & Ready */}
-              {(introPhase === 'analysis' || introPhase === 'ready') && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6 }}
-                >
-                  {/* Icon with Pulse */}
+                  {/* Glitch Line Effect */}
                   <motion.div
-                    className="mb-8 flex items-center justify-center"
+                    className="h-1 w-96 mx-auto mb-6"
+                    style={{
+                      background: 'linear-gradient(90deg, transparent 0%, #FE9100 50%, transparent 100%)',
+                    }}
                     animate={{
-                      scale: [1, 1.1, 1],
+                      opacity: [0.3, 1, 0.3],
+                      scaleX: [0.8, 1, 0.8],
                     }}
                     transition={{
-                      duration: 2,
+                      duration: 1.5,
+                      repeat: Infinity,
+                    }}
+                  />
+
+                  {/* Minimalist Status Text */}
+                  <motion.p
+                    className="text-xl text-[#FE9100] font-bold tracking-widest"
+                    style={{ fontFamily: 'Orbitron, sans-serif' }}
+                    animate={{
+                      opacity: [0.5, 1, 0.5],
+                    }}
+                    transition={{
+                      duration: 1.5,
                       repeat: Infinity,
                     }}
                   >
-                    <div
-                      className="w-24 h-24 rounded-3xl flex items-center justify-center relative"
-                      style={{
-                        background: 'linear-gradient(135deg, #FE9100 0%, #ff6b00 100%)',
-                        boxShadow: '0 30px 80px rgba(254,145,0,0.5)'
-                      }}
-                    >
-                      <Sparkles className="w-12 h-12 text-white" />
-                      <motion.div
-                        className="absolute inset-0 rounded-3xl border-2 border-[#FE9100]"
-                        animate={{
-                          scale: [1, 1.5, 1],
-                          opacity: [0.8, 0, 0.8],
-                        }}
-                        transition={{
-                          duration: 2,
-                          repeat: Infinity,
-                        }}
-                      />
-                    </div>
-                  </motion.div>
+                    INITIALISIERUNG...
+                  </motion.p>
+                </motion.div>
+              )}
 
-                  {/* Typing Text */}
+              {/* Phase 2 & 3: Analysis & Ready - NO ICONS, BIGGER TEXT */}
+              {(introPhase === 'analysis' || introPhase === 'ready') && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.4 }}
+                >
+                  {/* 🔥 HUGE TEXT - NO ICONS */}
                   <motion.div
-                    className="mb-12 min-h-[180px] flex items-center justify-center"
+                    className="mb-10"
                   >
                     <p
-                      className="text-3xl md:text-4xl font-bold leading-relaxed max-w-4xl"
+                      className="text-5xl md:text-6xl font-black leading-tight max-w-5xl mx-auto"
                       style={{
                         fontFamily: 'Orbitron, sans-serif',
                         color: '#FFFFFF',
-                        textShadow: '0 0 30px rgba(254,145,0,0.3)',
-                        letterSpacing: '-0.01em'
+                        textShadow: '0 0 40px rgba(254,145,0,0.4), 0 0 80px rgba(254,145,0,0.2)',
+                        letterSpacing: '-0.02em'
                       }}
                     >
                       {typedIntroText}
                       {typedIntroText.length > 0 && introPhase === 'analysis' && (
                         <motion.span
-                          className="inline-block w-1 h-8 bg-[#FE9100] ml-2 align-middle"
+                          className="inline-block w-2 h-12 bg-[#FE9100] ml-3 align-middle"
                           animate={{ opacity: [1, 0, 1] }}
-                          transition={{ duration: 0.8, repeat: Infinity }}
+                          transition={{ duration: 0.6, repeat: Infinity }}
                         />
                       )}
                     </p>
                   </motion.div>
 
-                  {/* System Status - "Hochfahren" */}
+                  {/* System Ready - NO ICONS */}
                   {introPhase === 'ready' && (
                     <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5 }}
-                      className="mb-8"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.4 }}
+                      className="mb-10"
                     >
-                      <p className="text-[#FE9100] text-lg font-bold mb-4 flex items-center justify-center gap-2">
-                        <Database className="w-5 h-5 animate-pulse" />
-                        ARAS AI fährt gerade die Systeme hoch
-                      </p>
+                      <motion.p 
+                        className="text-3xl font-black mb-6"
+                        style={{
+                          fontFamily: 'Orbitron, sans-serif',
+                          background: 'linear-gradient(90deg, #FE9100 0%, #ff6b00 100%)',
+                          backgroundClip: 'text',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                        }}
+                        animate={{
+                          scale: [1, 1.05, 1],
+                        }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Infinity,
+                        }}
+                      >
+                        SYSTEME BEREIT
+                      </motion.p>
                       
-                      {/* Progress Bar */}
-                      <div className="w-96 mx-auto h-1.5 bg-white/10 rounded-full overflow-hidden">
+                      {/* Glitch Progress Bar */}
+                      <div className="w-[500px] mx-auto h-2 bg-white/5 rounded-full overflow-hidden relative">
                         <motion.div
-                          className="h-full bg-gradient-to-r from-[#FE9100] to-[#ff6b00]"
+                          className="h-full"
+                          style={{
+                            background: 'linear-gradient(90deg, #FE9100 0%, #ff6b00 50%, #FE9100 100%)',
+                            boxShadow: '0 0 20px rgba(254,145,0,0.8)'
+                          }}
                           initial={{ width: "0%" }}
                           animate={{ width: "100%" }}
-                          transition={{ duration: 2, ease: "easeInOut" }}
+                          transition={{ duration: 1.5, ease: "easeOut" }}
                         />
                       </div>
                     </motion.div>
                   )}
 
-                  {/* Start Button */}
+                  {/* Start Button - NO ICONS */}
                   <AnimatePresence>
                     {showStartButton && (
                       <motion.button
-                        initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        whileHover={{ scale: 1.05, boxShadow: '0 20px 60px rgba(254,145,0,0.5)' }}
-                        whileTap={{ scale: 0.95 }}
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        whileHover={{ 
+                          scale: 1.05, 
+                          boxShadow: '0 30px 80px rgba(254,145,0,0.6)',
+                        }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => setShowCinematicIntro(false)}
-                        className="px-12 py-5 rounded-2xl font-black text-xl text-white flex items-center gap-3 mx-auto"
+                        className="px-16 py-6 rounded-2xl font-black text-3xl text-white mx-auto relative overflow-hidden group"
                         style={{
                           background: 'linear-gradient(135deg, #FE9100 0%, #ff6b00 100%)',
-                          boxShadow: '0 20px 50px rgba(254,145,0,0.4)',
+                          boxShadow: '0 20px 60px rgba(254,145,0,0.5)',
                           fontFamily: 'Orbitron, sans-serif',
+                          letterSpacing: '0.05em'
                         }}
                       >
-                        <Rocket className="w-6 h-6" />
-                        ARAS AI starten
-                        <motion.span
-                          animate={{ x: [0, 5, 0] }}
-                          transition={{ duration: 1.5, repeat: Infinity }}
-                        >
-                          →
-                        </motion.span>
+                        {/* Glitch overlay on hover */}
+                        <motion.div
+                          className="absolute inset-0 bg-white/10"
+                          initial={{ x: '-100%' }}
+                          whileHover={{ x: '100%' }}
+                          transition={{ duration: 0.6 }}
+                        />
+                        <span className="relative z-10">STARTEN</span>
                       </motion.button>
                     )}
                   </AnimatePresence>
