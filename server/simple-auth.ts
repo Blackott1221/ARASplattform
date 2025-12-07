@@ -137,17 +137,25 @@ export function setupSimpleAuth(app: Express) {
           
           const genAI = new GoogleGenerativeAI(apiKey);
           const model = genAI.getGenerativeModel({ 
-            model: "gemini-2.5-flash",  // 🔥 NEWEST MODEL NOV 2025
+            model: "gemini-2.0-flash-exp",  // 🔥 BEST MODEL FOR RESEARCH DEC 2024
             generationConfig: {
-              temperature: 1.0,
+              temperature: 0.9,  // Slightly lower for more factual
               topP: 0.95,
-              topK: 40,
+              topK: 64,
               maxOutputTokens: 8192,
+              responseMimeType: "application/json",  // Force JSON output!
             },
             tools: [{
               googleSearch: {}  // 🔥 LIVE GOOGLE SEARCH GROUNDING
-            }] as any  // Type not updated yet in SDK
+            }] as any,
+            systemInstruction: "You are an expert business intelligence researcher. Use Google Search to find real, up-to-date information. Always return valid JSON matching the requested schema. Be thorough and detailed."
           });
+          
+          console.log('[🔧 ARAS-AI] Model configured: gemini-2.0-flash-exp with Google Search');
+          console.log('[🔧 ARAS-AI] Output format: JSON');
+          console.log('[🔧 ARAS-AI] Max tokens: 8192');
+          console.log('[🔧 ARAS-AI] Timeout: 90s');
+          console.log('[🔧 ARAS-AI] Retries: 3');
           
           // 🔥 PROMPT 1: Company Deep Dive
           const companyDeepDive = `
@@ -238,19 +246,59 @@ Denke wie ein Top-Tier Business Intelligence Analyst bei McKinsey.
 
           console.log(`[🚀 ARAS-AI] Sending ${companyDeepDive.length} char prompt to AI...`);
           console.log(`[⏰ ARAS-AI] Request started at: ${new Date().toISOString()}`);
+          console.log(`[🔍 ARAS-AI] Google Search Grounding: ENABLED`);
+          console.log(`[🎯 ARAS-AI] Target: ${company} - ${industry}`);
           
-          // Add timeout to prevent hanging
-          const resultPromise = model.generateContent(companyDeepDive);
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('AI request timeout after 30s')), 30000)
-          );
+          // 🔥 RETRY LOGIC with extended timeout for ULTRA-DEEP research
+          let response: string | null = null;
+          let lastError: any = null;
+          const MAX_RETRIES = 3;
+          const TIMEOUT_MS = 90000; // 90 seconds for comprehensive Google Search
           
-          const result = await Promise.race([resultPromise, timeoutPromise]) as any;
+          for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+              console.log(`[🔄 ARAS-AI] Attempt ${attempt}/${MAX_RETRIES}`);
+              
+              const resultPromise = model.generateContent(companyDeepDive);
+              const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error(`Timeout after ${TIMEOUT_MS/1000}s`)), TIMEOUT_MS)
+              );
+              
+              const result = await Promise.race([resultPromise, timeoutPromise]) as any;
+              
+              if (result && result.response) {
+                const tempResponse = result.response.text();
+                console.log(`[✅ ARAS-AI] Received response on attempt ${attempt}`);
+                console.log(`[📊 ARAS-AI] Response length: ${tempResponse?.length || 0} characters`);
+                console.log(`[👀 ARAS-AI] Preview: ${tempResponse?.substring(0, 500) || 'empty'}...`);
+                
+                // Validate response quality
+                if (tempResponse && tempResponse.length > 200 && (tempResponse.includes(company) || tempResponse.includes('{'))) {
+                  console.log(`[🎉 ARAS-AI] Valid research data received!`);
+                  response = tempResponse; // Set only if valid
+                  break; // Success!
+                } else {
+                  console.log(`[⚠️ ARAS-AI] Response too short or invalid, retrying...`);
+                  lastError = new Error('Response validation failed - too short or empty');
+                }
+              }
+            } catch (error: any) {
+              console.error(`[❌ ARAS-AI] Attempt ${attempt} failed:`, error.message);
+              lastError = error;
+              
+              if (attempt < MAX_RETRIES) {
+                const waitTime = attempt * 2000; // Progressive backoff: 2s, 4s
+                console.log(`[⏳ ARAS-AI] Waiting ${waitTime}ms before retry...`);
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+              }
+            }
+          }
           
-          console.log(`[✅ ARAS-AI] Received response from AI API`);
-          const response = result.response.text();
-          console.log(`[📊 ARAS-AI] Response length: ${response.length} characters`);
-          console.log(`[👀 ARAS-AI] Preview: ${response.substring(0, 300)}...`);
+          if (!response) {
+            console.error(`[💥 ARAS-AI] All ${MAX_RETRIES} attempts failed!`);
+            console.error(`[💥 ARAS-AI] Last error:`, lastError?.message);
+            throw new Error(`Research failed after ${MAX_RETRIES} attempts: ${lastError?.message}`);
+          }
           
           // Extract JSON from response
           let companyIntel: any;
