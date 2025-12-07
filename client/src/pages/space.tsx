@@ -395,26 +395,26 @@ export default function Space() {
                     </>
                   )}
 
-                  {/* HIGH END Round Button with Animated Border */}
+                  {/* 🎬 TWO BUTTONS: Start AI + Full Analysis */}
                   <AnimatePresence>
                     {showStartButton && (
                       <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.8, duration: 0.8 }}
-                        className="flex justify-center pt-6"
+                        className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6"
                       >
+                        {/* PRIMARY: ARAS AI starten */}
                         <motion.button
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                           onClick={() => setShowCinematicIntro(false)}
-                          className="relative px-14 py-5 rounded-full font-bold text-lg text-white group overflow-hidden"
+                          className="relative px-12 py-4 rounded-full font-bold text-base text-white group overflow-hidden"
                           style={{
                             fontFamily: 'Inter, sans-serif',
                             background: 'transparent',
                           }}
                         >
-                          {/* Animated Border */}
                           <motion.div
                             className="absolute inset-0 rounded-full p-[2px]"
                             style={{
@@ -432,16 +432,26 @@ export default function Space() {
                           >
                             <div className="w-full h-full rounded-full bg-black/40 backdrop-blur-sm" />
                           </motion.div>
-                          
-                          {/* Hover Glow */}
                           <motion.div
                             className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                             style={{
                               boxShadow: '0 0 40px rgba(254,145,0,0.6), inset 0 0 40px rgba(254,145,0,0.2)'
                             }}
                           />
-                          
                           <span className="relative z-10">ARAS AI starten</span>
+                        </motion.button>
+
+                        {/* SECONDARY: Vollständige Analyse */}
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => window.location.href = '/knowledge'}
+                          className="relative px-10 py-3.5 rounded-full font-medium text-sm text-white/90 group overflow-hidden border border-[#FE9100]/30 hover:border-[#FE9100]/60 transition-all backdrop-blur-sm bg-black/20"
+                          style={{
+                            fontFamily: 'Inter, sans-serif',
+                          }}
+                        >
+                          <span className="relative z-10">Vollständige Analyse anzeigen</span>
                         </motion.button>
                       </motion.div>
                     )}
