@@ -15,11 +15,10 @@ export default function Space() {
   const [displayedText, setDisplayedText] = useState("");
   const [typedResearchIndex, setTypedResearchIndex] = useState(0);
   
-  // 🔥 CINEMATIC INTRO STATE
+  // 🔥 CINEMATIC INTRO STATE - HIGH-END CI DESIGN
   const [showCinematicIntro, setShowCinematicIntro] = useState(false);
-  const [introPhase, setIntroPhase] = useState<'boot' | 'analysis' | 'ready'>('boot');
-  const [typedIntroText, setTypedIntroText] = useState("");
-  const [showStartButton, setShowStartButton] = useState(false);
+  const [introPhase, setIntroPhase] = useState<'boot' | 'scan' | 'results'>('boot');
+  const [showButtons, setShowButtons] = useState(false);
   
   const { user, isLoading: authLoading } = useAuth();
   
@@ -98,42 +97,25 @@ export default function Space() {
       return;
     }
 
-    // Phase 1: Boot sequence (0-1.5s)
+    // ⚡ FASTER HIGH-END TIMING
+    // Phase 1: Boot (0-0.6s)
     const bootTimer = setTimeout(() => {
-      setIntroPhase('analysis');
-    }, 1500);
+      setIntroPhase('scan');
+    }, 600);
 
-    // Phase 2: Start typing analysis (1.5s)
-    const typingStartTimer = setTimeout(() => {
-      const firstName = (user as any)?.firstName || 'dort';
-      const company = (user as any)?.company || 'dein Unternehmen';
-      const description = aiProfile?.companyDescription || 'Innovatives Unternehmen mit großem Potenzial.';
-      
-      // 🔥 FULL TEXT - NO TRUNCATION FOR HIGH END EXPERIENCE
-      const analysisText = `ARAS AI hat dein Unternehmen ${company} analysiert und ist bereit, dich optimal zu unterstützen. ${description}`;
-      
-      let currentIndex = 0;
-      const typingInterval = setInterval(() => {
-        if (currentIndex <= analysisText.length) {
-          setTypedIntroText(analysisText.slice(0, currentIndex));
-          currentIndex += 1; // Langsam und elegant (1 char)
-        } else {
-          clearInterval(typingInterval);
-          setIntroPhase('ready');
-        }
-      }, 50); // Langsame, elegante typing speed
+    // Phase 2: Scan (0.6-1.3s)
+    const scanTimer = setTimeout(() => {
+      setIntroPhase('results');
+    }, 1300);
 
-      return () => clearInterval(typingInterval);
-    }, 1500);
-
-    // Phase 3: Show start button (4s total)
+    // Phase 3: Show buttons (1.8s)
     const buttonTimer = setTimeout(() => {
-      setShowStartButton(true);
-    }, 4000);
+      setShowButtons(true);
+    }, 1800);
 
     return () => {
       clearTimeout(bootTimer);
-      clearTimeout(typingStartTimer);
+      clearTimeout(scanTimer);
       clearTimeout(buttonTimer);
     };
   }, [showCinematicIntro, user, aiProfile]);
@@ -225,179 +207,142 @@ export default function Space() {
             {/* NO PARTICLES - Clean transparent background to see SPACE */}
 
             {/* HIGH END Structured Container - Smaller */}
-            <div className="relative z-10 max-w-4xl mx-auto w-full">
-              {/* Phase 1: Elegant Boot Sequence */}
+            {/* 🎬 HIGH-END CI CONTAINER */}
+            <div className="relative z-10 max-w-5xl mx-auto w-full">
+              
+              {/* ═══════════════════════════════════════════ */}
+              {/* PHASE 1: BOOT - Fast & Clean (0-0.6s) */}
+              {/* ═══════════════════════════════════════════ */}
               {introPhase === 'boot' && (
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 1.2, ease: "easeOut" }}
-                  className="text-center"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.4 }}
+                  className="text-center space-y-4"
                 >
-                  {/* HIGH END Animated Header */}
                   <motion.h1
-                    className="text-6xl font-bold mb-4"
+                    className="text-7xl font-black"
                     style={{
                       fontFamily: 'Orbitron, sans-serif',
-                      background: 'linear-gradient(90deg, #FE9100 0%, #ff6b00 50%, #FE9100 100%)',
-                      backgroundSize: '200% auto',
+                      background: 'linear-gradient(135deg, #FE9100 0%, #ff6b00 100%)',
                       backgroundClip: 'text',
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
-                      letterSpacing: '0.05em',
-                    }}
-                    animate={{
-                      backgroundPosition: ['0% 50%', '200% 50%'],
-                    }}
-                    transition={{
-                      duration: 3,
-                      repeat: Infinity,
-                      ease: "linear"
                     }}
                   >
                     ARAS AI
                   </motion.h1>
-
-                  {/* Elegant Subtitle */}
                   <motion.div
+                    className="flex items-center justify-center gap-2"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={{ delay: 0.5, duration: 1 }}
-                    className="space-y-4"
+                    transition={{ delay: 0.2 }}
                   >
-                    <div className="h-px w-48 mx-auto bg-gradient-to-r from-transparent via-[#FE9100] to-transparent opacity-50" />
-                    <p className="text-gray-400 text-lg" style={{ fontFamily: 'Inter, sans-serif' }}>
-                      Initialisiere deine persönliche KI-Assistenz
-                    </p>
+                    <div className="w-1.5 h-1.5 bg-[#FE9100] rounded-full animate-pulse" />
+                    <p className="text-gray-400 text-sm font-light tracking-wide">INITIALIZING</p>
                   </motion.div>
                 </motion.div>
               )}
 
-              {/* Phase 2 & 3: Elegant Structured Analysis */}
-              {(introPhase === 'analysis' || introPhase === 'ready') && (
+              {/* ═══════════════════════════════════════════ */}
+              {/* PHASE 2: SCAN - Progress Bar (0.6-1.3s) */}
+              {/* ═══════════════════════════════════════════ */}
+              {introPhase === 'scan' && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3 }}
+                  className="text-center space-y-5"
+                >
+                  <h2 className="text-2xl font-bold text-white tracking-wide" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                    UNTERNEHMENSANALYSE
+                  </h2>
+                  <div className="w-full max-w-sm mx-auto">
+                    <div className="h-0.5 bg-black/50 rounded-full overflow-hidden border border-[#FE9100]/20">
+                      <motion.div
+                        className="h-full bg-gradient-to-r from-[#FE9100] to-[#ff6b00]"
+                        initial={{ width: "0%" }}
+                        animate={{ width: "100%" }}
+                        transition={{ duration: 0.7, ease: "easeInOut" }}
+                        style={{
+                          boxShadow: '0 0 10px rgba(254, 145, 0, 0.6)'
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-gray-400 text-xs uppercase tracking-widest">Generating AI Profile...</p>
+                </motion.div>
+              )}
+
+              {/* ═══════════════════════════════════════════ */}
+              {/* PHASE 3: RESULTS - WOW Experience! */}
+              {/* ═══════════════════════════════════════════ */}
+              {introPhase === 'results' && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.8 }}
                   className="space-y-8"
                 >
-                  {/* HIGH END Welcome Card - Transparent */}
+                  {/* 🎯 WELCOME HEADER - CI Style */}
                   <motion.div
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2, duration: 0.8 }}
-                    className="backdrop-blur-md bg-black/20 border border-[#FE9100]/30 rounded-3xl p-8"
-                    style={{
-                      boxShadow: '0 8px 32px rgba(254, 145, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-                    }}
+                    transition={{ delay: 0.1 }}
+                    className="text-center space-y-3"
                   >
-                    {/* Animated Header */}
-                    <motion.h2 
-                      className="text-3xl font-bold mb-4 text-center"
+                    <h2 
+                      className="text-4xl font-black tracking-tight"
                       style={{
                         fontFamily: 'Orbitron, sans-serif',
-                        background: 'linear-gradient(90deg, #FE9100 0%, #ff6b00 50%, #FE9100 100%)',
-                        backgroundSize: '200% auto',
+                        background: 'linear-gradient(135deg, #FE9100 0%, #ff6b00 100%)',
                         backgroundClip: 'text',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                       }}
-                      animate={{
-                        backgroundPosition: ['0% 50%', '200% 50%'],
-                      }}
-                      transition={{
-                        duration: 3,
-                        repeat: Infinity,
-                        ease: "linear"
-                      }}
                     >
-                      Willkommen, {(user as any)?.firstName || 'dort'}!
-                    </motion.h2>
-                    
-                    <div className="h-px w-full bg-gradient-to-r from-transparent via-[#FE9100]/30 to-transparent mb-6" />
-                    
-                    {/* FULL Vision Text - NO Truncation */}
-                    <motion.div className="text-center space-y-4">
-                      <p className="text-gray-200 text-base leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
-                        {typedIntroText}
-                        {typedIntroText.length > 0 && introPhase === 'analysis' && (
-                          <motion.span
-                            className="inline-block w-0.5 h-5 bg-[#FE9100] ml-1 align-middle"
-                            animate={{ opacity: [1, 0, 1] }}
-                            transition={{ duration: 0.8, repeat: Infinity }}
-                          />
-                        )}
-                      </p>
-                    </motion.div>
+                      WILLKOMMEN, {(user as any)?.firstName?.toUpperCase()}
+                    </h2>
+                    <div className="h-px w-24 mx-auto bg-gradient-to-r from-transparent via-[#FE9100] to-transparent" />
+                    <p className="text-gray-300 text-sm tracking-wide">DEIN PERSÖNLICHES AI PROFIL IST BEREIT</p>
                   </motion.div>
 
-                  {/* Analysis Summary - Structured Sections */}
-                  {introPhase === 'ready' && (
-                    <>
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.4, duration: 0.8 }}
-                        className="grid grid-cols-1 md:grid-cols-3 gap-4"
-                      >
-                        {/* Company Info - More Transparent */}
-                        <div className="backdrop-blur-md bg-black/10 border border-[#FE9100]/20 rounded-2xl p-5">
-                          <div className="text-[#FE9100] text-xs font-bold mb-2 tracking-wider" style={{ fontFamily: 'Inter, sans-serif' }}>UNTERNEHMEN</div>
-                          <div className="text-white text-lg font-bold" style={{ fontFamily: 'Inter, sans-serif' }}>{(user as any)?.company || 'Nicht angegeben'}</div>
-                        </div>
+                  {/* 📊 COMPANY STATS - 3 Cards */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="grid grid-cols-3 gap-3"
+                  >
+                    <div className="backdrop-blur-sm bg-black/20 border border-[#FE9100]/20 rounded-xl p-4 hover:border-[#FE9100]/40 transition-colors">
+                      <div className="text-[#FE9100] text-[10px] font-bold mb-1.5 tracking-widest">UNTERNEHMEN</div>
+                      <div className="text-white text-base font-bold truncate">{(user as any)?.company || 'N/A'}</div>
+                    </div>
+                    <div className="backdrop-blur-sm bg-black/20 border border-[#FE9100]/20 rounded-xl p-4 hover:border-[#FE9100]/40 transition-colors">
+                      <div className="text-[#FE9100] text-[10px] font-bold mb-1.5 tracking-widest">BRANCHE</div>
+                      <div className="text-white text-base font-bold truncate">{(user as any)?.industry || 'Tech'}</div>
+                    </div>
+                    <div className="backdrop-blur-sm bg-black/20 border border-[#FE9100]/20 rounded-xl p-4 hover:border-[#FE9100]/40 transition-colors">
+                      <div className="text-[#FE9100] text-[10px] font-bold mb-1.5 tracking-widest">POSITION</div>
+                      <div className="text-white text-base font-bold truncate">{(user as any)?.role || 'CEO'}</div>
+                    </div>
+                  </motion.div>
 
-                        {/* Industry */}
-                        <div className="backdrop-blur-md bg-black/10 border border-[#FE9100]/20 rounded-2xl p-5">
-                          <div className="text-[#FE9100] text-xs font-bold mb-2 tracking-wider" style={{ fontFamily: 'Inter, sans-serif' }}>BRANCHE</div>
-                          <div className="text-white text-lg font-bold" style={{ fontFamily: 'Inter, sans-serif' }}>{(user as any)?.industry || 'KI-Technologie'}</div>
-                        </div>
+                  {/* 📝 COMPANY DESCRIPTION - Clean */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="backdrop-blur-sm bg-black/10 border border-[#FE9100]/20 rounded-2xl p-6"
+                  >
+                    <p className="text-gray-200 text-sm leading-relaxed text-center">
+                      {aiProfile?.companyDescription?.slice(0, 300) || 'Ihr Unternehmen wurde erfolgreich analysiert.'}...
+                    </p>
+                  </motion.div>
 
-                        {/* Role */}
-                        <div className="backdrop-blur-md bg-black/10 border border-[#FE9100]/20 rounded-2xl p-5">
-                          <div className="text-[#FE9100] text-xs font-bold mb-2 tracking-wider" style={{ fontFamily: 'Inter, sans-serif' }}>POSITION</div>
-                          <div className="text-white text-lg font-bold" style={{ fontFamily: 'Inter, sans-serif' }}>{(user as any)?.role || 'Entscheider'}</div>
-                        </div>
-                      </motion.div>
-
-                      {/* Vision Statement - HIGH END */}
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.6, duration: 0.8 }}
-                        className="backdrop-blur-md bg-gradient-to-br from-[#FE9100]/5 to-transparent border border-[#FE9100]/30 rounded-3xl p-8"
-                      >
-                        <motion.h3 
-                          className="text-2xl font-bold mb-4"
-                          style={{
-                            fontFamily: 'Orbitron, sans-serif',
-                            background: 'linear-gradient(90deg, #FE9100 0%, #ff6b00 50%, #FE9100 100%)',
-                            backgroundSize: '200% auto',
-                            backgroundClip: 'text',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                          }}
-                          animate={{
-                            backgroundPosition: ['0% 50%', '200% 50%'],
-                          }}
-                          transition={{
-                            duration: 3,
-                            repeat: Infinity,
-                            ease: "linear"
-                          }}
-                        >
-                          Deine Vision mit ARAS AI
-                        </motion.h3>
-                        <p className="text-gray-200 text-base leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
-                          Ich habe deine Unternehmensdaten analysiert und bin bereit, dich bei der Automatisierung deiner Kundenkommunikation zu unterstützen. 
-                          Gemeinsam werden wir deine Effizienz steigern und neue Geschäftsmöglichkeiten erschließen.
-                        </p>
-                      </motion.div>
-                    </>
-                  )}
-
-                  {/* 🎬 TWO BUTTONS: Start AI + Full Analysis */}
+                  {/* 🎬 TWO HIGH-END BUTTONS */}
                   <AnimatePresence>
-                    {showStartButton && (
+                    {showButtons && (
                       <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
