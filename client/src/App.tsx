@@ -9,6 +9,7 @@ import { EarlyAccessBanner } from "@/components/ui/early-access-banner";
 import { useAuth } from "@/hooks/useAuth";
 import { initializeAnalytics } from "@/lib/analytics";
 import { LanguageProvider } from "@/lib/auto-translate";
+import { PageTransition } from "@/components/page-transition"; // HIGH-END PAGE TRANSITIONS
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Login from "@/pages/login";
@@ -81,18 +82,19 @@ function Router() {
   }
 
   return (
-    <Switch>
-      {/* Public routes - always accessible */}
-      <Route path="/terms" component={Terms} />
-      <Route path="/privacy" component={Privacy} />
-      <Route path="/demo" component={Demo} />
-      <Route path="/checkout" component={Checkout} />
-      <Route path="/checkout-success" component={CheckoutSuccess} />
-      <Route path="/login" component={Login} />
-      <Route path="/signup" component={Signup} />
-      <Route path="/auth" component={AuthPage} />
-      <Route path="/forgot-password" component={ForgotPassword} />
-      <Route path="/welcome" component={Welcome} />
+    <PageTransition>
+      <Switch>
+        {/* Public routes - always accessible */}
+        <Route path="/terms" component={Terms} />
+        <Route path="/privacy" component={Privacy} />
+        <Route path="/demo" component={Demo} />
+        <Route path="/checkout" component={Checkout} />
+        <Route path="/checkout-success" component={CheckoutSuccess} />
+        <Route path="/login" component={Login} />
+        <Route path="/signup" component={Signup} />
+        <Route path="/auth" component={AuthPage} />
+        <Route path="/forgot-password" component={ForgotPassword} />
+        <Route path="/welcome" component={Welcome} />
       
       {!user ? (
         <>
@@ -145,7 +147,8 @@ function Router() {
       )}
       
       <Route component={NotFound} />
-    </Switch>
+      </Switch>
+    </PageTransition>
   );
 }
 
