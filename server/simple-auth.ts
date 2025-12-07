@@ -133,28 +133,54 @@ export function setupSimpleAuth(app: Express) {
             console.error('[❌ ARAS-AI] API Key missing!');
             throw new Error('AI_API_KEY not configured');
           }
-          console.log(`[✅ ARAS-AI] API Key present: ${apiKey.substring(0, 15)}...`);
+          console.log(`[✅ ARAS-AI] API Key present: ${apiKey.substring(0, 20)}...${apiKey.slice(-4)}`);
+          console.log(`[✅ ARAS-AI] API Key length: ${apiKey.length} characters`);
+          
+          // Quick API Key format validation
+          if (!apiKey.startsWith('AIza')) {
+            console.error('[❌ ARAS-AI] API Key format invalid! Should start with "AIza"');
+            console.error('[❌ ARAS-AI] Current key starts with:', apiKey.substring(0, 10));
+            throw new Error('Invalid Gemini API Key format');
+          }
+          console.log(`[✅ ARAS-AI] API Key format: VALID (starts with AIza)`);
           
           const genAI = new GoogleGenerativeAI(apiKey);
+          
+          // 🔥🔥🔥 HIGH-END MODEL FOR ULTRA-DEEP RESEARCH 🔥🔥🔥
           const model = genAI.getGenerativeModel({ 
-            model: "gemini-2.5-flash",  // 🔥 WORKING MODEL - DO NOT CHANGE!
+            model: "gemini-1.5-pro-latest",  // 🚀 BEST MODEL - PRO version for maximum quality!
             generationConfig: {
-              temperature: 1.0,  // High creativity for comprehensive research
+              temperature: 1.0,  // Maximum creativity for comprehensive research
               topP: 0.95,
-              topK: 40,
+              topK: 64,  // Increased diversity
               maxOutputTokens: 8192,
+              candidateCount: 1,
             },
             tools: [{
-              googleSearch: {}  // 🔥 LIVE GOOGLE SEARCH GROUNDING
-            }] as any
+              googleSearch: {
+                // Dynamic retrieval with Google Search
+              }
+            }] as any,
+            safetySettings: [
+              { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+              { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+            ] as any
           });
           
-          console.log('[🔧 ARAS-AI] Model: gemini-2.5-flash (WORKING CONFIG)');
-          console.log('[🔧 ARAS-AI] Google Search Grounding: ENABLED');
-          console.log('[🔧 ARAS-AI] Temperature: 1.0 (High creativity)');
-          console.log('[🔧 ARAS-AI] Max tokens: 8192');
-          console.log('[🔧 ARAS-AI] Timeout: 90s');
-          console.log('[🔧 ARAS-AI] Retries: 3');
+          console.log('[🔧 ARAS-AI] ═══════════════════════════════════════');
+          console.log('[🔧 ARAS-AI] HIGH-END RESEARCH MODE ACTIVATED');
+          console.log('[🔧 ARAS-AI] ═══════════════════════════════════════');
+          console.log('[🔧 ARAS-AI] Model: gemini-1.5-pro-latest (PREMIUM)');
+          console.log('[🔧 ARAS-AI] Google Search Grounding: ✅ ENABLED');
+          console.log('[🔧 ARAS-AI] Temperature: 1.0 (Maximum Creativity)');
+          console.log('[🔧 ARAS-AI] topK: 64 (High Diversity)');
+          console.log('[🔧 ARAS-AI] Max Output: 8192 tokens');
+          console.log('[🔧 ARAS-AI] Safety Filters: DISABLED (Max Freedom)');
+          console.log('[🔧 ARAS-AI] Timeout: 90 seconds');
+          console.log('[🔧 ARAS-AI] Retries: 3 attempts');
+          console.log('[🔧 ARAS-AI] ═══════════════════════════════════════');
           
           // 🔥 PROMPT 1: Company Deep Dive
           const companyDeepDive = `
@@ -282,7 +308,19 @@ Denke wie ein Top-Tier Business Intelligence Analyst bei McKinsey.
                 }
               }
             } catch (error: any) {
-              console.error(`[❌ ARAS-AI] Attempt ${attempt} failed:`, error.message);
+              console.error(`[❌ ARAS-AI] ═══════════════════════════════════════`);
+              console.error(`[❌ ARAS-AI] Attempt ${attempt} FAILED!`);
+              console.error(`[❌ ARAS-AI] Error Type: ${error?.constructor?.name || 'Unknown'}`);
+              console.error(`[❌ ARAS-AI] Error Message: ${error?.message || 'No message'}`);
+              console.error(`[❌ ARAS-AI] Error Code: ${error?.code || 'No code'}`);
+              console.error(`[❌ ARAS-AI] Error Status: ${error?.status || 'No status'}`);
+              if (error?.response) {
+                console.error(`[❌ ARAS-AI] API Response:`, JSON.stringify(error.response, null, 2));
+              }
+              if (error?.stack) {
+                console.error(`[❌ ARAS-AI] Stack Trace:`, error.stack.substring(0, 500));
+              }
+              console.error(`[❌ ARAS-AI] ═══════════════════════════════════════`);
               lastError = error;
               
               if (attempt < MAX_RETRIES) {
