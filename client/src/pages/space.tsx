@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
 import { ChatInterface } from "@/components/chat/chat-interface";
+import { DashboardContent } from "@/components/dashboard/dashboard-content";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -664,9 +665,9 @@ export default function Space() {
             )}
           </AnimatePresence>
           
-          {/* Main Chat Interface */}
-          <div className="flex-1 overflow-hidden relative">
-            <ChatInterface />
+          {/* HIGH-END Dashboard */}
+          <div className="flex-1 overflow-y-auto relative">
+            <DashboardContent user={user as User} />
           </div>
         </div>
       </div>
