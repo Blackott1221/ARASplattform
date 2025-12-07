@@ -502,7 +502,7 @@ export function ChatInterface() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-black/20 relative overflow-hidden" onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave}>
+    <div className="flex flex-col h-full bg-black/30 relative overflow-hidden" onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave}>
       {isDragging && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="absolute inset-0 z-50 bg-[#FE9100]/5 backdrop-blur-sm flex items-center justify-center">
           <div className="text-center">

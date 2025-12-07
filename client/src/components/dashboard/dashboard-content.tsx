@@ -138,7 +138,7 @@ export function DashboardContent({ user }: DashboardContentProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="backdrop-blur-xl bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 rounded-2xl p-6"
+            className="backdrop-blur-md bg-black/30 border border-white/10 rounded-2xl p-6"
           >
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
@@ -218,7 +218,7 @@ export function DashboardContent({ user }: DashboardContentProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="backdrop-blur-xl bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 rounded-2xl p-6"
+            className="backdrop-blur-md bg-black/30 border border-white/10 rounded-2xl p-6"
           >
             <h3 className="font-bold text-white mb-4 flex items-center gap-2">
               <Zap className="w-5 h-5 text-[#FE9100]" />
@@ -233,7 +233,7 @@ export function DashboardContent({ user }: DashboardContentProps) {
               <QuickActionButton
                 icon={MessageSquare}
                 label="Chat"
-                onClick={() => {/* Open chat */}}
+                href="/app"
               />
               <QuickActionButton
                 icon={Plus}
@@ -256,7 +256,7 @@ export function DashboardContent({ user }: DashboardContentProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="backdrop-blur-xl bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 rounded-2xl p-6"
+            className="backdrop-blur-md bg-black/30 border border-white/10 rounded-2xl p-6"
           >
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
@@ -303,8 +303,8 @@ export function DashboardContent({ user }: DashboardContentProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="backdrop-blur-xl bg-gradient-to-br from-[#FE9100]/10 to-transparent border border-[#FE9100]/30 rounded-2xl p-6 cursor-pointer hover:border-[#FE9100]/50 transition-all group"
-            onClick={() => window.location.href = '/chat'}
+            className="backdrop-blur-md bg-black/30 border border-[#FE9100]/30 rounded-2xl p-6 cursor-pointer hover:border-[#FE9100]/50 transition-all group"
+            onClick={() => window.location.href = '/app'}
           >
             <div className="flex items-center gap-3 mb-3">
               <div className="w-12 h-12 rounded-xl bg-[#FE9100]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -329,7 +329,7 @@ export function DashboardContent({ user }: DashboardContentProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className="backdrop-blur-xl bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 rounded-2xl p-6"
+            className="backdrop-blur-md bg-black/30 border border-white/10 rounded-2xl p-6"
           >
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-[#FE9100]/20 flex items-center justify-center">
@@ -369,7 +369,7 @@ export function DashboardContent({ user }: DashboardContentProps) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
-          className="backdrop-blur-xl bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 rounded-2xl p-6"
+          className="backdrop-blur-md bg-black/30 border border-white/10 rounded-2xl p-6"
         >
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-xl bg-[#FE9100]/20 flex items-center justify-center">
@@ -384,31 +384,27 @@ export function DashboardContent({ user }: DashboardContentProps) {
           <div className="grid grid-cols-2 gap-4">
             <div className="p-4 rounded-xl bg-white/5 border border-white/10">
               <div className="text-2xl font-bold text-white mb-1">
-                {totalCalls > 0 ? Math.round((totalCalls * 0.73)) : 0}
+                {totalCalls}
               </div>
-              <div className="text-xs text-gray-400">Erfolgreiche Anrufe</div>
-              <div className="text-xs text-green-500 mt-1">73% Success Rate</div>
+              <div className="text-xs text-gray-400">Anrufe gesamt</div>
             </div>
             <div className="p-4 rounded-xl bg-white/5 border border-white/10">
               <div className="text-2xl font-bold text-white mb-1">
-                {hotLeads > 0 ? `${Math.round((hotLeads / totalLeads) * 100)}%` : '0%'}
+                {hotLeads > 0 && totalLeads > 0 ? `${Math.round((hotLeads / totalLeads) * 100)}%` : '0%'}
               </div>
               <div className="text-xs text-gray-400">Hot Lead Rate</div>
-              <div className="text-xs text-[#FE9100] mt-1">+5% vs. Last Month</div>
             </div>
             <div className="p-4 rounded-xl bg-white/5 border border-white/10">
               <div className="text-2xl font-bold text-white mb-1">
-                {totalCalls > 0 ? `${Math.floor(totalCalls * 2.5)}min` : '0min'}
+                {totalContacts}
               </div>
-              <div className="text-xs text-gray-400">Ø Gesprächsdauer</div>
-              <div className="text-xs text-blue-500 mt-1">+12% Engagement</div>
+              <div className="text-xs text-gray-400">Kontakte gesamt</div>
             </div>
             <div className="p-4 rounded-xl bg-white/5 border border-white/10">
               <div className="text-2xl font-bold text-white mb-1">
-                {totalLeads > 0 ? Math.round(totalLeads * 0.28) : 0}
+                {totalLeads}
               </div>
-              <div className="text-xs text-gray-400">Konversionen</div>
-              <div className="text-xs text-green-500 mt-1">28% Conv. Rate</div>
+              <div className="text-xs text-gray-400">Leads gesamt</div>
             </div>
           </div>
         </motion.div>
@@ -418,7 +414,7 @@ export function DashboardContent({ user }: DashboardContentProps) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
-          className="backdrop-blur-xl bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 rounded-2xl p-6"
+          className="backdrop-blur-md bg-black/30 border border-white/10 rounded-2xl p-6"
         >
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-xl bg-[#FE9100]/20 flex items-center justify-center">
@@ -465,7 +461,7 @@ export function DashboardContent({ user }: DashboardContentProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.8 }}
-        className="backdrop-blur-xl bg-gradient-to-br from-[#FE9100]/5 to-transparent border border-[#FE9100]/30 rounded-2xl p-6"
+        className="backdrop-blur-md bg-black/30 border border-[#FE9100]/30 rounded-2xl p-6"
       >
         <div className="flex items-center gap-3 mb-4">
           <div className="w-12 h-12 rounded-xl bg-[#FE9100]/20 flex items-center justify-center">
