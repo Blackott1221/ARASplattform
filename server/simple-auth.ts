@@ -137,35 +137,53 @@ export function setupSimpleAuth(app: Express) {
           
           const genAI = new GoogleGenerativeAI(apiKey);
           const model = genAI.getGenerativeModel({ 
-            model: "gemini-2.0-flash-exp",  // 🔥 BEST MODEL FOR RESEARCH DEC 2024
+            model: "gemini-1.5-flash-latest",  // 🔥 STABLE MODEL with Google Search
             generationConfig: {
-              temperature: 0.9,  // Slightly lower for more factual
+              temperature: 0.7,  // Lower for factual research
               topP: 0.95,
               topK: 64,
               maxOutputTokens: 8192,
-              responseMimeType: "application/json",  // Force JSON output!
             },
             tools: [{
-              googleSearch: {}  // 🔥 LIVE GOOGLE SEARCH GROUNDING
-            }] as any,
-            systemInstruction: "You are an expert business intelligence researcher. Use Google Search to find real, up-to-date information. Always return valid JSON matching the requested schema. Be thorough and detailed."
+              googleSearch: {
+                // Enable dynamic retrieval from Google Search
+              }
+            }] as any
           });
           
-          console.log('[🔧 ARAS-AI] Model configured: gemini-2.0-flash-exp with Google Search');
-          console.log('[🔧 ARAS-AI] Output format: JSON');
+          console.log('[🔧 ARAS-AI] Model: gemini-1.5-flash-latest');
+          console.log('[🔧 ARAS-AI] Google Search Grounding: ENABLED');
           console.log('[🔧 ARAS-AI] Max tokens: 8192');
           console.log('[🔧 ARAS-AI] Timeout: 90s');
           console.log('[🔧 ARAS-AI] Retries: 3');
           
           // 🔥 PROMPT 1: Company Deep Dive
           const companyDeepDive = `
+⚠️ CRITICAL INSTRUCTION: You MUST use Google Search to find REAL information about this company.
+DO NOT make up information. DO NOT use generic descriptions.
+Search for: "${company}", "${company} ${industry}", "${website || company + ' website'}"
+
+🔍 REQUIRED: Use Google Search NOW to find:
+- Company website and about page
+- LinkedIn company profile
+- News articles about ${company}
+- Social media profiles
+- Press releases
+- Employee reviews on Glassdoor/Kununu
+- CEO/Founder information
+
 [🤖 ULTRA-DEEP RESEARCH MODE ACTIVATED]
 
-Unternehmen: ${company}
-Website: ${website || 'Nicht angegeben'}
-Branche: ${industry}
+TARGET COMPANY: ${company}
+Website: ${website || 'SEARCH FOR IT'}
+Industry: ${industry}
+Person: ${firstName} ${lastName} - ${role}
 
-Du bist ein Elite-Business-Intelligence-Agent. Recherchiere ALLES über dieses Unternehmen:
+⚡ YOU MUST SEARCH THE INTERNET FOR REAL DATA! ⚡
+
+Du bist ein Elite-Business-Intelligence-Agent mit Zugang zu Google Search.
+VERWENDE GOOGLE SEARCH um ECHTE Informationen zu finden!
+Recherchiere ALLES über dieses Unternehmen:
 
 🏢 UNTERNEHMENS-DNA:
 - Gründungsjahr und Geschichte
@@ -239,9 +257,28 @@ Gib mir eine ULTRA-DETAILLIERTE Analyse als JSON:
   "budgetCycles": "Budget-Zyklen und Kaufentscheidungszeiträume"
 }
 
-Sei EXTREM gründlich. Wenn das Unternehmen existiert, finde ECHTE Daten.
-Wenn es neu/unbekannt ist, erstelle ULTRA-REALISTISCHE Projektionen basierend auf der Branche.
+🚨 CRITICAL REQUIREMENTS:
+1. USE GOOGLE SEARCH to find information about "${company}"
+2. Search for their website, LinkedIn, news, social media
+3. Find REAL CEO/founder names, founding year, employee count
+4. Look for actual products, services, and pricing
+5. Find real competitors and market position
+6. Search for news articles and press releases
+7. DO NOT invent information - use what you find on the internet
+8. If you cannot find something, say "Unbekannt" - DO NOT make it up
+
+🔍 SEARCH STRATEGY:
+- Search: "${company}"
+- Search: "${company} CEO founder"
+- Search: "${company} ${industry} services"
+- Search: "${company} competitors"
+- Search: "${company} news 2024"
+- Search: "${firstName} ${lastName} ${company}"
+
+Sei EXTREM gründlich und nutze Google Search für JEDES Detail.
+Finde ECHTE Daten aus dem Internet, keine Erfindungen!
 Denke wie ein Top-Tier Business Intelligence Analyst bei McKinsey.
+Return ONLY the JSON object, nothing else.
 `;
 
           console.log(`[🚀 ARAS-AI] Sending ${companyDeepDive.length} char prompt to AI...`);
