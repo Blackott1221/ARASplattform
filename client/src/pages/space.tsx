@@ -109,13 +109,8 @@ export default function Space() {
       const company = (user as any)?.company || 'dein Unternehmen';
       const description = aiProfile?.companyDescription || 'Innovatives Unternehmen mit großem Potenzial.';
       
-      // 🔥 VIEL KÜRZER - nur erste 120 Zeichen + "..."
-      const shortDescription = description.length > 120 
-        ? description.substring(0, 120).trim() + '...' 
-        : description;
-      
-      // 🔥 ELEGANTER, NATÜRLICHER TEXT
-      const analysisText = `ARAS AI hat dein Unternehmen ${company} analysiert und ist bereit, dich optimal zu unterstützen. ${shortDescription}`;
+      // 🔥 FULL TEXT - NO TRUNCATION FOR HIGH END EXPERIENCE
+      const analysisText = `ARAS AI hat dein Unternehmen ${company} analysiert und ist bereit, dich optimal zu unterstützen. ${description}`;
       
       let currentIndex = 0;
       const typingInterval = setInterval(() => {
@@ -219,55 +214,18 @@ export default function Space() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 1 }}
+            transition={{ duration: 0.8 }}
             className="fixed inset-0 z-[100] flex items-center justify-center p-8"
             style={{
-              background: 'rgba(0, 0, 0, 0.95)',
-              backdropFilter: 'blur(40px)',
-              WebkitBackdropFilter: 'blur(40px)',
+              background: 'rgba(0, 0, 0, 0.3)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
             }}
           >
-            {/* Animated Background Particles */}
-            <div className="absolute inset-0 overflow-hidden">
-              {[...Array(30)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  className="absolute w-1 h-1 rounded-full bg-[#FE9100]"
-                  style={{
-                    left: `${Math.random() * 100}%`,
-                    top: `${Math.random() * 100}%`,
-                  }}
-                  animate={{
-                    opacity: [0, 1, 0],
-                    scale: [0, 1.5, 0],
-                  }}
-                  transition={{
-                    duration: 3 + Math.random() * 2,
-                    repeat: Infinity,
-                    delay: Math.random() * 2,
-                  }}
-                />
-              ))}
-            </div>
+            {/* NO PARTICLES - Clean transparent background to see SPACE */}
 
-            {/* Central Glow Effect */}
-            <motion.div
-              className="absolute inset-0"
-              style={{
-                background: 'radial-gradient(circle at 50% 50%, rgba(254,145,0,0.15) 0%, transparent 70%)',
-              }}
-              animate={{
-                opacity: [0.3, 0.6, 0.3],
-              }}
-              transition={{
-                duration: 4,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
-            />
-
-            {/* Elegant Structured Container */}
-            <div className="relative z-10 max-w-6xl mx-auto w-full">
+            {/* HIGH END Structured Container - Smaller */}
+            <div className="relative z-10 max-w-4xl mx-auto w-full">
               {/* Phase 1: Elegant Boot Sequence */}
               {introPhase === 'boot' && (
                 <motion.div
@@ -276,16 +234,25 @@ export default function Space() {
                   transition={{ duration: 1.2, ease: "easeOut" }}
                   className="text-center"
                 >
-                  {/* Elegant Header in Orbitron */}
+                  {/* HIGH END Animated Header */}
                   <motion.h1
-                    className="text-7xl font-bold mb-4"
+                    className="text-6xl font-bold mb-4"
                     style={{
                       fontFamily: 'Orbitron, sans-serif',
-                      background: 'linear-gradient(135deg, #FE9100 0%, #ff6b00 100%)',
+                      background: 'linear-gradient(90deg, #FE9100 0%, #ff6b00 50%, #FE9100 100%)',
+                      backgroundSize: '200% auto',
                       backgroundClip: 'text',
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
-                      letterSpacing: '0.02em',
+                      letterSpacing: '0.05em',
+                    }}
+                    animate={{
+                      backgroundPosition: ['0% 50%', '200% 50%'],
+                    }}
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      ease: "linear"
                     }}
                   >
                     ARAS AI
@@ -314,35 +281,44 @@ export default function Space() {
                   transition={{ duration: 0.8 }}
                   className="space-y-8"
                 >
-                  {/* Elegant Welcome Card */}
+                  {/* HIGH END Welcome Card - Transparent */}
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2, duration: 0.8 }}
-                    className="backdrop-blur-xl bg-black/40 border border-[#FE9100]/20 rounded-2xl p-8"
+                    className="backdrop-blur-md bg-black/20 border border-[#FE9100]/30 rounded-3xl p-8"
                     style={{
-                      boxShadow: '0 8px 32px rgba(254, 145, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.05)'
+                      boxShadow: '0 8px 32px rgba(254, 145, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
                     }}
                   >
-                    {/* Header with Orbitron */}
-                    <h2 
-                      className="text-4xl font-bold mb-4 text-center"
+                    {/* Animated Header */}
+                    <motion.h2 
+                      className="text-3xl font-bold mb-4 text-center"
                       style={{
                         fontFamily: 'Orbitron, sans-serif',
-                        background: 'linear-gradient(135deg, #FE9100 0%, #ff6b00 100%)',
+                        background: 'linear-gradient(90deg, #FE9100 0%, #ff6b00 50%, #FE9100 100%)',
+                        backgroundSize: '200% auto',
                         backgroundClip: 'text',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                       }}
+                      animate={{
+                        backgroundPosition: ['0% 50%', '200% 50%'],
+                      }}
+                      transition={{
+                        duration: 3,
+                        repeat: Infinity,
+                        ease: "linear"
+                      }}
                     >
                       Willkommen, {(user as any)?.firstName || 'dort'}!
-                    </h2>
+                    </motion.h2>
                     
                     <div className="h-px w-full bg-gradient-to-r from-transparent via-[#FE9100]/30 to-transparent mb-6" />
                     
-                    {/* Vision Text - Typing Animation */}
+                    {/* FULL Vision Text - NO Truncation */}
                     <motion.div className="text-center space-y-4">
-                      <p className="text-gray-300 text-lg leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
+                      <p className="text-gray-200 text-base leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
                         {typedIntroText}
                         {typedIntroText.length > 0 && introPhase === 'analysis' && (
                           <motion.span
@@ -364,42 +340,54 @@ export default function Space() {
                         transition={{ delay: 0.4, duration: 0.8 }}
                         className="grid grid-cols-1 md:grid-cols-3 gap-4"
                       >
-                        {/* Company Info */}
-                        <div className="backdrop-blur-xl bg-black/30 border border-white/10 rounded-xl p-6">
-                          <div className="text-[#FE9100] text-sm font-semibold mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>UNTERNEHMEN</div>
-                          <div className="text-white text-xl font-bold" style={{ fontFamily: 'Inter, sans-serif' }}>{(user as any)?.company || 'Nicht angegeben'}</div>
+                        {/* Company Info - More Transparent */}
+                        <div className="backdrop-blur-md bg-black/10 border border-[#FE9100]/20 rounded-2xl p-5">
+                          <div className="text-[#FE9100] text-xs font-bold mb-2 tracking-wider" style={{ fontFamily: 'Inter, sans-serif' }}>UNTERNEHMEN</div>
+                          <div className="text-white text-lg font-bold" style={{ fontFamily: 'Inter, sans-serif' }}>{(user as any)?.company || 'Nicht angegeben'}</div>
                         </div>
 
                         {/* Industry */}
-                        <div className="backdrop-blur-xl bg-black/30 border border-white/10 rounded-xl p-6">
-                          <div className="text-[#FE9100] text-sm font-semibold mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>BRANCHE</div>
-                          <div className="text-white text-xl font-bold" style={{ fontFamily: 'Inter, sans-serif' }}>{(user as any)?.industry || 'KI-Technologie'}</div>
+                        <div className="backdrop-blur-md bg-black/10 border border-[#FE9100]/20 rounded-2xl p-5">
+                          <div className="text-[#FE9100] text-xs font-bold mb-2 tracking-wider" style={{ fontFamily: 'Inter, sans-serif' }}>BRANCHE</div>
+                          <div className="text-white text-lg font-bold" style={{ fontFamily: 'Inter, sans-serif' }}>{(user as any)?.industry || 'KI-Technologie'}</div>
                         </div>
 
                         {/* Role */}
-                        <div className="backdrop-blur-xl bg-black/30 border border-white/10 rounded-xl p-6">
-                          <div className="text-[#FE9100] text-sm font-semibold mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>POSITION</div>
-                          <div className="text-white text-xl font-bold" style={{ fontFamily: 'Inter, sans-serif' }}>{(user as any)?.role || 'Entscheider'}</div>
+                        <div className="backdrop-blur-md bg-black/10 border border-[#FE9100]/20 rounded-2xl p-5">
+                          <div className="text-[#FE9100] text-xs font-bold mb-2 tracking-wider" style={{ fontFamily: 'Inter, sans-serif' }}>POSITION</div>
+                          <div className="text-white text-lg font-bold" style={{ fontFamily: 'Inter, sans-serif' }}>{(user as any)?.role || 'Entscheider'}</div>
                         </div>
                       </motion.div>
 
-                      {/* Vision Statement */}
+                      {/* Vision Statement - HIGH END */}
                       <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.6, duration: 0.8 }}
-                        className="backdrop-blur-xl bg-gradient-to-br from-[#FE9100]/10 to-transparent border border-[#FE9100]/30 rounded-2xl p-8"
+                        className="backdrop-blur-md bg-gradient-to-br from-[#FE9100]/5 to-transparent border border-[#FE9100]/30 rounded-3xl p-8"
                       >
-                        <h3 
+                        <motion.h3 
                           className="text-2xl font-bold mb-4"
                           style={{
                             fontFamily: 'Orbitron, sans-serif',
-                            color: '#FE9100'
+                            background: 'linear-gradient(90deg, #FE9100 0%, #ff6b00 50%, #FE9100 100%)',
+                            backgroundSize: '200% auto',
+                            backgroundClip: 'text',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                          }}
+                          animate={{
+                            backgroundPosition: ['0% 50%', '200% 50%'],
+                          }}
+                          transition={{
+                            duration: 3,
+                            repeat: Infinity,
+                            ease: "linear"
                           }}
                         >
                           Deine Vision mit ARAS AI
-                        </h3>
-                        <p className="text-gray-300 text-base leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        </motion.h3>
+                        <p className="text-gray-200 text-base leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
                           Ich habe deine Unternehmensdaten analysiert und bin bereit, dich bei der Automatisierung deiner Kundenkommunikation zu unterstützen. 
                           Gemeinsam werden wir deine Effizienz steigern und neue Geschäftsmöglichkeiten erschließen.
                         </p>
@@ -407,35 +395,52 @@ export default function Space() {
                     </>
                   )}
 
-                  {/* Elegant Start Button */}
+                  {/* HIGH END Round Button with Animated Border */}
                   <AnimatePresence>
                     {showStartButton && (
                       <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.8, duration: 0.8 }}
-                        className="flex justify-center pt-4"
+                        className="flex justify-center pt-6"
                       >
                         <motion.button
-                          whileHover={{ 
-                            scale: 1.02,
-                            boxShadow: '0 20px 60px rgba(254,145,0,0.4)'
-                          }}
-                          whileTap={{ scale: 0.98 }}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
                           onClick={() => setShowCinematicIntro(false)}
-                          className="px-12 py-4 rounded-xl font-semibold text-lg text-white relative overflow-hidden group"
+                          className="relative px-14 py-5 rounded-full font-bold text-lg text-white group overflow-hidden"
                           style={{
-                            background: 'linear-gradient(135deg, #FE9100 0%, #ff6b00 100%)',
-                            boxShadow: '0 10px 40px rgba(254,145,0,0.3)',
                             fontFamily: 'Inter, sans-serif',
+                            background: 'transparent',
                           }}
                         >
+                          {/* Animated Border */}
                           <motion.div
-                            className="absolute inset-0 bg-white/10"
-                            initial={{ x: '-100%' }}
-                            whileHover={{ x: '100%' }}
-                            transition={{ duration: 0.5 }}
+                            className="absolute inset-0 rounded-full p-[2px]"
+                            style={{
+                              background: 'linear-gradient(90deg, #FE9100 0%, #ff6b00 50%, #FE9100 100%)',
+                              backgroundSize: '200% auto',
+                            }}
+                            animate={{
+                              backgroundPosition: ['0% 50%', '200% 50%'],
+                            }}
+                            transition={{
+                              duration: 2,
+                              repeat: Infinity,
+                              ease: "linear"
+                            }}
+                          >
+                            <div className="w-full h-full rounded-full bg-black/40 backdrop-blur-sm" />
+                          </motion.div>
+                          
+                          {/* Hover Glow */}
+                          <motion.div
+                            className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            style={{
+                              boxShadow: '0 0 40px rgba(254,145,0,0.6), inset 0 0 40px rgba(254,145,0,0.2)'
+                            }}
                           />
+                          
                           <span className="relative z-10">ARAS AI starten</span>
                         </motion.button>
                       </motion.div>
@@ -444,12 +449,6 @@ export default function Space() {
                 </motion.div>
               )}
             </div>
-
-            {/* Corner Accents */}
-            <div className="absolute top-0 left-0 w-32 h-32 border-t-2 border-l-2 border-[#FE9100]/30" />
-            <div className="absolute top-0 right-0 w-32 h-32 border-t-2 border-r-2 border-[#FE9100]/30" />
-            <div className="absolute bottom-0 left-0 w-32 h-32 border-b-2 border-l-2 border-[#FE9100]/30" />
-            <div className="absolute bottom-0 right-0 w-32 h-32 border-b-2 border-r-2 border-[#FE9100]/30" />
           </motion.div>
         )}
       </AnimatePresence>
