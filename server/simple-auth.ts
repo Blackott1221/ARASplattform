@@ -148,7 +148,7 @@ export function setupSimpleAuth(app: Express) {
           
           // 🔥🔥🔥 HIGH-END MODEL FOR ULTRA-DEEP RESEARCH 🔥🔥🔥
           const model = genAI.getGenerativeModel({ 
-            model: "gemini-1.5-pro-latest",  // 🚀 BEST MODEL - PRO version for maximum quality!
+            model: "gemini-2.0-flash-exp",  // 🚀 NEWEST MODEL DEC 2024 - Experimental but BEST!
             generationConfig: {
               temperature: 1.0,  // Maximum creativity for comprehensive research
               topP: 0.95,
@@ -170,9 +170,9 @@ export function setupSimpleAuth(app: Express) {
           });
           
           console.log('[🔧 ARAS-AI] ═══════════════════════════════════════');
-          console.log('[🔧 ARAS-AI] HIGH-END RESEARCH MODE ACTIVATED');
+          console.log('[🔧 ARAS-AI] 🚀 GEMINI 2.0 RESEARCH MODE 🚀');
           console.log('[🔧 ARAS-AI] ═══════════════════════════════════════');
-          console.log('[🔧 ARAS-AI] Model: gemini-1.5-pro-latest (PREMIUM)');
+          console.log('[🔧 ARAS-AI] Model: gemini-2.0-flash-exp (NEWEST!)');
           console.log('[🔧 ARAS-AI] Google Search Grounding: ✅ ENABLED');
           console.log('[🔧 ARAS-AI] Temperature: 1.0 (Maximum Creativity)');
           console.log('[🔧 ARAS-AI] topK: 64 (High Diversity)');
