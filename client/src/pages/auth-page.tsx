@@ -553,24 +553,18 @@ export default function AuthPage() {
       setRegistrationStep(4);
       setIsResearching(true);
       
-      // 🚀 START LIVE RESEARCH ANIMATION
+      // START ARAS AI RESEARCH ANIMATION - NO ICONS!
       const researchSteps = [
-        "🔍 Verbindung zu globalen Datenbanken wird hergestellt...",
-        `📊 Analysiere über 500+ Datenquellen zu ${registerData.company}...`,
-        "🌐 Scanne Unternehmenswebsite und Social Media Präsenz...",
-        "🤖 KI-Agenten durchsuchen Branchendatenbanken...",
-        "🧠 Gemini 3.0 Flash analysiert Unternehmens-DNA...",
-        "📈 Analysiere Marktposition und Wettbewerber...",
-        "🎯 Identifiziere Zielgruppen und Kundenprofile...",
-        "💼 Extrahiere Produkte, Services und USPs...",
-        "👔 Identifiziere Entscheidungsträger und Key Contacts...",
-        "💰 Analysiere Budget-Zyklen und Kaufentscheidungen...",
-        "🔮 Erstelle psychologisches Unternehmensprofil...",
-        "🌍 Live-Daten über Google Search werden integriert...",
-        "📊 Wettbewerber-Intelligence wird finalisiert...",
-        "✨ Generiere personalisierte KI-Strategie...",
-        "🚀 ARAS AI wird mit deinen Daten trainiert...",
-        "✅ Finalisiere Intelligence Report..."
+        "Verbindung zu globalen Datenbanken wird hergestellt",
+        `ARAS AI analysiert über 500+ Datenquellen zu ${registerData.company}`,
+        "Scanne Unternehmenswebsite und Social Media Präsenz",
+        "ARAS AI durchsucht Branchendatenbanken",
+        "ARAS AI analysiert Unternehmens-DNA und Marktposition",
+        "Analysiere Wettbewerber und Zielgruppen",
+        "Identifiziere Kundenprofile und USPs",
+        "Extrahiere Produkte, Services und Alleinstellungsmerkmale",
+        "ARAS AI generiert personalisiertes Profil",
+        "Fast fertig"
       ];
       
       let currentStep = 0;
@@ -593,7 +587,7 @@ export default function AuthPage() {
           setTimeout(() => {
             clearInterval(stepInterval);
             setResearchProgress(100);
-            setResearchStatus("✅ ULTRA-DEEP Research abgeschlossen! ARAS AI kennt jetzt ALLES über " + registerData.company + "! 🔥");
+            setResearchStatus("ULTRA-DEEP Research abgeschlossen! ARAS AI kennt jetzt ALLES über " + registerData.company + "!");
             
             // Redirect faster - research is done server-side
             setTimeout(() => {
@@ -1860,7 +1854,7 @@ export default function AuthPage() {
                                       WebkitTextFillColor: 'transparent' 
                                     }}
                                   >
-                                    AI trainiert auf {registerData.company}
+                                    ARAS AI analysiert {registerData.company}
                                   </motion.span>
                                 </div>
                               </div>

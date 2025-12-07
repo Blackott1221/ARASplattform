@@ -124,16 +124,16 @@ export function setupSimpleAuth(app: Express) {
       
       if (company && industry) {
         try {
-          console.log(`[🔍 RESEARCH] Starting ULTRA-DEEP live research for ${company}...`);
-          console.log('[🔥 GEMINI] Using gemini-2.5-flash with Google Search Grounding');
+          console.log(`[🔍 ARAS-AI] Starting ULTRA-DEEP live research for ${company}...`);
+          console.log('[🔥 ARAS-AI] Using advanced AI with Google Search Grounding');
           
           // Validate API Key
           const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
           if (!apiKey) {
-            console.error('[❌ GEMINI] FATAL: GOOGLE_GEMINI_API_KEY is NOT configured!');
-            throw new Error('GOOGLE_GEMINI_API_KEY missing - cannot perform research');
+            console.error('[❌ ARAS-AI] API Key missing!');
+            throw new Error('AI_API_KEY not configured');
           }
-          console.log(`[✅ GEMINI] API Key present: ${apiKey.substring(0, 15)}...`);
+          console.log(`[✅ ARAS-AI] API Key present: ${apiKey.substring(0, 15)}...`);
           
           const genAI = new GoogleGenerativeAI(apiKey);
           const model = genAI.getGenerativeModel({ 
@@ -236,15 +236,21 @@ Wenn es neu/unbekannt ist, erstelle ULTRA-REALISTISCHE Projektionen basierend au
 Denke wie ein Top-Tier Business Intelligence Analyst bei McKinsey.
 `;
 
-          console.log(`[🚀 GEMINI] Sending ${companyDeepDive.length} char prompt to Gemini...`);
-          console.log(`[⏰ GEMINI] Request started at: ${new Date().toISOString()}`);
+          console.log(`[🚀 ARAS-AI] Sending ${companyDeepDive.length} char prompt to AI...`);
+          console.log(`[⏰ ARAS-AI] Request started at: ${new Date().toISOString()}`);
           
-          const result = await model.generateContent(companyDeepDive);
+          // Add timeout to prevent hanging
+          const resultPromise = model.generateContent(companyDeepDive);
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('AI request timeout after 30s')), 30000)
+          );
           
-          console.log(`[✅ GEMINI] Received response from Gemini API`);
+          const result = await Promise.race([resultPromise, timeoutPromise]) as any;
+          
+          console.log(`[✅ ARAS-AI] Received response from AI API`);
           const response = result.response.text();
-          console.log(`[📊 GEMINI] Response length: ${response.length} characters`);
-          console.log(`[👀 GEMINI] Preview: ${response.substring(0, 300)}...`);
+          console.log(`[📊 ARAS-AI] Response length: ${response.length} characters`);
+          console.log(`[👀 ARAS-AI] Preview: ${response.substring(0, 300)}...`);
           
           // Extract JSON from response
           let companyIntel: any;
