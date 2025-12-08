@@ -3428,7 +3428,7 @@ function ArasLandingContent() {
       </section>
 
       {/* 🎯 FEATURES SECTION - Was ARAS AI heute tut */}
-      <section className="relative py-32 px-8" style={{ background: 'transparent' }}>
+      <section className="relative py-32 px-8 border-t-4 border-[#FE9100]" style={{ background: 'rgba(0, 0, 0, 0.8)' }}>
         <div className="max-w-7xl mx-auto">
           {/* Section Header */}
           <motion.div
