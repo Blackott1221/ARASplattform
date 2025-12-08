@@ -328,6 +328,13 @@ async function seedSubscriptionPlans() {
   app.get('/api/admin/delete-old-plans', deleteOldPlansHandler);
   app.post('/api/admin/delete-old-plans', deleteOldPlansHandler);
   
+  // ============================================================================
+  // 🎯 ARAS COMMAND CENTER - INTERNAL CRM ROUTES
+  // ============================================================================
+  const internalRoutes = await import('./routes/internal/index');
+  app.use('/api/internal', internalRoutes.default);
+  log('✅ ARAS Command Center routes registered at /api/internal/*');
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
