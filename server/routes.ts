@@ -1047,6 +1047,30 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     }
   });
 
+  app.post('/api/chat/sessions/update-title', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { sessionId, title } = req.body;
+      
+      if (!sessionId || !title) {
+        return res.status(400).json({ message: 'SessionId and title are required' });
+      }
+      
+      // Update the session title
+      await storage.updateChatSessionTitle(sessionId, title);
+      
+      res.json({
+        message: 'Chat session title updated',
+        sessionId,
+        title,
+        success: true
+      });
+    } catch (error) {
+      logger.error('Error updating chat session title:', error);
+      res.status(500).json({ message: 'Failed to update chat session title' });
+    }
+  });
+
   app.get('/api/chat/sessions/:id/messages', requireAuth, async (req: any, res) => {
     try {
       const sessionId = parseInt(req.params.id);

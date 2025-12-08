@@ -172,9 +172,21 @@ export function ChatInterface() {
     }
   }, [chatSessions]);
 
+  // Helper function to generate chat title from message
+  const generateChatTitle = (message: string): string => {
+    // Remove file upload hints
+    const cleanMessage = message.replace(/\[WICHTIG:.*?\]/g, '').trim();
+    // Take first 40 characters and add ellipsis if needed
+    const maxLength = 40;
+    if (cleanMessage.length <= maxLength) {
+      return cleanMessage;
+    }
+    return cleanMessage.substring(0, maxLength).trim() + '...';
+  };
+
   const startNewChatMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/chat/sessions/new", { title: `Chat ${new Date().toLocaleTimeString()}` });
+      const response = await apiRequest("POST", "/api/chat/sessions/new", { title: "Neuer Chat" });
       return response.json();
     },
     onSuccess: (data) => {
@@ -273,24 +285,32 @@ export function ChatInterface() {
                 return null;
               }
               
+              if (data.sessionId && !currentSessionId) {
+                sessionId = data.sessionId;
+                setCurrentSessionId(data.sessionId);
+                
+                // Update session title with first message
+                const title = generateChatTitle(message);
+                fetch('/api/chat/sessions/update-title', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({ sessionId: data.sessionId, title })
+                }).catch(err => console.error('Failed to update title:', err));
+              }
+              
               if (data.content) {
                 if (!hasStartedStreaming) {
                   hasStartedStreaming = true;
                   setIsThinking(false);
                   setIsStreaming(true);
                 }
+                
                 fullMessage += data.content;
                 setStreamingMessage(fullMessage);
               }
-              if (data.done && data.sessionId) {
-                sessionId = data.sessionId;
-              }
-            } catch (e) {
-              if (e instanceof SyntaxError) {
-                console.debug('JSON parse error (expected for chunked data):', e);
-              } else {
-                throw e;
-              }
+            } catch (error) {
+              console.error('[ChatInterface] Parse error:', error);
             }
           }
         }
@@ -557,11 +577,45 @@ export function ChatInterface() {
 
       {hasMessages && (
         <div className="p-2 border-b border-white/5 flex justify-between items-center">
-          <Button size="sm" variant="ghost" onClick={() => setShowHistory(!showHistory)} className="text-gray-600 hover:text-white h-8">
-            <Menu className="w-4 h-4" />
+          <Button size="sm" variant="ghost" onClick={() => setShowHistory(!showHistory)} className="h-8 p-0 w-8 hover:bg-white/5">
+            <motion.div
+              animate={{
+                backgroundImage: [
+                  'linear-gradient(90deg, #FE9100 0%, #ffd700 50%, #ffffff 100%)',
+                  'linear-gradient(90deg, #ffd700 0%, #ffffff 50%, #FE9100 100%)',
+                  'linear-gradient(90deg, #ffffff 0%, #FE9100 50%, #ffd700 100%)',
+                  'linear-gradient(90deg, #FE9100 0%, #ffd700 50%, #ffffff 100%)',
+                ],
+              }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+              style={{
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
+              <Menu className="w-4 h-4" />
+            </motion.div>
           </Button>
-          <Button size="sm" variant="ghost" onClick={() => startNewChatMutation.mutate()} className="text-gray-600 hover:text-white h-8">
-            <Plus className="w-4 h-4" />
+          <Button size="sm" variant="ghost" onClick={() => startNewChatMutation.mutate()} className="h-8 p-0 w-8 hover:bg-white/5">
+            <motion.div
+              animate={{
+                backgroundImage: [
+                  'linear-gradient(90deg, #FE9100 0%, #ffd700 50%, #ffffff 100%)',
+                  'linear-gradient(90deg, #ffd700 0%, #ffffff 50%, #FE9100 100%)',
+                  'linear-gradient(90deg, #ffffff 0%, #FE9100 50%, #ffd700 100%)',
+                  'linear-gradient(90deg, #FE9100 0%, #ffd700 50%, #ffffff 100%)',
+                ],
+              }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+              style={{
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
+              <Plus className="w-4 h-4" />
+            </motion.div>
           </Button>
         </div>
       )}

@@ -388,6 +388,13 @@ export class DatabaseStorage implements IStorage {
       .where(eq(chatSessions.id, sessionId));
   }
 
+  async updateChatSessionTitle(sessionId: number, title: string): Promise<void> {
+    await db
+      .update(chatSessions)
+      .set({ title, updatedAt: new Date() })
+      .where(eq(chatSessions.id, sessionId));
+  }
+
   async archiveSession(sessionId: number): Promise<void> {
     await db
       .update(chatSessions)
