@@ -455,6 +455,445 @@ function TranscriptContent({ isActive }: { isActive: boolean }) {
   );
 }
 
+// 🏢 Premium Footer Component
+function PremiumFooter() {
+  const [showSupportPanel, setShowSupportPanel] = useState(false);
+  const [hoveredBadge, setHoveredBadge] = useState<string | null>(null);
+  const [typedText, setTypedText] = useState('');
+  const [currentWordIndex, setCurrentWordIndex] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const words = ['always secure', 'always reliable', 'always evolving'];
+
+  useEffect(() => {
+    const currentWord = words[currentWordIndex];
+    const timeout = setTimeout(() => {
+      if (!isDeleting) {
+        if (typedText.length < currentWord.length) {
+          setTypedText(currentWord.substring(0, typedText.length + 1));
+        } else {
+          setTimeout(() => setIsDeleting(true), 2000);
+        }
+      } else {
+        if (typedText.length > 0) {
+          setTypedText(currentWord.substring(0, typedText.length - 1));
+        } else {
+          setIsDeleting(false);
+          setCurrentWordIndex((prev) => (prev + 1) % words.length);
+        }
+      }
+    }, isDeleting ? 50 : 100);
+
+    return () => clearTimeout(timeout);
+  }, [typedText, isDeleting, currentWordIndex]);
+
+  const footerLinks = {
+    produkt: [
+      { name: 'Funktionen', href: '#funktionen' },
+      { name: 'Outbound Telefonie', href: '#telefonie' },
+      { name: 'Chat-Automation', href: '#chat' },
+      { name: 'Integrationen', href: '#integrationen' },
+      { name: 'Preisübersicht', href: '#preise' }
+    ],
+    ressourcen: [
+      { name: 'Dokumentation', href: 'https://docs.aras-ai.com' },
+      { name: 'Entwicklerzugang / API', href: 'https://api.aras-ai.com' },
+      { name: 'Systemstatus', href: 'https://status.aras-ai.com' },
+      { name: 'Changelog', href: 'https://changelog.aras-ai.com' },
+      { name: 'Whitepaper', href: 'https://www.aras-ai.com/whitepaper' }
+    ],
+    support: [
+      { name: 'support@aras-plattform.ai', href: 'mailto:support@aras-plattform.ai' },
+      { name: 'Kontaktformular', action: 'openSupport' },
+      { name: 'Onboarding-Hilfe', href: '#onboarding' },
+      { name: 'ARAS Community', href: 'https://discord.gg/aras-ai' }
+    ],
+    rechtliches: [
+      { name: 'Nutzungsbedingungen', href: 'https://www.aras-ai.com/terms-of-use' },
+      { name: 'Datenschutz & DSGVO', href: 'https://www.aras-ai.com/terms-of-use#privacy' },
+      { name: 'Risk Disclosure', href: 'https://www.aras-ai.com/terms-of-use#risk' },
+      { name: 'Cookie-Richtlinie', href: 'https://www.aras-ai.com/terms-of-use#cookies' }
+    ]
+  };
+
+  const badges = [
+    {
+      id: 'eu-hosting',
+      text: 'EU DATA HOSTING',
+      tooltip: 'Alle Daten werden ausschließlich in zertifizierten EU-Rechenzentren gespeichert.'
+    },
+    {
+      id: 'swiss-privacy',
+      text: 'SWISS PRIVACY STANDARD',
+      tooltip: 'Die ARAS Plattform unterliegt dem Schweizer Datenschutzgesetz (nDSG) und erfüllt alle relevanten EU-Vorgaben der DSGVO.'
+    },
+    {
+      id: 'iso-soc2',
+      text: 'ISO / SOC2 READY',
+      tooltip: 'ARAS nutzt ISO-27001-zertifizierte Infrastruktur und SOC2 Typ II Hosting-Partner.'
+    }
+  ];
+
+  return (
+    <>
+      <footer className="relative" style={{ background: '#0f0f0f' }}>
+        {/* Animated Top Border */}
+        <motion.div
+          className="h-[2px] w-full"
+          style={{
+            background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #e9d7c4)',
+            backgroundSize: '300% 100%'
+          }}
+          animate={{
+            backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+          }}
+          transition={{
+            duration: 18,
+            repeat: Infinity,
+            ease: 'linear'
+          }}
+        />
+
+        <div className="max-w-[1400px] mx-auto px-12 pt-[120px] pb-[80px]">
+          {/* EBENE 1: Brand Signature */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="mb-24"
+          >
+            <h2
+              className="text-4xl font-black mb-3"
+              style={{
+                fontFamily: 'Orbitron, sans-serif',
+                color: '#e9d7c4'
+              }}
+            >
+              ARAS AI – Swiss Engineered Intelligent Communication
+            </h2>
+            <p className="text-white/50 mb-6">
+              Teil der Schwarzott Group – Zürich, Berlin, Miami
+            </p>
+            
+            {/* Typewriter Effect */}
+            <div
+              className="text-lg font-semibold"
+              style={{
+                fontFamily: 'Orbitron, sans-serif',
+                background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #ffd700)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent'
+              }}
+            >
+              {typedText}
+              <motion.span
+                animate={{ opacity: [1, 0, 1] }}
+                transition={{ duration: 1.2, repeat: Infinity }}
+                style={{ color: '#FE9100' }}
+              >
+                .
+              </motion.span>
+            </div>
+          </motion.div>
+
+          {/* EBENE 2: Navigation Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-24">
+            {/* Produkt */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.05 }}
+            >
+              <h3
+                className="text-lg font-black mb-6"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  color: '#e9d7c4'
+                }}
+              >
+                Produkt
+              </h3>
+              <ul className="space-y-3">
+                {footerLinks.produkt.map((link, i) => (
+                  <li key={i}>
+                    <a
+                      href={link.href}
+                      className="text-white/70 hover:text-[#FE9100] transition-colors duration-300 text-[15px]"
+                    >
+                      {link.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
+
+            {/* Ressourcen */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              <h3
+                className="text-lg font-black mb-6"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  color: '#e9d7c4'
+                }}
+              >
+                Ressourcen
+              </h3>
+              <ul className="space-y-3">
+                {footerLinks.ressourcen.map((link, i) => (
+                  <li key={i}>
+                    <a
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-white/70 hover:text-[#FE9100] transition-colors duration-300 text-[15px]"
+                    >
+                      {link.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
+
+            {/* Support */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.15 }}
+            >
+              <h3
+                className="text-lg font-black mb-6"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  color: '#e9d7c4'
+                }}
+              >
+                Support
+              </h3>
+              <ul className="space-y-3">
+                {footerLinks.support.map((link, i) => (
+                  <li key={i}>
+                    {link.action === 'openSupport' ? (
+                      <button
+                        onClick={() => setShowSupportPanel(true)}
+                        className="text-white/70 hover:text-[#FE9100] transition-colors duration-300 text-[15px] text-left"
+                      >
+                        {link.name}
+                      </button>
+                    ) : (
+                      <a
+                        href={link.href}
+                        target={link.href?.startsWith('http') ? '_blank' : undefined}
+                        rel={link.href?.startsWith('http') ? 'noopener noreferrer' : undefined}
+                        className="text-white/70 hover:text-[#FE9100] transition-colors duration-300 text-[15px]"
+                      >
+                        {link.name}
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
+
+            {/* Rechtliches */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <h3
+                className="text-lg font-black mb-6"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  color: '#e9d7c4'
+                }}
+              >
+                Rechtliches
+              </h3>
+              <ul className="space-y-3">
+                {footerLinks.rechtliches.map((link, i) => (
+                  <li key={i}>
+                    <a
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-white/70 hover:text-[#FE9100] transition-colors duration-300 text-[15px]"
+                    >
+                      {link.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
+          </div>
+
+          {/* EBENE 3: Trust Badges */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="flex flex-wrap justify-center gap-6 mb-16"
+          >
+            {badges.map((badge, index) => (
+              <motion.div
+                key={badge.id}
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.7, delay: index * 0.1 }}
+                whileHover={{ scale: 1.05 }}
+                onMouseEnter={() => setHoveredBadge(badge.id)}
+                onMouseLeave={() => setHoveredBadge(null)}
+                className="relative px-6 py-3 rounded-lg border cursor-help"
+                style={{
+                  borderColor: hoveredBadge === badge.id ? '#FE9100' : 'rgba(254, 145, 0, 0.3)',
+                  background: 'rgba(254, 145, 0, 0.05)',
+                  transition: 'all 0.3s'
+                }}
+              >
+                <div
+                  className="text-xs font-bold uppercase tracking-wider"
+                  style={{
+                    fontFamily: 'Orbitron, sans-serif',
+                    color: '#e9d7c4'
+                  }}
+                >
+                  {badge.text}
+                </div>
+
+                {/* Tooltip */}
+                <AnimatePresence>
+                  {hoveredBadge === badge.id && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      transition={{ duration: 0.25 }}
+                      className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-4 rounded-xl border z-50"
+                      style={{
+                        background: 'rgba(15, 15, 15, 0.95)',
+                        backdropFilter: 'blur(12px)',
+                        borderColor: '#FE9100'
+                      }}
+                    >
+                      <p className="text-sm text-white/80 leading-relaxed">
+                        {badge.tooltip}
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          {/* EBENE 4: Copyright */}
+          <div className="border-t border-white/10 pt-8">
+            <p className="text-center text-sm text-white/40">
+              © 2025 ARAS AI – A Technology Platform by Schwarzott Capital Partners AG, Zürich.
+              <br />
+              Alle Rechte vorbehalten.
+            </p>
+          </div>
+        </div>
+      </footer>
+
+      {/* Support Panel */}
+      <AnimatePresence>
+        {showSupportPanel && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowSupportPanel(false)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 50 }}
+              onClick={(e) => e.stopPropagation()}
+              className="max-w-lg w-full rounded-2xl border-t-4 p-8"
+              style={{
+                background: 'rgba(15, 15, 15, 0.65)',
+                backdropFilter: 'blur(12px)',
+                borderColor: '#FE9100'
+              }}
+            >
+              <h3
+                className="text-2xl font-black mb-6"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  color: '#e9d7c4'
+                }}
+              >
+                Support Center
+              </h3>
+              
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="text-sm text-white/60 mb-2 block">Name</label>
+                  <input
+                    type="text"
+                    className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white focus:border-[#FE9100] focus:outline-none transition-colors"
+                    placeholder="Ihr Name"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-white/60 mb-2 block">E-Mail</label>
+                  <input
+                    type="email"
+                    className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white focus:border-[#FE9100] focus:outline-none transition-colors"
+                    placeholder="ihre.email@beispiel.de"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-white/60 mb-2 block">Anliegen</label>
+                  <textarea
+                    rows={4}
+                    className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white focus:border-[#FE9100] focus:outline-none transition-colors resize-none"
+                    placeholder="Beschreiben Sie Ihr Anliegen..."
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex-1 py-3 rounded-xl font-bold uppercase tracking-wider"
+                  style={{
+                    fontFamily: 'Orbitron, sans-serif',
+                    background: 'linear-gradient(135deg, #FE9100, #ffd700)',
+                    color: '#000'
+                  }}
+                >
+                  Ticket senden
+                </motion.button>
+                <button
+                  onClick={() => setShowSupportPanel(false)}
+                  className="px-6 py-3 rounded-xl text-white/60 hover:text-white/80 transition-colors"
+                >
+                  Abbrechen
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
 // 📋 FAQ Accordion Component  
 function FAQAccordion() {
   const [openFAQ, setOpenFAQ] = useState<number | null>(null);
@@ -4448,6 +4887,9 @@ export default function AuthPage() {
             </motion.div>
           </div>
         </section>
+
+        {/* 🏢 TECHNICAL FOOTER & LEGAL COMPLIANCE */}
+        <PremiumFooter />
 
       </div>
 
