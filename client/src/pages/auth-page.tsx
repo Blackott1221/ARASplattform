@@ -2281,7 +2281,7 @@ export default function AuthPage() {
         />
 
         {/* Premium Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/95 to-black/80" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/80 to-black/70" />
         
         {/* Subtle Radial Glow */}
         <div 
