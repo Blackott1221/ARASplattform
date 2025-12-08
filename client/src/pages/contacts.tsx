@@ -358,7 +358,7 @@ export default function Contacts() {
   }
 
   return (
-    <div className="flex h-screen relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0d0d0d 100%)' }}>
+    <div className="flex h-screen relative overflow-hidden bg-transparent">
       <Sidebar
         activeSection="contacts"
         onSectionChange={handleSectionChange}
@@ -430,7 +430,7 @@ export default function Contacts() {
             </AnimatePresence>
 
             {/* Buttons Row */}
-            <div className="flex gap-3 mb-4">
+            <div className="flex gap-3 mb-4 justify-end">
                 {/* CSV Upload - HIGH END */}
                 <motion.div 
                   className="relative"
