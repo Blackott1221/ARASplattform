@@ -358,7 +358,7 @@ export default function Contacts() {
   }
 
   return (
-    <div className="flex h-screen relative overflow-hidden bg-transparent">
+    <div className="flex h-screen relative overflow-hidden" style={{ background: 'rgba(0, 0, 0, 0.4)' }}>
       <Sidebar
         activeSection="contacts"
         onSectionChange={handleSectionChange}
@@ -430,7 +430,7 @@ export default function Contacts() {
             </AnimatePresence>
 
             {/* Buttons Row */}
-            <div className="flex gap-3 mb-4 justify-end">
+            <div className="flex gap-3 mb-8 justify-end">
                 {/* CSV Upload - HIGH END */}
                 <motion.div 
                   className="relative"
