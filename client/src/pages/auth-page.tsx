@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
-import { Loader2, Eye, EyeOff, AlertCircle, CheckCircle2, ArrowRight, Phone, Calendar, Sparkles, Building, Globe, User, Target, ChevronLeft, Search, Mic, TrendingUp, Shield } from "lucide-react";
+import { Loader2, Eye, EyeOff, AlertCircle, CheckCircle2, ArrowRight, Phone, Calendar, Sparkles, Building, Globe, User, Target, ChevronLeft, ChevronDown, Search, Mic, TrendingUp, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { trackLogin, trackSignup, captureUTMParameters } from "@/lib/analytics";
@@ -451,6 +451,233 @@ function TranscriptContent({ isActive }: { isActive: boolean }) {
           </motion.div>
         ))}
       </AnimatePresence>
+    </div>
+  );
+}
+
+// 📋 FAQ Accordion Component  
+function FAQAccordion() {
+  const [openFAQ, setOpenFAQ] = useState<number | null>(null);
+
+  const faqs = [
+    {
+      id: 1,
+      question: "Klingt ARAS wirklich wie ein Mensch?",
+      answer: `ARAS arbeitet mit einer eigenen Voice-Engine, die klar, ruhig und professionell klingt.
+
+Wir versprechen keine „perfekte Menschlichkeit", sondern realistische, verständliche und strukturierte Gespräche – ohne Roboterklang oder monotone Intonation.`
+    },
+    {
+      id: 2,
+      question: "Wie zuverlässig funktioniert ARAS bei echten Anrufen?",
+      answer: `Die Plattform ist für den täglichen Betrieb in Unternehmen gebaut.
+
+Typische Kennzahlen (Alpha-Durchschnitt):
+• STT-Verständnis: >95%
+• Drop-Rate: <3%
+• Gesprächsverzögerung minimal (durchschnittlich 180–240ms)
+
+ARAS prüft jede Antwort auf Logik, Kontext und Stabilität.`
+    },
+    {
+      id: 3,
+      question: "Kann ARAS mit schwierigen Gesprächspartnern umgehen?",
+      answer: `Ja, ARAS erkennt:
+• Unsicherheit
+• Unterbrechungen
+• Einwände
+• Gesprächsabbrüche
+• Füllwörter
+
+ARAS reagiert mit definierter Struktur, nicht mit unkontrollierten Aussagen.`
+    },
+    {
+      id: 4,
+      question: "Ist ARAS für Kaltakquise rechtlich erlaubt?",
+      answer: `ARAS hält sich vollständig an europäische Vorgaben.
+
+Unternehmen dürfen Kaltakquise nur durchführen, wenn eine rechtliche Grundlage besteht (B2B-Interesse oder Opt-in).
+
+ARAS setzt das technisch um:
+• optionaler Hinweis „dies ist ein automatisierter Anruf"
+• definierbare Gesprächsöffner
+• Ereignisprotokollierung`
+    },
+    {
+      id: 5,
+      question: "Wo werden meine Daten gespeichert?",
+      answer: `Ausschließlich in zertifizierten EU-Rechenzentren.
+
+Keine US-Server, keine amerikanischen Clouds, kein externer Zugriff.
+
+ARAS unterliegt dem Schweizer Datenschutz (nDSG) und der DSGVO.`
+    },
+    {
+      id: 6,
+      question: "Zeichnet ARAS Gespräche auf?",
+      answer: `Nur wenn Sie das explizit aktivieren und die rechtliche Grundlage besteht.
+
+Standardmäßig speichert ARAS keine Audiodaten, sondern nur:
+• Zusammenfassung
+• Gesprächsergebnis
+• technische Metadaten`
+    },
+    {
+      id: 7,
+      question: "Wie sicher ist die Plattform technisch?",
+      answer: `ARAS arbeitet mit:
+• TLS 1.3
+• AES-256 Datenverschlüsselung
+• automatischer Schlüsselrotation
+• Multi-Layer-Encryption bei sensiblen Daten
+• Audit Trails`
+    },
+    {
+      id: 8,
+      question: "Wie viele Anrufe kann ARAS gleichzeitig führen?",
+      answer: `Technisch möglich: bis zu 500 parallele Leitungen je Projekt.
+
+In der Alpha sind die Werte kontrolliert limitiert, um Qualität sicherzustellen.`
+    },
+    {
+      id: 9,
+      question: "Wie werden die Preise in der Alpha garantiert?",
+      answer: `Jeder Nutzer, der sich in der Alpha registriert, erhält einen unveränderbaren Preisanker.
+
+Auch wenn die Enterprise-Preise ab dem 01.01.2026 aktiviert werden, bleibt Ihr Tarif stabil.`
+    },
+    {
+      id: 10,
+      question: "Brauche ich ein CRM oder spezielle Software?",
+      answer: `Nein. ARAS funktioniert eigenständig.
+
+Optional können angebunden werden:
+• Salesforce
+• HubSpot
+• Make
+• Zapier
+• n8n`
+    },
+    {
+      id: 11,
+      question: "Kann ich ARAS für Inbound-Anrufe nutzen?",
+      answer: `Inbound befindet sich in Entwicklung.
+
+Alpha-Tester erhalten als Erste Zugang.`
+    },
+    {
+      id: 12,
+      question: "Wie läuft das Onboarding ab?",
+      answer: `1. Registrierung
+2. Projektanlage
+3. Zieldefinition
+4. Testanruf
+5. Automatisierung oder Integration
+
+Alpha-Nutzer erhalten bevorzugten Support und individuelle Erklärung der ersten Einrichtung.`
+    }
+  ];
+
+  const toggleFAQ = (id: number) => {
+    setOpenFAQ(openFAQ === id ? null : id);
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {faqs.map((faq, index) => (
+        <motion.div
+          key={faq.id}
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{
+            duration: 0.5,
+            delay: index * 0.1,
+            ease: [0.25, 0.8, 0.25, 1]
+          }}
+          className="relative group cursor-pointer"
+          onClick={() => toggleFAQ(faq.id)}
+        >
+          {/* Animated Border */}
+          <motion.div
+            className="absolute inset-0 rounded-2xl"
+            style={{
+              background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #e9d7c4)',
+              backgroundSize: '200% 200%',
+              padding: '1px'
+            }}
+            animate={{
+              backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'],
+              opacity: openFAQ === faq.id ? 1.1 : 1
+            }}
+            transition={{
+              backgroundPosition: {
+                duration: 16,
+                repeat: Infinity,
+                ease: 'linear'
+              },
+              opacity: {
+                duration: 0.35
+              }
+            }}
+          >
+            <div className="w-full h-full rounded-2xl" style={{ background: '#151515' }} />
+          </motion.div>
+
+          {/* Card Content */}
+          <div
+            className="relative rounded-2xl p-8"
+            style={{
+              background: '#151515',
+              boxShadow: openFAQ === faq.id 
+                ? '0 0 20px rgba(254, 145, 0, 0.2)' 
+                : '0 8px 24px rgba(0, 0, 0, 0.08)'
+            }}
+          >
+            {/* Question */}
+            <div className="flex items-start justify-between gap-4">
+              <h3
+                className="text-lg font-black flex-1"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  color: '#e9d7c4',
+                  letterSpacing: '0.5px'
+                }}
+              >
+                {faq.question}
+              </h3>
+              <motion.div
+                animate={{ rotate: openFAQ === faq.id ? 180 : 0 }}
+                transition={{ duration: 0.35, ease: [0.25, 0.8, 0.25, 1] }}
+              >
+                <ChevronDown
+                  className="w-6 h-6 flex-shrink-0 transition-colors duration-300"
+                  style={{
+                    color: openFAQ === faq.id ? '#FE9100' : '#e9d7c4'
+                  }}
+                />
+              </motion.div>
+            </div>
+
+            {/* Answer */}
+            <AnimatePresence>
+              {openFAQ === faq.id && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.35, ease: [0.25, 0.8, 0.25, 1] }}
+                  className="overflow-hidden"
+                >
+                  <div className="pt-4 text-[16px] text-white/70 leading-[1.55] whitespace-pre-line">
+                    {faq.answer}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.div>
+      ))}
     </div>
   );
 }
@@ -4164,6 +4391,60 @@ export default function AuthPage() {
                   Das ist unsere Zusage an alle, die uns jetzt unterstützen.
                 </span>
               </p>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* 📋 FAQ SECTION */}
+        <section className="relative px-8" style={{ background: '#0f0f0f', paddingTop: '160px', paddingBottom: '160px' }}>
+          <div className="max-w-[1200px] mx-auto">
+            {/* Section Header */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
+              className="text-center mb-24"
+            >
+              <h2
+                className="text-5xl md:text-6xl font-black mb-6"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #ffd700)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent'
+                }}
+              >
+                Häufige Fragen – klar und transparent beantwortet
+              </h2>
+              <p className="text-xl text-white/70 max-w-4xl mx-auto leading-relaxed">
+                Die wichtigsten Fragen rund um ARAS AI, Sicherheit, Telefonie, Preise und technische Funktionsweise.
+                <br />
+                <span className="text-white/80 font-semibold">Ohne Marketing – nur Fakten.</span>
+              </p>
+            </motion.div>
+
+            {/* FAQ Accordion */}
+            <FAQAccordion />
+
+            {/* Section Footer */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8, delay: 0.6 }}
+              className="mt-32 text-center"
+            >
+              <h3
+                className="text-2xl font-black"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  color: '#e9d7c4'
+                }}
+              >
+                Weitere Fragen? Wir sind für Sie da.
+              </h3>
             </motion.div>
           </div>
         </section>
