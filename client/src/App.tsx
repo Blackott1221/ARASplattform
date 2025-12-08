@@ -23,7 +23,7 @@ import Checkout from "@/pages/checkout";
 import CheckoutSuccess from "@/pages/checkout-success";
 import Space from "@/pages/space";
 import VoiceCalls from "./pages/voice-calls";
-import AdminDashboard from "./pages/admin-dashboard";
+import AdminDashboard from "@/pages/admin-dashboard";
 import Power from "@/pages/power";
 import VoiceAgents from "@/pages/voice-agents";
 import Leads from "@/pages/leads";
