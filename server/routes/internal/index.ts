@@ -12,6 +12,7 @@ import { requireInternal } from "../../middleware/role-guard";
 import { z } from "zod";
 import { nanoid } from "nanoid";
 import * as storage from "../../storage-internal-crm";
+import aiRoutes from "./ai";
 
 const router = Router();
 
@@ -19,6 +20,11 @@ const router = Router();
 // ALLE INTERNAL ROUTES BENÖTIGEN AUTHENTIFIZIERUNG & ROLE
 // ============================================================================
 router.use(requireInternal);
+
+// ============================================================================
+// AI ROUTES
+// ============================================================================
+router.use("/ai", aiRoutes);
 
 // ============================================================================
 // COMPANIES
