@@ -52,21 +52,33 @@ export function requireRole(allowedRoles: string[]) {
     }
 
     // 2. Hole User-Objekt
-    const user = req.user as Express.User & { userRole?: string };
+    const user = req.user as any; // Use 'any' to access all DB fields
     
-    // 3. Prüfe ob userRole vorhanden
-    if (!user.userRole) {
+    // 🔍 DEBUG: Log full user object
+    console.log('[RBAC-DEBUG] Full user object:', {
+      id: user.id,
+      username: user.username,
+      userRole: user.userRole,
+      user_role: user.user_role, // Check if it's snake_case in DB
+      allKeys: Object.keys(user)
+    });
+    
+    // 3. Prüfe ob userRole vorhanden (check both camelCase and snake_case)
+    const userRole = user.userRole || user.user_role;
+    
+    if (!userRole) {
       console.warn(`[RBAC] User ${user.username} hat keine Rolle gesetzt - access denied`);
+      console.warn(`[RBAC] User object:`, user);
       return res.status(403).json({ 
         error: "Forbidden",
-        message: "Access denied" 
+        message: "Access denied - no role found" 
       });
     }
 
     // 4. Prüfe ob User eine erlaubte Rolle hat
-    if (!allowedRoles.includes(user.userRole)) {
+    if (!allowedRoles.includes(userRole)) {
       console.warn(
-        `[RBAC] User ${user.username} (${user.userRole}) tried to access ${req.path} - denied`
+        `[RBAC] User ${user.username} (${userRole}) tried to access ${req.path} - denied`
       );
       return res.status(403).json({ 
         error: "Forbidden",
@@ -76,7 +88,7 @@ export function requireRole(allowedRoles: string[]) {
 
     // 5. User hat passende Rolle - erlaubt
     console.log(
-      `[RBAC] User ${user.username} (${user.userRole}) accessing ${req.path} - allowed`
+      `[RBAC] User ${user.username} (${userRole}) accessing ${req.path} - allowed`
     );
     next();
   };
@@ -97,8 +109,9 @@ export const requireInternal = requireRole(['admin', 'staff']);
  */
 export function hasRole(req: Request, roles: string[]): boolean {
   if (!req.user) return false;
-  const user = req.user as Express.User & { userRole?: string };
-  return user.userRole ? roles.includes(user.userRole) : false;
+  const user = req.user as any;
+  const userRole = user.userRole || user.user_role;
+  return userRole ? roles.includes(userRole) : false;
 }
 
 /**
