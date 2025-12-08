@@ -48,7 +48,7 @@ const VideoBackground = memo(() => {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-0 overflow-hidden">
+    <div className="fixed inset-0 overflow-hidden pointer-events-none" style={{ zIndex: -1 }}>
       <video
         autoPlay
         loop
@@ -56,11 +56,12 @@ const VideoBackground = memo(() => {
         playsInline
         preload="auto"
         src={backgroundVideo}
-        className="absolute inset-0 w-full h-full object-cover opacity-100"
+        className="absolute inset-0 w-full h-full object-cover"
         style={{
           transform: 'scale(1.0)',
           transformOrigin: 'center center',
-          filter: 'contrast(1.3) brightness(1.1) saturate(1.2) blur(0px)' // Clear and vivid
+          filter: 'contrast(1.3) brightness(1.1) saturate(1.2) blur(0px)',
+          opacity: 1
         }}
       />
       {/* 30% dark overlay - video DEUTLICH visible */}
@@ -162,23 +163,23 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
         <TooltipProvider>
-          <div className="dark aras-bg-animated relative min-h-screen">
-          {/* Persistent video background - never re-renders on route changes */}
+          {/* Persistent video background - OUTSIDE everything, always visible */}
           <VideoBackground />
-
-          {/* Content Wrapper - positioned above video */}
-          <div className="relative z-10">
-            {/* Early Access Banner - Ganz oben fixiert */}
-            <div className="fixed top-0 left-0 right-0 z-[9999]">
-              <EarlyAccessBanner />
+          
+          <div className="dark relative min-h-screen">
+            {/* Content Wrapper - positioned above video */}
+            <div className="relative z-10">
+              {/* Early Access Banner - Ganz oben fixiert */}
+              <div className="fixed top-0 left-0 right-0 z-[9999]">
+                <EarlyAccessBanner />
+              </div>
+              
+              {/* Main Content - mit Padding-Top für Banner */}
+              <div className="pt-10">
+                <Toaster />
+                <Router />
+              </div>
             </div>
-            
-            {/* Main Content - mit Padding-Top für Banner */}
-            <div className="pt-10">
-              <Toaster />
-              <Router />
-            </div>
-          </div>
           </div>
         </TooltipProvider>
       </LanguageProvider>
