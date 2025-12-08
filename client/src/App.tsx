@@ -41,11 +41,46 @@ import BlogPost from "@/pages/blog-post";
 // Memoized video background component - never re-renders to keep video playing continuously
 const VideoBackground = memo(() => {
   useEffect(() => {
-    const video = document.querySelector('video');
+    const video = document.querySelector('video') as HTMLVideoElement;
     if (video) {
-      video.playbackRate = 0.3; // 30% speed - much slower, longer video
-      // Garantiere autoplay
-      video.play().catch(err => console.log('Video autoplay:', err));
+      // Noch langsamer: 20% Geschwindigkeit statt 30%
+      video.playbackRate = 0.2;
+      
+      // Verstecke alle Controls komplett
+      video.controls = false;
+      video.removeAttribute('controls');
+      
+      // Aggressive autoplay Strategie
+      const forcePlay = () => {
+        video.play().catch(err => {
+          console.log('Video autoplay attempt:', err);
+          // Retry nach kurzer Verzögerung
+          setTimeout(() => video.play().catch(() => {}), 100);
+        });
+      };
+      
+      // Initial play
+      forcePlay();
+      
+      // Force play bei verschiedenen Events
+      video.addEventListener('loadeddata', forcePlay);
+      video.addEventListener('canplay', forcePlay);
+      video.addEventListener('pause', forcePlay);
+      
+      // Force play bei User-Interaktion (Fallback)
+      const userInteractionHandler = () => {
+        forcePlay();
+        document.removeEventListener('click', userInteractionHandler);
+        document.removeEventListener('touchstart', userInteractionHandler);
+      };
+      document.addEventListener('click', userInteractionHandler, { once: true });
+      document.addEventListener('touchstart', userInteractionHandler, { once: true });
+      
+      return () => {
+        video.removeEventListener('loadeddata', forcePlay);
+        video.removeEventListener('canplay', forcePlay);
+        video.removeEventListener('pause', forcePlay);
+      };
     }
   }, []);
 
@@ -57,6 +92,8 @@ const VideoBackground = memo(() => {
         muted
         playsInline
         preload="auto"
+        disablePictureInPicture
+        disableRemotePlayback
         src={backgroundVideo}
         className="absolute inset-0 w-full h-full object-cover"
         style={{
