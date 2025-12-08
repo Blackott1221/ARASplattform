@@ -351,7 +351,7 @@ export default function Contacts() {
   }
 
   return (
-    <div className="flex h-screen relative overflow-hidden bg-transparent">
+    <div className="flex h-screen relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0d0d0d 100%)' }}>
       <Sidebar
         activeSection="contacts"
         onSectionChange={handleSectionChange}
@@ -367,13 +367,13 @@ export default function Contacts() {
           isVisible={true}
         />
 
-        <div className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="flex-1 overflow-y-auto px-6 py-6" style={{ background: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.3))' }}>
           <div className="max-w-3xl mx-auto">
             {/* Header - ULTRA MINIMAL */}
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h1 className="text-2xl font-bold text-white mb-0.5">Kontakte</h1>
-                <p className="text-xs text-gray-600">{contacts.length} gespeichert</p>
+                <h1 className="text-3xl font-black mb-1" style={{ fontFamily: 'Orbitron, sans-serif', background: 'linear-gradient(135deg, #FE9100 0%, #ff6b00 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>KONTAKTE</h1>
+                <p className="text-xs text-gray-400">{contacts.length} gespeichert</p>
               </div>
 
               <div className="flex gap-3">
@@ -587,16 +587,16 @@ export default function Contacts() {
               </div>
             </div>
 
-            {/* Search - FLAT */}
+            {/* Search - MODERN CI */}
             <div className="mb-4">
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#FE9100]/50" />
                 <input
                   type="text"
-                  placeholder="Suchen..."
+                  placeholder="Kontakte durchsuchen..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 text-xs bg-white/5 border border-white/10 rounded-md text-white placeholder-gray-600 outline-none focus:border-orange-500/50 transition-colors"
+                  className="w-full pl-10 pr-4 py-2.5 text-xs backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl text-white placeholder-gray-500 outline-none focus:border-[#FE9100]/50 focus:bg-black/30 transition-all"
                 />
               </div>
             </div>
@@ -610,10 +610,10 @@ export default function Contacts() {
                   exit={{ opacity: 0, height: 0 }}
                   className="mb-4 overflow-hidden"
                 >
-                  <div className="p-4 bg-white/5 border border-white/10 rounded-md">
+                  <div className="p-4 backdrop-blur-sm bg-black/30 border border-[#FE9100]/20 rounded-xl">
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-semibold text-white">
-                        {editingContact ? 'Bearbeiten' : 'Neuer Kontakt'}
+                      <h3 className="text-sm font-bold" style={{ fontFamily: 'Orbitron, sans-serif', color: '#FE9100' }}>
+                        {editingContact ? 'BEARBEITEN' : 'NEUER KONTAKT'}
                       </h3>
                       <button
                         onClick={resetForm}
@@ -630,7 +630,7 @@ export default function Contacts() {
                           value={formData.company}
                           onChange={(e) => setFormData({ ...formData, company: e.target.value })}
                           placeholder="Firma *"
-                          className="w-full px-3 py-2 text-xs bg-black/30 border border-white/10 rounded-md text-white placeholder-gray-600 outline-none focus:border-orange-500/50 transition-colors"
+                          className="w-full px-3 py-2 text-xs backdrop-blur-sm bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-500 outline-none focus:border-[#FE9100]/50 focus:bg-black/30 transition-all"
                         />
                       </div>
 
@@ -639,7 +639,7 @@ export default function Contacts() {
                         value={formData.firstName}
                         onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                         placeholder="Vorname"
-                        className="w-full px-3 py-2 text-xs bg-black/30 border border-white/10 rounded-md text-white placeholder-gray-600 outline-none focus:border-orange-500/50 transition-colors"
+                        className="w-full px-3 py-2 text-xs backdrop-blur-sm bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-500 outline-none focus:border-[#FE9100]/50 focus:bg-black/30 transition-all"
                       />
 
                       <input
@@ -647,7 +647,7 @@ export default function Contacts() {
                         value={formData.lastName}
                         onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                         placeholder="Nachname"
-                        className="w-full px-3 py-2 text-xs bg-black/30 border border-white/10 rounded-md text-white placeholder-gray-600 outline-none focus:border-orange-500/50 transition-colors"
+                        className="w-full px-3 py-2 text-xs backdrop-blur-sm bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-500 outline-none focus:border-[#FE9100]/50 focus:bg-black/30 transition-all"
                       />
 
                       <input
@@ -655,7 +655,7 @@ export default function Contacts() {
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                         placeholder="Telefon"
-                        className="w-full px-3 py-2 text-xs bg-black/30 border border-white/10 rounded-md text-white placeholder-gray-600 outline-none focus:border-orange-500/50 transition-colors"
+                        className="w-full px-3 py-2 text-xs backdrop-blur-sm bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-500 outline-none focus:border-[#FE9100]/50 focus:bg-black/30 transition-all"
                       />
 
                       <input
@@ -663,7 +663,7 @@ export default function Contacts() {
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         placeholder="E-Mail"
-                        className="w-full px-3 py-2 text-xs bg-black/30 border border-white/10 rounded-md text-white placeholder-gray-600 outline-none focus:border-orange-500/50 transition-colors"
+                        className="w-full px-3 py-2 text-xs backdrop-blur-sm bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-500 outline-none focus:border-[#FE9100]/50 focus:bg-black/30 transition-all"
                       />
 
                       <div className="col-span-2">
@@ -672,7 +672,7 @@ export default function Contacts() {
                           onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                           placeholder="Notizen"
                           rows={2}
-                          className="w-full px-3 py-2 text-xs bg-black/30 border border-white/10 rounded-md text-white placeholder-gray-600 outline-none focus:border-orange-500/50 transition-colors resize-none"
+                          className="w-full px-3 py-2 text-xs backdrop-blur-sm bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-500 outline-none focus:border-[#FE9100]/50 focus:bg-black/30 transition-all resize-none"
                         />
                       </div>
                     </div>
@@ -731,7 +731,7 @@ export default function Contacts() {
                 filteredContacts.map((contact) => (
                   <div
                     key={contact.id}
-                    className="group p-3 bg-white/5 hover:bg-white/8 border border-white/10 rounded-md transition-all"
+                    className="group p-3 backdrop-blur-sm bg-black/20 hover:bg-black/30 border border-white/10 hover:border-[#FE9100]/30 rounded-xl transition-all"
                   >
                     <div className="flex items-start gap-2.5">
                       {/* Icon */}
