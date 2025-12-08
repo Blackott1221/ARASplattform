@@ -504,7 +504,7 @@ Bleibe immer ARAS AI - entwickelt von der Schwarzott Group.`;
         company,
         website,
         industry,
-        role,
+        jobRole: role, // User's job title (renamed from 'role')
         phone,
         language: language || "de",
         primaryGoal,
