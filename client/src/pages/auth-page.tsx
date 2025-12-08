@@ -122,6 +122,339 @@ function LiveDateTime() {
   );
 }
 
+// 📞 Call Flow Timeline Component
+function CallFlowTimeline() {
+  const [activeStep, setActiveStep] = useState<number | null>(null);
+  const [detailPanelStep, setDetailPanelStep] = useState<number | null>(null);
+
+  const steps = [
+    {
+      number: 1,
+      title: "Auftrag geben",
+      description: "Sie definieren das Ziel – per natürlicher Sprache oder strukturierter Form:",
+      example: "\"Rufe alle Leads aus Kampagne A an und qualifiziere nach Kriterium B.\"",
+      details: "ARAS versteht natürliche Sprache und strukturierte Befehle. Sie können Kampagnen direkt über Text oder über das UI konfigurieren. Die KI interpretiert Ihre Anweisungen und erstellt automatisch einen optimierten Call-Plan."
+    },
+    {
+      number: 2,
+      title: "Kontextanalyse",
+      description: "ARAS verarbeitet:",
+      bullets: [
+        "CRM-Daten",
+        "bisherige Interaktionen",
+        "Lead-Informationen",
+        "Ziel der Kampagne",
+        "Tonfall-Anweisungen"
+      ],
+      additional: "Das System erkennt Absicht, Emotion & Gesprächssituation.",
+      details: "ARAS nutzt eine Kombination aus strukturierten CRM-Daten, Sprachmodellierung und regelbasierten Sicherheitsmechanismen, um die optimale Gesprächsstrategie zu wählen. Die Analyse läuft in unter 200ms ab – vollständig innerhalb europäischer Server."
+    },
+    {
+      number: 3,
+      title: "Der Anruf läuft",
+      description: "ARAS spricht mit einer ruhigen, strukturierten Stimme.",
+      bullets: [
+        "Dialoge sind kontextbezogen, präzise und nachvollziehbar",
+        "Einwände werden logisch behandelt"
+      ],
+      details: "Die ARAS Voice Engine nutzt neuronale Text-to-Speech-Modelle mit natürlicher Prosodie. Das System kann Pausen setzen, Tonhöhe anpassen und auf Gesprächspartner reagieren – in Echtzeit."
+    },
+    {
+      number: 4,
+      title: "Ergebnis & Zusammenfassung",
+      description: "Direkt nach dem Gespräch erhalten Sie:",
+      bullets: [
+        "qualifiziertes Ergebnis",
+        "Gesprächszusammenfassung",
+        "Empfehlung für den nächsten Schritt",
+        "Gesprächston (positiv / neutral / unsicher)"
+      ],
+      details: "Jedes Gespräch wird automatisch analysiert und kategorisiert. Sie erhalten strukturierte Daten für Ihr CRM, inklusive Sentiment-Analyse und handlungsbasierten Empfehlungen."
+    }
+  ];
+
+  return (
+    <div className="relative">
+      {/* Animated Vertical Line */}
+      <div className="absolute left-[7px] top-0 bottom-0 w-[1px]">
+        <motion.div
+          className="h-full w-full"
+          style={{
+            background: 'linear-gradient(180deg, #e9d7c4, #FE9100)',
+          }}
+          initial={{ scaleY: 0 }}
+          whileInView={{ scaleY: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 1.5, ease: "easeOut" }}
+        />
+      </div>
+
+      {/* Steps */}
+      <div className="space-y-[70px]">
+        {steps.map((step, index) => (
+          <motion.div
+            key={step.number}
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7, delay: index * 0.2 }}
+            onMouseEnter={() => setActiveStep(step.number)}
+            onMouseLeave={() => setActiveStep(null)}
+            onClick={() => setDetailPanelStep(detailPanelStep === step.number ? null : step.number)}
+            className="relative pl-12 cursor-pointer group"
+          >
+            {/* Timeline Point */}
+            <motion.div
+              className="absolute left-0 top-2"
+              initial={{ scale: 0.8 }}
+              whileInView={{ scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: index * 0.2 }}
+            >
+              <motion.div
+                className="relative w-[14px] h-[14px] rounded-full border-2"
+                style={{
+                  borderColor: activeStep === step.number ? '#FE9100' : '#e9d7c4',
+                  background: activeStep === step.number ? '#FE9100' : '#e9d7c4'
+                }}
+                animate={activeStep === step.number ? {
+                  scale: [1, 1.3, 1],
+                } : {}}
+                transition={{ duration: 0.6 }}
+              >
+                <motion.div
+                  className="absolute inset-[4px] rounded-full"
+                  style={{ background: '#0f0f0f' }}
+                />
+              </motion.div>
+            </motion.div>
+
+            {/* Content */}
+            <div>
+              <motion.h3
+                className="text-2xl font-black mb-3 transition-colors duration-300"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  color: activeStep === step.number ? '#FE9100' : '#e9d7c4'
+                }}
+              >
+                {step.number}. {step.title}
+              </motion.h3>
+              <p className="text-[17px] text-white/70 leading-relaxed mb-2">
+                {step.description}
+              </p>
+              {step.example && (
+                <p className="text-[15px] text-[#FE9100]/80 italic mb-2">
+                  {step.example}
+                </p>
+              )}
+              {step.bullets && (
+                <ul className="space-y-1 mb-2 ml-4">
+                  {step.bullets.map((bullet, i) => (
+                    <li key={i} className="text-[16px] text-white/60 list-disc">
+                      {bullet}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {step.additional && (
+                <p className="text-[15px] text-white/60 italic">
+                  {step.additional}
+                </p>
+              )}
+
+              {/* Detail Panel */}
+              <AnimatePresence>
+                {detailPanelStep === step.number && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                    animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
+                    exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                    transition={{ duration: 0.4 }}
+                    className="rounded-xl border overflow-hidden"
+                    style={{
+                      background: 'rgba(15, 15, 15, 0.7)',
+                      borderColor: 'rgba(254, 145, 0, 0.3)',
+                      backdropFilter: 'blur(10px)'
+                    }}
+                  >
+                    <div className="p-4">
+                      <h4 className="text-sm font-bold text-[#FE9100] mb-2 uppercase tracking-wide">
+                        {step.title} — Details
+                      </h4>
+                      <p className="text-[15px] text-white/70 leading-relaxed">
+                        {step.details}
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// 📞 Live Call Window Component
+function LiveCallWindow() {
+  const [isActive, setIsActive] = useState(false);
+  const [callTime, setCallTime] = useState(0);
+
+  useEffect(() => {
+    // Start call simulation when component is in view
+    const timer = setTimeout(() => setIsActive(true), 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!isActive) return;
+    const interval = setInterval(() => {
+      setCallTime(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isActive]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 40 }}
+      whileInView={{ opacity: 1, x: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.7 }}
+      className="sticky top-8"
+    >
+      <div
+        className="rounded-2xl p-6 border"
+        style={{
+          background: '#151515',
+          borderColor: 'rgba(254, 145, 0, 0.3)'
+        }}
+      >
+        {/* Status Badge */}
+        <div className="flex justify-between items-start mb-6">
+          <motion.div
+            animate={isActive ? { opacity: [1, 0.6, 1] } : {}}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="px-3 py-1 rounded-full border text-xs font-bold uppercase tracking-wider"
+            style={{
+              fontFamily: 'Orbitron, sans-serif',
+              borderColor: '#FE9100',
+              color: '#FE9100',
+              boxShadow: '0 0 10px rgba(254, 145, 0, 0.2)'
+            }}
+          >
+            LIVE CALL — ARAS OPERATING
+          </motion.div>
+
+          {/* Call Timer */}
+          <div
+            className="text-lg font-bold"
+            style={{
+              fontFamily: 'Orbitron, sans-serif',
+              color: '#e9d7c4'
+            }}
+          >
+            {formatTime(callTime)}
+          </div>
+        </div>
+
+        {/* Waveform */}
+        <div className="mb-6">
+          <Waveform isActive={isActive} />
+        </div>
+
+        {/* Transcript Box */}
+        <div
+          className="rounded-xl p-4 border max-h-[300px] overflow-y-auto custom-scrollbar"
+          style={{
+            background: '#151515',
+            borderColor: 'rgba(254, 145, 0, 0.2)'
+          }}
+        >
+          <TranscriptContent isActive={isActive} />
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// Waveform Animation Component
+function Waveform({ isActive }: { isActive: boolean }) {
+  const bars = [
+    { height: 40, delay: 0 },
+    { height: 60, delay: 0.1 },
+    { height: 80, delay: 0.2 },
+    { height: 70, delay: 0.3 },
+    { height: 50, delay: 0.4 },
+    { height: 65, delay: 0.5 },
+    { height: 45, delay: 0.6 }
+  ];
+
+  return (
+    <div className="flex items-center justify-center gap-2 h-24">
+      {bars.map((bar, index) => (
+        <motion.div
+          key={index}
+          className="w-2 rounded-full"
+          style={{
+            background: 'linear-gradient(180deg, #e9d7c4, #FE9100)',
+            height: isActive ? bar.height : 20
+          }}
+          animate={isActive ? {
+            height: [bar.height, bar.height * 0.6, bar.height],
+          } : {}}
+          transition={{
+            duration: 0.6,
+            repeat: Infinity,
+            delay: bar.delay,
+            ease: [0.25, 0.8, 0.25, 1]
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Transcript Content Component
+function TranscriptContent({ isActive }: { isActive: boolean }) {
+  const transcript = [
+    { speaker: 'ARAS', text: 'Guten Tag, hier spricht ARAS AI im Auftrag von Ihrer Firma. Haben Sie eine Minute Zeit?' },
+    { speaker: 'Lead', text: 'Ja, worum geht es?' },
+    { speaker: 'ARAS', text: 'Es geht um eine Optimierung Ihrer Outbound-Prozesse. Wir haben gesehen, dass Sie im B2B-Bereich tätig sind.' },
+    { speaker: 'Lead', text: 'Interessant. Erzählen Sie mehr.' },
+    { speaker: 'ARAS', text: 'Gerne. Mit unserer Lösung können Sie bis zu 10.000 Anrufe parallel durchführen...' }
+  ];
+
+  return (
+    <div className="space-y-3">
+      <AnimatePresence>
+        {isActive && transcript.map((line, index) => (
+          <motion.div
+            key={index}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 1.5, duration: 0.5 }}
+          >
+            <div className="text-xs font-bold text-[#FE9100] mb-1">
+              {line.speaker}:
+            </div>
+            <div className="text-sm text-white/70">
+              {line.text}
+            </div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function AuthPage() {
   const [showFeaturesPanel, setShowFeaturesPanel] = useState(false);
   const [, setLocation] = useLocation();
@@ -3029,6 +3362,49 @@ export default function AuthPage() {
             </motion.div>
           </div>
         </section>
+
+        {/* 📞 CALL-FLOW SECTION - Wie ARAS telefoniert */}
+        <section className="relative py-32 px-8" style={{ background: '#0f0f0f' }}>
+          <div className="max-w-7xl mx-auto">
+            {/* Section Header */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
+              className="text-center mb-20"
+            >
+              <h2
+                className="text-5xl md:text-6xl font-black mb-6"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #ffd700)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent'
+                }}
+              >
+                So führt ARAS AI ein echtes Gespräch – Schritt für Schritt
+              </h2>
+              <p className="text-xl text-white/70 max-w-4xl mx-auto leading-relaxed mb-4">
+                Der gesamte Telefonie-Prozess läuft autonom, transparent und nachvollziehbar ab.
+              </p>
+              <p className="text-lg text-white/60 max-w-3xl mx-auto">
+                Sie kontrollieren jeden Schritt – ARAS übernimmt die Ausführung.
+              </p>
+            </motion.div>
+
+            {/* Main Content: Timeline + Live Call Window */}
+            <div className="grid lg:grid-cols-2 gap-16 items-start">
+              {/* LEFT: Timeline */}
+              <CallFlowTimeline />
+
+              {/* RIGHT: Live Call Window */}
+              <LiveCallWindow />
+            </div>
+          </div>
+        </section>
+
       </div>
 
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
