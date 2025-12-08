@@ -1,0 +1,3 @@
+Force deploy to Render - Schema update required
+Timestamp: 2025-12-08T16:41:00Z
+Changes: jobRole field migration complete
