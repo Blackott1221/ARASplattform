@@ -35,6 +35,7 @@ import Settings from "@/pages/settings";
 import AuthPage from "@/pages/auth-page";
 import ArasMailingPage from "@/pages/aras-mailing";
 import AppPage from "@/pages/app";
+// Blog imports - SEO-optimized pages
 import Blog from "@/pages/blog";
 import BlogPost from "@/pages/blog-post";
 
