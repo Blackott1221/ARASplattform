@@ -98,7 +98,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen bg-black overflow-hidden">
+    <div className="flex h-screen bg-transparent overflow-hidden">
       <Sidebar
         activeSection={activeSection}
         onSectionChange={(section) => {

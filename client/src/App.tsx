@@ -41,7 +41,7 @@ const VideoBackground = memo(() => {
   useEffect(() => {
     const video = document.querySelector('video');
     if (video) {
-      video.playbackRate = 0.5; // 50% speed
+      video.playbackRate = 0.3; // 30% speed - much slower, longer video
       // Garantiere autoplay
       video.play().catch(err => console.log('Video autoplay:', err));
     }
@@ -56,15 +56,15 @@ const VideoBackground = memo(() => {
         playsInline
         preload="auto"
         src={backgroundVideo}
-        className="absolute inset-0 w-full h-full object-cover opacity-40"
+        className="absolute inset-0 w-full h-full object-cover opacity-100"
         style={{
           transform: 'scale(1.0)',
           transformOrigin: 'center center',
-          filter: 'contrast(1.2) brightness(1.0) saturate(1.0) blur(0.5px)' // Visible and clear
+          filter: 'contrast(1.3) brightness(1.1) saturate(1.2) blur(0px)' // Clear and vivid
         }}
       />
-      {/* 55% dark overlay - video clearly visible */}
-      <div className="absolute inset-0 bg-black/55"></div>
+      {/* 30% dark overlay - video DEUTLICH visible */}
+      <div className="absolute inset-0 bg-black/30"></div>
     </div>
   );
 });

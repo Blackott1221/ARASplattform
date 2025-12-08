@@ -1009,11 +1009,11 @@ export default function AuthPage() {
               <div
                 className="relative rounded-3xl p-8"
                 style={{
-                  background: 'rgba(0, 0, 0, 0.75)',
-                  backdropFilter: 'blur(60px)',
-                  WebkitBackdropFilter: 'blur(60px)',
+                  background: 'rgba(0, 0, 0, 0.35)',
+                  backdropFilter: 'blur(40px)',
+                  WebkitBackdropFilter: 'blur(40px)',
                   border: '1px solid rgba(255, 255, 255, 0.08)',
-                  boxShadow: '0 50px 100px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.05)'
+                  boxShadow: '0 50px 100px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05)'
                 }}
               >
                 {/* Tab Switcher */}
@@ -1105,7 +1105,7 @@ export default function AuthPage() {
                               onChange={(e) => setLoginData(prev => ({ ...prev, username: e.target.value }))}
                               placeholder="Dein Username"
                               required
-                              className="relative bg-black/70 border-0 text-white rounded-xl px-4 py-3 text-sm"
+                              className="relative bg-black/30 border-0 text-white rounded-xl px-4 py-3 text-sm"
                               style={{
                                 boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
                               }}
@@ -1295,7 +1295,7 @@ export default function AuthPage() {
                                 onBlur={(e) => validateFirstName(e.target.value)}
                                 placeholder="Vorname"
                                 required
-                                className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2 text-xs"
+                                className="relative bg-black/30 border-0 text-white rounded-lg px-3 py-2 text-xs"
                                 style={{
                                   boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
                                 }}
@@ -1344,7 +1344,7 @@ export default function AuthPage() {
                                 onBlur={(e) => validateLastName(e.target.value)}
                                 placeholder="Nachname"
                                 required
-                                className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2 text-xs"
+                                className="relative bg-black/30 border-0 text-white rounded-lg px-3 py-2 text-xs"
                                 style={{
                                   boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
                                 }}
@@ -1580,7 +1580,7 @@ export default function AuthPage() {
                                   onBlur={(e) => validateCompany(e.target.value)}
                                   placeholder="Deine Firma"
                                   required
-                                  className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2 text-xs"
+                                  className="relative bg-black/30 border-0 text-white rounded-lg px-3 py-2 text-xs"
                                   style={{
                                     boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
                                   }}
@@ -1626,7 +1626,7 @@ export default function AuthPage() {
                                     validateWebsite(e.target.value);
                                   }}
                                   placeholder="firma.de oder www.firma.de"
-                                  className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2 text-xs"
+                                  className="relative bg-black/30 border-0 text-white rounded-lg px-3 py-2 text-xs"
                                   style={{
                                     boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
                                   }}
@@ -1737,7 +1737,7 @@ export default function AuthPage() {
                                   value={registerData.phone}
                                   onChange={(e) => setRegisterData(prev => ({ ...prev, phone: e.target.value }))}
                                   placeholder="+49 123 456789"
-                                  className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2 text-xs"
+                                  className="relative bg-black/30 border-0 text-white rounded-lg px-3 py-2 text-xs"
                                   style={{
                                     boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
                                   }}
