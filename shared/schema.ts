@@ -53,8 +53,11 @@ export const users = pgTable("users", {
   company: varchar("company"),
   website: varchar("website"),
   industry: varchar("industry"),
-  role: varchar("role"),
+  jobRole: varchar("job_role"), // Renamed: user's job title
   phone: varchar("phone"),
+  
+  // 🔐 INTERNAL: Role-Based Access Control (RBAC)
+  userRole: varchar("user_role").default("user").notNull(), // "user", "admin", "staff"
   language: varchar("language").default("de"),
   primaryGoal: varchar("primary_goal"),
   
@@ -474,3 +477,141 @@ export const insertVoiceAgentSchema = createInsertSchema(voiceAgents).omit({
 });
 
 export type InsertVoiceAgent = z.infer<typeof insertVoiceAgentSchema>;
+
+// ============================================================================
+// 🎯 INTERNAL CRM SYSTEM - ARAS COMMAND CENTER
+// ============================================================================
+// Diese Tabellen sind NUR für interne Team-Nutzung (admin/staff)
+// Komplett getrennt vom Public User-System
+// ============================================================================
+
+// Internal Companies - für Investoren, Partner, Kunden
+export const internalCompanies = pgTable("internal_companies", {
+  id: varchar("id").primaryKey().notNull(),
+  name: varchar("name").notNull(),
+  website: varchar("website"),
+  industry: varchar("industry"),
+  tags: jsonb("tags").$type<string[]>().default([]),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("internal_companies_name_idx").on(table.name),
+]);
+
+// Internal Contacts - Ansprechpartner in Companies
+export const internalContacts = pgTable("internal_contacts", {
+  id: varchar("id").primaryKey().notNull(),
+  firstName: varchar("first_name").notNull(),
+  lastName: varchar("last_name").notNull(),
+  email: varchar("email"),
+  phone: varchar("phone"),
+  position: varchar("position"),
+  companyId: varchar("company_id").references(() => internalCompanies.id),
+  source: varchar("source"), // "Investor", "Lead", "Partner", "Customer"
+  status: varchar("status", { enum: ["NEW", "ACTIVE", "ARCHIVED"] }).default("NEW").notNull(),
+  tags: jsonb("tags").$type<string[]>().default([]),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("internal_contacts_email_idx").on(table.email),
+  index("internal_contacts_phone_idx").on(table.phone),
+  index("internal_contacts_company_idx").on(table.companyId),
+]);
+
+// Internal Deals - Sales Pipeline
+export const internalDeals = pgTable("internal_deals", {
+  id: varchar("id").primaryKey().notNull(),
+  title: varchar("title").notNull(),
+  value: integer("value"), // in cents
+  currency: varchar("currency").default("EUR").notNull(),
+  stage: varchar("stage", { 
+    enum: ["IDEA", "CONTACTED", "NEGOTIATION", "COMMITTED", "CLOSED_WON", "CLOSED_LOST"] 
+  }).default("IDEA").notNull(),
+  contactId: varchar("contact_id").references(() => internalContacts.id),
+  companyId: varchar("company_id").references(() => internalCompanies.id),
+  ownerUserId: varchar("owner_user_id").references(() => users.id),
+  probability: integer("probability"), // 0-100
+  closeDate: timestamp("close_date"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("internal_deals_stage_idx").on(table.stage),
+  index("internal_deals_owner_idx").on(table.ownerUserId),
+]);
+
+// Internal Tasks - To-Dos für Team
+export const internalTasks = pgTable("internal_tasks", {
+  id: varchar("id").primaryKey().notNull(),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  status: varchar("status", { 
+    enum: ["OPEN", "IN_PROGRESS", "DONE", "CANCELLED"] 
+  }).default("OPEN").notNull(),
+  dueDate: timestamp("due_date"),
+  assignedUserId: varchar("assigned_user_id").references(() => users.id),
+  relatedContactId: varchar("related_contact_id").references(() => internalContacts.id),
+  relatedDealId: varchar("related_deal_id").references(() => internalDeals.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("internal_tasks_status_idx").on(table.status),
+  index("internal_tasks_assigned_idx").on(table.assignedUserId),
+  index("internal_tasks_due_date_idx").on(table.dueDate),
+]);
+
+// Internal Call Logs - Telefonie-Historie
+export const internalCallLogs = pgTable("internal_call_logs", {
+  id: varchar("id").primaryKey().notNull(),
+  contactId: varchar("contact_id").references(() => internalContacts.id),
+  source: varchar("source", { 
+    enum: ["RETELL", "ELEVENLABS", "TWILIO", "OTHER"] 
+  }).default("OTHER").notNull(),
+  externalCallId: varchar("external_call_id"), // ID vom Provider
+  phoneNumber: varchar("phone_number"),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  durationSeconds: integer("duration_seconds"),
+  outcome: varchar("outcome"), // "REACHED", "NO_ANSWER", "VOICEMAIL"
+  sentiment: varchar("sentiment", { 
+    enum: ["POSITIVE", "NEUTRAL", "NEGATIVE", "MIXED"] 
+  }),
+  summary: text("summary"), // KI-generierte Zusammenfassung
+  recordingUrl: varchar("recording_url"),
+  rawMetadata: jsonb("raw_metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("internal_call_logs_contact_idx").on(table.contactId),
+  index("internal_call_logs_phone_idx").on(table.phoneNumber),
+  index("internal_call_logs_timestamp_idx").on(table.timestamp),
+]);
+
+// Internal Notes - Notizen zu Contacts/Deals
+export const internalNotes = pgTable("internal_notes", {
+  id: varchar("id").primaryKey().notNull(),
+  contactId: varchar("contact_id").references(() => internalContacts.id),
+  dealId: varchar("deal_id").references(() => internalDeals.id),
+  authorUserId: varchar("author_user_id").references(() => users.id),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("internal_notes_contact_idx").on(table.contactId),
+  index("internal_notes_deal_idx").on(table.dealId),
+]);
+
+// Type Exports für Internal CRM
+export type InternalCompany = typeof internalCompanies.$inferSelect;
+export type InsertInternalCompany = typeof internalCompanies.$inferInsert;
+export type InternalContact = typeof internalContacts.$inferSelect;
+export type InsertInternalContact = typeof internalContacts.$inferInsert;
+export type InternalDeal = typeof internalDeals.$inferSelect;
+export type InsertInternalDeal = typeof internalDeals.$inferInsert;
+export type InternalTask = typeof internalTasks.$inferSelect;
+export type InsertInternalTask = typeof internalTasks.$inferInsert;
+export type InternalCallLog = typeof internalCallLogs.$inferSelect;
+export type InsertInternalCallLog = typeof internalCallLogs.$inferInsert;
+export type InternalNote = typeof internalNotes.$inferSelect;
+export type InsertInternalNote = typeof internalNotes.$inferInsert;

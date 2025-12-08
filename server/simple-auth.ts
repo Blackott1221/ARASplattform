@@ -19,6 +19,7 @@ declare global {
       email: string | null;
       firstName: string | null;
       lastName: string | null;
+      userRole?: string; // RBAC: "user", "admin", "staff"
     }
   }
 }
