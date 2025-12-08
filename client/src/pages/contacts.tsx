@@ -297,6 +297,11 @@ export default function Contacts() {
 
         // Import
         bulkImportMutation.mutate(contacts);
+        
+        // Reset file input
+        if (event.target) {
+          event.target.value = '';
+        }
 
       } catch (error: any) {
         toast({
@@ -389,7 +394,7 @@ export default function Contacts() {
                     accept=".csv"
                     onChange={handleCSVUpload}
                     disabled={isUploading}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-10"
                     id="csv-upload"
                   />
                   <motion.button
@@ -589,14 +594,14 @@ export default function Contacts() {
 
             {/* Search - MODERN CI */}
             <div className="mb-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#FE9100]/50" />
+              <div className="relative max-w-md">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#FE9100]/50" />
                 <input
                   type="text"
-                  placeholder="Kontakte durchsuchen..."
+                  placeholder="Suchen..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 text-xs backdrop-blur-sm bg-black/20 border border-white/10 rounded-xl text-white placeholder-gray-500 outline-none focus:border-[#FE9100]/50 focus:bg-black/30 transition-all"
+                  className="w-full pl-8 pr-3 py-2 text-xs backdrop-blur-sm bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-500 outline-none focus:border-[#FE9100]/50 focus:bg-black/30 transition-all"
                 />
               </div>
             </div>
