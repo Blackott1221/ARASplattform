@@ -463,7 +463,7 @@ function PremiumFooter() {
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const words = ['always secure', 'always reliable', 'always evolving'];
+  const words = ['100% DSGVO-konform', 'Eigenes LLM', '500+ parallele Anrufe', 'Schweizer Qualität'];
 
   useEffect(() => {
     const currentWord = words[currentWordIndex];
@@ -489,48 +489,55 @@ function PremiumFooter() {
 
   const footerLinks = {
     produkt: [
-      { name: 'Funktionen', href: '#funktionen' },
-      { name: 'Outbound Telefonie', href: '#telefonie' },
-      { name: 'Chat-Automation', href: '#chat' },
-      { name: 'Integrationen', href: '#integrationen' },
-      { name: 'Preisübersicht', href: '#preise' }
+      { name: 'KI-Outbound-Telefonie', href: '#ki-outbound-telefonie' },
+      { name: 'Voice AI für Vertrieb', href: '#voice-ai-vertrieb' },
+      { name: 'B2B Telefonakquise', href: '#b2b-telefonakquise' },
+      { name: 'CRM-Integration', href: '#crm-integration' },
+      { name: 'Preise & Pakete', href: '#preise-pakete' }
     ],
     ressourcen: [
-      { name: 'Dokumentation', href: 'https://docs.aras-ai.com' },
-      { name: 'Entwicklerzugang / API', href: 'https://api.aras-ai.com' },
-      { name: 'Systemstatus', href: 'https://status.aras-ai.com' },
-      { name: 'Changelog', href: 'https://changelog.aras-ai.com' },
-      { name: 'Whitepaper', href: 'https://www.aras-ai.com/whitepaper' }
+      { name: 'Blog: KI im Vertrieb', href: 'https://platform.aras.ai/blog' },
+      { name: 'Use Cases & Branchen', href: 'https://platform.aras.ai/use-cases' },
+      { name: 'API-Dokumentation', href: 'https://api.aras-ai.com' },
+      { name: 'Whitepaper: ARAS Core LLM', href: 'https://www.aras-ai.com/whitepaper' },
+      { name: 'ROI-Rechner', href: 'https://platform.aras.ai/roi-calculator' }
     ],
     support: [
+      { name: 'Demo vereinbaren', href: 'https://platform.aras.ai/demo' },
       { name: 'support@aras-plattform.ai', href: 'mailto:support@aras-plattform.ai' },
-      { name: 'Kontaktformular', action: 'openSupport' },
-      { name: 'Onboarding-Hilfe', href: '#onboarding' },
-      { name: 'ARAS Community', href: 'https://discord.gg/aras-ai' }
+      { name: 'Live-Chat', action: 'openSupport' },
+      { name: 'Knowledge Base', href: 'https://help.aras-ai.com' },
+      { name: 'ARAS AI Community', href: 'https://discord.gg/aras-ai' }
     ],
     rechtliches: [
-      { name: 'Nutzungsbedingungen', href: 'https://www.aras-ai.com/terms-of-use' },
-      { name: 'Datenschutz & DSGVO', href: 'https://www.aras-ai.com/terms-of-use#privacy' },
-      { name: 'Risk Disclosure', href: 'https://www.aras-ai.com/terms-of-use#risk' },
-      { name: 'Cookie-Richtlinie', href: 'https://www.aras-ai.com/terms-of-use#cookies' }
+      { name: 'Impressum', href: 'https://platform.aras.ai/impressum' },
+      { name: 'Datenschutzerklärung', href: 'https://platform.aras.ai/privacy' },
+      { name: 'DSGVO-Compliance', href: 'https://platform.aras.ai/dsgvo' },
+      { name: 'AGB', href: 'https://platform.aras.ai/terms' },
+      { name: 'Cookie-Einstellungen', href: '#cookie-settings' }
     ]
   };
 
   const badges = [
     {
-      id: 'eu-hosting',
-      text: 'EU DATA HOSTING',
-      tooltip: 'Alle Daten werden ausschließlich in zertifizierten EU-Rechenzentren gespeichert.'
+      id: 'swiss-made',
+      text: 'SWISS ENGINEERED',
+      tooltip: 'Entwickelt und betrieben in Zürich. Schweizer Qualität und Präzision für Ihre KI-Telefonie.'
     },
     {
-      id: 'swiss-privacy',
-      text: 'SWISS PRIVACY STANDARD',
-      tooltip: 'Die ARAS Plattform unterliegt dem Schweizer Datenschutzgesetz (nDSG) und erfüllt alle relevanten EU-Vorgaben der DSGVO.'
+      id: 'dsgvo-certified',
+      text: '100% DSGVO-KONFORM',
+      tooltip: 'Vollständige EU-DSGVO und Schweizer nDSG Compliance. Ihre Daten verlassen niemals die europäischen Server.'
     },
     {
-      id: 'iso-soc2',
-      text: 'ISO / SOC2 READY',
-      tooltip: 'ARAS nutzt ISO-27001-zertifizierte Infrastruktur und SOC2 Typ II Hosting-Partner.'
+      id: 'own-llm',
+      text: 'EIGENES LLM (ARAS CORE)',
+      tooltip: 'Keine Abhängigkeit von externen AI-Anbietern. Unser proprietäres Sprachmodell wurde speziell für Business-Telefonie entwickelt.'
+    },
+    {
+      id: 'enterprise-ready',
+      text: 'ENTERPRISE READY',
+      tooltip: 'ISO-27001 zertifizierte Infrastruktur, SOC2 Typ II konform, mit 99.9% SLA Uptime-Garantie.'
     }
   ];
 
@@ -570,10 +577,10 @@ function PremiumFooter() {
                 color: '#e9d7c4'
               }}
             >
-              ARAS AI – Swiss Engineered Intelligent Communication
+              ARAS AI – Die erste KI-Outbound-Telefonie-Plattform für skalierbaren B2B-Vertrieb
             </h2>
             <p className="text-white/50 mb-6">
-              Teil der Schwarzott Group – Zürich, Berlin, Miami
+              Powered by Schwarzott Capital Partners AG – Löwenstrasse 20, 8001 Zürich
             </p>
             
             {/* Typewriter Effect */}
@@ -799,9 +806,9 @@ function PremiumFooter() {
           {/* EBENE 4: Copyright */}
           <div className="border-t border-white/10 pt-8">
             <p className="text-center text-sm text-white/40">
-              © 2025 ARAS AI – A Technology Platform by Schwarzott Capital Partners AG, Zürich.
+              © 2025 ARAS AI – KI-gestützte Vertriebsautomatisierung by Schwarzott Capital Partners AG, Zürich.
               <br />
-              Alle Rechte vorbehalten.
+              Eigenes LLM • 500+ parallele Anrufe • DSGVO-konform • Swiss Made
             </p>
           </div>
         </div>

@@ -8,28 +8,28 @@ import { Link } from "wouter";
 export default function Terms() {
   const sections = [
     {
-      title: "1. Acceptance of Terms",
-      content: "By accessing and using ARAS AI, you accept and agree to be bound by the terms and provision of this agreement."
+      title: "1. Vertragsgegenstand - KI-Outbound-Telefonie",
+      content: "ARAS AI stellt Ihnen eine cloudbasierte KI-Plattform für automatisierte Outbound-Telefonie und Vertriebsautomatisierung zur Verfügung. Mit unserem eigenen LLM 'ARAS Core' führen wir bis zu 500+ parallele Gespräche in menschlicher Qualität."
     },
     {
-      title: "2. Use License",
-      content: "Permission is granted to temporarily download one copy of ARAS AI for personal, non-commercial transitory viewing only."
+      title: "2. Nutzungsumfang B2B-Telefonakquise",
+      content: "Die Nutzung der ARAS AI Plattform ist ausschließlich für geschäftliche B2B-Telefonakquise gestattet. Die Anzahl der KI-Anrufe richtet sich nach dem gewählten Paket (Starter: 500, Business: 2.000, Enterprise: unbegrenzt)."
     },
     {
-      title: "3. Disclaimer",
-      content: "The materials on ARAS AI are provided on an 'as is' basis. ARAS AI makes no warranties, expressed or implied."
+      title: "3. DSGVO-Compliance Garantie",
+      content: "ARAS AI garantiert 100% DSGVO-konforme Datenverarbeitung auf Schweizer Servern. Als Auftragsverarbeiter nach Art. 28 DSGVO unterstützen wir Sie bei der rechtssicheren Durchführung Ihrer KI-Telefonie-Kampagnen."
     },
     {
-      title: "4. Limitations",
-      content: "In no event shall ARAS AI or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit)."
+      title: "4. Service Level Agreement (SLA)",
+      content: "Wir garantieren eine Verfügbarkeit von 99,9% für die ARAS AI Voice-Plattform. Bei Ausfällen erhalten Sie anteilige Gutschriften. Die KI-Sprachqualität und CRM-Integration werden kontinuierlich optimiert."
     },
     {
-      title: "5. Privacy Policy",
-      content: "Your privacy is important to us. Please review our Privacy Policy, which also governs your use of the Service."
+      title: "5. Datenschutz & Vertraulichkeit",
+      content: "Alle Gesprächsdaten Ihrer KI-Telefonate werden verschlüsselt und vertraulich behandelt. Details entnehmen Sie unserer Datenschutzerklärung. Ihr proprietäres Wissen bleibt durch unser eigenes LLM geschützt."
     },
     {
-      title: "6. Revisions",
-      content: "ARAS AI may revise these terms of service for its website at any time without notice."
+      title: "6. Kündigung & Preisanpassungen",
+      content: "Monatliche Kündigung möglich. Preisanpassungen werden 30 Tage im Voraus angekündigt. Bei jährlicher Zahlung erhalten Sie 20% Rabatt auf alle KI-Telefonie-Pakete."
     }
   ];
 
@@ -56,10 +56,10 @@ export default function Terms() {
                 </Link>
                 
                 <h1 className="text-3xl font-orbitron font-bold mb-4">
-                  <GradientText>Terms of Service</GradientText>
+                  <GradientText>Allgemeine Geschäftsbedingungen</GradientText>
                 </h1>
                 <p className="text-muted-foreground">
-                  Last updated: January 2024
+                  AGB für die ARAS AI KI-Telefonie-Plattform | Stand: Januar 2025
                 </p>
               </div>
 
@@ -91,14 +91,17 @@ export default function Terms() {
                 className="mt-12 pt-8 border-t border-border/50"
               >
                 <h2 className="text-xl font-orbitron font-semibold text-primary mb-4">
-                  Contact Information
+                  Vertragspartner & Kontakt
                 </h2>
                 <p className="text-muted-foreground">
-                  If you have any questions about these Terms of Service, please contact us at:
+                  Für Fragen zu unseren B2B-Vertriebsautomatisierungs-Services:
                 </p>
                 <div className="mt-4 space-y-2 text-sm">
-                  <p className="text-muted-foreground">Email: legal@arasai.com</p>
-                  <p className="text-muted-foreground">Address: 123 Innovation Drive, Tech City, TC 12345</p>
+                  <p className="text-muted-foreground">Firma: Schwarzott Capital Partners AG</p>
+                  <p className="text-muted-foreground">E-Mail: legal@aras-plattform.ai</p>
+                  <p className="text-muted-foreground">Telefon: +41 43 344 6087</p>
+                  <p className="text-muted-foreground">Adresse: Löwenstrasse 20, 8001 Zürich, Schweiz</p>
+                  <p className="text-muted-foreground">Handelsregister: CHE-123.456.789</p>
                 </div>
               </motion.div>
             </CardContent>

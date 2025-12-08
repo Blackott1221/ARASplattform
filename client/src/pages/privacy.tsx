@@ -8,32 +8,32 @@ import { Link } from "wouter";
 export default function Privacy() {
   const sections = [
     {
-      title: "1. Information We Collect",
-      content: "We collect information you provide directly to us, such as when you create an account, use our services, or contact us for support."
+      title: "1. Erhobene Daten bei KI-Telefonie",
+      content: "ARAS AI erhebt ausschließlich geschäftsrelevante Daten für die KI-gestützte Outbound-Telefonie. Dazu gehören Kontaktdaten Ihrer Leads, Gesprächsprotokolle und CRM-Synchronisationsdaten. Alle Daten werden auf Schweizer Servern verarbeitet."
     },
     {
-      title: "2. How We Use Your Information",
-      content: "We use the information we collect to provide, maintain, and improve our services, process transactions, and communicate with you."
+      title: "2. DSGVO-konforme Datenverarbeitung",
+      content: "Als Schweizer Unternehmen erfüllen wir sowohl die EU-DSGVO als auch das Schweizer Datenschutzgesetz (nDSG). Die Verarbeitung erfolgt ausschließlich für die vertraglich vereinbarten KI-Telefonie-Services."
     },
     {
-      title: "3. Information Sharing",
-      content: "We do not sell, trade, or otherwise transfer your personal information to third parties without your consent, except as described in this policy."
+      title: "3. Eigenes LLM - Keine Datenweitergabe",
+      content: "Mit unserem proprietären Sprachmodell 'ARAS Core' bleiben Ihre Daten zu 100% in unserem System. Keine Weitergabe an externe AI-Anbieter wie OpenAI oder Google. Ihre Gesprächsdaten verlassen niemals die EU."
     },
     {
-      title: "4. Data Security",
-      content: "We implement appropriate security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction."
+      title: "4. Ende-zu-Ende Verschlüsselung",
+      content: "Alle KI-Telefonate und Gesprächsdaten werden mit modernster AES-256 Verschlüsselung gesichert. Unsere ISO-27001 zertifizierte Infrastruktur garantiert höchste Sicherheitsstandards."
     },
     {
-      title: "5. Your Rights",
-      content: "You have the right to access, update, or delete your personal information. You may also opt out of certain communications from us."
+      title: "5. Ihre Rechte nach DSGVO",
+      content: "Sie haben jederzeit das Recht auf Auskunft, Berichtigung, Löschung und Datenübertragbarkeit. Als B2B-Plattform für Vertriebsautomatisierung unterstützen wir Sie bei der Einhaltung aller Datenschutzvorschriften."
     },
     {
-      title: "6. Cookies and Tracking",
-      content: "We use cookies and similar tracking technologies to collect and use personal information about you, including to serve interest-based advertising."
+      title: "6. Cookies für Plattform-Optimierung",
+      content: "Wir nutzen ausschließlich essenzielle Cookies für die Funktionalität der ARAS AI Plattform. Marketing-Cookies nur nach expliziter Zustimmung. Vollständige Kontrolle über Ihre Cookie-Einstellungen."
     },
     {
-      title: "7. Changes to This Policy",
-      content: "We may update this privacy policy from time to time. We will notify you of any changes by posting the new policy on this page."
+      title: "7. Aktualität dieser Datenschutzerklärung",
+      content: "Diese Datenschutzerklärung wird regelmäßig an neue rechtliche Anforderungen angepasst. Als KI-Telefonie-Anbieter halten wir uns an höchste Datenschutzstandards im DACH-Raum."
     }
   ];
 
@@ -60,10 +60,10 @@ export default function Privacy() {
                 </Link>
                 
                 <h1 className="text-3xl font-orbitron font-bold mb-4">
-                  <GradientText>Privacy Policy</GradientText>
+                  <GradientText>Datenschutzerklärung ARAS AI</GradientText>
                 </h1>
                 <p className="text-muted-foreground">
-                  Last updated: January 2024
+                  100% DSGVO-konforme KI-Telefonie aus der Schweiz | Stand: Januar 2025
                 </p>
               </div>
 
@@ -95,14 +95,15 @@ export default function Privacy() {
                 className="mt-12 pt-8 border-t border-border/50"
               >
                 <h2 className="text-xl font-orbitron font-semibold text-primary mb-4">
-                  Contact Us
+                  Datenschutzbeauftragter
                 </h2>
                 <p className="text-muted-foreground">
-                  If you have any questions about this Privacy Policy, please contact us at:
+                  Für Fragen zur Datenverarbeitung in unserer KI-Outbound-Telefonie-Plattform:
                 </p>
                 <div className="mt-4 space-y-2 text-sm">
-                  <p className="text-muted-foreground">Email: privacy@arasai.com</p>
-                  <p className="text-muted-foreground">Address: 123 Innovation Drive, Tech City, TC 12345</p>
+                  <p className="text-muted-foreground">E-Mail: datenschutz@aras-plattform.ai</p>
+                  <p className="text-muted-foreground">Telefon: +41 43 344 6087</p>
+                  <p className="text-muted-foreground">Adresse: Schwarzott Capital Partners AG, Löwenstrasse 20, 8001 Zürich, Schweiz</p>
                 </div>
               </motion.div>
             </CardContent>

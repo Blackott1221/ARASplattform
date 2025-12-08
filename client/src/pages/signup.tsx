@@ -27,17 +27,17 @@ export default function Signup() {
   const features = [
     {
       icon: <Bot className="w-5 h-5" />,
-      title: "AI-Powered Voice Agents",
+      title: "Eigenes LLM 'ARAS Core' - Keine Abhängigkeit von externen AI-Anbietern",
       delay: 0,
     },
     {
       icon: <Users className="w-5 h-5" />,
-      title: "Smart Lead Generation",
+      title: "500+ parallele Anrufe mit menschlicher Sprachqualität",
       delay: 0.2,
     },
     {
       icon: <Phone className="w-5 h-5" />,
-      title: "Automated Campaigns",
+      title: "100% DSGVO-konform aus Schweizer Rechenzentren",
       delay: 0.4,
     },
   ];
@@ -137,7 +137,7 @@ export default function Signup() {
               transition={{ duration: 0.6, delay: 0.2 }}
               className="text-lg text-muted-foreground"
             >
-              The future of AI-powered sales automation
+              Die erste KI-Outbound-Telefonie-Plattform für skalierbaren B2B-Vertrieb
             </motion.div>
             
             <div className="space-y-4 mt-8">
@@ -208,12 +208,12 @@ export default function Signup() {
               <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                 <Link href="/app" className="hover:text-primary transition-colors">
                   <span className="flex items-center space-x-1">
-                    <span>Try Demo</span>
+                    <span>Zur Demo</span>
                     <ArrowRight className="w-3 h-3" />
                   </span>
                 </Link>
-                <span>•</span>
-                <span>No credit card required</span>
+                <span>• </span>
+                <span>14 Tage kostenlos testen • Keine Kreditkarte erforderlich</span>
               </div>
             </motion.div>
           </div>
@@ -232,58 +232,58 @@ export default function Signup() {
             <CardContent className="p-8">
               <div className="text-center mb-8">
                 <h1 className="text-3xl font-orbitron font-bold mb-2">
-                  <GradientText>Join ARAS AI</GradientText>
+                  <GradientText>Starten Sie mit ARAS AI</GradientText>
                 </h1>
                 <p className="text-muted-foreground">
-                  Create your ARAS AI account
+                  Erstellen Sie Ihr Konto für die KI-Outbound-Telefonie-Plattform
                 </p>
               </div>
               
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="firstName">First Name</Label>
+                    <Label htmlFor="firstName">Vorname</Label>
                     <Input 
                       id="firstName" 
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
-                      placeholder="Enter first name"
+                      placeholder="Ihr Vorname"
                       required
                     />
                   </div>
                   <div>
-                    <Label htmlFor="lastName">Last Name</Label>
+                    <Label htmlFor="lastName">Nachname</Label>
                     <Input 
                       id="lastName" 
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
-                      placeholder="Enter last name"
+                      placeholder="Ihr Nachname"
                       required
                     />
                   </div>
                 </div>
                 
                 <div>
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">E-Mail</Label>
                   <Input 
                     id="email" 
                     type="email" 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
+                    placeholder="Ihre geschäftliche E-Mail-Adresse"
                     required
                   />
                 </div>
                 
                 <div>
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password">Passwort</Label>
                   <div className="relative">
                     <Input 
                       id="password" 
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter your password"
+                      placeholder="Mindestens 8 Zeichen"
                       required
                       className="pr-10"
                     />
@@ -320,14 +320,14 @@ export default function Signup() {
                 </div>
                 
                 <div>
-                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <Label htmlFor="confirmPassword">Passwort bestätigen</Label>
                   <div className="relative">
                     <Input 
                       id="confirmPassword" 
                       type={showConfirmPassword ? "text" : "password"}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Confirm your password"
+                      placeholder="Passwort wiederholen"
                       required
                       className="pr-10"
                     />
@@ -373,19 +373,19 @@ export default function Signup() {
                   {isLoading ? (
                     <div className="flex items-center space-x-2">
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Creating account...</span>
+                      <span>Konto wird erstellt...</span>
                     </div>
                   ) : (
-                    "Create Account"
+                    "Kostenlos testen"
                   )}
                 </GlowButton>
               </form>
               
               <div className="mt-6 text-center">
                 <p className="text-muted-foreground">
-                  Already have an account?{" "}
+                  Bereits ARAS AI Nutzer?{" "}
                   <Link href="/login" className="text-primary hover:text-primary/80 transition-colors">
-                    Sign in
+                    Zur Anmeldung
                   </Link>
                 </p>
               </div>
@@ -394,7 +394,7 @@ export default function Signup() {
               <div className="lg:hidden mt-6 pt-6 border-t border-border text-center">
                 <Link href="/app" className="text-sm text-primary hover:text-primary/80 transition-colors">
                   <span className="flex items-center justify-center space-x-1">
-                    <span>Try Demo</span>
+                    <span>Zur Demo</span>
                     <ArrowRight className="w-3 h-3" />
                   </span>
                 </Link>

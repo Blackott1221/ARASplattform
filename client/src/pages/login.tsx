@@ -26,35 +26,35 @@ export default function Login() {
   const features = [
     {
       icon: <Bot className="w-6 h-6" />,
-      title: "AI-Powered Voice Agents",
-      subtitle: "Convert leads with intelligent conversations",
+      title: "Eigenes LLM (ARAS Core)",
+      subtitle: "Proprietäres Sprachmodell für menschliche Gespräche",
       accent: "from-blue-400 to-cyan-500"
     },
     {
       icon: <Zap className="w-6 h-6" />,
-      title: "Automated Campaigns", 
-      subtitle: "Scale your outreach effortlessly",
+      title: "500+ Parallele Anrufe", 
+      subtitle: "Unbegrenzte Skalierung ohne Qualitätsverlust",
       accent: "from-primary to-orange-500"
     },
     {
       icon: <Target className="w-6 h-6" />,
-      title: "Smart Lead Targeting",
-      subtitle: "Find your perfect customers instantly", 
+      title: "DSGVO-Konform",
+      subtitle: "100% Datenschutz aus Schweizer Rechenzentren", 
       accent: "from-green-400 to-emerald-500"
     },
     {
       icon: <TrendingUp className="w-6 h-6" />,
-      title: "Real-Time Analytics",
-      subtitle: "Track performance as it happens",
+      title: "CRM-Integration",
+      subtitle: "Nahtlose Anbindung an Salesforce, HubSpot & mehr",
       accent: "from-purple-400 to-violet-500"
     }
   ];
 
   const taglines = [
-    "The future of AI-powered sales automation",
-    "Transform prospects into customers with AI",
-    "Scale your sales with intelligent automation", 
-    "Where artificial intelligence meets revenue"
+    "Die erste KI-Outbound-Telefonie-Plattform für skalierbaren B2B-Vertrieb",
+    "Menschliche Sprachqualität trifft auf unbegrenzte Skalierung",
+    "Automatisieren Sie Ihre B2B-Telefonakquise - DSGVO-konform & erfolgreich", 
+    "Von Zürich für die DACH-Region: Schweizer Präzision in der KI-Telefonie"
   ];
 
   // Auto-rotate features every 3 seconds
@@ -203,9 +203,9 @@ export default function Login() {
               className="grid grid-cols-3 gap-4 pt-8"
             >
               {[
-                { label: "Calls Made", value: "50K+", icon: <Phone className="w-4 h-4" /> },
-                { label: "Leads Generated", value: "12K+", icon: <Users className="w-4 h-4" /> },
-                { label: "Revenue Driven", value: "$2M+", icon: <Sparkles className="w-4 h-4" /> },
+                { label: "Anrufe getätigt", value: "500K+", icon: <Phone className="w-4 h-4" /> },
+                { label: "Leads qualifiziert", value: "120K+", icon: <Users className="w-4 h-4" /> },
+                { label: "ROI-Steigerung", value: "340%", icon: <Sparkles className="w-4 h-4" /> },
               ].map((stat, i) => (
                 <motion.div
                   key={i}
@@ -241,36 +241,36 @@ export default function Login() {
             <CardContent className="p-8">
               <div className="text-center mb-8">
                 <h1 className="text-3xl font-orbitron font-bold mb-2">
-                  <GradientText>Welcome Back</GradientText>
+                  <GradientText>Willkommen zurück</GradientText>
                 </h1>
                 <p className="text-muted-foreground">
-                  Sign in to your ARAS AI account
+                  Melden Sie sich bei Ihrer ARAS AI KI-Telefonie-Plattform an
                 </p>
               </div>
               
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">E-Mail</Label>
                   <Input 
                     id="email" 
                     type="email" 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
+                    placeholder="Ihre E-Mail-Adresse"
                     required
                     className="mt-1"
                   />
                 </div>
                 
                 <div>
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password">Passwort</Label>
                   <div className="relative mt-1">
                     <Input 
                       id="password" 
                       type={showPassword ? "text" : "password"} 
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter your password"
+                      placeholder="Ihr Passwort"
                       required
                       className="pr-10"
                     />
@@ -304,7 +304,7 @@ export default function Login() {
                       htmlFor="remember"
                       className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                     >
-                      Remember me
+                      Angemeldet bleiben
                     </label>
                   </div>
                   <Button
@@ -313,7 +313,7 @@ export default function Login() {
                     className="px-0 font-normal"
                     onClick={handleForgotPassword}
                   >
-                    Forgot password?
+                    Passwort vergessen?
                   </Button>
                 </div>
                 
@@ -322,15 +322,15 @@ export default function Login() {
                   className="w-full"
                   disabled={isLoading}
                 >
-                  {isLoading ? "Signing in..." : "Sign In"}
+                  {isLoading ? "Anmeldung läuft..." : "Anmelden"}
                 </GlowButton>
               </form>
               
               <div className="mt-6 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Don't have an account?{" "}
+                  Noch kein ARAS AI Konto?{" "}
                   <Link href="/signup" className="text-primary hover:underline">
-                    Sign up
+                    Jetzt kostenlos testen
                   </Link>
                 </p>
               </div>

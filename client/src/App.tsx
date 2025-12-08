@@ -35,6 +35,8 @@ import Settings from "@/pages/settings";
 import AuthPage from "@/pages/auth-page";
 import ArasMailingPage from "@/pages/aras-mailing";
 import AppPage from "@/pages/app";
+import Blog from "@/pages/blog";
+import BlogPost from "@/pages/blog-post";
 
 // Memoized video background component - never re-renders to keep video playing continuously
 const VideoBackground = memo(() => {
@@ -96,6 +98,8 @@ function Router() {
         <Route path="/auth" component={AuthPage} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/welcome" component={Welcome} />
+        <Route path="/blog" component={Blog} />
+        <Route path="/blog/:slug" component={BlogPost} />
       
       {!user ? (
         <>
