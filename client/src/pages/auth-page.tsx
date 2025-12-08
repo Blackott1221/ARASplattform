@@ -3426,6 +3426,180 @@ function ArasLandingContent() {
           </motion.div>
         </div>
       </section>
+
+      {/* 🎯 FEATURES SECTION - Was ARAS AI heute tut */}
+      <section className="relative py-32 px-8" style={{ background: 'transparent' }}>
+        <div className="max-w-7xl mx-auto">
+          {/* Section Header */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="text-center mb-20"
+          >
+            <h2
+              className="text-5xl md:text-6xl font-black mb-6"
+              style={{
+                fontFamily: 'Orbitron, sans-serif',
+                background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #ffd700)',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                textShadow: '0 0 40px rgba(254, 145, 0, 0.3)'
+              }}
+            >
+              Was ARAS AI heute für Ihr Unternehmen tut
+            </h2>
+            <p className="text-xl text-white/70 max-w-4xl mx-auto leading-relaxed">
+              Die Alpha-Version von ARAS vereint Telefonie, Chat-Automatisierung, Analyse und Integrationen in einer einzigen Plattform – entwickelt für echte Geschäftsprozesse, nicht für Experimente.
+            </p>
+          </motion.div>
+
+          {/* Outbound Telefonie Feature Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="relative group"
+          >
+            {/* Glow Effect */}
+            <motion.div
+              className="absolute -inset-4 rounded-3xl blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+              style={{
+                background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.2), rgba(255, 215, 0, 0.2))'
+              }}
+            />
+
+            {/* Main Card */}
+            <div
+              className="relative rounded-2xl p-10 backdrop-blur-sm border"
+              style={{
+                background: 'rgba(0, 0, 0, 0.3)',
+                borderColor: 'rgba(254, 145, 0, 0.2)'
+              }}
+            >
+              {/* Feature Icon & Title */}
+              <div className="flex items-center gap-4 mb-6">
+                <motion.div
+                  whileHover={{ rotate: 360 }}
+                  transition={{ duration: 0.6 }}
+                  className="w-16 h-16 rounded-xl flex items-center justify-center"
+                  style={{
+                    background: 'linear-gradient(135deg, #FE9100, #ffd700)',
+                  }}
+                >
+                  <Phone className="w-8 h-8 text-black" />
+                </motion.div>
+                <div>
+                  <h3
+                    className="text-3xl font-black"
+                    style={{
+                      fontFamily: 'Orbitron, sans-serif',
+                      background: 'linear-gradient(135deg, #e9d7c4, #FE9100)',
+                      backgroundClip: 'text',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent'
+                    }}
+                  >
+                    Outbound Telefonie
+                  </h3>
+                  <p className="text-white/60 text-sm mt-1">
+                    ARAS führt echte Gespräche: klar, strukturiert und natürlich.
+                  </p>
+                </div>
+              </div>
+
+              {/* Features List */}
+              <div className="space-y-4 mb-8">
+                {[
+                  'Automatische Lead-Telefonate',
+                  'Einwandbehandlung & Gesprächslogik',
+                  'Menschlich klingende ARAS Voice Engine',
+                  'Terminbuchungen & Weiterleitungen',
+                  'Gesprächszusammenfassungen in Echtzeit'
+                ].map((feature, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.5, delay: 0.1 * index }}
+                    className="flex items-center gap-3 group/item"
+                  >
+                    <motion.div
+                      whileHover={{ scale: 1.2, rotate: 90 }}
+                      className="flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center"
+                      style={{
+                        background: 'linear-gradient(135deg, #FE9100, #ffd700)'
+                      }}
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-black" />
+                    </motion.div>
+                    <span className="text-white/80 group-hover/item:text-white transition-colors">
+                      {feature}
+                    </span>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Highlight Banner */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.8 }}
+                className="relative overflow-hidden rounded-xl p-6"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.15), rgba(255, 215, 0, 0.15))',
+                  border: '2px solid rgba(254, 145, 0, 0.3)'
+                }}
+              >
+                <motion.div
+                  className="absolute inset-0"
+                  animate={{
+                    backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                  }}
+                  transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
+                  style={{
+                    background: 'linear-gradient(90deg, transparent, rgba(254, 145, 0, 0.1), transparent)',
+                    backgroundSize: '200% 100%'
+                  }}
+                />
+                <div className="relative flex items-center gap-4">
+                  <motion.div
+                    animate={{
+                      scale: [1, 1.2, 1],
+                      rotate: [0, 5, -5, 0]
+                    }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    <Sparkles className="w-8 h-8 text-[#FE9100]" />
+                  </motion.div>
+                  <div>
+                    <p
+                      className="text-xl font-black"
+                      style={{
+                        fontFamily: 'Orbitron, sans-serif',
+                        background: 'linear-gradient(135deg, #FE9100, #ffd700)',
+                        backgroundClip: 'text',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent'
+                      }}
+                    >
+                      Bis zu 10.000 parallele Anrufe mit nur einem Klick möglich!
+                    </p>
+                    <p className="text-sm text-white/60 mt-1">
+                      Skaliere dein Outbound ohne Grenzen – von 1 bis 10.000 Anrufen gleichzeitig.
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
     </div>
   );
 }
