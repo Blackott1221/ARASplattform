@@ -6,7 +6,8 @@ import {
   voiceTasks, feedback, usageTracking, twilioSettings,
   subscriptionPlans, sessions
 } from '../../shared/schema';
-import { eq } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
+import bcrypt from 'bcryptjs';
 
 const router = Router();
 
@@ -25,13 +26,18 @@ function createCRUDRoutes(
 ) {
   const basePath = `/${tableName}`;
 
-  // GET ALL - List all records
+  // GET ALL - List all records (sorted by createdAt DESC if available)
   router.get(basePath, requireAdmin, async (req, res) => {
     try {
-      const records = await db.select().from(table);
+      // Check if table has createdAt column for sorting
+      const hasCreatedAt = 'createdAt' in table;
+      const records = hasCreatedAt 
+        ? await db.select().from(table).orderBy(desc(table.createdAt))
+        : await db.select().from(table);
+      console.log(`[ADMIN] Fetched ${records.length} records from ${tableName}`);
       res.json(records);
     } catch (error: any) {
-      console.error(`Error fetching ${tableName}:`, error);
+      console.error(`[ADMIN ERROR] Error fetching ${tableName}:`, error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -159,6 +165,106 @@ router.get('/stats', requireAdmin, async (req, res) => {
     });
   } catch (error: any) {
     console.error('Error fetching stats:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 🔐 SPECIAL USER ACTIONS
+
+// Change user password
+router.post('/users/:id/change-password', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update user password
+    const updated = await db
+      .update(users)
+      .set({ password: hashedPassword, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+
+    if (updated.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    console.log(`[ADMIN] Password changed for user ${id}`);
+    res.json({ success: true, message: 'Password changed successfully' });
+  } catch (error: any) {
+    console.error('[ADMIN ERROR] Change password failed:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Change user subscription plan
+router.post('/users/:id/change-plan', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { plan, status } = req.body;
+
+    if (!plan) {
+      return res.status(400).json({ error: 'Plan is required' });
+    }
+
+    const updateData: any = {
+      subscriptionPlan: plan,
+      updatedAt: new Date()
+    };
+
+    if (status) {
+      updateData.subscriptionStatus = status;
+    }
+
+    const updated = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, id))
+      .returning();
+
+    if (updated.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    console.log(`[ADMIN] Plan changed for user ${id} to ${plan}`);
+    res.json({ success: true, user: updated[0] });
+  } catch (error: any) {
+    console.error('[ADMIN ERROR] Change plan failed:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Reset user usage counters
+router.post('/users/:id/reset-usage', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const updated = await db
+      .update(users)
+      .set({ 
+        aiMessagesUsed: 0,
+        voiceCallsUsed: 0,
+        trialMessagesUsed: 0,
+        monthlyResetDate: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, id))
+      .returning();
+
+    if (updated.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    console.log(`[ADMIN] Usage reset for user ${id}`);
+    res.json({ success: true, user: updated[0] });
+  } catch (error: any) {
+    console.error('[ADMIN ERROR] Reset usage failed:', error);
     res.status(500).json({ error: error.message });
   }
 });
