@@ -455,6 +455,265 @@ function TranscriptContent({ isActive }: { isActive: boolean }) {
   );
 }
 
+// 🔒 Compliance Cards Component
+function ComplianceCards() {
+  const [selectedCard, setSelectedCard] = useState<number | null>(null);
+
+  const securityPillars = [
+    {
+      icon: Globe,
+      title: "Swiss Data Hosting",
+      subtitle: "EU + CH Regulatorik",
+      description: "Alle Daten werden ausschließlich in zertifizierten europäischen Rechenzentren gespeichert.",
+      bullets: [
+        "Keine Datenübertragung in die USA",
+        "Kein Zugriff externer Dienstleister"
+      ],
+      details: `ARAS nutzt ausschließlich ISO-27001-zertifizierte Rechenzentren in der EU und der Schweiz. 
+      
+Ihre Daten verlassen niemals den europäischen Rechtsraum. Es gibt keine automatischen Backups in Drittländer, keine Cloud-Provider mit US-Muttergesellschaften und keine versteckten Datenpipelines.
+
+Alle Hosting-Partner unterliegen der DSGVO und dem Schweizer Datenschutzgesetz (nDSG). Sie haben das Recht, jederzeit Auskunft über den Speicherort Ihrer Daten zu erhalten.`
+    },
+    {
+      icon: Shield,
+      title: "DSGVO- & nDSG-Konformität",
+      subtitle: "Vollständige Compliance",
+      description: "ARAS erfüllt sämtliche Anforderungen der EU-DSGVO sowie des Schweizer Datenschutzgesetzes.",
+      bullets: [
+        "Zweckbindung",
+        "Datensparsamkeit",
+        "Löschkonzepte",
+        "dokumentierte Verarbeitungsprozesse",
+        "Auditierbarkeit"
+      ],
+      details: `ARAS AI verarbeitet Telefonate, Texte und Systemmeldungen ausschließlich zweckgebunden und gemäß den europäischen Datenschutzstandards.
+
+Dazu gehören:
+• definierte Speicherfristen
+• dokumentierte technische & organisatorische Maßnahmen
+• Löschprozesse
+• Datenschutzfolgeabschätzung (falls erforderlich)
+
+Daten dürfen nur mit expliziter Freigabe exportiert oder übertragen werden. Jede Verarbeitung ist nachvollziehbar dokumentiert.`
+    },
+    {
+      icon: Target,
+      title: "Vollständige Protokollierung",
+      subtitle: "Audit Trails",
+      description: "Jeder relevante Vorgang wird revisionssicher erfasst:",
+      bullets: [
+        "Anrufe",
+        "Systemzugriffe",
+        "Datenverarbeitungen",
+        "Aktualisierungen",
+        "Nutzeraktionen"
+      ],
+      details: `ARAS protokolliert alle sicherheitsrelevanten Ereignisse in einem unveränderlichen Audit-Log.
+
+Sie können jederzeit nachvollziehen:
+• Wer hat wann auf welche Daten zugegriffen?
+• Welche Anrufe wurden geführt?
+• Welche Systemänderungen wurden vorgenommen?
+
+Die Logs werden verschlüsselt gespeichert und können für Compliance-Prüfungen exportiert werden. Aufbewahrungsdauer: mindestens 12 Monate, konfigurierbar.`
+    },
+    {
+      icon: Shield,
+      title: "Verschlüsselung auf Bankniveau",
+      subtitle: "Multi-Layer Encryption",
+      description: "Schutz auf höchstem Niveau:",
+      bullets: [
+        "Transport: TLS 1.3",
+        "Daten im Ruhezustand: AES-256",
+        "Schlüsselrotation automatisch",
+        "Multi-Layer Encryption für sensible Inhalte"
+      ],
+      details: `ARAS nutzt die gleichen Verschlüsselungsstandards wie Schweizer Banken.
+
+Transport-Layer:
+• TLS 1.3 für alle Verbindungen
+• Perfect Forward Secrecy
+• Certificate Pinning
+
+Data-at-Rest:
+• AES-256 Verschlüsselung
+• Automatische Schlüsselrotation alle 90 Tage
+• Hardware Security Modules (HSM) für Schlüsselverwaltung
+
+Sensible Gesprächsinhalte werden zusätzlich mit kundenspezifischen Schlüsseln verschlüsselt.`
+    },
+    {
+      icon: CheckCircle2,
+      title: "Kontrollierbare KI",
+      subtitle: "Keine Blackbox",
+      description: "ARAS arbeitet mit einer transparenten Entscheidungslogik:",
+      bullets: [
+        "nachvollziehbare Antworten",
+        "erklärbare Einwandbehandlung",
+        "definierbare Gesprächsregeln",
+        "keine unkontrollierten LLM-Ausgaben"
+      ],
+      details: `ARAS nutzt eine kombinierte Architektur:
+
+• eigene Entscheidungslogik (Rulesets)
+• gesicherte Prompt-Frameworks
+• parameterisierte Gesprächspfade
+• definierte Fallbacks
+
+Die KI darf keine unkontrollierten Aussagen treffen – jede Antwort ist prüfbar.
+
+Sie können jederzeit:
+• Gesprächsregeln definieren
+• Verbotene Themen festlegen
+• Eskalationspfade konfigurieren
+• Ausgaben validieren
+
+Transparenz statt Blackbox.`
+    }
+  ];
+
+  return (
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {securityPillars.map((pillar, index) => (
+          <motion.div
+            key={index}
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ 
+              duration: 0.7, 
+              delay: index * 0.15,
+              ease: [0.25, 0.8, 0.25, 1]
+            }}
+            whileHover={{ scale: 1.02 }}
+            onClick={() => setSelectedCard(selectedCard === index ? null : index)}
+            className="group cursor-pointer relative"
+          >
+            {/* Animated Border */}
+            <motion.div
+              className="absolute inset-0 rounded-2xl"
+              style={{
+                background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #e9d7c4)',
+                backgroundSize: '200% 200%',
+                padding: '1px'
+              }}
+              animate={{
+                backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+              }}
+              transition={{
+                duration: 12,
+                repeat: Infinity,
+                ease: 'linear'
+              }}
+            >
+              <div className="w-full h-full rounded-2xl" style={{ background: '#151515' }} />
+            </motion.div>
+
+            {/* Card Content */}
+            <div className="relative p-9 rounded-2xl" style={{ 
+              background: '#151515',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)'
+            }}>
+              {/* Icon */}
+              <motion.div
+                whileHover={{ scale: 1.1 }}
+                transition={{ duration: 0.25 }}
+                className="mb-6"
+              >
+                <pillar.icon 
+                  className="w-12 h-12 transition-colors duration-300"
+                  style={{
+                    color: selectedCard === index ? '#FE9100' : '#e9d7c4'
+                  }}
+                />
+              </motion.div>
+
+              {/* Title */}
+              <h3
+                className="text-2xl font-black mb-2"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  color: '#e9d7c4'
+                }}
+              >
+                {pillar.title}
+              </h3>
+
+              {/* Subtitle */}
+              <p className="text-sm text-[#FE9100]/80 mb-4 font-semibold">
+                {pillar.subtitle}
+              </p>
+
+              {/* Description */}
+              <p className="text-[17px] text-white/70 leading-relaxed mb-4">
+                {pillar.description}
+              </p>
+
+              {/* Bullets */}
+              {pillar.bullets && (
+                <ul className="space-y-2">
+                  {pillar.bullets.map((bullet, i) => (
+                    <li key={i} className="text-[15px] text-white/60 flex items-start gap-2">
+                      <span className="text-[#FE9100] mt-1">•</span>
+                      <span>{bullet}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* Click Indicator */}
+              <motion.div
+                className="mt-6 text-xs text-[#FE9100]/60 font-semibold uppercase tracking-wider"
+                animate={{ opacity: [0.6, 1, 0.6] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                {selectedCard === index ? '← Details ausblenden' : 'Klicken für Details →'}
+              </motion.div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Detail Panel */}
+      <AnimatePresence>
+        {selectedCard !== null && (
+          <motion.div
+            initial={{ opacity: 0, height: 0, marginTop: 0 }}
+            animate={{ opacity: 1, height: 'auto', marginTop: 32 }}
+            exit={{ opacity: 0, height: 0, marginTop: 0 }}
+            transition={{ duration: 0.5, ease: [0.25, 0.8, 0.25, 1] }}
+            className="overflow-hidden"
+          >
+            <motion.div
+              className="rounded-2xl border-t-4 p-10"
+              style={{
+                background: 'rgba(15, 15, 15, 0.7)',
+                backdropFilter: 'blur(14px)',
+                borderColor: '#FE9100'
+              }}
+            >
+              <h4
+                className="text-2xl font-black mb-6"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  color: '#e9d7c4'
+                }}
+              >
+                {securityPillars[selectedCard].title} — Technische Details
+              </h4>
+              <div className="text-[17px] text-white/70 leading-relaxed whitespace-pre-line">
+                {securityPillars[selectedCard].details}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
 export default function AuthPage() {
   const [showFeaturesPanel, setShowFeaturesPanel] = useState(false);
   const [, setLocation] = useLocation();
@@ -3402,6 +3661,71 @@ export default function AuthPage() {
               {/* RIGHT: Live Call Window */}
               <LiveCallWindow />
             </div>
+          </div>
+        </section>
+
+        {/* 🔒 COMPLIANCE & SECURITY SECTION */}
+        <section className="relative px-8" style={{ background: '#0f0f0f', paddingTop: '160px', paddingBottom: '160px' }}>
+          <div className="max-w-[1500px] mx-auto">
+            {/* Section Header */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
+              className="text-center mb-24"
+            >
+              <h2
+                className="text-5xl md:text-6xl font-black mb-6"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  color: '#e9d7c4'
+                }}
+              >
+                Schweizer Standards für Datenschutz & Sicherheit
+              </h2>
+              <p className="text-xl text-white/70 max-w-4xl mx-auto leading-relaxed">
+                ARAS AI verarbeitet sensible Unternehmens- und Kundenkommunikation.
+                Darum basiert die gesamte Plattform auf einem Sicherheitsmodell, das für europäische Unternehmen entwickelt wurde – ohne Abhängigkeit von US-Clouds oder externen Datenpipelines.
+              </p>
+            </motion.div>
+
+            {/* Security Cards Grid */}
+            <ComplianceCards />
+
+            {/* Security Footer Badges */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8, delay: 0.8 }}
+              className="flex flex-wrap justify-center gap-8 mt-24"
+            >
+              {['ISO-27001 Infrastruktur', 'SOC2 Typ II Hosting', 'EU-only Data Processing'].map((badge, index) => (
+                <motion.div
+                  key={index}
+                  whileHover={{ scale: 1.05 }}
+                  className="px-6 py-3 rounded-lg border"
+                  style={{
+                    borderColor: 'rgba(254, 145, 0, 0.3)',
+                    background: 'rgba(254, 145, 0, 0.05)'
+                  }}
+                >
+                  <div
+                    className="text-sm font-bold uppercase tracking-wider"
+                    style={{
+                      fontFamily: 'Orbitron, sans-serif',
+                      background: 'linear-gradient(135deg, #e9d7c4, #FE9100)',
+                      backgroundClip: 'text',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent'
+                    }}
+                  >
+                    {badge}
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
           </div>
         </section>
 
