@@ -669,26 +669,28 @@ export default function AuthPage() {
       <div className="relative z-10 flex flex-col p-8">
         {/* Auth Form Section - Centered */}
         <div className="flex items-center justify-center py-20">
-          <div className="w-full max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
-          
-          {/* LEFT SIDE - Hero Content */}
-          <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-            className="space-y-10"
-          >
-            {/* Live Date and Time */}
+          <div className="w-full max-w-7xl mx-auto">
+            {/* Live Date and Time - CENTERED ABOVE GRID */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="text-center"
+              className="flex justify-center mb-10"
             >
               <LiveDateTime />
             </motion.div>
 
-            {/* Pre-Launch Badge */}
+            {/* MAIN GRID */}
+            <div className="grid lg:grid-cols-2 gap-16 items-center">
+          
+            {/* LEFT SIDE - Hero Content */}
+            <motion.div
+              initial={{ opacity: 0, x: -50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.3 }}
+              className="space-y-10"
+            >
+              {/* Pre-Launch Badge */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -2000,8 +2002,9 @@ export default function AuthPage() {
               </div>
             </div>
           </motion.div>
-          </div>
-        </div>
+            </div> {/* Close grid */}
+          </div> {/* Close max-w-7xl */}
+        </div> {/* Close py-20 */}
 
         {/* ⭐ HERO SECTION - Ultra Clean Minimal Design */}
         <section className="relative min-h-screen w-full flex items-center justify-center" style={{ background: 'transparent' }}>
