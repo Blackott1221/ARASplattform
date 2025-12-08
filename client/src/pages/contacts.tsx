@@ -351,7 +351,7 @@ export default function Contacts() {
   }
 
   return (
-    <div className="flex h-screen relative overflow-hidden bg-black">
+    <div className="flex h-screen relative overflow-hidden bg-transparent">
       <Sidebar
         activeSection="contacts"
         onSectionChange={handleSectionChange}

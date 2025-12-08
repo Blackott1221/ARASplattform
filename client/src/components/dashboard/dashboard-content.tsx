@@ -138,7 +138,7 @@ export function DashboardContent({ user }: DashboardContentProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="backdrop-blur-md bg-black/30 border border-white/10 rounded-2xl p-6"
+            className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-2xl p-6"
           >
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
@@ -218,7 +218,7 @@ export function DashboardContent({ user }: DashboardContentProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="backdrop-blur-md bg-black/30 border border-white/10 rounded-2xl p-6"
+            className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-2xl p-6"
           >
             <h3 className="font-bold text-white mb-4 flex items-center gap-2">
               <Zap className="w-5 h-5 text-[#FE9100]" />
@@ -256,7 +256,7 @@ export function DashboardContent({ user }: DashboardContentProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="backdrop-blur-md bg-black/30 border border-white/10 rounded-2xl p-6"
+            className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-2xl p-6"
           >
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
@@ -303,7 +303,7 @@ export function DashboardContent({ user }: DashboardContentProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="backdrop-blur-md bg-black/30 border border-[#FE9100]/30 rounded-2xl p-6 cursor-pointer hover:border-[#FE9100]/50 transition-all group"
+            className="backdrop-blur-sm bg-black/20 border border-[#FE9100]/30 rounded-2xl p-6 cursor-pointer hover:border-[#FE9100]/50 transition-all group"
             onClick={() => window.location.href = '/app'}
           >
             <div className="flex items-center gap-3 mb-3">
@@ -329,7 +329,7 @@ export function DashboardContent({ user }: DashboardContentProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className="backdrop-blur-md bg-black/30 border border-white/10 rounded-2xl p-6"
+            className="backdrop-blur-sm bg-black/20 border border-white/10 rounded-2xl p-6"
           >
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-[#FE9100]/20 flex items-center justify-center">
@@ -461,7 +461,7 @@ export function DashboardContent({ user }: DashboardContentProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.8 }}
-        className="backdrop-blur-md bg-black/30 border border-[#FE9100]/30 rounded-2xl p-6"
+        className="backdrop-blur-sm bg-black/20 border border-[#FE9100]/30 rounded-2xl p-6"
       >
         <div className="flex items-center gap-3 mb-4">
           <div className="w-12 h-12 rounded-xl bg-[#FE9100]/20 flex items-center justify-center">

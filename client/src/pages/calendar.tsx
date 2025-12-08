@@ -860,11 +860,7 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="flex h-screen relative overflow-hidden">
-      {/* Premium Background */}
-      <div className="absolute inset-0 opacity-[0.08] pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#FE9100]/10 via-transparent to-[#E9D7C4]/10" />
-      </div>
+    <div className="flex h-screen relative overflow-hidden bg-transparent">
 
       <Sidebar
         activeSection="calendar"
@@ -881,7 +877,7 @@ export default function CalendarPage() {
           isVisible={true}
         />
 
-        <div className="flex-1 overflow-y-auto p-6" style={{ background: 'linear-gradient(to bottom, #0a0a0a, #151515)' }}>
+        <div className="flex-1 overflow-y-auto p-6" style={{ background: 'transparent' }}>
           <div className="max-w-5xl mx-auto">
             {/* Header */}
             <motion.div
