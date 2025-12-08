@@ -393,17 +393,17 @@ export default function Contacts() {
         />
 
         <div className="flex-1 overflow-y-auto px-6 py-6" style={{ background: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.3))' }}>
-          <div className="max-w-7xl mx-auto">
-            {/* Header Row */}
-            <div className="flex items-start justify-between gap-6 mb-6">
-              {/* Left - Title & Buttons */}
-              <div className="flex-1">
-                <div className="mb-4">
-                  <h1 className="text-3xl font-black mb-1" style={{ fontFamily: 'Orbitron, sans-serif', background: 'linear-gradient(135deg, #FE9100 0%, #ff6b00 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>KONTAKTE</h1>
-                  <p className="text-xs text-gray-400">{contacts.length} gespeichert</p>
-                </div>
+          <div className="max-w-7xl mx-auto flex gap-6">
+            {/* Left - Main Content */}
+            <div className="flex-1 max-w-3xl">
+              {/* Header */}
+              <div className="mb-4">
+                <h1 className="text-3xl font-black mb-1" style={{ fontFamily: 'Orbitron, sans-serif', background: 'linear-gradient(135deg, #FE9100 0%, #ff6b00 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>KONTAKTE</h1>
+                <p className="text-xs text-gray-400">{contacts.length} gespeichert</p>
+              </div>
 
-                <div className="flex gap-3">
+              {/* Buttons Row */}
+              <div className="flex gap-3 mb-6">
                 {/* CSV Upload - HIGH END */}
                 <motion.div 
                   className="relative"
@@ -611,67 +611,9 @@ export default function Contacts() {
                     <span>Neu</span>
                   </div>
                 </motion.button>
-                </div>
               </div>
 
-              {/* Right - Info Panel (Sticky Note) */}
-              <AnimatePresence>
-                {showInfoPanel && (
-                  <motion.div
-                    initial={{ opacity: 0, x: 20, rotate: 2 }}
-                    animate={{ opacity: 1, x: 0, rotate: -1 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                    className="w-80 relative"
-                  >
-                    <div className="backdrop-blur-sm bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-l-4 border-[#FE9100] rounded-r-lg p-4 shadow-xl relative">
-                      {/* Close Button */}
-                      <button
-                        onClick={() => setShowInfoPanel(false)}
-                        className="absolute top-2 right-2 p-1 hover:bg-white/10 rounded transition-colors"
-                      >
-                        <X className="w-3 h-3 text-gray-400" />
-                      </button>
-
-                      {/* Sticky Note Icon */}
-                      <div className="flex items-start gap-3 mb-3">
-                        <div className="w-8 h-8 rounded-lg bg-[#FE9100]/20 flex items-center justify-center flex-shrink-0">
-                          <StickyNote className="w-4 h-4 text-[#FE9100]" />
-                        </div>
-                        <div>
-                          <h3 className="text-xs font-bold text-[#FE9100] uppercase tracking-wide">CSV Format Info</h3>
-                        </div>
-                      </div>
-
-                      {/* Typed Text */}
-                      <p className="text-xs text-gray-300 leading-relaxed mb-3">
-                        {typedText}
-                        <motion.span
-                          animate={{ opacity: [1, 0] }}
-                          transition={{ duration: 0.5, repeat: Infinity }}
-                          className="inline-block w-1 h-3 bg-[#FE9100] ml-0.5"
-                        />
-                      </p>
-
-                      {/* Download Button */}
-                      <button
-                        onClick={downloadCSVTemplate}
-                        className="w-full px-3 py-2 text-xs font-medium rounded-lg transition-all flex items-center justify-center gap-2 hover:scale-105"
-                        style={{
-                          background: 'linear-gradient(135deg, #FE9100 0%, #ff6b00 100%)',
-                          color: 'black'
-                        }}
-                      >
-                        <Download className="w-3 h-3" />
-                        Vorlage herunterladen
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Search - MODERN CI */}
+              {/* Search - MODERN CI */}
             <div className="mb-4">
               <div className="relative max-w-xs">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#FE9100]/50" />
@@ -685,7 +627,7 @@ export default function Contacts() {
               </div>
             </div>
 
-            {/* Add/Edit Form */}
+              {/* Add/Edit Form */}
             <AnimatePresence>
               {showAddForm && (
                 <motion.div
@@ -786,7 +728,7 @@ export default function Contacts() {
               )}
             </AnimatePresence>
 
-            {/* Contacts List - FLAT CARDS */}
+              {/* Contacts List - FLAT CARDS */}
             <div className="space-y-1.5">
               {contactsLoading ? (
                 <div className="text-center py-12 text-gray-500 text-xs">
@@ -880,6 +822,63 @@ export default function Contacts() {
                 ))
               )}
             </div>
+            </div>
+
+            {/* Right - Info Panel (Sticky) */}
+            <AnimatePresence>
+              {showInfoPanel && (
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  transition={{ duration: 0.3 }}
+                  className="w-80 flex-shrink-0 sticky top-6 h-fit"
+                >
+                  <div className="backdrop-blur-sm bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-l-4 border-[#FE9100] rounded-r-lg p-4 shadow-xl">
+                    {/* Close Button */}
+                    <button
+                      onClick={() => setShowInfoPanel(false)}
+                      className="absolute top-2 right-2 p-1 hover:bg-white/10 rounded transition-colors"
+                    >
+                      <X className="w-3 h-3 text-gray-400" />
+                    </button>
+
+                    {/* Sticky Note Icon */}
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="w-8 h-8 rounded-lg bg-[#FE9100]/20 flex items-center justify-center flex-shrink-0">
+                        <StickyNote className="w-4 h-4 text-[#FE9100]" />
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-bold text-[#FE9100] uppercase tracking-wide">CSV Format Info</h3>
+                      </div>
+                    </div>
+
+                    {/* Typed Text */}
+                    <p className="text-xs text-gray-300 leading-relaxed mb-3">
+                      {typedText}
+                      <motion.span
+                        animate={{ opacity: [1, 0] }}
+                        transition={{ duration: 0.5, repeat: Infinity }}
+                        className="inline-block w-1 h-3 bg-[#FE9100] ml-0.5"
+                      />
+                    </p>
+
+                    {/* Download Button */}
+                    <button
+                      onClick={downloadCSVTemplate}
+                      className="w-full px-3 py-2 text-xs font-medium rounded-lg transition-all flex items-center justify-center gap-2 hover:scale-105"
+                      style={{
+                        background: 'linear-gradient(135deg, #FE9100 0%, #ff6b00 100%)',
+                        color: 'black'
+                      }}
+                    >
+                      <Download className="w-3 h-3" />
+                      Vorlage herunterladen
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>
