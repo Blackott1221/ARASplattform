@@ -39,6 +39,10 @@ import AppPage from "@/pages/app";
 import Blog from "@/pages/blog";
 import BlogPost from "@/pages/blog-post";
 
+// 🎯 INTERNAL CRM SYSTEM - Command Center (admin/staff only)
+import InternalDashboard from "@/pages/internal/dashboard";
+import InternalContacts from "@/pages/internal/contacts";
+
 // Memoized video background component - never re-renders to keep video playing continuously
 const VideoBackground = memo(() => {
   useEffect(() => {
@@ -186,6 +190,14 @@ function Router() {
           <Route path="/app/settings" component={Settings} />
           <Route path="/aras-mailing" component={ArasMailingPage} />
           <Route path="/app/aras-mailing" component={ArasMailingPage} />
+          
+          {/* 🎯 INTERNAL CRM ROUTES - Only for admin/staff */}
+          <Route path="/internal/dashboard" component={InternalDashboard} />
+          <Route path="/internal/contacts" component={InternalContacts} />
+          <Route path="/internal" component={() => {
+            window.location.href = '/internal/dashboard';
+            return null;
+          }} />
         </>
       )}
       
