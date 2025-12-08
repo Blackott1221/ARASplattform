@@ -536,7 +536,7 @@ function PremiumFooter() {
 
   return (
     <>
-      <footer className="relative" style={{ background: '#0f0f0f' }}>
+      <footer className="relative" style={{ background: 'transparent' }}>
         {/* Animated Top Border */}
         <motion.div
           className="h-[2px] w-full"
@@ -3633,6 +3633,48 @@ export default function AuthPage() {
           </div> {/* Close max-w-7xl */}
         </div> {/* Close py-20 */}
 
+        {/* 📞 CALL-FLOW SECTION - Wie ARAS telefoniert */}
+        <section className="relative py-32 px-8" style={{ background: 'transparent' }}>
+          <div className="max-w-7xl mx-auto">
+            {/* Section Header */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
+              className="text-center mb-20"
+            >
+              <h2
+                className="text-5xl md:text-6xl font-black mb-6"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #ffd700)',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent'
+                }}
+              >
+                So führt ARAS AI ein echtes Gespräch – Schritt für Schritt
+              </h2>
+              <p className="text-xl text-white/70 max-w-4xl mx-auto leading-relaxed mb-4">
+                Der gesamte Telefonie-Prozess läuft autonom, transparent und nachvollziehbar ab.
+              </p>
+              <p className="text-lg text-white/60 max-w-3xl mx-auto">
+                Sie kontrollieren jeden Schritt – ARAS übernimmt die Ausführung.
+              </p>
+            </motion.div>
+
+            {/* Main Content: Timeline + Live Call Window */}
+            <div className="grid lg:grid-cols-2 gap-16 items-start">
+              {/* LEFT: Timeline */}
+              <CallFlowTimeline />
+
+              {/* RIGHT: Live Call Window */}
+              <LiveCallWindow />
+            </div>
+          </div>
+        </section>
+
         {/* ⭐ HERO SECTION - Ultra Clean Minimal Design */}
         <section className="relative min-h-screen w-full flex items-center justify-center" style={{ background: 'transparent' }}>
           <div className="relative max-w-5xl mx-auto px-8 text-center">
@@ -4323,50 +4365,8 @@ export default function AuthPage() {
           </div>
         </section>
 
-        {/* 📞 CALL-FLOW SECTION - Wie ARAS telefoniert */}
-        <section className="relative py-32 px-8" style={{ background: '#0f0f0f' }}>
-          <div className="max-w-7xl mx-auto">
-            {/* Section Header */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8 }}
-              className="text-center mb-20"
-            >
-              <h2
-                className="text-5xl md:text-6xl font-black mb-6"
-                style={{
-                  fontFamily: 'Orbitron, sans-serif',
-                  background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #ffd700)',
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent'
-                }}
-              >
-                So führt ARAS AI ein echtes Gespräch – Schritt für Schritt
-              </h2>
-              <p className="text-xl text-white/70 max-w-4xl mx-auto leading-relaxed mb-4">
-                Der gesamte Telefonie-Prozess läuft autonom, transparent und nachvollziehbar ab.
-              </p>
-              <p className="text-lg text-white/60 max-w-3xl mx-auto">
-                Sie kontrollieren jeden Schritt – ARAS übernimmt die Ausführung.
-              </p>
-            </motion.div>
-
-            {/* Main Content: Timeline + Live Call Window */}
-            <div className="grid lg:grid-cols-2 gap-16 items-start">
-              {/* LEFT: Timeline */}
-              <CallFlowTimeline />
-
-              {/* RIGHT: Live Call Window */}
-              <LiveCallWindow />
-            </div>
-          </div>
-        </section>
-
         {/* 🔒 COMPLIANCE & SECURITY SECTION */}
-        <section className="relative px-8" style={{ background: '#0f0f0f', paddingTop: '160px', paddingBottom: '160px' }}>
+        <section className="relative px-8" style={{ background: 'transparent', paddingTop: '160px', paddingBottom: '160px' }}>
           <div className="max-w-[1500px] mx-auto">
             {/* Section Header */}
             <motion.div
@@ -4431,7 +4431,7 @@ export default function AuthPage() {
         </section>
 
         {/* 💎 PRICING & ALPHA ADVANTAGES SECTION */}
-        <section className="relative px-8" style={{ background: '#0f0f0f', paddingTop: '160px', paddingBottom: '160px' }}>
+        <section className="relative px-8" style={{ background: 'transparent', paddingTop: '160px', paddingBottom: '160px' }}>
           <div className="max-w-[1400px] mx-auto">
             {/* Section Header */}
             <motion.div
@@ -4501,7 +4501,7 @@ export default function AuthPage() {
         </section>
 
         {/* 📋 FAQ SECTION */}
-        <section className="relative px-8" style={{ background: '#0f0f0f', paddingTop: '160px', paddingBottom: '160px' }}>
+        <section className="relative px-8" style={{ background: 'transparent', paddingTop: '160px', paddingBottom: '160px' }}>
           <div className="max-w-[1200px] mx-auto">
             {/* Section Header */}
             <motion.div
