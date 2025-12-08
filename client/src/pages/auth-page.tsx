@@ -26,7 +26,7 @@ function LiveDateTime() {
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-    }, 10); // Update every 10ms for smooth milliseconds
+    }, 1000); // Update every second
 
     return () => clearInterval(timer);
   }, []);
@@ -45,16 +45,14 @@ function LiveDateTime() {
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
     const seconds = date.getSeconds().toString().padStart(2, '0');
-    const milliseconds = Math.floor(date.getMilliseconds() / 10).toString().padStart(2, '0');
 
     return {
       date: `${dayName}. ${day}. ${month} ${year}`,
-      time: `${hours}:${minutes}:${seconds}`,
-      ms: milliseconds
+      time: `${hours}:${minutes}:${seconds}`
     };
   };
 
-  const { date, time, ms } = formatDateTime(currentTime);
+  const { date, time } = formatDateTime(currentTime);
 
   return (
     <div className="flex justify-center w-full">
@@ -63,30 +61,30 @@ function LiveDateTime() {
         animate={{ opacity: 1, y: 0 }}
         className="relative"
       >
-        {/* Glow Effect */}
+        {/* Subtle Glow Effect */}
         <motion.div
-          className="absolute inset-0 rounded-2xl blur-xl"
+          className="absolute inset-0 rounded-xl blur-lg"
           style={{
-            background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.2), rgba(233, 215, 196, 0.2))',
+            background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.1), rgba(233, 215, 196, 0.1))',
           }}
           animate={{
-            opacity: [0.3, 0.6, 0.3]
+            opacity: [0.2, 0.3, 0.2]
           }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
         />
         
         {/* Main Container */}
         <div
-          className="relative px-8 py-4 rounded-2xl backdrop-blur-md"
+          className="relative px-6 py-3 rounded-xl backdrop-blur-sm"
           style={{
-            background: 'rgba(0, 0, 0, 0.2)',
-            border: '1px solid rgba(254, 145, 0, 0.2)',
+            background: 'rgba(0, 0, 0, 0.15)',
+            border: '1px solid rgba(254, 145, 0, 0.15)',
           }}
         >
           <div className="flex flex-col items-center gap-1">
             {/* Date */}
             <div
-              className="text-xs tracking-wider opacity-80"
+              className="text-xs tracking-wide opacity-60"
               style={{
                 fontFamily: 'Orbitron, sans-serif',
                 color: '#e9d7c4'
@@ -95,35 +93,23 @@ function LiveDateTime() {
               {date}
             </div>
             
-            {/* Time with Milliseconds */}
-            <div className="flex items-center gap-2">
+            {/* Time without Milliseconds */}
+            <div className="flex items-center gap-1.5">
               <span
-                className="text-2xl font-black"
+                className="text-lg font-semibold"
                 style={{
                   fontFamily: 'Orbitron, sans-serif',
-                  background: 'linear-gradient(135deg, #e9d7c4, #FE9100)',
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent'
+                  color: '#e9d7c4',
+                  opacity: 0.8
                 }}
               >
                 {time}
               </span>
               <span
-                className="text-sm font-bold opacity-60"
+                className="text-xs tracking-wide opacity-50"
                 style={{
                   fontFamily: 'Orbitron, sans-serif',
-                  color: '#FE9100'
-                }}
-              >
-                .{ms}
-              </span>
-              <span
-                className="text-xs tracking-wider"
-                style={{
-                  fontFamily: 'Orbitron, sans-serif',
-                  color: '#e9d7c4',
-                  opacity: 0.7
+                  color: '#e9d7c4'
                 }}
               >
                 Uhr
