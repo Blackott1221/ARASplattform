@@ -18,6 +18,10 @@ Du erhältst:
 - Einen Firmenkontext (userContext) mit:
   - Firma, Branche, Jobrolle
   - aiProfile: Produkte, Services, Zielgruppen, Value Proposition, Unique Selling Points, gewünschte Tonalität
+- Optional einen Kontakt-Kontext (contactContext) mit:
+  - Name, Firma, E-Mail, Notizen des Ansprechpartners
+  - Status: Bestandskontakt oder neuer Lead
+  - Nutze diese Infos um Fragen und Call-Prompt genauer auf diese Person zuzuschneiden
 
 **Ziele:**
 1. Prüfe, ob der Auftrag des Nutzers ausreichend klar ist, um einen hochwertigen Outbound Call durchzuführen.
@@ -65,10 +69,19 @@ Du gibst deine Antwort ausschließlich als JSON mit folgenden Feldern zurück:
 - Fragen müssen konkret, kurz und vom Nutzer leicht beantwortbar sein`;
 
 
+interface ContactContext {
+  name?: string;
+  company?: string;
+  phone?: string;
+  email?: string;
+  notes?: string;
+}
+
 interface ValidationInput {
   userInput: string;
   contactName: string;
   previousAnswers?: Record<string, string>;
+  contactContext?: ContactContext;
   userContext: {
     userName: string;
     company?: string;
@@ -218,12 +231,29 @@ ${aiProfile.chatInsightsSummary}`;
       }
     }
 
+    // 🔥 Contact-Kontext (wenn verfügbar)
+    let contactContextString = '';
+    if (input.contactContext) {
+      contactContextString = `\n\n**KONTAKT-DETAILS (${input.contactName}):**`;
+      if (input.contactContext.company) {
+        contactContextString += `\n- Firma: ${input.contactContext.company}`;
+      }
+      if (input.contactContext.email) {
+        contactContextString += `\n- E-Mail: ${input.contactContext.email}`;
+      }
+      if (input.contactContext.notes) {
+        contactContextString += `\n- Notizen: ${input.contactContext.notes}`;
+      }
+      contactContextString += `\n- Status: Bestandskontakt (bekannte Person)`;
+    }
+
     // 🔥 Baue Prompt mit ARAS_CORE_SYSTEM_PROMPT
     const userPrompt = `Analysiere diese Anruf-Anfrage:
 
 ${userContextString}
 
 **KONTAKT:** ${input.contactName}
+${contactContextString}
 **ANFRAGE:** "${input.userInput}"
 ${answersContext}
 

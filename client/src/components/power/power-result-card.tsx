@@ -14,7 +14,12 @@ interface PowerResultCardProps {
   transcript?: string | any[];
   duration?: number;
   error?: string;
+  phoneNumber?: string;
+  contactName?: string;
+  linkedContact?: { id: number; name: string; company?: string } | null;
   onNewCall: () => void;
+  onLinkToContact?: (phoneNumber: string, contactName?: string) => void;
+  onSaveAsNewContact?: (phoneNumber: string, contactName?: string) => void;
 }
 
 export function PowerResultCard({
@@ -23,7 +28,12 @@ export function PowerResultCard({
   transcript,
   duration,
   error,
-  onNewCall
+  phoneNumber,
+  contactName,
+  linkedContact,
+  onNewCall,
+  onLinkToContact,
+  onSaveAsNewContact
 }: PowerResultCardProps) {
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -288,11 +298,74 @@ export function PowerResultCard({
           </motion.div>
         )}
 
+        {/* 📇 Contact-Verknüpfung */}
+        {phoneNumber && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="mb-6 p-4 rounded-xl"
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.08)'
+            }}
+          >
+            {linkedContact ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-xs text-gray-400 mb-1">Verknüpft mit Kontakt:</div>
+                  <div className="text-sm font-semibold text-white">
+                    {linkedContact.name}
+                    {linkedContact.company && (
+                      <span className="text-xs text-gray-400 ml-2">({linkedContact.company})</span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-xs" style={{ color: CI.orange }}>✓ Gespeichert</div>
+              </div>
+            ) : (
+              <div>
+                <div className="text-xs font-semibold mb-3" style={{ color: CI.goldLight }}>
+                  Diesen Anruf einem Kontakt zuordnen
+                </div>
+                <div className="flex gap-2">
+                  {onSaveAsNewContact && (
+                    <button
+                      onClick={() => onSaveAsNewContact(phoneNumber, contactName)}
+                      className="flex-1 px-4 py-2.5 rounded-lg text-xs font-semibold transition-all hover:scale-[1.02]"
+                      style={{
+                        background: 'rgba(254,145,0,0.12)',
+                        border: '1px solid rgba(254,145,0,0.25)',
+                        color: CI.orange
+                      }}
+                    >
+                      Als neuen Kontakt speichern
+                    </button>
+                  )}
+                  {onLinkToContact && (
+                    <button
+                      onClick={() => onLinkToContact(phoneNumber, contactName)}
+                      className="flex-1 px-4 py-2.5 rounded-lg text-xs font-semibold transition-all hover:scale-[1.02]"
+                      style={{
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        color: '#d1d5db'
+                      }}
+                    >
+                      Mit Kontakt verknüpfen
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+
         {/* Action Buttons */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
+          transition={{ delay: 0.7 }}
           className="flex gap-3"
         >
           <button

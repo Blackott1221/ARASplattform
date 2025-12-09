@@ -2844,7 +2844,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   // 🔥 NEUE ROUTE: Prompt-Validierung mit Gemini 2.5 Flash
   app.post('/api/aras-voice/validate-prompt', requireAuth, async (req: any, res) => {
     try {
-      const { message, contactName, answers } = req.body;
+      const { message, contactName, answers, contactId, phoneNumber } = req.body;
       const userId = req.session.userId;
       const user = await storage.getUser(userId);
       
@@ -2855,8 +2855,31 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       logger.info('[VALIDATE-PROMPT] Starting validation...', { 
         userId, 
         messageLength: message?.length,
-        hasAnswers: !!answers 
+        hasAnswers: !!answers,
+        hasContactId: !!contactId
       });
+
+      // 🔥 Lade Contact-Kontext wenn contactId oder phoneNumber vorhanden
+      let contactContext: any = undefined;
+      if (contactId) {
+        try {
+          const contacts = await storage.getUserContacts(userId);
+          const contact = contacts.find((c: any) => c.id === contactId);
+          if (contact) {
+            contactContext = {
+              name: `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || contact.company,
+              company: contact.company,
+              phone: contact.phone,
+              email: contact.email,
+              notes: contact.notes
+            };
+            logger.info('[VALIDATE-PROMPT] Contact context loaded', { contactId, hasNotes: !!contact.notes });
+          }
+        } catch (error) {
+          logger.warn('[VALIDATE-PROMPT] Could not load contact context', { error });
+          // Nicht blockieren, einfach ohne contactContext weitermachen
+        }
+      }
 
       const { validateAndEnhancePrompt } = await import('./voice/prompt-validator');
       
@@ -2865,6 +2888,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         userInput: message,
         contactName,
         previousAnswers: answers || {},
+        contactContext,
         userContext: {
           userName: user.firstName || user.username,
           company: user.company || undefined,
