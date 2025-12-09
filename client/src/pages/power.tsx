@@ -14,8 +14,7 @@ import { CallWizard } from '@/components/power/call-wizard';
 import { ClarificationChat } from '@/components/power/clarification-chat';
 import { CallTimeline } from '@/components/power/call-timeline';
 import { PowerResultCard } from '@/components/power/power-result-card';
-import { POWER_CALL_TEMPLATES, PowerCallTemplateId, getTemplateById, getRecommendedTemplates } from '@/config/power-call-templates';
-import { personalizeTemplate } from '@/lib/template-personalizer';
+// Templates entfernt aus POWER - bleiben im Code für spätere Features
 
 // ----------------- ARAS CI -----------------
 const CI = {
@@ -120,8 +119,7 @@ export default function Power() {
   const [enhancedPrompt, setEnhancedPrompt] = useState<string>('');
   const [showReview, setShowReview] = useState(false);
 
-  // 🎯 NEW: Template Selection
-  const [selectedTemplateId, setSelectedTemplateId] = useState<PowerCallTemplateId | null>(null);
+  // Contact ID für Contact-Kontext (ohne Templates)
   const [selectedContactId, setSelectedContactId] = useState<number | null>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -187,53 +185,7 @@ export default function Power() {
     });
   };
 
-  // 🎯 Template Selection Handler
-  const handleTemplateSelect = (templateId: PowerCallTemplateId) => {
-    const template = getTemplateById(templateId);
-    if (!template) return;
-
-    setSelectedTemplateId(templateId);
-
-    // Personalisiere Template
-    const selectedContact = contacts.find((c: any) => c.id === selectedContactId);
-    const contactContext = selectedContact ? {
-      name: `${selectedContact.firstName || ''} ${selectedContact.lastName || ''}`.trim() || selectedContact.company,
-      company: selectedContact.company,
-      phone: selectedContact.phone,
-      email: selectedContact.email,
-      notes: selectedContact.notes
-    } : null;
-
-    const result = personalizeTemplate(
-      template.basePrompt,
-      userProfileContext || null,
-      contactContext,
-      contactName
-    );
-
-    if (result.success) {
-      setMessage(result.personalizedText);
-      
-      if (result.warnings && result.warnings.length > 0) {
-        toast({
-          title: "Template personalisiert",
-          description: `Vorlage wurde eingefügt. ${result.warnings.join(', ')}`,
-        });
-      } else {
-        toast({
-          title: "✅ Template angewendet",
-          description: `${template.label} wurde personalisiert und kann jetzt bearbeitet werden.`,
-        });
-      }
-    } else {
-      toast({
-        title: "Template-Personalisierung teilweise fehlgeschlagen",
-        description: "Die Call-Vorlage wurde in einer Basisversion eingefügt. Bitte kurz prüfen und anpassen.",
-        variant: "destructive"
-      });
-      setMessage(result.personalizedText);
-    }
-  };
+  // Template-Handler entfernt - POWER fokussiert sich auf freien Text
 
   // NEW: Save new contact with all fields
   const handleSaveNewContact = async () => {
@@ -378,12 +330,9 @@ export default function Power() {
       return;
     }
     
-    // Starte Validierung mit Gemini
+    // Starte Validierung mit ARAS Core
     setLoading(true);
     try {
-      // 🎯 Füge Template-Context hinzu wenn vorhanden
-      const template = selectedTemplateId ? getTemplateById(selectedTemplateId) : null;
-      
       const response = await fetch('/api/aras-voice/validate-prompt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -392,9 +341,8 @@ export default function Power() {
           message,
           contactName,
           answers: {},
-          contactId: selectedContactId,
-          templateId: selectedTemplateId,
-          templateScenario: template?.scenario
+          contactId: selectedContactId
+          // Kein templateId/templateScenario mehr - POWER nutzt freien Text
         })
       });
 
@@ -920,57 +868,7 @@ export default function Power() {
                       {phoneError && <p className="mt-1 text-[11px]" style={{ color: '#f87171' }}>{phoneError}</p>}
                     </div>
 
-                    {/* 🎯 Template Selection */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="block text-[12px] font-medium text-gray-300">Call-Vorlage (optional)</label>
-                        {selectedTemplateId && (
-                          <button
-                            onClick={() => {
-                              setSelectedTemplateId(null);
-                              setMessage('');
-                            }}
-                            className="text-[10px] text-gray-500 hover:text-gray-300 transition-colors"
-                          >
-                            Vorlage entfernen
-                          </button>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {getRecommendedTemplates(!!selectedContactId).map(template => (
-                          <motion.button
-                            key={template.id}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => handleTemplateSelect(template.id)}
-                            className="px-3 py-2 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1.5"
-                            style={{
-                              background: selectedTemplateId === template.id
-                                ? `linear-gradient(135deg, ${CI.orange}20, ${CI.goldDark}15)`
-                                : 'rgba(255,255,255,0.04)',
-                              border: selectedTemplateId === template.id
-                                ? `1px solid ${CI.orange}`
-                                : '1px solid rgba(255,255,255,0.1)',
-                              color: selectedTemplateId === template.id ? CI.orange : '#9ca3af',
-                              boxShadow: selectedTemplateId === template.id
-                                ? `0 0 12px rgba(254,145,0,0.15)`
-                                : 'none'
-                            }}
-                            title={template.description}
-                          >
-                            <span>{template.icon}</span>
-                            <span>{template.label}</span>
-                          </motion.button>
-                        ))}
-                      </div>
-                      <p className="mt-2 text-[10px] text-gray-500">
-                        {selectedTemplateId 
-                          ? `Vorlage aktiv: ${getTemplateById(selectedTemplateId)?.label} – Text kann bearbeitet werden`
-                          : 'Wähle eine Vorlage – ARAS passt den Text automatisch an dein Unternehmen und Kontakt an'}
-                      </p>
-                    </div>
-
-                    {/* Message */}
+                    {/* Message - Freier Text */}
                     <div>
                       <label className="block text-[12px] font-medium text-gray-300 mb-2">Ziel der Nachricht</label>
                       <textarea

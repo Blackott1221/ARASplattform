@@ -2690,22 +2690,107 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         }
       }
       
+      // 🎯 Generate ARAS Core Summary if not already exists
+      let callSummary = finalCallData.metadata?.summary || null;
+      
+      if (!callSummary && finalCallData.transcript && finalCallData.status === 'completed') {
+        try {
+          logger.info('[CALL-DETAILS] 📝 Generating ARAS Core Summary...');
+          
+          const { summarizeCallWithArasCore } = await import('./voice/call-summarizer');
+          
+          // Lade User für Kontext
+          const user = await storage.getUser(userId);
+          
+          // Baue User-Kontext
+          const userContext = user ? {
+            userName: user.firstName || user.username,
+            company: user.company,
+            industry: user.industry
+          } : undefined;
+          
+          // Baue Contact-Kontext falls vorhanden
+          let contactContext;
+          if (finalCallData.metadata?.contactId) {
+            try {
+              const contacts = await storage.getUserContacts(userId);
+              const contact = contacts.find((c: any) => c.id === finalCallData.metadata.contactId);
+              if (contact) {
+                contactContext = {
+                  name: `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || contact.company,
+                  company: contact.company
+                };
+              }
+            } catch (e) {
+              logger.warn('[CALL-DETAILS] Could not load contact context for summary');
+            }
+          }
+          
+          callSummary = await summarizeCallWithArasCore({
+            transcript: finalCallData.transcript,
+            userContext,
+            contactContext
+          });
+          
+          if (callSummary) {
+            logger.info('[CALL-DETAILS] ✅ Summary generated', { 
+              outcome: callSummary.outcome,
+              sentiment: callSummary.sentiment 
+            });
+            
+            // Speichere Summary in metadata
+            const updatedMetadata = { 
+              ...finalCallData.metadata, 
+              summary: callSummary 
+            };
+            await storage.updateCallLog(callId, { metadata: updatedMetadata });
+            
+            // 🔥 Wenn contactId vorhanden: Füge kurze Notiz zu Kontakt hinzu
+            if (finalCallData.metadata?.contactId && contactContext) {
+              try {
+                const contacts = await storage.getUserContacts(userId);
+                const contact = contacts.find((c: any) => c.id === finalCallData.metadata.contactId);
+                
+                if (contact) {
+                  const callDate = new Date(finalCallData.createdAt).toLocaleDateString('de-DE');
+                  const summaryNote = `\n\nLetzter Anruf (${callDate}):\n- Ergebnis: ${callSummary.outcome}\n- Nächster Schritt: ${callSummary.nextStep}`;
+                  
+                  const updatedNotes = (contact.notes || '') + summaryNote;
+                  await storage.updateContact(finalCallData.metadata.contactId, { notes: updatedNotes });
+                  
+                  logger.info('[CALL-DETAILS] ✅ Summary zu Kontakt-Notizen hinzugefügt');
+                }
+              } catch (e: any) {
+                logger.warn('[CALL-DETAILS] ⚠️ Could not update contact notes', { error: e.message });
+              }
+            }
+          }
+        } catch (error: any) {
+          logger.error('[CALL-DETAILS] ❌ Summary generation failed', { 
+            error: error.message 
+          });
+          // Nicht blockieren - Call-Details gehen trotzdem raus
+        }
+      }
+      
       const responseData = {
         success: true,
-        callId: finalCallData.id,
-        conversationId: finalCallData.retellCallId,
+        id: finalCallData.id,
+        phoneNumber: finalCallData.phoneNumber,
         status: finalCallData.status,
         transcript: finalCallData.transcript,
         recordingUrl: finalCallData.recordingUrl,
         duration: finalCallData.duration,
         metadata: finalCallData.metadata,
-        createdAt: finalCallData.createdAt
+        createdAt: finalCallData.createdAt,
+        summary: callSummary // 🔥 NEU: Summary in Response
       };
       
       logger.info('[CALL-DETAILS] ✅ Sending response to frontend', {
         hasTranscript: !!responseData.transcript,
         hasRecording: !!responseData.recordingUrl,
-        status: responseData.status
+        status: responseData.status,
+        hasSummary: !!callSummary
       });
       
       res.json(responseData);
