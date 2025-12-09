@@ -82,6 +82,15 @@ export default function Power() {
   const [result, setResult] = useState<any>(null);
   const [phoneError, setPhoneError] = useState("");
   
+  // 🎯 Call Summary from ARAS Core
+  const [callSummary, setCallSummary] = useState<{
+    outcome: string;
+    bulletPoints: string[];
+    nextStep: string;
+    sentiment: 'positive' | 'neutral' | 'negative' | 'mixed';
+    tags: string[];
+  } | null>(null);
+  
   // NEW: Kontaktbuch Integration
   const [showContactPicker, setShowContactPicker] = useState(false);
   const [showNewContactModal, setShowNewContactModal] = useState(false);
@@ -497,11 +506,26 @@ export default function Power() {
           
           setResult({
             success: true,
-            callId: callDetails.callId,
+            id: callDetails.id || callDetails.callId,
             recordingUrl: callDetails.recordingUrl || null,
             transcript: callDetails.transcript,
-            duration: callDetails.duration || callDuration
+            duration: callDetails.duration || callDuration,
+            phoneNumber: callDetails.phoneNumber || phoneNumber,
+            contactName: callDetails.contactName || contactName
           });
+          
+          // 🎯 Extract & Set Summary from ARAS Core
+          if (callDetails.summary) {
+            setCallSummary({
+              outcome: callDetails.summary.outcome ?? '',
+              bulletPoints: Array.isArray(callDetails.summary.bulletPoints) ? callDetails.summary.bulletPoints : [],
+              nextStep: callDetails.summary.nextStep ?? '',
+              sentiment: callDetails.summary.sentiment ?? 'neutral',
+              tags: Array.isArray(callDetails.summary.tags) ? callDetails.summary.tags : []
+            });
+          } else {
+            setCallSummary(null);
+          }
           
           // 🔥 NEUE TOAST-BENACHRICHTIGUNG
           toast({
@@ -575,6 +599,7 @@ export default function Power() {
   // Reset für neuen Call
   const handleNewCall = () => {
     setResult(null);
+    setCallSummary(null); // 🎯 Reset Summary
     setCallStatus('idle');
     setCallDuration(0);
     setShowReview(false);
