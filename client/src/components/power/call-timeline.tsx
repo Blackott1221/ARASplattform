@@ -39,7 +39,7 @@ const steps: TimelineStep[] = [
   {
     id: 'ended',
     label: 'Abgeschlossen',
-    description: 'Transkript erstellt'
+    description: 'Transkript & Zusammenfassung'
   }
 ];
 
@@ -78,13 +78,13 @@ export function CallTimeline({ currentStatus, duration = 0 }: CallTimelineProps)
                   background: isActive
                     ? 'rgba(254,145,0,0.85)'
                     : isCompleted
-                    ? 'rgba(233,215,196,0.6)'
-                    : 'rgba(255,255,255,0.1)',
+                    ? 'rgba(233,215,196,0.7)'
+                    : 'rgba(255,255,255,0.12)',
                   border: isActive
                     ? '2px solid rgba(254,145,0,1)'
                     : isCompleted
-                    ? '1px solid rgba(233,215,196,0.5)'
-                    : '1px solid rgba(255,255,255,0.15)',
+                    ? '1px solid rgba(233,215,196,0.6)'
+                    : '1px solid rgba(255,255,255,0.18)',
                   transition: 'all 0.3s ease'
                 }}
                 animate={isActive ? {
@@ -126,7 +126,7 @@ export function CallTimeline({ currentStatus, duration = 0 }: CallTimelineProps)
                     width: '2px',
                     height: '24px',
                     background: isCompleted
-                      ? 'linear-gradient(180deg, rgba(233,215,196,0.6), rgba(233,215,196,0.2))'
+                      ? 'linear-gradient(180deg, rgba(233,215,196,0.5), rgba(233,215,196,0.16))'
                       : 'rgba(255,255,255,0.08)',
                     boxShadow: isCompleted
                       ? '0 0 6px rgba(233,215,196,0.3)'
@@ -164,6 +164,18 @@ export function CallTimeline({ currentStatus, duration = 0 }: CallTimelineProps)
                     {formatDuration(duration)}
                   </motion.span>
                 )}
+                {isActive && currentStatus === 'ended' && (
+                  <span
+                    className="text-[10px] px-1.5 py-0.5 rounded font-medium"
+                    style={{
+                      background: 'rgba(233,215,196,0.15)',
+                      color: CI.goldLight,
+                      border: '1px solid rgba(233,215,196,0.3)'
+                    }}
+                  >
+                    Fertig
+                  </span>
+                )}
               </div>
 
               <p
@@ -186,14 +198,14 @@ export function CallTimeline({ currentStatus, duration = 0 }: CallTimelineProps)
                     className="px-2.5 py-1.5 rounded-lg text-[11px]"
                     style={{
                       background: 'rgba(254,145,0,0.06)',
-                      border: '1px solid rgba(254,145,0,0.15)',
+                      border: '1px solid rgba(254,145,0,0.18)',
                       color: '#e5e7eb'
                     }}
                   >
-                    {currentStatus === 'processing' && '⚡ KI optimiert Gesprächsführung'}
-                    {currentStatus === 'ringing' && '📞 Verbindung wird aufgebaut'}
-                    {currentStatus === 'connected' && '🎤 Live-Konversation'}
-                    {currentStatus === 'ended' && '✅ Aufzeichnung abgeschlossen'}
+                    {currentStatus === 'processing' && 'KI optimiert Gesprächsführung'}
+                    {currentStatus === 'ringing' && 'Verbindung wird aufgebaut'}
+                    {currentStatus === 'connected' && 'ARAS führt das Gespräch'}
+                    {currentStatus === 'ended' && 'Transkript & Summary werden erstellt'}
                   </div>
                 </motion.div>
               )}

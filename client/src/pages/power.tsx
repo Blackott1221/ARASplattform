@@ -732,8 +732,11 @@ export default function Power() {
                           : '#fde047'
                       }}
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs" style={{ color: '#fde047' }}>
+                          ⚠ Wissensdatenbank unvollständig
+                        </p>
+                        <span className="text-xs font-semibold">
                           {userProfileContext.aiProfile?.products?.length > 0
                             ? '✓ ARAS AI – Core PRO 1.0'
                             : '⚠ Wissensdatenbank unvollständig'}
@@ -752,7 +755,7 @@ export default function Power() {
 
                   {/* Formular */}
                   <div className="space-y-4">
-                    <div className="mb-4">
+                    <div className="mb-6">
                       <label className="block text-xs font-medium text-neutral-400 mb-2">
                         Gesprächspartner (Name/Firma)
                       </label>
@@ -772,20 +775,22 @@ export default function Power() {
                           className="relative px-4 py-2.5 rounded-xl text-xs font-medium transition-all overflow-hidden"
                           style={{
                             background: 'rgba(255,255,255,0.03)',
-                            border: '1px solid rgba(255,255,255,0.1)',
+                            border: '1px solid rgba(255,255,255,0.10)',
                             color: '#d1d5db'
                           }}
                           onMouseEnter={(e) => {
                             e.currentTarget.style.transform = 'translateY(-1px)';
-                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(254,145,0,0.12)';
+                            e.currentTarget.style.boxShadow = '0 6px 18px rgba(0,0,0,0.55)';
+                            e.currentTarget.style.borderColor = 'rgba(254,145,0,0.15)';
                           }}
                           onMouseLeave={(e) => {
                             e.currentTarget.style.transform = 'translateY(0)';
                             e.currentTarget.style.boxShadow = 'none';
+                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)';
                           }}
                         >
                           <span
-                            className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity"
+                            className="absolute inset-0 opacity-0 hover:opacity-20 transition-opacity"
                             style={{
                               background: 'linear-gradient(120deg, transparent, rgba(254,145,0,0.15), transparent)',
                               backgroundSize: '200% 100%',
@@ -806,8 +811,10 @@ export default function Power() {
                           }}
                           className="relative px-3 py-2.5 rounded-xl text-xs font-semibold transition-all overflow-hidden"
                           style={{
-                            background: 'rgba(0,0,0,0.7)',
-                            color: '#FE9100'
+                            background: 'rgba(0,0,0,0.8)',
+                            border: '1px solid rgba(254,145,0,0.3)',
+                            color: '#FE9100',
+                            boxShadow: '0 0 16px rgba(254,145,0,0.25)'
                           }}
                           onMouseEnter={(e) => {
                             e.currentTarget.style.transform = 'scale(1.02)';
@@ -823,8 +830,7 @@ export default function Power() {
                             style={{
                               background: 'linear-gradient(120deg, transparent, rgba(254,145,0,0.2), transparent)',
                               backgroundSize: '200% 100%',
-                              animation: 'aras-border-run 6s linear infinite',
-                              border: '1px solid rgba(254,145,0,0.3)',
+                              animation: 'aras-border-run 7s linear infinite',
                               borderRadius: '12px'
                             }}
                           />
@@ -833,7 +839,7 @@ export default function Power() {
                       </div>
                     </div>
 
-                    <div>
+                    <div className="mt-2">
                       <label className="block text-xs font-medium text-neutral-400 mb-2">
                         Telefonnummer
                       </label>
@@ -851,8 +857,8 @@ export default function Power() {
                         placeholder="+491701234567"
                         className="w-full px-4 py-2.5 rounded-xl text-sm text-white placeholder-neutral-500 transition-all outline-none"
                         style={{
-                          background: 'rgba(0,0,0,0.4)',
-                          border: phoneError ? '1px solid rgba(248,113,113,0.5)' : '1px solid rgba(255,255,255,0.07)'
+                          background: 'rgba(0,0,0,0.55)',
+                          border: phoneError ? '1px solid rgba(248,113,113,0.5)' : '1px solid rgba(255,255,255,0.14)'
                         }}
                         onFocus={(e) => {
                           if (!phoneError) {

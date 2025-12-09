@@ -125,16 +125,18 @@ export function ContactAutoSuggest({
         disabled={disabled}
         className="w-full px-4 py-2.5 rounded-xl text-sm text-white placeholder-neutral-500 transition-all outline-none"
         style={{
-          background: 'rgba(0,0,0,0.4)',
-          border: '1px solid rgba(255,255,255,0.10)'
+          background: 'rgba(0,0,0,0.55)',
+          border: '1px solid rgba(255,255,255,0.14)'
         }}
         onFocus={(e) => {
           e.currentTarget.style.borderColor = '#FE9100';
-          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(254,145,0,0.08)';
-          if (filteredContacts.length > 0) setShowSuggestions(true);
+          e.currentTarget.style.boxShadow = '0 0 0 1px rgba(254,145,0,0.3), 0 0 18px rgba(254,145,0,0.35)';
+          if (value.length >= 2) {
+            setShowSuggestions(true);
+          }
         }}
         onBlur={(e) => {
-          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)';
+          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.14)';
           e.currentTarget.style.boxShadow = 'none';
         }}
       />
@@ -146,11 +148,12 @@ export function ContactAutoSuggest({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.15 }}
-            className="absolute z-50 w-full rounded-2xl overflow-hidden"
+            className="absolute w-full rounded-2xl overflow-hidden"
             style={{
-              top: 'calc(100% + 6px)',
+              top: 'calc(100% + 8px)',
               maxHeight: '260px',
               overflowY: 'auto',
+              zIndex: 40,
               background: 'rgba(12,12,12,0.98)',
               border: '1px solid rgba(255,255,255,0.12)',
               boxShadow: '0 12px 40px rgba(0,0,0,0.85)',
@@ -166,8 +169,8 @@ export function ContactAutoSuggest({
                   borderBottom: idx < filteredContacts.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                  e.currentTarget.style.boxShadow = '0 0 12px rgba(254,145,0,0.08)';
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                  e.currentTarget.style.boxShadow = '0 0 0 1px rgba(254,145,0,0.3) inset';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = 'transparent';
@@ -178,20 +181,20 @@ export function ContactAutoSuggest({
                   <div
                     className="h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(233,215,196,0.15), rgba(254,145,0,0.15))',
-                      border: '1px solid rgba(254,145,0,0.25)',
+                      background: 'linear-gradient(135deg, rgba(233,215,196,0.16), rgba(254,145,0,0.18))',
+                      border: '1px solid rgba(254,145,0,0.3)',
                       color: '#FE9100'
                     }}
                   >
                     {(contact.company?.[0] || contact.firstName?.[0] || '?').toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-white truncate">
-                      {contact.company || `${contact.firstName || ''} ${contact.lastName || ''}`.trim()}
-                    </div>
-                    <div className="text-xs text-neutral-500 truncate">
-                      {contact.phone || contact.phoneNumber || contact.email || 'Keine Nummer'}
-                    </div>
+                    <p className="text-sm font-medium text-white truncate">
+                      {contact.company || `${contact.firstName} ${contact.lastName}`.trim() || 'Unbenannt'}
+                    </p>
+                    <p className="text-xs text-neutral-400 truncate">
+                      {contact.phone || contact.phoneNumber || contact.email || ''}
+                    </p>
                   </div>
                 </div>
               </button>
