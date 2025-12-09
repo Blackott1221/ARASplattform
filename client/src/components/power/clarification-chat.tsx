@@ -25,18 +25,33 @@ interface Message {
   timestamp: Date;
 }
 
+interface UserProfileContext {
+  id?: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  company?: string;
+  website?: string;
+  industry?: string;
+  jobRole?: string;
+  phone?: string;
+  aiProfile?: any;
+}
+
 interface ClarificationChatProps {
   questions: Question[];
   onAnswersComplete: (answers: Record<string, string>) => void;
   onSkip: () => void;
   initialMessage: string;
+  userProfileContext?: UserProfileContext | null;
 }
 
 export function ClarificationChat({ 
   questions, 
   onAnswersComplete, 
   onSkip,
-  initialMessage 
+  initialMessage,
+  userProfileContext 
 }: ClarificationChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -54,10 +69,20 @@ export function ClarificationChat({
   useEffect(() => {
     setIsTyping(true);
     setTimeout(() => {
+      // Build personalized greeting
+      let greetingContent = `Perfekt! Ich habe Ihren Auftrag analysiert: "${initialMessage}"`;
+      
+      // Add profile info if available
+      if (userProfileContext?.company) {
+        greetingContent += `\n\n💼 Ich nutze dabei Ihr Firmenprofil (${userProfileContext.company}${userProfileContext.industry ? `, ${userProfileContext.industry}` : ''}) um das Gespräch optimal auf Ihre Zielgruppe abzustimmen.`;
+      }
+      
+      greetingContent += `\n\nUm den Anruf optimal vorzubereiten, benötige ich noch ein paar Details. Lassen Sie uns das Schritt für Schritt durchgehen.`;
+      
       setMessages([{
         id: 'greeting',
         role: 'aras',
-        content: `Perfekt! Ich habe Ihren Auftrag analysiert: "${initialMessage}"\n\nUm den Anruf optimal vorzubereiten, benötige ich noch ein paar Details. Lassen Sie uns das Schritt für Schritt durchgehen.`,
+        content: greetingContent,
         timestamp: new Date()
       }]);
       setIsTyping(false);

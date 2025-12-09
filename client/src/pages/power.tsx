@@ -47,6 +47,28 @@ export default function Power() {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  // 🔥 NEW: Load user profile context for AI-enhanced calls
+  const { 
+    data: userProfileContext, 
+    isLoading: isProfileLoading, 
+    isError: isProfileError 
+  } = useQuery({
+    queryKey: ["user-profile-context"],
+    queryFn: async () => {
+      const res = await fetch("/api/user/profile-context", {
+        credentials: "include"
+      });
+      if (!res.ok) {
+        throw new Error("Failed to load profile context");
+      }
+      return res.json();
+    },
+    // Nur laden wenn User eingeloggt
+    enabled: !!user,
+    // Cache für 5 Minuten
+    staleTime: 5 * 60 * 1000
+  });
+
   // Existing states (technical behaviour untouched)
   const [contactName, setContactName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -698,6 +720,72 @@ export default function Power() {
                       ARAS AI • Core PRO 1.0
                     </div>
                   </div>
+
+                  {/* 🔥 Firmenprofil-Status */}
+                  {isProfileLoading && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      className="mb-4 p-3 rounded-xl text-xs"
+                      style={{
+                        background: 'rgba(254,145,0,0.08)',
+                        border: '1px solid rgba(254,145,0,0.2)',
+                        color: '#d1d5db'
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="w-3 h-3 animate-spin" style={{ color: CI.orange }} />
+                        <span>Lade dein Firmenprofil...</span>
+                      </div>
+                    </motion.div>
+                  )}
+                  
+                  {isProfileError && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      className="mb-4 p-3 rounded-xl text-xs"
+                      style={{
+                        background: 'rgba(234,179,8,0.08)',
+                        border: '1px solid rgba(234,179,8,0.25)',
+                        color: '#fbbf24'
+                      }}
+                    >
+                      <div className="flex items-start gap-2">
+                        <span className="text-sm">⚠️</span>
+                        <div>
+                          <div className="font-semibold mb-1">Firmenprofil nicht verfügbar</div>
+                          <div className="text-[11px] text-gray-400">
+                            ARAS konnte dein Firmenprofil gerade nicht laden. Der Anruf funktioniert trotzdem – nur ohne personalisierte Firmendaten.
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                  
+                  {!isProfileLoading && !isProfileError && userProfileContext?.company && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      className="mb-4 p-3 rounded-xl text-xs"
+                      style={{
+                        background: 'rgba(34,197,94,0.08)',
+                        border: '1px solid rgba(34,197,94,0.2)',
+                        color: '#4ade80'
+                      }}
+                    >
+                      <div className="flex items-start gap-2">
+                        <span className="text-sm">✅</span>
+                        <div>
+                          <div className="font-semibold mb-1">Firmenprofil aktiv</div>
+                          <div className="text-[11px] text-gray-400">
+                            ARAS nutzt dein Profil ({userProfileContext.company}
+                            {userProfileContext.industry && `, ${userProfileContext.industry}`}) um Gespräche auf deine Zielkunden zuzuschneiden.
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
 
                   <div className="space-y-5">
                     {/* Contact - MODERN with Kontaktbuch */}
@@ -1662,6 +1750,37 @@ export default function Power() {
                   </button>
                 </div>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 🔥 CLARIFICATION CHAT MODAL */}
+      <AnimatePresence>
+        {showChatFlow && validationResult?.questions && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{
+              background: 'rgba(10, 10, 10, 0.92)',
+              backdropFilter: 'blur(12px)'
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative max-w-3xl w-full"
+            >
+              <ClarificationChat
+                questions={validationResult.questions}
+                onAnswersComplete={handleChatComplete}
+                onSkip={handleSkipChat}
+                initialMessage={message}
+                userProfileContext={userProfileContext || null}
+              />
             </motion.div>
           </motion.div>
         )}

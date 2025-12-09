@@ -226,6 +226,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 🔥 NEW: Get user profile context for AI calls (company, industry, aiProfile)
+  app.get('/api/user/profile-context', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      
+      if (!userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Return sanitized profile context for AI enhancement
+      return res.json({
+        id: user.id,
+        name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username,
+        firstName: user.firstName || null,
+        lastName: user.lastName || null,
+        company: user.company || null,
+        website: user.website || null,
+        industry: user.industry || null,
+        jobRole: user.jobRole || null,
+        phone: user.phone || null,
+        aiProfile: user.aiProfile || null
+      });
+    } catch (error) {
+      logger.error('[PROFILE-CONTEXT] Error loading user profile context:', error);
+      return res.status(500).json({ 
+        error: 'Failed to load profile context',
+        message: 'Internal server error'
+      });
+    }
+  });
+
   // Update AI Profile (Business Intelligence) - User can edit their business data
   app.patch('/api/user/ai-profile', requireAuth, async (req: any, res) => {
     try {
