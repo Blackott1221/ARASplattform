@@ -7,10 +7,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Lock, Phone, Contact, Plus, X, Building2, User, Mail, StickyNote, ChevronDown, Search } from 'lucide-react';
+import { Lock, Phone, Contact, Plus, X, Building2, User, Mail, StickyNote, ChevronDown, Search, Sparkles, Loader2 } from 'lucide-react';
 import type { SubscriptionResponse } from "@shared/schema";
 import arasLogo from "@/assets/aras_logo_1755067745303.png";
 import { CallWizard } from '@/components/power/call-wizard';
+import { ClarificationChat } from '@/components/power/clarification-chat';
+import { CallTimeline } from '@/components/power/call-timeline';
+import { PowerResultCard } from '@/components/power/power-result-card';
 
 // ----------------- ARAS CI -----------------
 const CI = {
@@ -85,6 +88,13 @@ export default function Power() {
   
   // 🔥 NEW: Wizard State
   const [showWizard, setShowWizard] = useState(false);
+  
+  // 🔥 NEW: Chat Clarification Flow
+  const [showChatFlow, setShowChatFlow] = useState(false);
+  const [validationResult, setValidationResult] = useState<any>(null);
+  const [chatAnswers, setChatAnswers] = useState<Record<string, string>>({});
+  const [enhancedPrompt, setEnhancedPrompt] = useState<string>('');
+  const [showReview, setShowReview] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -271,9 +281,9 @@ export default function Power() {
     // UI only – keine Verarbeitung
   };
 
-  // ----------------- 🔥 NEUE CALL LOGIC MIT WIZARD -----------------
-  // Schritt 1: Starte Wizard-Prozess
-  const handleStartCallProcess = () => {
+  // ----------------- 🔥 NEUE CALL LOGIC MIT CHAT-FLOW -----------------
+  // Schritt 1: Starte Chat-Flow (Validierung mit Gemini)
+  const handleStartCallProcess = async () => {
     if (!contactName || !phoneNumber || !message) {
       toast({ 
         title: "Fehlende Angaben", 
@@ -291,44 +301,93 @@ export default function Power() {
       return;
     }
     
-    // Öffne Wizard statt direkt anzurufen
-    setShowWizard(true);
+    // Starte Validierung mit Gemini
+    setLoading(true);
+    try {
+      const response = await fetch('/api/aras-voice/validate-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          message,
+          contactName,
+          answers: {}
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Validierung fehlgeschlagen');
+      }
+
+      const result = await response.json();
+      setValidationResult(result);
+
+      if (result.isComplete) {
+        // Direkt zum Review, keine Fragen
+        setEnhancedPrompt(result.enhancedPrompt || message);
+        setShowReview(true);
+      } else if (result.questions && result.questions.length > 0) {
+        // Zeige Chat-Flow für Fragen
+        setShowChatFlow(true);
+      } else {
+        // Fallback: Direkt Call
+        setEnhancedPrompt(message);
+        setShowReview(true);
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Fehler',
+        description: error.message,
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Schritt 2: Nach Wizard-Abschluss mit optimiertem Prompt anrufen
-  const handleWizardComplete = async (wizardData: any) => {
-    setShowWizard(false);
+  // Schritt 2: Chat-Flow abgeschlossen
+  const handleChatComplete = (answers: Record<string, string>) => {
+    setChatAnswers(answers);
+    
+    // Baue Enhanced Prompt aus Antworten
+    const prompt = `${message}\n\nZusätzliche Details:\n${Object.entries(answers)
+      .map(([key, value]) => `- ${key}: ${value}`)
+      .join('\n')}`;
+    
+    setEnhancedPrompt(validationResult?.enhancedPrompt || prompt);
+    setShowChatFlow(false);
+    setShowReview(true);
+  };
+
+  // Schritt 3: Chat überspringen
+  const handleSkipChat = () => {
+    setEnhancedPrompt(message);
+    setShowChatFlow(false);
+    setShowReview(true);
+  };
+
+  // Schritt 4: Review bestätigt → Call starten
+  const handleConfirmCall = async () => {
+    setShowReview(false);
     setLoading(true);
     setResult(null);
     setCallStatus('processing');
     setCallDuration(0);
 
     try {
-      // Jetzt mit dem OPTIMIERTEN Prompt anrufen
       const response = await fetch("/api/aras-voice/smart-call", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ 
-          name: wizardData.contactName,
-          phoneNumber: wizardData.phoneNumber,
-          message: wizardData.enhancedPrompt // 🔥 OPTIMIERTER PROMPT!
+          name: contactName,
+          phoneNumber: phoneNumber,
+          message: enhancedPrompt
         })
       });
       const data = await response.json();
       
-      console.log('[SMART-CALL] ========== API RESPONSE ==========');
-      console.log('[SMART-CALL] Full response:', data);
-      console.log('[SMART-CALL] Response details:', {
-        success: data.success,
-        callId: data.callId,
-        conversationId: data.conversationId,
-        message: data.message,
-        status: data.status
-      });
-      
       if (!response.ok) {
-        console.error('[SMART-CALL] ❌ Error response:', response.status, data);
         setLoading(false);
         setCallStatus('idle');
         setResult({ success: false, error: data.error || data.message || `Fehler: ${response.status}` });
@@ -337,189 +396,23 @@ export default function Power() {
       
       if (data.success && data.callId) {
         const callId = data.callId;
-        console.log('[SMART-CALL] ✅ Call initiated successfully!');
-        console.log('[SMART-CALL] Database ID for polling:', callId);
-        console.log('[SMART-CALL] ElevenLabs conversation ID:', data.conversationId);
-        
-        // Update status to show call is connecting
         setCallStatus('ringing');
+        
         toast({
-          title: "Anruf wird verbunden",
-          description: `ARAS AI ruft ${contactName} an...`
+          title: "🚀 Anruf gestartet",
+          description: `ARAS AI ruft jetzt ${contactName} an...`
         });
         
-        // After 3 seconds, show as connected
+        // Nach 3s: connected
         setTimeout(() => {
           setCallStatus('connected');
-          
-          // Start call duration timer
           callTimerRef.current = setInterval(() => {
             setCallDuration(prev => prev + 1);
           }, 1000);
         }, 3000);
         
-        // Start polling for call details from database
-        const pollCallDetails = async () => {
-          let attempts = 0;
-          const maxAttempts = 30; // Poll for up to 2 minutes (30 * 4s)
-          
-          console.log('[POLL] Starting poll for callId:', callId);
-          
-          const pollInterval = setInterval(async () => {
-            attempts++;
-            console.log(`[POLL] Attempt ${attempts}/${maxAttempts} - Fetching call details...`);
-            
-            try {
-              const detailsResponse = await fetch(`/api/aras-voice/call-details/${callId}`, {
-                credentials: 'include'
-              });
-              
-              console.log('[POLL] Response status:', detailsResponse.status);
-              
-              if (!detailsResponse.ok) {
-                console.error('[POLL] Error response:', detailsResponse.status);
-                if (attempts >= maxAttempts) {
-                  console.log('[POLL] Max attempts reached, stopping...');
-                  clearInterval(pollInterval);
-                  if (callTimerRef.current) {
-                    clearInterval(callTimerRef.current);
-                    callTimerRef.current = null;
-                  }
-                  setCallStatus('ended');
-                  setResult({
-                    success: false,
-                    error: 'Anruf-Details konnten nicht abgerufen werden'
-                  });
-                }
-                return;
-              }
-              
-              const callDetails = await detailsResponse.json();
-              console.log('[POLL] Call details received:', {
-                hasTranscript: !!callDetails.transcript,
-                hasRecording: !!callDetails.recordingUrl,
-                recordingUrl: callDetails.recordingUrl,
-                status: callDetails.status,
-                fullData: callDetails
-              });
-              console.log('[POLL] 🎙️ AUDIO CHECK:', {
-                hasRecordingUrl: !!callDetails.recordingUrl,
-                recordingUrlValue: callDetails.recordingUrl,
-                recordingUrlType: typeof callDetails.recordingUrl
-              });
-              
-              // Show results when transcript is available (even if audio pending)
-              const hasTranscript = !!callDetails.transcript;
-              const hasAudio = !!callDetails.recordingUrl;
-              const isCompleted = callDetails.status === 'completed' || callDetails.status === 'done';
-              
-              // Show results as soon as we have transcript
-              if (hasTranscript) {
-                // Stop the timer and show UI
-                if (callTimerRef.current) {
-                  clearInterval(callTimerRef.current);
-                  callTimerRef.current = null;
-                }
-                setCallStatus('ended');
-                
-                console.log('[POLL] 📋 Transcript available, showing results:', {
-                  hasAudio,
-                  isCompleted,
-                  willContinuePolling: !hasAudio && !isCompleted
-                });
-                
-                // Set or update result
-                setResult({
-                  success: true,
-                  callId: callDetails.callId,
-                  recordingUrl: callDetails.recordingUrl || null,
-                  transcript: callDetails.transcript,
-                  duration: callDetails.duration || callDuration
-                });
-                
-                // Refresh call history
-                try {
-                  const historyResponse = await fetch('/api/user/call-logs', { credentials: 'include' });
-                  if (historyResponse.ok) {
-                    const logs = await historyResponse.json();
-                    console.log('[POLL] 📜 History refreshed:', logs.length, 'calls');
-                    setCallHistory(logs);
-                  }
-                } catch (e) {
-                  console.error('[POLL] Failed to refresh history:', e);
-                }
-                
-                // Stop polling if we have audio OR call is completed
-                if (hasAudio || isCompleted) {
-                  console.log('[POLL] ✅ Complete! Stopping poll.');
-                  clearInterval(pollInterval);
-                  return;
-                } else {
-                  console.log('[POLL] ⏳ Audio pending, continuing poll for audio...');
-                }
-              }
-              
-              // Stop polling after max attempts
-              if (attempts >= maxAttempts) {
-                console.log('[POLL] Max attempts reached without data, showing partial result...');
-                clearInterval(pollInterval);
-                if (callTimerRef.current) {
-                  clearInterval(callTimerRef.current);
-                  callTimerRef.current = null;
-                }
-                setCallStatus('ended');
-                setResult({
-                  success: true,
-                  callId: callDetails.callId,
-                  summary: {
-                    transcript: 'Anruf wurde durchgeführt. Die Aufzeichnung wird noch verarbeitet. Bitte schauen Sie später im Anrufverlauf nach.',
-                    duration: callDuration
-                  }
-                });
-              }
-            } catch (pollError) {
-              console.error('[POLL] Error fetching call details:', pollError);
-              if (attempts >= maxAttempts) {
-                console.log('[POLL] Max attempts reached after error, stopping...');
-                clearInterval(pollInterval);
-                if (callTimerRef.current) {
-                  clearInterval(callTimerRef.current);
-                  callTimerRef.current = null;
-                }
-                setCallStatus('ended');
-                setResult({
-                  success: false,
-                  error: 'Fehler beim Abrufen der Anrufdaten'
-                });
-              }
-            }
-          }, 4000); // Poll every 4 seconds
-          
-          // Safety timeout: Force stop after 2.5 minutes no matter what
-          setTimeout(() => {
-            console.log('[POLL] Safety timeout reached, forcing stop...');
-            clearInterval(pollInterval);
-            if (callTimerRef.current) {
-              clearInterval(callTimerRef.current);
-              callTimerRef.current = null;
-            }
-            if (callStatus !== 'ended') {
-              setCallStatus('ended');
-              setResult({
-                success: true,
-                summary: {
-                  transcript: 'Anruf beendet. Details werden verarbeitet.',
-                  duration: callDuration
-                }
-              });
-            }
-          }, 150000); // 2.5 minutes safety timeout
-        };
-        
-        // Start polling after 5 seconds
-        setTimeout(() => {
-          pollCallDetails();
-        }, 5000);
+        // Start polling
+        setTimeout(() => pollCallDetails(callId), 5000);
       } else {
         setCallStatus('idle');
         setResult(data);
@@ -531,6 +424,136 @@ export default function Power() {
       setCallStatus('idle');
       setResult({ success: false, error: e?.message || "Anruf fehlgeschlagen" });
     }
+  };
+  
+  // Polling Logic
+  const pollCallDetails = async (callId: number) => {
+    let attempts = 0;
+    const maxAttempts = 30;
+    
+    const pollInterval = setInterval(async () => {
+      attempts++;
+      
+      try {
+        const detailsResponse = await fetch(`/api/aras-voice/call-details/${callId}`, {
+          credentials: 'include'
+        });
+        
+        if (!detailsResponse.ok) {
+          if (attempts >= maxAttempts) {
+            clearInterval(pollInterval);
+            if (callTimerRef.current) {
+              clearInterval(callTimerRef.current);
+              callTimerRef.current = null;
+            }
+            setCallStatus('ended');
+            setResult({ success: false, error: 'Anruf-Details konnten nicht abgerufen werden' });
+          }
+          return;
+        }
+        
+        const callDetails = await detailsResponse.json();
+        const hasTranscript = !!callDetails.transcript;
+        const hasAudio = !!callDetails.recordingUrl;
+        const isCompleted = callDetails.status === 'completed' || callDetails.status === 'done';
+        
+        if (hasTranscript) {
+          if (callTimerRef.current) {
+            clearInterval(callTimerRef.current);
+            callTimerRef.current = null;
+          }
+          setCallStatus('ended');
+          
+          setResult({
+            success: true,
+            callId: callDetails.callId,
+            recordingUrl: callDetails.recordingUrl || null,
+            transcript: callDetails.transcript,
+            duration: callDetails.duration || callDuration
+          });
+          
+          // 🔥 NEUE TOAST-BENACHRICHTIGUNG
+          toast({
+            title: "✅ Anruf abgeschlossen",
+            description: `Der Anruf an ${contactName} wurde erfolgreich beendet. Transkript und Aufzeichnung sind verfügbar.`,
+          });
+          
+          // Refresh call history
+          try {
+            const historyResponse = await fetch('/api/user/call-logs', { credentials: 'include' });
+            if (historyResponse.ok) {
+              const logs = await historyResponse.json();
+              setCallHistory(logs);
+            }
+          } catch (e) {
+            console.error('Failed to refresh history:', e);
+          }
+          
+          if (hasAudio || isCompleted) {
+            clearInterval(pollInterval);
+            return;
+          }
+        }
+        
+        if (attempts >= maxAttempts) {
+          clearInterval(pollInterval);
+          if (callTimerRef.current) {
+            clearInterval(callTimerRef.current);
+            callTimerRef.current = null;
+          }
+          setCallStatus('ended');
+          setResult({
+            success: true,
+            callId: callDetails.callId,
+            transcript: 'Anruf wurde durchgeführt. Details werden verarbeitet.',
+            duration: callDuration
+          });
+        }
+      } catch (pollError) {
+        console.error('Polling error:', pollError);
+        if (attempts >= maxAttempts) {
+          clearInterval(pollInterval);
+          if (callTimerRef.current) {
+            clearInterval(callTimerRef.current);
+            callTimerRef.current = null;
+          }
+          setCallStatus('ended');
+          setResult({ success: false, error: 'Fehler beim Abrufen der Anrufdaten' });
+        }
+      }
+    }, 4000);
+    
+    // Safety timeout
+    setTimeout(() => {
+      clearInterval(pollInterval);
+      if (callTimerRef.current) {
+        clearInterval(callTimerRef.current);
+        callTimerRef.current = null;
+      }
+      if (callStatus !== 'ended') {
+        setCallStatus('ended');
+        setResult({
+          success: true,
+          transcript: 'Anruf beendet. Details werden verarbeitet.',
+          duration: callDuration
+        });
+      }
+    }, 150000);
+  };
+
+  // Reset für neuen Call
+  const handleNewCall = () => {
+    setResult(null);
+    setCallStatus('idle');
+    setCallDuration(0);
+    setShowReview(false);
+    setShowChatFlow(false);
+    setEnhancedPrompt('');
+    setChatAnswers({});
+    setValidationResult(null);
+    setContactName('');
+    setPhoneNumber('');
+    setMessage('');
   };
   
   // Cleanup timer on unmount
@@ -1644,16 +1667,125 @@ export default function Power() {
         )}
       </AnimatePresence>
 
-      {/* 🔥 WIZARD MODAL */}
-      {showWizard && (
-        <CallWizard
-          contactName={contactName}
-          phoneNumber={phoneNumber}
-          initialMessage={message}
-          onCallReady={handleWizardComplete}
-          onCancel={() => setShowWizard(false)}
-        />
-      )}
+      {/* 🔥 REVIEW MODAL */}
+      <AnimatePresence>
+        {showReview && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{
+              background: 'rgba(10, 10, 10, 0.90)',
+              backdropFilter: 'blur(12px)'
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative max-w-2xl w-full p-8 rounded-2xl"
+              style={{
+                background: 'linear-gradient(135deg, rgba(0,0,0,0.95), rgba(20,20,20,0.98))',
+                border: '1px solid rgba(254,145,0,0.3)',
+                boxShadow: '0 20px 60px rgba(254,145,0,0.2)'
+              }}
+            >
+              <button
+                onClick={() => setShowReview(false)}
+                className="absolute top-4 right-4 p-2 rounded-lg transition-colors hover:bg-white/10"
+              >
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center"
+                  style={{
+                    background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
+                    boxShadow: `0 0 30px rgba(254,145,0,0.4)`
+                  }}
+                >
+                  <Sparkles className="w-8 h-8 text-white" />
+                </div>
+                <h2 
+                  className="text-2xl font-black mb-2"
+                  style={{
+                    fontFamily: 'Orbitron, sans-serif',
+                    background: `linear-gradient(90deg, ${CI.goldLight}, ${CI.orange})`,
+                    WebkitBackgroundClip: 'text',
+                    backgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent'
+                  }}
+                >
+                  Anruf-Review
+                </h2>
+                <p className="text-sm text-gray-400">Prüfen Sie die Details vor dem Start</p>
+              </div>
+
+              <div className="space-y-4 mb-6">
+                <div className="p-4 rounded-xl" style={{
+                  background: 'rgba(254,145,0,0.08)',
+                  border: '1px solid rgba(254,145,0,0.2)'
+                }}>
+                  <div className="text-xs text-gray-400 mb-1">Kontakt</div>
+                  <div className="text-lg font-semibold text-white">{contactName}</div>
+                  <div className="text-sm text-gray-300">{phoneNumber}</div>
+                </div>
+
+                <div className="p-4 rounded-xl" style={{
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.08)'
+                }}>
+                  <div className="text-xs text-gray-400 mb-2">ARAS wird folgendes tun:</div>
+                  <div className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">
+                    {enhancedPrompt}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowReview(false)}
+                  className="flex-1 px-6 py-3 rounded-xl font-semibold text-sm transition-all"
+                  style={{
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    color: '#fff'
+                  }}
+                >
+                  Zurück
+                </button>
+                <button
+                  onClick={handleConfirmCall}
+                  disabled={loading}
+                  className="flex-1 px-6 py-4 rounded-xl font-bold text-sm transition-all hover:scale-[1.02] relative overflow-hidden group"
+                  style={{
+                    background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
+                    color: '#fff',
+                    fontFamily: 'Orbitron, sans-serif',
+                    boxShadow: `0 8px 24px rgba(254,145,0,0.3)`
+                  }}
+                >
+                  {loading ? (
+                    <><Loader2 className="w-5 h-5 inline animate-spin mr-2" />Starte...</>
+                  ) : (
+                    <>🚀 Jetzt anrufen</>
+                  )}
+                  <motion.div
+                    className="absolute inset-0 opacity-0 group-hover:opacity-100"
+                    style={{
+                      background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)'
+                    }}
+                    initial={{ x: '-100%' }}
+                    whileHover={{ x: '100%' }}
+                    transition={{ duration: 0.6 }}
+                  />
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
