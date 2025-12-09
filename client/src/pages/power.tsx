@@ -661,1169 +661,365 @@ export default function Power() {
         />
 
         <div className="flex-1 overflow-y-auto premium-scroll">
-          <div className="max-w-6xl mx-auto px-6 py-10">
-            {/* Header */}
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+            
+            {/* 🎯 HERO-ZONE */}
             <motion.div
-              initial={{ opacity: 0, y: -18 }}
+              initial={{ opacity: 0, y: -12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="text-center mb-10"
+              transition={{ duration: 0.5 }}
+              className="flex items-start gap-4 mb-8"
             >
-              <motion.h1
-                className="text-[44px] md:text-[56px] font-black tracking-tight mb-4"
-                style={{ fontFamily: 'Orbitron, sans-serif' }}
-                initial={{ letterSpacing: '-0.02em' }}
-                animate={{ letterSpacing: ['-0.02em', '-0.01em', '-0.02em'] }}
-                transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-              >
-                <span
+              {/* ARAS Orb */}
+              <div
+                className="mt-1 h-11 w-11 rounded-full flex-shrink-0"
+                style={{
+                  background: 'radial-gradient(circle at 30% 20%, rgba(254,145,0,0.95), rgba(10,10,10,0.1) 70%)',
+                  boxShadow: '0 0 22px rgba(254,145,0,0.55)',
+                  border: '1px solid rgba(233,215,196,0.30)'
+                }}
+              />
+
+              {/* Headline + Subheadline */}
+              <div className="flex-1">
+                <h1
+                  className="text-[20px] md:text-[22px] font-semibold tracking-wide mb-2"
                   style={{
-                    background: `linear-gradient(90deg, ${CI.goldLight}, ${CI.orange}, ${CI.goldDark}, ${CI.orange}, ${CI.goldLight})`,
-                    backgroundSize: '300% 100%',
+                    fontFamily: 'Orbitron, sans-serif',
+                    backgroundImage: 'linear-gradient(90deg, #E9D7C4, #FE9100, #ffffff)',
+                    backgroundSize: '260% 100%',
                     WebkitBackgroundClip: 'text',
-                    backgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent'
-                  }}
-                  className="inline-block"
-                >
-                  POWER
-                </span>
-              </motion.h1>
-
-              <div className="flex items-center justify-center gap-2 text-[15px]">
-                <span className="text-gray-500">ARAS AI erledigt:</span>
-                <motion.span
-                  className="font-semibold min-w-[280px] text-left"
-                  style={{ color: CI.orange, fontFamily: 'Orbitron, sans-serif' }}
-                >
-                  {displayText}
-                  <motion.span
-                    animate={{ opacity: [1, 0, 1] }}
-                    transition={{ duration: 0.9, repeat: Infinity }}
-                    className="inline-block w-[2px] h-[20px] ml-1 align-middle"
-                    style={{ background: CI.orange }}
-                  />
-                </motion.span>
-              </div>
-
-              {/* Credo */}
-              <div className="mt-4 text-[13px] text-gray-400">
-                <span
-                  className="px-3 py-1.5 rounded-full"
-                  style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    backdropFilter: 'blur(8px)'
+                    WebkitTextFillColor: 'transparent',
+                    animation: 'aras-gradient-shift 14s linear infinite'
                   }}
                 >
-                  ARAS analysiert <span style={{ color: CI.goldLight }}>bis zu 500</span> öffentlich verfügbare Quellen pro Kontakt
-                  und passt Tonalität, Argumente und Reihenfolge dynamisch an – in Echtzeit.
-                </span>
+                  POWER · Einzelanruf
+                </h1>
+                <p className="text-xs md:text-sm text-neutral-400 leading-relaxed max-w-2xl">
+                  Ein geführter Outbound-Einzelanruf mit ARAS. 
+                  Du beschreibst in 1–2 Sätzen, was passieren soll – 
+                  ARAS übernimmt den Rest und liefert Aufnahme, Transkript und eine klare Zusammenfassung zurück.
+                </p>
               </div>
             </motion.div>
 
-            {/* Grid: Left (Single Call) / Right (Bulk Campaign) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-              {/* LEFT: Single Call form (smaller, clean) */}
+            {/* 🎯 2-SPALTEN-GRID */}
+            <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-6">
+              
+              {/* ============ LINKE SPALTE: SETUP + CHAT ============ */}
               <motion.div
-                initial={{ opacity: 0, x: -14 }}
+                initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5 }}
+                transition={{ delay: 0.1 }}
+                className="flex flex-col gap-4"
               >
+                {/* Setup Card */}
                 <div
-                  className="relative rounded-2xl p-7"
+                  className="rounded-3xl p-5 md:p-6"
                   style={{
-                    background: 'rgba(0,0,0,0.55)',
-                    border: '1px solid rgba(255,255,255,0.10)',
-                    backdropFilter: 'blur(16px)',
+                    background: 'linear-gradient(145deg, rgba(7,7,7,0.9), rgba(12,12,12,0.96))',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    boxShadow: '0 22px 60px rgba(0,0,0,0.75)',
+                    backdropFilter: 'blur(20px)'
                   }}
                 >
-                  {/* brand tag */}
-                  <div className="mb-7 flex items-center justify-center">
-                    <img src={arasLogo} alt="ARAS" className="w-7 h-7 object-contain mr-2" />
+                  {/* Profil-Status-Box */}
+                  {userProfileContext && (
                     <div
+                      className="mb-5 rounded-2xl px-4 py-3 text-xs"
                       style={{
-                        fontFamily: 'Orbitron, sans-serif',
-                        background: `linear-gradient(90deg, ${CI.goldLight}, ${CI.orange})`,
-                        WebkitBackgroundClip: 'text',
-                        backgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent'
+                        background: userProfileContext.aiProfile?.products?.length > 0
+                          ? 'rgba(34,197,94,0.08)'
+                          : 'rgba(234,179,8,0.08)',
+                        border: userProfileContext.aiProfile?.products?.length > 0
+                          ? '1px solid rgba(34,197,94,0.25)'
+                          : '1px solid rgba(234,179,8,0.25)',
+                        color: userProfileContext.aiProfile?.products?.length > 0
+                          ? '#4ade80'
+                          : '#fde047'
                       }}
-                      className="text-lg font-bold"
                     >
-                      ARAS AI • Core PRO 1.0
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold">
+                          {userProfileContext.aiProfile?.products?.length > 0
+                            ? '✓ ARAS AI – Core PRO 1.0'
+                            : '⚠ Firmenprofil unvollständig'}
+                        </span>
+                        {!userProfileContext.aiProfile?.products?.length && (
+                          <button
+                            onClick={() => window.location.href = '/app/settings?tab=profile'}
+                            className="text-[10px] underline hover:no-underline"
+                          >
+                            Jetzt vervollständigen
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-
-                  {/* 🔥 Firmenprofil-Status */}
-                  {isProfileLoading && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      className="mb-4 p-3 rounded-xl text-xs"
-                      style={{
-                        background: 'rgba(254,145,0,0.08)',
-                        border: '1px solid rgba(254,145,0,0.2)',
-                        color: '#d1d5db'
-                      }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Loader2 className="w-3 h-3 animate-spin" style={{ color: CI.orange }} />
-                        <span>Lade dein Firmenprofil...</span>
-                      </div>
-                    </motion.div>
-                  )}
-                  
-                  {isProfileError && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      className="mb-4 p-3 rounded-xl text-xs"
-                      style={{
-                        background: 'rgba(234,179,8,0.08)',
-                        border: '1px solid rgba(234,179,8,0.25)',
-                        color: '#fbbf24'
-                      }}
-                    >
-                      <div className="flex items-start gap-2">
-                        <span className="text-sm">⚠️</span>
-                        <div>
-                          <div className="font-semibold mb-1">Firmenprofil nicht verfügbar</div>
-                          <div className="text-[11px] text-gray-400">
-                            ARAS konnte dein Firmenprofil gerade nicht laden. Der Anruf funktioniert trotzdem – nur ohne personalisierte Firmendaten.
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                  
-                  {!isProfileLoading && !isProfileError && userProfileContext?.company && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      className="mb-4 p-3 rounded-xl text-xs"
-                      style={{
-                        background: 'rgba(34,197,94,0.08)',
-                        border: '1px solid rgba(34,197,94,0.2)',
-                        color: '#4ade80'
-                      }}
-                    >
-                      <div className="flex items-start gap-2">
-                        <span className="text-sm">✅</span>
-                        <div>
-                          <div className="font-semibold mb-1">Firmenprofil aktiv</div>
-                          <div className="text-[11px] text-gray-400">
-                            ARAS nutzt dein Profil ({userProfileContext.company}
-                            {userProfileContext.industry && `, ${userProfileContext.industry}`}) um Gespräche auf deine Zielkunden zuzuschneiden.
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
                   )}
 
-                  <div className="space-y-5">
-                    {/* Contact - MODERN with Kontaktbuch */}
+                  {/* Formular */}
+                  <div className="space-y-4">
                     <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="block text-[12px] font-medium text-gray-300">Gesprächspartner</label>
-                        <div className="flex gap-1.5">
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => setShowContactPicker(true)}
-                            className="px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all flex items-center gap-1"
-                            style={{
-                              background: `linear-gradient(135deg, ${CI.goldLight}15, ${CI.orange}10)`,
-                              border: `1px solid ${CI.goldLight}30`,
-                              color: CI.goldLight
-                            }}
-                          >
-                            <Contact className="w-3 h-3" />
-                            Wählen
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => setShowNewContactModal(true)}
-                            className="px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all flex items-center gap-1"
-                            style={{
-                              background: `linear-gradient(135deg, ${CI.orange}15, ${CI.goldDark}10)`,
-                              border: `1px solid ${CI.orange}30`,
-                              color: CI.orange
-                            }}
-                          >
-                            <Plus className="w-3 h-3" />
-                            Neu
-                          </motion.button>
-                        </div>
+                      <label className="block text-xs font-medium text-neutral-400 mb-2">
+                        Gesprächspartner (Name/Firma)
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={contactName}
+                          onChange={(e) => setContactName(e.target.value)}
+                          placeholder="Max Mustermann GmbH"
+                          className="flex-1 px-4 py-2.5 rounded-xl text-sm text-white placeholder-neutral-500 transition-all outline-none"
+                          style={{
+                            background: 'rgba(0,0,0,0.4)',
+                            border: '1px solid rgba(255,255,255,0.10)'
+                          }}
+                          onFocus={(e) => {
+                            e.currentTarget.style.borderColor = CI.orange;
+                            e.currentTarget.style.boxShadow = `0 0 0 4px rgba(254,145,0,0.08)`;
+                          }}
+                          onBlur={(e) => {
+                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)';
+                            e.currentTarget.style.boxShadow = 'none';
+                          }}
+                        />
+                        <button
+                          onClick={() => setShowContactPicker(true)}
+                          className="px-4 py-2.5 rounded-xl text-xs font-medium transition-all hover:scale-[1.02]"
+                          style={{
+                            background: 'rgba(255,255,255,0.05)',
+                            border: '1px solid rgba(255,255,255,0.12)',
+                            color: '#d1d5db'
+                          }}
+                        >
+                          Aus Kontakten
+                        </button>
                       </div>
-                      <input
-                        type="text"
-                        value={contactName}
-                        onChange={(e) => setContactName(e.target.value)}
-                        placeholder="Name oder Firma eingeben…"
-                        className="w-full px-4 py-[11px] rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all"
-                        style={{
-                          background: 'rgba(255,255,255,0.03)',
-                          border: '1px solid rgba(255,255,255,0.10)',
-                          boxShadow: '0 0 0 0 rgba(254,145,0,0)',
-                        }}
-                        onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(254,145,0,0.45)'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(254,145,0,0.08)'; }}
-                        onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)'; e.currentTarget.style.boxShadow = 'none'; }}
-                      />
                     </div>
 
-                    {/* Phone */}
                     <div>
-                      <label className="block text-[12px] font-medium text-gray-300 mb-2">Telefonnummer</label>
+                      <label className="block text-xs font-medium text-neutral-400 mb-2">
+                        Telefonnummer
+                      </label>
                       <input
                         type="tel"
                         value={phoneNumber}
                         onChange={(e) => handlePhoneChange(e.target.value)}
-                        placeholder="+49…"
-                        className="w-full px-4 py-[11px] rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all"
+                        placeholder="+491701234567"
+                        className="w-full px-4 py-2.5 rounded-xl text-sm text-white placeholder-neutral-500 transition-all outline-none"
                         style={{
-                          background: 'rgba(255,255,255,0.03)',
-                          border: phoneError ? '1px solid rgba(239,68,68,0.5)' : '1px solid rgba(255,255,255,0.10)',
-                          boxShadow: '0 0 0 0 rgba(254,145,0,0)'
+                          background: 'rgba(0,0,0,0.4)',
+                          border: phoneError ? '1px solid rgba(248,113,113,0.5)' : '1px solid rgba(255,255,255,0.10)'
                         }}
-                        onFocus={(e) => { if (!phoneError) { e.currentTarget.style.borderColor = 'rgba(254,145,0,0.45)'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(254,145,0,0.08)'; }}}
-                        onBlur={(e) => { if (!phoneError) { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)'; e.currentTarget.style.boxShadow = 'none'; }}}
+                        onFocus={(e) => {
+                          if (!phoneError) {
+                            e.currentTarget.style.borderColor = CI.orange;
+                            e.currentTarget.style.boxShadow = `0 0 0 4px rgba(254,145,0,0.08)`;
+                          }
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = phoneError ? 'rgba(248,113,113,0.5)' : 'rgba(255,255,255,0.10)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
                       />
-                      {phoneError && <p className="mt-1 text-[11px]" style={{ color: '#f87171' }}>{phoneError}</p>}
+                      {phoneError && (
+                        <p className="mt-1 text-[10px] text-red-400">{phoneError}</p>
+                      )}
+                      <p className="mt-1 text-[10px] text-neutral-500">
+                        Mit Ländervorwahl, z.B. +491701234567
+                      </p>
                     </div>
 
-                    {/* Message - Freier Text */}
                     <div>
-                      <label className="block text-[12px] font-medium text-gray-300 mb-2">Ziel der Nachricht</label>
+                      <label className="block text-xs font-medium text-neutral-400 mb-2">
+                        Ziel der Nachricht
+                      </label>
                       <textarea
-                        ref={textareaRef}
                         value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        placeholder="Freitext. Beispiel: Bitte vereinbaren Sie einen Termin für nächste Woche Dienstag oder Donnerstag…"
-                        className="w-full px-4 py-[11px] rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all resize-none"
+                        onChange={(e) => setMessage(e.target.value.slice(0, 500))}
+                        placeholder="Beschreibe in 1–2 Sätzen, was ARAS klären oder erreichen soll..."
+                        rows={4}
+                        className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-neutral-500 transition-all outline-none resize-none"
                         style={{
-                          minHeight: 110,
-                          maxHeight: 170,
-                          background: 'rgba(255,255,255,0.03)',
+                          background: 'rgba(0,0,0,0.4)',
                           border: '1px solid rgba(255,255,255,0.10)'
                         }}
-                        onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(254,145,0,0.45)'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(254,145,0,0.08)'; }}
-                        onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)'; e.currentTarget.style.boxShadow = 'none'; }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = CI.orange;
+                          e.currentTarget.style.boxShadow = `0 0 0 4px rgba(254,145,0,0.08)`;
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
                       />
-                      <div className="mt-1 text-right text-[11px] text-gray-500">{message.length} / 500</div>
-                    </div>
-
-                    {/* Call Status Display */}
-                    {callStatus !== 'idle' && (
-                      <div className="mb-4 p-3 rounded-lg text-center" style={{
-                        background: callStatus === 'processing' ? 'rgba(234,179,8,0.1)' :
-                                   callStatus === 'ringing' ? 'rgba(59,130,246,0.1)' :
-                                   callStatus === 'connected' ? 'rgba(34,197,94,0.1)' :
-                                   'rgba(107,114,128,0.1)',
-                        border: `1px solid ${callStatus === 'processing' ? 'rgba(234,179,8,0.3)' :
-                                callStatus === 'ringing' ? 'rgba(59,130,246,0.3)' :
-                                callStatus === 'connected' ? 'rgba(34,197,94,0.3)' :
-                                'rgba(107,114,128,0.3)'}`
-                      }}>
-                        <div className="text-sm font-medium" style={{
-                          color: callStatus === 'processing' ? '#fbbf24' :
-                                 callStatus === 'ringing' ? '#60a5fa' :
-                                 callStatus === 'connected' ? '#4ade80' :
-                                 '#9ca3af'
-                        }}>
-                          {callStatus === 'processing' ? 'Anruf wird vorbereitet...' :
-                           callStatus === 'ringing' ? 'Verbindung wird hergestellt...' :
-                           callStatus === 'connected' ? `Gespräch läuft: ${formatCallDuration(callDuration)}` :
-                           'Anruf beendet'}
-                        </div>
+                      <div className="flex justify-between mt-1">
+                        <p className="text-[10px] text-neutral-500">
+                          Ton, Zielgruppe und Argumente zieht ARAS aus deinem Firmenprofil.
+                        </p>
+                        <span className="text-[10px] text-neutral-500">{message.length}/500</span>
                       </div>
-                    )}
-                    
-                    {/* Call button */}
-                    <div className="pt-1">
-                      <button
-                        onClick={handleStartCallProcess}
-                        disabled={loading || !phoneNumber || !contactName || !message || !!phoneError || callStatus !== 'idle'}
-                        className="w-full py-3 rounded-full font-semibold text-sm transition-all"
+                    </div>
+
+                    {/* Button */}
+                    <button
+                      onClick={handleStartCallProcess}
+                      disabled={loading || !contactName || !phoneNumber || !message || !!phoneError}
+                      className="relative w-full overflow-hidden rounded-2xl transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:scale-[1.01]"
+                    >
+                      <span
+                        className="absolute inset-0 rounded-2xl"
                         style={{
-                          fontFamily: 'Orbitron, sans-serif',
-                          background: (loading || !phoneNumber || !contactName || !message || phoneError || callStatus !== 'idle')
-                            ? 'rgba(45,45,45,0.6)'
-                            : `linear-gradient(90deg, ${CI.goldLight}, ${CI.orange}, ${CI.goldDark})`,
+                          backgroundImage: 'linear-gradient(120deg, rgba(233,215,196,0.0), rgba(254,145,0,0.85), rgba(233,215,196,0.0))',
                           backgroundSize: '220% 100%',
-                          color: (loading || !phoneNumber || !contactName || !message || phoneError || callStatus !== 'idle') ? 'rgba(170,170,170,0.6)' : '#fff'
+                          animation: 'aras-border-run 8s linear infinite'
                         }}
-                        onMouseEnter={(e) => { if (!(loading || !phoneNumber || !contactName || !message || phoneError || callStatus !== 'idle')) (e.currentTarget as HTMLButtonElement).style.backgroundPosition = '100% 50%'; }}
-                        onMouseLeave={(e) => { if (!(loading || !phoneNumber || !contactName || !message || phoneError || callStatus !== 'idle')) (e.currentTarget as HTMLButtonElement).style.backgroundPosition = '0% 50%'; }}
+                      />
+                      <span className="relative flex h-[calc(100%-2px)] w-[calc(100%-2px)] items-center justify-center rounded-[18px] m-[1px] bg-black/90 px-4 py-3 text-sm font-semibold text-white"
+                        style={{ fontFamily: 'Orbitron, sans-serif' }}
                       >
-                        {callStatus === 'processing' ? 'Verarbeitung...' :
-                         callStatus === 'ringing' ? 'Wird verbunden...' :
-                         callStatus === 'connected' ? 'Gespräch läuft...' :
-                         loading ? 'Anruf wird gestartet...' : 'Jetzt anrufen lassen'}
-                      </button>
-                    </div>
+                        {loading ? 'Wird vorbereitet...' : 'Jetzt anrufen lassen'}
+                      </span>
+                    </button>
                   </div>
-
-                  {/* Result with Audio and Transcript */}
-                  <AnimatePresence>
-                    {result && callStatus === 'ended' && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        className="mt-6 rounded-xl p-5"
-                        style={{
-                          background: 'linear-gradient(135deg, rgba(254,145,0,0.05), rgba(233,215,196,0.03))',
-                          border: '1px solid rgba(254,145,0,0.2)'
-                        }}
-                      >
-                        <div className="mb-3">
-                          <h4 className="text-sm font-bold" style={{ color: CI.orange }}>Anrufergebnis</h4>
-                        </div>
-                        
-                        {result.success ? (
-                          <>
-                            {/* Audio Player with Download */}
-                            {result.recordingUrl ? (
-                              <div className="mb-4">
-                                <div className="text-[11px] font-medium mb-2" style={{ color: CI.goldLight }}>Aufzeichnung</div>
-                                <audio controls className="w-full mb-2" style={{ height: '36px' }}>
-                                  <source src={result.recordingUrl} type="audio/mpeg" />
-                                  <source src={result.recordingUrl} type="audio/wav" />
-                                  Browser unterstützt keine Audio-Wiedergabe.
-                                </audio>
-                                <a 
-                                  href={result.recordingUrl} 
-                                  download={`ARAS_Anruf_${new Date().toISOString().split('T')[0]}_${Date.now()}.mp3`}
-                                  className="inline-block text-[11px] px-3 py-1.5 rounded-lg font-medium transition-all"
-                                  style={{ 
-                                    color: CI.orange,
-                                    background: 'rgba(254,145,0,0.1)',
-                                    border: '1px solid rgba(254,145,0,0.2)'
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'rgba(254,145,0,0.2)';
-                                    e.currentTarget.style.transform = 'translateY(-1px)';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'rgba(254,145,0,0.1)';
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                  }}
-                                >
-                                  Audio herunterladen
-                                </a>
-                              </div>
-                            ) : (
-                              <div className="mb-4 p-3 rounded-lg text-center" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                <p className="text-[11px] text-gray-500">Audio wird noch verarbeitet...</p>
-                              </div>
-                            )}
-                            
-                            {/* Transcript */}
-                            {result.transcript && (
-                              <div className="mb-4">
-                                <div className="text-[11px] font-medium mb-2" style={{ color: CI.goldLight }}>Transkript</div>
-                                <div 
-                                  className="text-[12px] text-gray-300 leading-relaxed p-3 rounded-lg overflow-y-auto"
-                                  style={{ 
-                                    background: 'rgba(0,0,0,0.2)',
-                                    border: '1px solid rgba(255,255,255,0.05)',
-                                    maxHeight: '400px'
-                                  }}
-                                >
-                                  <pre className="whitespace-pre-wrap font-sans">
-                                    {(() => {
-                                      // Handle transcript that might be string or array
-                                      if (typeof result.transcript === 'string') {
-                                        // Already cleaned by backend
-                                        return result.transcript;
-                                      } else if (Array.isArray(result.transcript)) {
-                                        // Parse array format (fallback if backend didn't clean)
-                                        return result.transcript
-                                          .filter((turn: any) => turn.message && turn.message.trim() !== '...')
-                                          .map((turn: any) => {
-                                            const role = turn.role === 'agent' ? 'ARAS AI' : 'Kunde';
-                                            const message = turn.original_message || turn.message;
-                                            return `${role}: ${message.trim()}`;
-                                          })
-                                          .join('\n\n');
-                                      } else {
-                                        return JSON.stringify(result.transcript, null, 2);
-                                      }
-                                    })()}
-                                  </pre>
-                                </div>
-                              </div>
-                            )}
-                            
-                            {result.duration && (
-                              <p className="text-[11px] text-gray-500 mb-3">
-                                Dauer: {Math.floor(result.duration / 60)}:{(result.duration % 60).toString().padStart(2, '0')} Min
-                              </p>
-                            )}
-                            
-                            {/* Reset Button */}
-                            <button
-                              onClick={() => {
-                                setResult(null);
-                                setCallStatus('idle');
-                                setCallDuration(0);
-                              }}
-                              className="text-[12px] font-medium transition-all"
-                              style={{ color: CI.orange }}
-                              onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
-                              onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
-                            >
-                              Neuer Anruf starten
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <p className="text-red-300 text-sm">{result.error || 'Fehler beim Anruf'}</p>
-                            <button
-                              onClick={() => {
-                                setResult(null);
-                                setCallStatus('idle');
-                              }}
-                              className="mt-2 text-[12px] font-medium"
-                              style={{ color: CI.orange }}
-                            >
-                              Erneut versuchen
-                            </button>
-                          </>
-                        )}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {/* Call History Button & Collapsible Section */}
-                  {callHistory.length > 0 && (
-                    <div className="mt-7">
-                      {/* Toggle Button */}
-                      <button
-                        onClick={() => setShowHistory(!showHistory)}
-                        className="w-full py-3 px-4 rounded-xl font-medium text-[13px] transition-all"
-                        style={{
-                          background: showHistory 
-                            ? 'linear-gradient(135deg, rgba(254,145,0,0.15), rgba(233,215,196,0.08))' 
-                            : 'rgba(255,255,255,0.03)',
-                          border: showHistory 
-                            ? '1px solid rgba(254,145,0,0.3)' 
-                            : '1px solid rgba(255,255,255,0.08)',
-                          color: showHistory ? CI.orange : '#9ca3af'
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!showHistory) {
-                            e.currentTarget.style.borderColor = 'rgba(254,145,0,0.2)';
-                            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!showHistory) {
-                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                            e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                          }
-                        }}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span>
-                            {showHistory ? 'Verlauf ausblenden' : `Gesprächsverlauf anzeigen (${callHistory.length})`}
-                          </span>
-                          <span className="text-[16px]">
-                            {showHistory ? '▴' : '▾'}
-                          </span>
-                        </div>
-                      </button>
-                      
-                      {/* Collapsible History */}
-                      <AnimatePresence>
-                        {showHistory && (
-                          <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.3, ease: 'easeInOut' }}
-                            className="overflow-hidden"
-                          >
-                            <div className="mt-4 space-y-3">
-                        {callHistory.slice(0, 10).map((call) => (
-                          <div
-                            key={call.id}
-                            className="rounded-lg overflow-hidden transition-all"
-                            style={{
-                              background: expandedCall === call.id 
-                                ? 'linear-gradient(135deg, rgba(254,145,0,0.08), rgba(233,215,196,0.05))' 
-                                : 'rgba(255,255,255,0.03)',
-                              border: expandedCall === call.id
-                                ? '1px solid rgba(254,145,0,0.3)'
-                                : '1px solid rgba(255,255,255,0.08)'
-                            }}
-                          >
-                            {/* Header - Always visible */}
-                            <div 
-                              className="p-3 cursor-pointer hover:bg-white/5 transition-colors"
-                              onClick={() => setExpandedCall(expandedCall === call.id ? null : call.id)}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <div className="text-sm font-medium text-white">
-                                      {call.phoneNumber}
-                                    </div>
-                                    <div className="text-[11px] px-2 py-0.5 rounded-full" style={{
-                                      background: call.status === 'completed' ? 'rgba(34,197,94,0.2)' : 'rgba(107,114,128,0.2)',
-                                      color: call.status === 'completed' ? '#4ade80' : '#9ca3af'
-                                    }}>
-                                      {call.status === 'completed' ? 'Erfolgreich' : call.status}
-                                    </div>
-                                  </div>
-                                  <div className="text-[11px] text-gray-500 mt-1">
-                                    {new Date(call.createdAt).toLocaleDateString('de-DE', { 
-                                      day: '2-digit', 
-                                      month: '2-digit', 
-                                      year: 'numeric',
-                                      hour: '2-digit',
-                                      minute: '2-digit'
-                                    })}
-                                    {call.duration && ` • ${Math.floor(call.duration / 60)}:${(call.duration % 60).toString().padStart(2, '0')} Min`}
-                                  </div>
-                                </div>
-                                <div className="text-[11px]" style={{ color: CI.orange }}>
-                                  {expandedCall === call.id ? '▴ Schließen' : '▾ Details'}
-                                </div>
-                              </div>
-                            </div>
-                            
-                            {/* Expanded Content */}
-                            {expandedCall === call.id && (
-                              <div className="px-3 pb-3 border-t border-white/5">
-                                {/* Audio Player with Download */}
-                                {call.recordingUrl ? (
-                                  <div className="mt-3">
-                                    <div className="text-[11px] font-medium mb-2" style={{ color: CI.goldLight }}>Aufzeichnung</div>
-                                    <audio controls className="w-full mb-2" style={{ height: '32px' }}>
-                                      <source src={call.recordingUrl} type="audio/mpeg" />
-                                      <source src={call.recordingUrl} type="audio/wav" />
-                                      Browser unterstützt keine Audio-Wiedergabe.
-                                    </audio>
-                                    <a 
-                                      href={call.recordingUrl} 
-                                      download={`ARAS_Anruf_${call.phoneNumber}_${new Date(call.createdAt).toISOString().split('T')[0]}.mp3`}
-                                      className="inline-block text-[11px] px-3 py-1.5 rounded-lg font-medium transition-all"
-                                      style={{ 
-                                        color: CI.orange,
-                                        background: 'rgba(254,145,0,0.1)',
-                                        border: '1px solid rgba(254,145,0,0.2)'
-                                      }}
-                                      onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = 'rgba(254,145,0,0.2)';
-                                        e.currentTarget.style.transform = 'translateY(-1px)';
-                                      }}
-                                      onMouseLeave={(e) => {
-                                        e.currentTarget.style.background = 'rgba(254,145,0,0.1)';
-                                        e.currentTarget.style.transform = 'translateY(0)';
-                                      }}
-                                    >
-                                      Audio herunterladen
-                                    </a>
-                                  </div>
-                                ) : (
-                                  <div className="mt-3 p-3 rounded-lg text-center" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                    <p className="text-[11px] text-gray-500">Audio wird noch verarbeitet...</p>
-                                  </div>
-                                )}
-                                
-                                {/* Transcript */}
-                                {call.transcript && (
-                                  <div className="mt-3">
-                                    <div className="text-[11px] font-medium mb-2" style={{ color: CI.goldLight }}>Transkript</div>
-                                    <div 
-                                      className="text-[12px] text-gray-300 leading-relaxed p-3 rounded-lg overflow-y-auto"
-                                      style={{ 
-                                        background: 'rgba(0,0,0,0.2)',
-                                        border: '1px solid rgba(255,255,255,0.05)',
-                                        maxHeight: '400px'
-                                      }}
-                                    >
-                                      <pre className="whitespace-pre-wrap font-sans">
-                                        {(() => {
-                                          // Handle transcript that might be string or array
-                                          if (typeof call.transcript === 'string') {
-                                            // Already cleaned by backend
-                                            return call.transcript;
-                                          } else if (Array.isArray(call.transcript)) {
-                                            // Parse array format (fallback if backend didn't clean)
-                                            return call.transcript
-                                              .filter((turn: any) => turn.message && turn.message.trim() !== '...')
-                                              .map((turn: any) => {
-                                                const role = turn.role === 'agent' ? 'ARAS AI' : 'Kunde';
-                                                const message = turn.original_message || turn.message;
-                                                return `${role}: ${message.trim()}`;
-                                              })
-                                              .join('\n\n');
-                                          } else {
-                                            return JSON.stringify(call.transcript, null, 2);
-                                          }
-                                        })()}
-                                      </pre>
-                                    </div>
-                                  </div>
-                                )}
-                                
-                                {/* Purpose/Message */}
-                                {(call.customPrompt || call.metadata?.purpose) && (
-                                  <div className="mt-3">
-                                    <div className="text-[11px] font-medium mb-1" style={{ color: CI.goldLight }}>Auftrag</div>
-                                    <p className="text-[12px] text-gray-400 leading-relaxed">
-                                      {call.customPrompt || call.metadata?.purpose}
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                            </div>
-                            
-                            {callHistory.length > 10 && (
-                              <div className="mt-4 text-center">
-                                <span className="text-[11px] text-gray-500">
-                                  Zeige die letzten 10 von {callHistory.length} Anrufen
-                                </span>
-                              </div>
-                            )}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  )}
                 </div>
+
+                {/* ClarificationChat Inline */}
+                <AnimatePresence>
+                  {showChatFlow && validationResult && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <ClarificationChat
+                        questions={validationResult.questions}
+                        onAnswersComplete={handleChatComplete}
+                        onSkip={handleSkipChat}
+                        initialMessage={message}
+                        userProfileContext={userProfileContext || null}
+                        callStatus={callStatus}
+                        finalSummary={callSummary}
+                        callInProgressSummaryHint="Der Anruf läuft – ich höre zu und bereite deine Zusammenfassung vor."
+                      />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Placeholder wenn kein Chat */}
+                {!showChatFlow && !result && (
+                  <div className="mt-2 text-[11px] text-neutral-500 px-2">
+                    Sobald ARAS Rückfragen zum Auftrag hat, erscheinen sie hier als kurze Chat-Nachrichten.
+                  </div>
+                )}
               </motion.div>
 
-              {/* RIGHT: Call History & Audio Playback */}
+              {/* ============ RECHTE SPALTE: TIMELINE + RESULT + HISTORY ============ */}
               <motion.div
-                initial={{ opacity: 0, x: 14 }}
+                initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5 }}
+                transition={{ delay: 0.2 }}
+                className="flex flex-col gap-4"
               >
+                {/* Timeline */}
                 <div
-                  className="relative rounded-2xl p-7"
+                  className="rounded-3xl p-5"
                   style={{
-                    background: 'rgba(0,0,0,0.55)',
-                    border: '1px solid rgba(255,255,255,0.10)',
-                    backdropFilter: 'blur(16px)',
+                    background: 'linear-gradient(155deg, rgba(8,8,8,0.95), rgba(4,4,4,0.98))',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    boxShadow: '0 18px 50px rgba(0,0,0,0.85)',
+                    backdropFilter: 'blur(20px)'
                   }}
                 >
-                  {/* Header */}
-                  <div className="mb-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3
-                        className="text-xl font-bold"
-                        style={{
-                          fontFamily: 'Orbitron, sans-serif',
-                          background: `linear-gradient(90deg, ${CI.goldLight}, ${CI.orange})`,
-                          WebkitBackgroundClip: 'text',
-                          backgroundClip: 'text',
-                          WebkitTextFillColor: 'transparent'
-                        }}
-                      >
-                        Anrufverlauf
-                      </h3>
-                      <div className="text-xs text-gray-400">
-                        {callHistory.length} {callHistory.length === 1 ? 'Anruf' : 'Anrufe'}
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-400">Ihre letzten ausgeführten Anrufe</p>
-                  </div>
-
-                  {/* Call List */}
-                  <div className="space-y-3 max-h-[600px] overflow-y-auto premium-scroll">
-                    {callHistory.length === 0 ? (
-                      <div className="text-center py-12">
-                        <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center"
-                          style={{
-                            background: `linear-gradient(135deg, ${CI.orange}15, ${CI.goldLight}10)`,
-                            border: `1px solid ${CI.orange}30`
-                          }}
-                        >
-                          <Phone className="w-7 h-7 text-gray-500" />
-                        </div>
-                        <p className="text-sm text-gray-400">Noch keine Anrufe getätigt</p>
-                        <p className="text-xs text-gray-500 mt-1">Starten Sie Ihren ersten Anruf!</p>
-                      </div>
-                    ) : (
-                      callHistory.map((call, idx) => (
-                        <motion.div
-                          key={call.id || idx}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: idx * 0.05 }}
-                          className="rounded-xl p-4 cursor-pointer transition-all"
-                          style={{
-                            background: expandedCall === call.id ? 'rgba(254, 145, 0, 0.08)' : 'rgba(255,255,255,0.03)',
-                            border: `1px solid ${expandedCall === call.id ? 'rgba(254, 145, 0, 0.3)' : 'rgba(255,255,255,0.08)'}`,
-                          }}
-                          onClick={() => setExpandedCall(expandedCall === call.id ? null : call.id)}
-                          onMouseEnter={(e) => {
-                            if (expandedCall !== call.id) {
-                              e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            if (expandedCall !== call.id) {
-                              e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                            }
-                          }}
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="font-semibold text-white truncate">{call.contactName || 'Unbekannt'}</span>
-                                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                  call.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                                  call.status === 'failed' ? 'bg-red-500/20 text-red-400' :
-                                  'bg-yellow-500/20 text-yellow-400'
-                                }`}>
-                                  {call.status === 'completed' ? 'Abgeschlossen' :
-                                   call.status === 'failed' ? 'Fehlgeschlagen' :
-                                   'Ausstehend'}
-                                </span>
-                              </div>
-                              <div className="text-xs text-gray-400 truncate">{call.phoneNumber}</div>
-                              {call.createdAt && (
-                                <div className="text-xs text-gray-500 mt-1">
-                                  {formatDistanceToNow(new Date(call.createdAt), { addSuffix: true, locale: de })}
-                                </div>
-                              )}
-                            </div>
-                            <motion.div
-                              animate={{ rotate: expandedCall === call.id ? 180 : 0 }}
-                              transition={{ duration: 0.2 }}
-                            >
-                              <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </motion.div>
-                          </div>
-
-                          {/* Expanded Details */}
-                          <AnimatePresence>
-                            {expandedCall === call.id && (
-                              <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                transition={{ duration: 0.2 }}
-                                className="mt-4 pt-4 border-t border-gray-700/50 space-y-3"
-                              >
-                                {call.message && (
-                                  <div>
-                                    <div className="text-xs text-gray-500 mb-1">Nachricht:</div>
-                                    <div className="text-sm text-gray-300 leading-relaxed">{call.message}</div>
-                                  </div>
-                                )}
-                                
-                                {call.duration && (
-                                  <div>
-                                    <div className="text-xs text-gray-500 mb-1">Dauer:</div>
-                                    <div className="text-sm text-gray-300">{Math.floor(call.duration / 60)}:{(call.duration % 60).toString().padStart(2, '0')} Min</div>
-                                  </div>
-                                )}
-
-                                {/* Audio Player Placeholder */}
-                                {call.recordingUrl && (
-                                  <div>
-                                    <div className="text-xs text-gray-500 mb-2">Aufnahme:</div>
-                                    <audio 
-                                      controls 
-                                      className="w-full"
-                                      style={{
-                                        height: '32px',
-                                        borderRadius: '8px'
-                                      }}
-                                    >
-                                      <source src={call.recordingUrl} type="audio/mpeg" />
-                                      Ihr Browser unterstützt keine Audio-Wiedergabe.
-                                    </audio>
-                                  </div>
-                                )}
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </motion.div>
-                      ))
-                    )}
-                  </div>
+                  <CallTimeline currentStatus={callStatus} duration={callDuration} />
                 </div>
+
+                {/* Result Card */}
+                {result ? (
+                  <PowerResultCard
+                    result={result}
+                    summary={callSummary}
+                    linkedContact={callHistory.find(c => c.phoneNumber === result.phoneNumber) || null}
+                    onNewCall={handleNewCall}
+                    onLinkToContact={(phone, name) => {
+                      setShowContactPicker(true);
+                      // TODO: Auto-select contact logic
+                    }}
+                    onSaveAsNewContact={(phone, name) => {
+                      setNewContactData({
+                        ...newContactData,
+                        phone: phone || '',
+                        firstName: name?.split(' ')[0] || '',
+                        lastName: name?.split(' ').slice(1).join(' ') || ''
+                      });
+                      setShowNewContactModal(true);
+                    }}
+                  />
+                ) : (
+                  <div
+                    className="rounded-3xl p-6 text-center"
+                    style={{
+                      background: 'linear-gradient(155deg, rgba(8,8,8,0.95), rgba(4,4,4,0.98))',
+                      border: '1px solid rgba(255,255,255,0.06)',
+                      boxShadow: '0 18px 50px rgba(0,0,0,0.85)',
+                      backdropFilter: 'blur(20px)'
+                    }}
+                  >
+                    <p className="text-xs text-neutral-500">
+                      Sobald ein POWER Anruf abgeschlossen ist, erscheinen hier Aufnahme, Transkript und eine klare Zusammenfassung.
+                    </p>
+                  </div>
+                )}
+
+                {/* Kompakte Call-History */}
+                {callHistory.length > 0 && (
+                  <div
+                    className="rounded-3xl p-4"
+                    style={{
+                      background: 'rgba(8,8,8,0.85)',
+                      border: '1px solid rgba(255,255,255,0.06)',
+                      backdropFilter: 'blur(16px)'
+                    }}
+                  >
+                    <h3 className="text-xs font-semibold text-neutral-400 mb-3 uppercase tracking-wider">
+                      Letzte Anrufe
+                    </h3>
+                    <div className="space-y-2">
+                      {callHistory.slice(0, 5).map((call, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            // TODO: Load full call details
+                            console.log('Load call:', call);
+                          }}
+                          className="w-full text-left px-3 py-2 rounded-xl transition-all hover:bg-white/5"
+                          style={{
+                            border: '1px solid rgba(255,255,255,0.05)'
+                          }}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-neutral-200 truncate">
+                                {call.contactName || 'Unbekannt'} · {call.phoneNumber}
+                              </p>
+                              <p className="text-[10px] text-neutral-500">
+                                {call.status} · {formatDistanceToNow(new Date(call.createdAt), { addSuffix: true, locale: de })}
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </motion.div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Fonts & Scrollbar */}
-      <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-      <style>{`
-        .premium-scroll::-webkit-scrollbar { width: 6px; }
-        .premium-scroll::-webkit-scrollbar-track { background: transparent; }
-        .premium-scroll::-webkit-scrollbar-thumb { background: rgba(254,145,0,0.28); border-radius: 10px; }
-        .premium-scroll::-webkit-scrollbar-thumb:hover { background: rgba(254,145,0,0.45); }
-      `}</style>
-
-      {/* 📱 KONTAKTBUCH PICKER MODAL */}
-      <AnimatePresence>
-        {showContactPicker && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}
-            onClick={() => setShowContactPicker(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              className="w-full max-w-2xl rounded-2xl p-6 relative"
-              style={{
-                background: 'rgba(10, 10, 10, 0.98)',
-                border: `1px solid ${CI.orange}30`,
-                backdropFilter: 'blur(20px)',
-                maxHeight: '80vh',
-                overflow: 'auto'
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-xl font-bold" style={{ 
-                    fontFamily: 'Orbitron, sans-serif',
-                    background: `linear-gradient(90deg, ${CI.goldLight}, ${CI.orange})`,
-                    WebkitBackgroundClip: 'text',
-                    backgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent'
-                  }}>
-                    Kontakt wählen
-                  </h3>
-                  <p className="text-xs text-gray-500 mt-1">{contacts.length} Kontakte verfügbar</p>
-                </div>
-                <button
-                  onClick={() => setShowContactPicker(false)}
-                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5 text-gray-400" />
-                </button>
-              </div>
-
-              {/* Search */}
-              <div className="mb-4 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
-                <input
-                  type="text"
-                  value={contactSearchQuery}
-                  onChange={(e) => setContactSearchQuery(e.target.value)}
-                  placeholder="Suchen..."
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all"
-                  style={{
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.1)'
-                  }}
-                />
-              </div>
-
-              {/* Contact List */}
-              <div className="space-y-2">
-                {filteredContacts.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Contact className="w-12 h-12 mx-auto mb-3 text-gray-700" />
-                    <p className="text-sm text-gray-500">Keine Kontakte gefunden</p>
-                  </div>
-                ) : (
-                  filteredContacts.map((contact) => (
-                    <motion.div
-                      key={contact.id}
-                      whileHover={{ scale: 1.01, x: 4 }}
-                      className="p-3 rounded-lg cursor-pointer transition-all"
-                      style={{
-                        background: 'rgba(255,255,255,0.03)',
-                        border: '1px solid rgba(255,255,255,0.08)'
-                      }}
-                      onClick={() => handleSelectContact(contact)}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{
-                            background: `${CI.orange}15`,
-                            border: `1px solid ${CI.orange}30`
-                          }}
-                        >
-                          <Building2 className="w-5 h-5" style={{ color: CI.orange }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-white text-sm mb-0.5">{contact.company}</div>
-                          <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500">
-                            {(contact.firstName || contact.lastName) && (
-                              <span>{[contact.firstName, contact.lastName].filter(Boolean).join(' ')}</span>
-                            )}
-                            {contact.phone && <span>{contact.phone}</span>}
-                            {contact.email && <span className="truncate max-w-[150px]">{contact.email}</span>}
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ➕ NEUER KONTAKT MODAL */}
-      <AnimatePresence>
-        {showNewContactModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}
-            onClick={() => setShowNewContactModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              className="w-full max-w-2xl rounded-2xl p-6 relative"
-              style={{
-                background: 'rgba(10, 10, 10, 0.98)',
-                border: `1px solid ${CI.orange}30`,
-                backdropFilter: 'blur(20px)',
-                maxHeight: '80vh',
-                overflow: 'auto'
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-xl font-bold" style={{ 
-                    fontFamily: 'Orbitron, sans-serif',
-                    background: `linear-gradient(90deg, ${CI.orange}, ${CI.goldDark})`,
-                    WebkitBackgroundClip: 'text',
-                    backgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent'
-                  }}>
-                    Neuer Kontakt
-                  </h3>
-                  <p className="text-xs text-gray-500 mt-1">Alle Felder ausfüllen und speichern</p>
-                </div>
-                <button
-                  onClick={() => setShowNewContactModal(false)}
-                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5 text-gray-400" />
-                </button>
-              </div>
-
-              {/* Form */}
-              <div className="space-y-4">
-                {/* Company - Required */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5">
-                    <Building2 className="w-3.5 h-3.5" style={{ color: CI.orange }} />
-                    Firma <span style={{ color: CI.orange }}>*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newContactData.company}
-                    onChange={(e) => setNewContactData({ ...newContactData, company: e.target.value })}
-                    placeholder="Firmenname eingeben"
-                    className="w-full px-4 py-2.5 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all"
-                    style={{
-                      background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid rgba(255,255,255,0.1)'
-                    }}
-                  />
-                </div>
-
-                {/* Name Fields */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5" style={{ color: CI.goldLight }} />
-                      Vorname
-                    </label>
-                    <input
-                      type="text"
-                      value={newContactData.firstName}
-                      onChange={(e) => setNewContactData({ ...newContactData, firstName: e.target.value })}
-                      placeholder="Vorname"
-                      className="w-full px-4 py-2.5 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all"
-                      style={{
-                        background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid rgba(255,255,255,0.1)'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5" style={{ color: CI.goldLight }} />
-                      Nachname
-                    </label>
-                    <input
-                      type="text"
-                      value={newContactData.lastName}
-                      onChange={(e) => setNewContactData({ ...newContactData, lastName: e.target.value })}
-                      placeholder="Nachname"
-                      className="w-full px-4 py-2.5 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all"
-                      style={{
-                        background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid rgba(255,255,255,0.1)'
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Contact Fields */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5">
-                      <Phone className="w-3.5 h-3.5" style={{ color: CI.orange }} />
-                      Telefon
-                    </label>
-                    <input
-                      type="tel"
-                      value={newContactData.phone}
-                      onChange={(e) => setNewContactData({ ...newContactData, phone: e.target.value })}
-                      placeholder="+49..."
-                      className="w-full px-4 py-2.5 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all"
-                      style={{
-                        background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid rgba(255,255,255,0.1)'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5">
-                      <Mail className="w-3.5 h-3.5" style={{ color: CI.goldLight }} />
-                      E-Mail
-                    </label>
-                    <input
-                      type="email"
-                      value={newContactData.email}
-                      onChange={(e) => setNewContactData({ ...newContactData, email: e.target.value })}
-                      placeholder="email@beispiel.de"
-                      className="w-full px-4 py-2.5 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all"
-                      style={{
-                        background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid rgba(255,255,255,0.1)'
-                      }}
-                    />
-                  </div>
-                </div>
-
-                {/* Notes */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5">
-                    <StickyNote className="w-3.5 h-3.5" style={{ color: CI.goldLight }} />
-                    Notizen
-                  </label>
-                  <textarea
-                    value={newContactData.notes}
-                    onChange={(e) => setNewContactData({ ...newContactData, notes: e.target.value })}
-                    placeholder="Zusätzliche Informationen..."
-                    rows={3}
-                    className="w-full px-4 py-2.5 rounded-xl text-white placeholder-gray-600 focus:outline-none transition-all resize-none"
-                    style={{
-                      background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid rgba(255,255,255,0.1)'
-                    }}
-                  />
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-3 pt-2">
-                  <button
-                    onClick={handleSaveNewContact}
-                    className="flex-1 py-3 rounded-xl font-semibold text-sm transition-all"
-                    style={{
-                      background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
-                      color: '#000'
-                    }}
-                  >
-                    Kontakt speichern
-                  </button>
-                  <button
-                    onClick={() => {
-                      setNewContactData({
-                        company: '',
-                        firstName: '',
-                        lastName: '',
-                        phone: '',
-                        email: '',
-                        notes: ''
-                      });
-                      setShowNewContactModal(false);
-                    }}
-                    className="px-6 py-3 rounded-xl font-semibold text-sm transition-all"
-                    style={{
-                      background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      color: '#9ca3af'
-                    }}
-                  >
-                    Abbrechen
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* 🔥 CLARIFICATION CHAT MODAL */}
-      <AnimatePresence>
-        {showChatFlow && validationResult?.questions && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{
-              background: 'rgba(10, 10, 10, 0.92)',
-              backdropFilter: 'blur(12px)'
-            }}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="relative max-w-3xl w-full"
-            >
-              <ClarificationChat
-                questions={validationResult.questions}
-                onAnswersComplete={handleChatComplete}
-                onSkip={handleSkipChat}
-                initialMessage={message}
-                userProfileContext={userProfileContext || null}
-                callStatus={callStatus}
-                finalSummary={callSummary}
-                callInProgressSummaryHint="Der Anruf läuft – ich höre zu und bereite deine Zusammenfassung vor."
-              />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* 🔥 REVIEW MODAL */}
+      {/* 🔥 REVIEW MODAL (bleibt wie gehabt) */}
       <AnimatePresence>
         {showReview && (
           <motion.div
@@ -1840,73 +1036,40 @@ export default function Power() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="relative max-w-2xl w-full p-8 rounded-2xl"
+              className="w-full max-w-2xl rounded-3xl p-6"
               style={{
-                background: 'linear-gradient(135deg, rgba(0,0,0,0.95), rgba(20,20,20,0.98))',
-                border: '1px solid rgba(254,145,0,0.3)',
-                boxShadow: '0 20px 60px rgba(254,145,0,0.2)'
+                background: 'linear-gradient(145deg, rgba(12,12,12,0.98), rgba(7,7,7,0.98))',
+                border: '1px solid rgba(255,255,255,0.10)',
+                boxShadow: '0 25px 80px rgba(0,0,0,0.90)'
               }}
             >
-              <button
-                onClick={() => setShowReview(false)}
-                className="absolute top-4 right-4 p-2 rounded-lg transition-colors hover:bg-white/10"
-              >
-                <X className="w-5 h-5 text-gray-400" />
-              </button>
-
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center"
-                  style={{
-                    background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
-                    boxShadow: `0 0 30px rgba(254,145,0,0.4)`
-                  }}
-                >
-                  <Sparkles className="w-8 h-8 text-white" />
+              <h3 className="text-xl font-bold mb-4" style={{ fontFamily: 'Orbitron, sans-serif', color: CI.orange }}>
+                Final Review
+              </h3>
+              <div className="space-y-3 text-sm mb-6">
+                <div>
+                  <span className="text-neutral-400">Kontakt:</span>{' '}
+                  <span className="text-white">{contactName}</span>
                 </div>
-                <h2 
-                  className="text-2xl font-black mb-2"
-                  style={{
-                    fontFamily: 'Orbitron, sans-serif',
-                    background: `linear-gradient(90deg, ${CI.goldLight}, ${CI.orange})`,
-                    WebkitBackgroundClip: 'text',
-                    backgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent'
-                  }}
-                >
-                  Anruf-Review
-                </h2>
-                <p className="text-sm text-gray-400">Prüfen Sie die Details vor dem Start</p>
-              </div>
-
-              <div className="space-y-4 mb-6">
-                <div className="p-4 rounded-xl" style={{
-                  background: 'rgba(254,145,0,0.08)',
-                  border: '1px solid rgba(254,145,0,0.2)'
-                }}>
-                  <div className="text-xs text-gray-400 mb-1">Kontakt</div>
-                  <div className="text-lg font-semibold text-white">{contactName}</div>
-                  <div className="text-sm text-gray-300">{phoneNumber}</div>
+                <div>
+                  <span className="text-neutral-400">Telefon:</span>{' '}
+                  <span className="text-white">{phoneNumber}</span>
                 </div>
-
-                <div className="p-4 rounded-xl" style={{
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.08)'
-                }}>
-                  <div className="text-xs text-gray-400 mb-2">ARAS wird folgendes tun:</div>
-                  <div className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">
-                    {enhancedPrompt}
-                  </div>
+                <div>
+                  <span className="text-neutral-400">Auftrag:</span>{' '}
+                  <p className="text-white mt-1 p-3 rounded-xl bg-black/40 border border-white/10">
+                    {enhancedPrompt || message}
+                  </p>
                 </div>
               </div>
-
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowReview(false)}
-                  className="flex-1 px-6 py-3 rounded-xl font-semibold text-sm transition-all"
+                  className="flex-1 px-6 py-3 rounded-xl text-sm font-medium transition-all"
                   style={{
                     background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    color: '#fff'
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    color: '#d1d5db'
                   }}
                 >
                   Zurück
@@ -1914,28 +1077,183 @@ export default function Power() {
                 <button
                   onClick={handleConfirmCall}
                   disabled={loading}
-                  className="flex-1 px-6 py-4 rounded-xl font-bold text-sm transition-all hover:scale-[1.02] relative overflow-hidden group"
+                  className="flex-1 px-6 py-3 rounded-xl text-sm font-semibold transition-all relative overflow-hidden"
                   style={{
                     background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
                     color: '#fff',
-                    fontFamily: 'Orbitron, sans-serif',
-                    boxShadow: `0 8px 24px rgba(254,145,0,0.3)`
+                    fontFamily: 'Orbitron, sans-serif'
                   }}
                 >
-                  {loading ? (
-                    <><Loader2 className="w-5 h-5 inline animate-spin mr-2" />Starte...</>
-                  ) : (
-                    <>🚀 Jetzt anrufen</>
-                  )}
-                  <motion.div
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100"
-                    style={{
-                      background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)'
+                  {loading ? 'Startet...' : 'Anruf starten'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Contact Picker Modal (bleibt wie gehabt) */}
+      <AnimatePresence>
+        {showContactPicker && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{
+              background: 'rgba(10, 10, 10, 0.90)',
+              backdropFilter: 'blur(12px)'
+            }}
+            onClick={() => setShowContactPicker(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              className="w-full max-w-2xl rounded-3xl p-6"
+              style={{
+                background: 'linear-gradient(145deg, rgba(12,12,12,0.98), rgba(7,7,7,0.98))',
+                border: '1px solid rgba(255,255,255,0.10)'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                  Kontakt auswählen
+                </h3>
+                <button
+                  onClick={() => setShowContactPicker(false)}
+                  className="p-2 rounded-lg hover:bg-white/10"
+                >
+                  ✕
+                </button>
+              </div>
+              <input
+                type="text"
+                value={contactSearchQuery}
+                onChange={(e) => setContactSearchQuery(e.target.value)}
+                placeholder="Suchen..."
+                className="w-full px-4 py-2 rounded-xl mb-4 text-sm bg-black/40 border border-white/10 text-white"
+              />
+              <div className="max-h-[400px] overflow-y-auto space-y-2">
+                {contacts?.filter((c: any) =>
+                  c.company?.toLowerCase().includes(contactSearchQuery.toLowerCase()) ||
+                  c.firstName?.toLowerCase().includes(contactSearchQuery.toLowerCase()) ||
+                  c.lastName?.toLowerCase().includes(contactSearchQuery.toLowerCase())
+                ).map((contact: any) => (
+                  <button
+                    key={contact.id}
+                    onClick={() => {
+                      handleSelectContact(contact);
+                      setShowContactPicker(false);
                     }}
-                    initial={{ x: '-100%' }}
-                    whileHover={{ x: '100%' }}
-                    transition={{ duration: 0.6 }}
+                    className="w-full text-left px-4 py-3 rounded-xl hover:bg-white/5 transition-all"
+                    style={{ border: '1px solid rgba(255,255,255,0.08)' }}
+                  >
+                    <div className="font-medium text-sm text-white">
+                      {contact.company || `${contact.firstName} ${contact.lastName}`}
+                    </div>
+                    <div className="text-xs text-neutral-500">
+                      {contact.phone || contact.phoneNumber}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* New Contact Modal (bleibt wie gehabt) */}
+      <AnimatePresence>
+        {showNewContactModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{
+              background: 'rgba(10, 10, 10, 0.90)',
+              backdropFilter: 'blur(12px)'
+            }}
+            onClick={() => setShowNewContactModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              className="w-full max-w-xl rounded-3xl p-6"
+              style={{
+                background: 'linear-gradient(145deg, rgba(12,12,12,0.98), rgba(7,7,7,0.98))',
+                border: '1px solid rgba(255,255,255,0.10)'
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-bold mb-4" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                Neuen Kontakt anlegen
+              </h3>
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={newContactData.company}
+                  onChange={(e) => setNewContactData({ ...newContactData, company: e.target.value })}
+                  placeholder="Firma *"
+                  className="w-full px-4 py-2 rounded-xl text-sm bg-black/40 border border-white/10 text-white"
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    type="text"
+                    value={newContactData.firstName}
+                    onChange={(e) => setNewContactData({ ...newContactData, firstName: e.target.value })}
+                    placeholder="Vorname"
+                    className="px-4 py-2 rounded-xl text-sm bg-black/40 border border-white/10 text-white"
                   />
+                  <input
+                    type="text"
+                    value={newContactData.lastName}
+                    onChange={(e) => setNewContactData({ ...newContactData, lastName: e.target.value })}
+                    placeholder="Nachname"
+                    className="px-4 py-2 rounded-xl text-sm bg-black/40 border border-white/10 text-white"
+                  />
+                </div>
+                <input
+                  type="tel"
+                  value={newContactData.phone}
+                  onChange={(e) => setNewContactData({ ...newContactData, phone: e.target.value })}
+                  placeholder="Telefon"
+                  className="w-full px-4 py-2 rounded-xl text-sm bg-black/40 border border-white/10 text-white"
+                />
+                <input
+                  type="email"
+                  value={newContactData.email}
+                  onChange={(e) => setNewContactData({ ...newContactData, email: e.target.value })}
+                  placeholder="E-Mail"
+                  className="w-full px-4 py-2 rounded-xl text-sm bg-black/40 border border-white/10 text-white"
+                />
+                <textarea
+                  value={newContactData.notes}
+                  onChange={(e) => setNewContactData({ ...newContactData, notes: e.target.value })}
+                  placeholder="Notizen"
+                  rows={3}
+                  className="w-full px-4 py-2 rounded-xl text-sm bg-black/40 border border-white/10 text-white resize-none"
+                />
+              </div>
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={() => setShowNewContactModal(false)}
+                  className="flex-1 px-4 py-2 rounded-xl text-sm bg-white/5 border border-white/10 text-neutral-300"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  onClick={handleSaveNewContact}
+                  className="flex-1 px-4 py-2 rounded-xl text-sm font-semibold"
+                  style={{
+                    background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
+                    color: '#fff'
+                  }}
+                >
+                  Speichern
                 </button>
               </div>
             </motion.div>
