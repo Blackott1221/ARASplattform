@@ -1,6 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Download, RotateCcw, FileText, Music } from 'lucide-react';
 
 const CI = {
   goldLight: '#E9D7C4',
@@ -8,14 +7,24 @@ const CI = {
   goldDark: '#A34E00'
 };
 
+interface CallSummary {
+  outcome: string;
+  bulletPoints: string[];
+  nextStep: string;
+  sentiment: 'positive' | 'neutral' | 'negative' | 'mixed';
+  tags: string[];
+}
+
 interface PowerResultCardProps {
-  success: boolean;
-  recordingUrl?: string;
-  transcript?: string | any[];
-  duration?: number;
-  error?: string;
-  phoneNumber?: string;
-  contactName?: string;
+  result: {
+    id?: string;
+    recordingUrl?: string | null;
+    transcript?: string | null;
+    duration?: number | null;
+    phoneNumber?: string;
+    contactName?: string;
+  } | null;
+  summary?: CallSummary | null;
   linkedContact?: { id: number; name: string; company?: string } | null;
   onNewCall: () => void;
   onLinkToContact?: (phoneNumber: string, contactName?: string) => void;
@@ -23,164 +32,59 @@ interface PowerResultCardProps {
 }
 
 export function PowerResultCard({
-  success,
-  recordingUrl,
-  transcript,
-  duration,
-  error,
-  phoneNumber,
-  contactName,
+  result,
+  summary,
   linkedContact,
   onNewCall,
   onLinkToContact,
   onSaveAsNewContact
 }: PowerResultCardProps) {
+  const [audioError, setAudioError] = useState(false);
+
+  if (!result) return null;
+
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')} Min`;
   };
 
-  const formatTranscript = () => {
-    if (typeof transcript === 'string') {
-      return transcript;
-    } else if (Array.isArray(transcript)) {
-      return transcript
-        .filter((turn: any) => turn.message && turn.message.trim() !== '...')
-        .map((turn: any) => {
-          const role = turn.role === 'agent' ? 'ARAS AI' : 'Kunde';
-          const message = turn.original_message || turn.message;
-          return `${role}: ${message.trim()}`;
-        })
-        .join('\n\n');
-    }
-    return JSON.stringify(transcript, null, 2);
-  };
-
-  if (!success) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="rounded-2xl p-6"
-        style={{
-          background: 'linear-gradient(135deg, rgba(239,68,68,0.12), rgba(185,28,28,0.08))',
-          border: '1px solid rgba(239,68,68,0.3)',
-          backdropFilter: 'blur(16px)'
-        }}
-      >
-        <div className="text-center">
-          <div 
-            className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center"
-            style={{
-              background: 'rgba(239,68,68,0.15)',
-              border: '2px solid rgba(239,68,68,0.4)'
-            }}
-          >
-            <span className="text-3xl">⚠️</span>
-          </div>
-          <h3 className="text-lg font-bold text-red-300 mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-            Anruf fehlgeschlagen
-          </h3>
-          <p className="text-sm text-red-200/80 mb-6">{error || 'Ein unerwarteter Fehler ist aufgetreten'}</p>
-          
-          <button
-            onClick={onNewCall}
-            className="px-6 py-3 rounded-xl font-semibold text-sm transition-all hover:scale-[1.02]"
-            style={{
-              background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
-              color: '#fff',
-              fontFamily: 'Orbitron, sans-serif'
-            }}
-          >
-            <RotateCcw className="w-4 h-4 inline mr-2" />
-            Erneut versuchen
-          </button>
-        </div>
-      </motion.div>
-    );
-  }
-
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95, y: 20 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: 'easeOut' }}
-      className="relative rounded-2xl overflow-hidden"
+      initial={{ opacity: 0, scale: 0.97 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="rounded-2xl p-6"
       style={{
-        background: 'rgba(0,0,0,0.65)',
-        border: '1px solid rgba(254,145,0,0.25)',
-        backdropFilter: 'blur(20px)'
+        background: 'rgba(8,8,8,0.85)',
+        border: '1px solid rgba(233,215,196,0.15)',
+        backdropFilter: 'blur(16px)'
       }}
     >
-      {/* Magic Sparkle Background */}
-      <div className="absolute inset-0 opacity-20 pointer-events-none">
+      <div className="space-y-4">
+        {/* Header */}
         <motion.div
-          className="absolute inset-0"
-          style={{
-            background: `radial-gradient(circle at 30% 40%, ${CI.orange}40, transparent 60%),
-                        radial-gradient(circle at 70% 60%, ${CI.goldLight}30, transparent 60%)`
-          }}
-          animate={{
-            opacity: [0.2, 0.4, 0.2],
-            scale: [1, 1.05, 1]
-          }}
-          transition={{
-            duration: 4,
-            repeat: Infinity,
-            ease: 'easeInOut'
-          }}
-        />
-      </div>
-
-      {/* Content */}
-      <div className="relative z-10 p-6">
-        {/* Success Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
+          className="text-center"
+          initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="text-center mb-6"
         >
           <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1, rotate: [0, 10, -10, 0] }}
-            transition={{ 
-              scale: { delay: 0.1, type: 'spring', stiffness: 200 },
-              rotate: { delay: 0.3, duration: 0.6 }
-            }}
-            className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center relative"
+            className="mb-3 mx-auto h-12 w-12 rounded-full flex items-center justify-center"
             style={{
-              background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
-              boxShadow: `0 0 40px rgba(254,145,0,0.4)`
+              background: 'radial-gradient(circle at 30% 20%, rgba(34,197,94,0.85), rgba(10,10,10,0.1) 70%)',
+              boxShadow: '0 0 22px rgba(34,197,94,0.45)',
+              border: '1px solid rgba(34,197,94,0.30)'
             }}
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
           >
-            <Sparkles className="w-10 h-10 text-white" />
-            
-            {/* Pulse Ring */}
-            <motion.div
-              className="absolute inset-0 rounded-full"
-              style={{
-                border: `3px solid ${CI.orange}`,
-                opacity: 0.6
-              }}
-              animate={{
-                scale: [1, 1.4, 1],
-                opacity: [0.6, 0, 0.6]
-              }}
-              transition={{
-                duration: 2.5,
-                repeat: Infinity,
-                ease: 'easeInOut'
-              }}
-            />
+            <div className="h-3 w-3 rounded-full bg-white/70" />
           </motion.div>
 
           <h3 
-            className="text-2xl font-black mb-2"
+            className="text-xl font-black mb-2"
             style={{
               fontFamily: 'Orbitron, sans-serif',
-              background: `linear-gradient(90deg, ${CI.goldLight}, ${CI.orange}, ${CI.goldDark})`,
+              background: `linear-gradient(90deg, ${CI.goldLight}, ${CI.orange})`,
               backgroundSize: '200% 100%',
               WebkitBackgroundClip: 'text',
               backgroundClip: 'text',
@@ -189,95 +93,191 @@ export function PowerResultCard({
           >
             Call erfolgreich!
           </h3>
-          <p className="text-sm text-gray-300">ARAS hat Ihren Anruf abgeschlossen</p>
+          <p className="text-sm text-gray-300">ARAS hat den Anruf abgeschlossen</p>
           
-          {duration && (
+          {result.duration != null && (
             <div className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold"
               style={{
-                background: 'rgba(34,197,94,0.15)',
-                border: '1px solid rgba(34,197,94,0.3)',
-                color: '#22c55e'
+                background: 'rgba(34,197,94,0.12)',
+                border: '1px solid rgba(34,197,94,0.25)',
+                color: '#4ade80'
               }}
             >
-              ⏱️ Gesprächsdauer: {formatDuration(duration)}
+              Dauer: {formatDuration(result.duration)}
             </div>
           )}
         </motion.div>
 
-        {/* Audio Player */}
-        {recordingUrl ? (
+        {/* 🎙️ Audio Recording */}
+        {result.recordingUrl ? (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="mb-6 p-4 rounded-xl"
+            transition={{ delay: 0.2 }}
+            className="rounded-2xl px-4 py-3"
             style={{
-              background: 'linear-gradient(135deg, rgba(254,145,0,0.08), rgba(233,215,196,0.05))',
-              border: '1px solid rgba(254,145,0,0.2)'
+              background: 'rgba(7,7,7,0.9)',
+              border: '1px solid rgba(233,215,196,0.18)',
+              backdropFilter: 'blur(14px)'
             }}
           >
-            <div className="flex items-center gap-2 mb-3">
-              <Music className="w-4 h-4" style={{ color: CI.orange }} />
-              <span className="text-sm font-semibold" style={{ color: CI.goldLight }}>
-                Aufzeichnung
-              </span>
+            <div className="flex items-center justify-between text-[11px] text-neutral-400 mb-2">
+              <span>Aufzeichnung des Gesprächs</span>
+              {result.duration != null && (
+                <span>{formatDuration(result.duration)}</span>
+              )}
             </div>
-            
-            <audio controls className="w-full mb-3" style={{ height: '40px', borderRadius: '8px' }}>
-              <source src={recordingUrl} type="audio/mpeg" />
-              <source src={recordingUrl} type="audio/wav" />
-              Ihr Browser unterstützt keine Audio-Wiedergabe.
-            </audio>
-
-            <a 
-              href={recordingUrl} 
-              download={`ARAS_Call_${new Date().toISOString().split('T')[0]}.mp3`}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all hover:scale-[1.02]"
-              style={{ 
-                color: CI.orange,
-                background: 'rgba(254,145,0,0.12)',
-                border: '1px solid rgba(254,145,0,0.25)'
+            <audio
+              controls
+              className="w-full"
+              src={result.recordingUrl}
+              style={{
+                height: '40px',
+                borderRadius: '8px',
+                filter: 'invert(0.85)'
               }}
-            >
-              <Download className="w-4 h-4" />
-              Audio herunterladen
-            </a>
+              onError={() => setAudioError(true)}
+            />
+            {audioError && (
+              <p className="mt-2 text-[10px] text-red-400">
+                Die Aufzeichnung konnte nicht geladen werden. Versuche es später erneut oder überprüfe deine Verbindung.
+              </p>
+            )}
+            {!audioError && (
+              <p className="mt-1 text-[10px] text-neutral-500">
+                Falls die Aufzeichnung nicht lädt, versuche es später erneut.
+              </p>
+            )}
           </motion.div>
         ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="mb-6 p-4 rounded-xl text-center"
-            style={{
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.08)'
-            }}
-          >
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-              className="w-8 h-8 mx-auto mb-2"
-            >
-              <div 
-                className="w-full h-full rounded-full border-2 border-t-transparent"
-                style={{ borderColor: CI.orange, borderTopColor: 'transparent' }}
-              />
-            </motion.div>
-            <p className="text-xs text-gray-400">Audio wird verarbeitet...</p>
-          </motion.div>
+          <p className="text-[11px] text-neutral-500 px-2">
+            Für diesen Anruf ist aktuell keine Aufzeichnung verfügbar. Du kannst das Transkript und die Zusammenfassung nutzen.
+          </p>
         )}
 
-        {/* Transcript */}
-        {transcript && (
+        {/* 🎯 ARAS Core Summary */}
+        {summary ? (
+          <motion.div
+            className="rounded-2xl p-4 md:p-5 relative overflow-hidden"
+            style={{
+              background: 'rgba(8,8,8,0.85)',
+              borderRadius: 18,
+              border: '1px solid rgba(233,215,196,0.20)'
+            }}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            {/* Animated border shimmer */}
+            <div
+              className="pointer-events-none absolute inset-[-1px] rounded-2xl"
+              style={{
+                backgroundImage: 'linear-gradient(120deg, rgba(233,215,196,0.0), rgba(254,145,0,0.45), rgba(233,215,196,0.0))',
+                backgroundSize: '200% 100%',
+                opacity: 0.35,
+                animation: 'aras-border-run 10s linear infinite'
+              }}
+            />
+
+            <div className="relative space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">
+                    Zusammenfassung von ARAS
+                  </div>
+                  <div className="mt-1 text-sm font-semibold text-neutral-100">
+                    {summary.outcome}
+                  </div>
+                </div>
+
+                {/* Sentiment-Badge */}
+                <div
+                  className="px-3 py-1 rounded-full text-[11px] font-medium"
+                  style={{
+                    background:
+                      summary.sentiment === 'positive'
+                        ? 'rgba(34,197,94,0.12)'
+                        : summary.sentiment === 'negative'
+                        ? 'rgba(248,113,113,0.12)'
+                        : 'rgba(148,163,184,0.12)',
+                    border:
+                      summary.sentiment === 'positive'
+                        ? '1px solid rgba(34,197,94,0.45)'
+                        : summary.sentiment === 'negative'
+                        ? '1px solid rgba(248,113,113,0.45)'
+                        : '1px solid rgba(148,163,184,0.45)',
+                    color:
+                      summary.sentiment === 'positive'
+                        ? '#4ade80'
+                        : summary.sentiment === 'negative'
+                        ? '#fca5a5'
+                        : '#e5e7eb'
+                  }}
+                >
+                  {summary.sentiment === 'positive' && 'Positiv'}
+                  {summary.sentiment === 'negative' && 'Kritisch'}
+                  {summary.sentiment === 'neutral' && 'Neutral'}
+                  {summary.sentiment === 'mixed' && 'Gemischt'}
+                </div>
+              </div>
+
+              {/* Bulletpoints */}
+              {summary.bulletPoints?.length > 0 && (
+                <ul className="mt-2 space-y-1.5 text-xs text-neutral-300">
+                  {summary.bulletPoints.map((bp, idx) => (
+                    <li key={idx} className="flex gap-2">
+                      <span className="mt-[3px] h-[6px] w-[6px] rounded-full bg-gradient-to-br from-[#E9D7C4] to-[#FE9100] flex-shrink-0" />
+                      <span>{bp}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* Next Step */}
+              {summary.nextStep && (
+                <div className="mt-3 rounded-xl px-3 py-2 text-xs text-neutral-200 bg-white/3 border border-white/10">
+                  <span className="text-[11px] uppercase tracking-[0.18em] text-neutral-500 block mb-1">
+                    → Nächster Schritt
+                  </span>
+                  <span>{summary.nextStep}</span>
+                </div>
+              )}
+
+              {/* Tags */}
+              {summary.tags?.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {summary.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-2.5 py-0.5 rounded-full text-[10px] uppercase tracking-[0.16em] bg-black/60 text-neutral-400 border border-white/10"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        ) : (
+          <p className="mt-4 text-[11px] text-neutral-500 px-2">
+            Die automatische Zusammenfassung ist aktuell nicht verfügbar.
+            Du kannst dir das Transkript und die Aufzeichnung trotzdem ansehen.
+          </p>
+        )}
+
+        {/* 📄 Transkript */}
+        {result.transcript && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="mb-6"
+            transition={{ delay: 0.4 }}
+            className="rounded-xl p-4"
+            style={{
+              background: 'rgba(0,0,0,0.25)',
+              border: '1px solid rgba(255,255,255,0.06)'
+            }}
           >
             <div className="flex items-center gap-2 mb-3">
-              <FileText className="w-4 h-4" style={{ color: CI.orange }} />
               <span className="text-sm font-semibold" style={{ color: CI.goldLight }}>
                 Transkript
               </span>
@@ -292,19 +292,19 @@ export function PowerResultCard({
               }}
             >
               <pre className="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap font-sans">
-                {formatTranscript()}
+                {result.transcript}
               </pre>
             </div>
           </motion.div>
         )}
 
-        {/* 📇 Contact-Verknüpfung */}
-        {phoneNumber && (
+        {/* 📇 Contact Verknüpfung */}
+        {result.phoneNumber && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="mb-6 p-4 rounded-xl"
+            transition={{ delay: 0.5 }}
+            className="p-4 rounded-xl"
             style={{
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.08)'
@@ -331,7 +331,7 @@ export function PowerResultCard({
                 <div className="flex gap-2">
                   {onSaveAsNewContact && (
                     <button
-                      onClick={() => onSaveAsNewContact(phoneNumber, contactName)}
+                      onClick={() => onSaveAsNewContact(result.phoneNumber!, result.contactName)}
                       className="flex-1 px-4 py-2.5 rounded-lg text-xs font-semibold transition-all hover:scale-[1.02]"
                       style={{
                         background: 'rgba(254,145,0,0.12)',
@@ -344,7 +344,7 @@ export function PowerResultCard({
                   )}
                   {onLinkToContact && (
                     <button
-                      onClick={() => onLinkToContact(phoneNumber, contactName)}
+                      onClick={() => onLinkToContact(result.phoneNumber!, result.contactName)}
                       className="flex-1 px-4 py-2.5 rounded-lg text-xs font-semibold transition-all hover:scale-[1.02]"
                       style={{
                         background: 'rgba(255,255,255,0.05)',
@@ -365,8 +365,8 @@ export function PowerResultCard({
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.7 }}
-          className="flex gap-3"
+          transition={{ delay: 0.6 }}
+          className="flex gap-3 pt-2"
         >
           <button
             onClick={onNewCall}
@@ -379,17 +379,6 @@ export function PowerResultCard({
             }}
           >
             <span className="relative z-10">Neuer POWER Call</span>
-            
-            {/* Hover Shimmer */}
-            <motion.div
-              className="absolute inset-0 opacity-0 group-hover:opacity-100"
-              style={{
-                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)'
-              }}
-              initial={{ x: '-100%' }}
-              whileHover={{ x: '100%' }}
-              transition={{ duration: 0.6 }}
-            />
           </button>
         </motion.div>
 
@@ -397,10 +386,10 @@ export function PowerResultCard({
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          className="mt-4 text-center text-[11px] text-gray-500"
+          transition={{ delay: 0.7 }}
+          className="mt-2 text-center text-[11px] text-gray-500"
         >
-          💡 Sie erhalten automatisch eine Benachrichtigung, wenn der nächste Call abgeschlossen ist
+          💡 Du erhältst automatisch eine Benachrichtigung, wenn der nächste Call abgeschlossen ist
         </motion.p>
       </div>
     </motion.div>

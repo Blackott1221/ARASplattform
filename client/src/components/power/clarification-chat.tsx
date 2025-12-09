@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Send, CheckCircle2 } from 'lucide-react';
-import arasLogo from '@/assets/aras_logo_1755067745303.png';
+// Icons entfernt - nur Typografie & Flächen
 
 const CI = {
   goldLight: '#E9D7C4',
@@ -199,19 +198,22 @@ export function ClarificationChat({
     >
       {/* Header */}
       <div 
-        className="px-6 py-4 border-b"
+        className="px-4 py-3 border-b"
         style={{
           borderColor: 'rgba(255,255,255,0.08)',
           background: 'linear-gradient(135deg, rgba(254,145,0,0.05), rgba(233,215,196,0.03))'
         }}
       >
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <img src={arasLogo} alt="ARAS" className="w-8 h-8" />
-            <div 
-              className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full animate-pulse"
-              style={{ background: '#4ade80', border: '2px solid rgba(0,0,0,0.8)' }}
-            />
+          <div 
+            className="h-8 w-8 rounded-full flex items-center justify-center"
+            style={{
+              background: 'radial-gradient(circle at 30% 20%, rgba(254,145,0,0.85), rgba(10,10,10,0.1) 70%)',
+              boxShadow: '0 0 16px rgba(254,145,0,0.35)',
+              border: '1px solid rgba(233,215,196,0.25)'
+            }}
+          >
+            <div className="h-2 w-2 rounded-full bg-white/60" />
           </div>
           <div>
             <h3 
@@ -224,9 +226,9 @@ export function ClarificationChat({
                 WebkitTextFillColor: 'transparent'
               }}
             >
-              ARAS KI-Assistent
+              ARAS Klärungsdialog
             </h3>
-            <p className="text-[11px] text-gray-400">Optimiert Ihren Anruf in Echtzeit</p>
+            <p className="text-[11px] text-gray-400">Optimiert deinen Anruf in Echtzeit</p>
           </div>
         </div>
       </div>
@@ -244,7 +246,15 @@ export function ClarificationChat({
             >
               <div className="flex items-start gap-2 max-w-[85%]">
                 {msg.role === 'aras' && (
-                  <img src={arasLogo} alt="ARAS" className="w-6 h-6 mt-1" />
+                  <div 
+                    className="mt-1 h-6 w-6 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{
+                      background: 'radial-gradient(circle, rgba(254,145,0,0.75), rgba(10,10,10,0.1) 65%)',
+                      border: '1px solid rgba(233,215,196,0.2)'
+                    }}
+                  >
+                    <div className="h-1.5 w-1.5 rounded-full bg-white/50" />
+                  </div>
                 )}
                 
                 <div
@@ -278,7 +288,15 @@ export function ClarificationChat({
             animate={{ opacity: 1 }}
             className="flex items-start gap-2"
           >
-            <img src={arasLogo} alt="ARAS" className="w-6 h-6 mt-1" />
+            <div 
+              className="mt-1 h-6 w-6 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{
+                background: 'radial-gradient(circle, rgba(254,145,0,0.75), rgba(10,10,10,0.1) 65%)',
+                border: '1px solid rgba(233,215,196,0.2)'
+              }}
+            >
+              <div className="h-1.5 w-1.5 rounded-full bg-white/50" />
+            </div>
             <div 
               className="px-4 py-3 rounded-2xl"
               style={{
@@ -312,25 +330,21 @@ export function ClarificationChat({
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <img src={arasLogo} alt="ARAS" className="w-6 h-6 mt-1" />
             <div
               className="px-4 py-3 rounded-2xl max-w-[80%]"
               style={{
-                background: 'linear-gradient(135deg, rgba(254,145,0,0.12), rgba(233,215,196,0.08))',
+                background: 'linear-gradient(135deg, rgba(254,145,0,0.10), rgba(233,215,196,0.06))',
                 border: '1px solid rgba(254,145,0,0.25)',
-                boxShadow: '0 0 20px rgba(254,145,0,0.08)'
+                backdropFilter: 'blur(12px)'
               }}
             >
-              <div className="flex items-center gap-2">
-                <span className="text-sm">✨</span>
-                <p className="text-sm text-gray-200">
-                  {callStatus === 'processing' && 'Ich bereite den Anruf vor – einen Moment...'}
-                  {callStatus === 'ringing' && 'Ich stelle gerade die Verbindung her – gleich geht es los.'}
-                  {callStatus === 'connected' && (
-                    callInProgressSummaryHint || 'Der Anruf läuft. Ich höre zu und bereite deine Zusammenfassung vor.'
-                  )}
-                </p>
-              </div>
+              <p className="text-sm text-neutral-200">
+                {callStatus === 'processing' && 'Ich bereite den Anruf gerade vor – einen Moment...'}
+                {callStatus === 'ringing' && 'Ich stelle die Verbindung her – gleich ist ARAS am Telefon.'}
+                {callStatus === 'connected' && (
+                  callInProgressSummaryHint || 'Der Anruf läuft. Ich höre zu und bereite deine Zusammenfassung vor.'
+                )}
+              </p>
             </div>
           </motion.div>
         )}
@@ -338,12 +352,11 @@ export function ClarificationChat({
         {/* 🎯 Final Summary after Call */}
         {callStatus === 'ended' && finalSummary && (
           <motion.div
-            className="flex items-start gap-2"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
+            className="max-w-[90%]"
           >
-            <img src={arasLogo} alt="ARAS" className="w-6 h-6 mt-1" />
             <div
               className="px-4 py-4 rounded-2xl max-w-[90%]"
               style={{
@@ -371,7 +384,7 @@ export function ClarificationChat({
                 )}
                 {finalSummary.nextStep && (
                   <p className="mt-2 text-xs text-gray-300 pt-2 border-t border-white/10">
-                    <span className="font-semibold" style={{ color: CI.orange }}>Nächster Schritt:</span>{' '}
+                    <span className="font-semibold" style={{ color: CI.orange }}>→ Nächster Schritt:</span>{' '}
                     {finalSummary.nextStep}
                   </p>
                 )}
@@ -460,7 +473,7 @@ export function ClarificationChat({
                     fontFamily: 'Orbitron, sans-serif'
                   }}
                 >
-                  {isLastQuestion ? <CheckCircle2 className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+                  {isLastQuestion ? '✓' : '→'}
                 </button>
               </div>
               {isInputDisabled && (
