@@ -3,6 +3,68 @@ import { logger } from '../logger';
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || '');
 
+// 🔥 ARAS CORE SYSTEM-PROMPT
+const ARAS_CORE_SYSTEM_PROMPT = `Du bist ARAS Core – das interne, firmeneigene Large Language Model der ARAS AI Plattform.
+
+**Deine Aufgabe:**
+- Du hilfst, optimale Telefonanweisungen für ARAS Outbound Calls zu erstellen.
+- Du arbeitest immer im Namen von ARAS AI und erwähnst NIEMALS externe Anbieter, Modelle oder APIs.
+- Für den Nutzer bist du immer nur "ARAS" oder "ARAS Core".
+
+**Kontext:**
+Du erhältst:
+- Den freien Auftragstext des Nutzers (message)
+- Optional existierende Antworten aus einem Klärungsdialog (answers)
+- Einen Firmenkontext (userContext) mit:
+  - Firma, Branche, Jobrolle
+  - aiProfile: Produkte, Services, Zielgruppen, Value Proposition, Unique Selling Points, gewünschte Tonalität
+
+**Ziele:**
+1. Prüfe, ob der Auftrag des Nutzers ausreichend klar ist, um einen hochwertigen Outbound Call durchzuführen.
+2. Wenn wichtige Informationen fehlen, formuliere gezielte, kurze Rückfragen (max. 3-5 Fragen).
+3. Verwandle alle Informationen in einen einzigen, klaren "Call Prompt", den ARAS für den Anruf verwendet.
+
+**WICHTIG:**
+- Sprich immer in der Wir-Form als ARAS ("wir kümmern uns", "ARAS übernimmt das").
+- Erwähne NIEMALS, dass du ein Sprachmodell bist.
+- Erwähne NIEMALS "Gemini", "OpenAI", "Modell", "API" oder technische Begriffe.
+- Passe die Tonalität an die hinterlegte communicationTone und targetAudience an, wenn vorhanden.
+- KEINE Fragen nach Anrufzeitpunkt – Anrufe werden SOFORT ausgeführt!
+
+**Antwortformat:**
+Du gibst deine Antwort ausschließlich als JSON mit folgenden Feldern zurück:
+
+{
+  "isComplete": boolean,
+  "questions": [
+    {
+      "id": "unique-id",
+      "question": "Kurze, klare Frage?",
+      "type": "text" | "choice",
+      "options": ["Option A", "Option B"],  // nur bei type: "choice"
+      "required": boolean,
+      "placeholder": "Beispiel..."
+    }
+  ],
+  "enhancedPrompt": "Vollständige, klare Beschreibung was ARAS im Telefonat tun soll. Nutze Firmenkontext und aiProfile.",
+  "suggestedSettings": {
+    "tone": "freundlich" | "professionell" | "direkt",
+    "urgency": "niedrig" | "mittel" | "hoch",
+    "maxDuration": 180
+  },
+  "detectedIntent": "sales" | "follow_up" | "reactivation" | "support" | "qualification"
+}
+
+**Wenn der Auftrag bereits klar genug ist:**
+- "isComplete": true
+- "questions": []
+- "enhancedPrompt": direkt fertig formulieren
+
+**Wenn du dir unsicher bist:**
+- Stelle maximal 3-5 Fragen, keine Romane
+- Fragen müssen konkret, kurz und vom Nutzer leicht beantwortbar sein`;
+
+
 interface ValidationInput {
   userInput: string;
   contactName: string;
@@ -60,8 +122,8 @@ export async function validateAndEnhancePrompt(input: ValidationInput): Promise<
   try {
     // 🔑 API Key Check
     if (!process.env.GOOGLE_GEMINI_API_KEY) {
-      logger.error('[PROMPT-VALIDATOR] ❌ GOOGLE_GEMINI_API_KEY fehlt!');
-      throw new Error('Gemini API Key nicht konfiguriert');
+      logger.error('[PROMPT-VALIDATOR] ❌ LLM API Key fehlt!');
+      throw new Error('ARAS Core LLM nicht konfiguriert');
     }
 
     logger.info('[PROMPT-VALIDATOR] 🔍 Analysiere User-Input mit voller Personalisierung...', { 
@@ -156,97 +218,39 @@ ${aiProfile.chatInsightsSummary}`;
       }
     }
 
-    const validationPrompt = `Analysiere diese Anruf-Anfrage für maximale Qualität:
+    // 🔥 Baue Prompt mit ARAS_CORE_SYSTEM_PROMPT
+    const userPrompt = `Analysiere diese Anruf-Anfrage:
 
-ANRUFER-PROFIL:
 ${userContextString}
 
-KONTAKT: ${input.contactName}
-ANFRAGE: "${input.userInput}"
+**KONTAKT:** ${input.contactName}
+**ANFRAGE:** "${input.userInput}"
 ${answersContext}
 
-ANALYSE-KRITERIEN:
-1. Ist das ZIEL klar? (z.B. Termin verschieben, Reservierung, Anfrage)
-2. Sind ALLE Details vorhanden? (Datum, Zeit, Grund, Alternativen)
+**ANALYSE-KRITERIEN:**
+1. Ist das ZIEL klar?
+2. Sind ALLE Details vorhanden?
 3. Ist es für ${input.contactName} verständlich?
-4. Kann die KI dies SOFORT professionell ausführen?
+4. Kann ARAS dies SOFORT professionell ausführen?
 
-⚠️ KRITISCHE REGEL: Frage NIEMALS "Wann soll angerufen werden?" - Der Anruf wird SOFORT ausgeführt!
-
-VALIDIERUNGS-REGELN nach ANRUF-TYP:
+**VALIDIERUNGS-REGELN nach ANRUF-TYP:**
 - TERMINANFRAGE: Datum, Uhrzeit, Grund, 2+ Alternativen PFLICHT
 - VERSCHIEBUNG: Alter Termin, Neuer Termin, Grund, Alternativen PFLICHT
 - RESERVIERUNG: Datum, Uhrzeit, Anzahl Personen, Besonderheiten
 - ALLGEMEINE ANFRAGE: Klares Anliegen, erwartetes Ergebnis
 - FOLLOW-UP: Bezug zu vorherigem Kontakt, neues Anliegen
-- STORNIERUNG: Was genau? Grund? Alternativen?
-- RÜCKRUF-BITTE: Wann? Zu welchem Thema? Dringlichkeit?
-
-ANTWORT-SCHEMA:
-{
-  "isComplete": boolean,
-  "detectedIntent": "Präzise Beschreibung (z.B. 'Terminverschiebung für Geschäftsmeeting')",
-  "missingInfo": ["Konkrete fehlende Info 1", "Fehlende Info 2"],
-  "questions": [
-    {
-      "id": "spezifische_id",
-      "question": "Direkte Frage auf Deutsch",
-      "type": "text|date|time|choice",
-      "options": ["Nur bei choice"],
-      "required": true|false,
-      "placeholder": "Hilfreicher Beispieltext"
-    }
-  ],
-  "suggestedSettings": {
-    "tone": "formal|freundlich|neutral|direkt",
-    "urgency": "hoch|mittel|niedrig",
-    "maxDuration": 180
-  },
-  "enhancedPrompt": "NUR bei isComplete=true: Vollständiger personalisierter Anruf-Prompt"
-}
-
-STRENGE REGELN:
-- Wenn Input VAGE ist → isComplete MUSS false sein
-- Stelle 2-4 SPEZIFISCHE Rückfragen basierend auf dem Anruf-Typ
-- Fragen MÜSSEN zum erkannten Intent passen (z.B. bei Terminverschiebung: alter Termin, neuer Termin, Grund, Alternativen)
-- Bei unklarem Datum/Zeit: Frage KONKRET nach (nicht "wann", sondern "An welchem Tag und zu welcher Uhrzeit")
-- placeholder MUSS ein konkretes Beispiel sein
-- detectedIntent MUSS den Kontext erfassen
-- ⚠️ WICHTIG: FRAGE NIEMALS nach dem Zeitpunkt des Anrufs! Der Anruf wird SOFORT ausgeführt!
-
-BEISPIELE:
-
-Input: "Testanruf"
-→ isComplete: false
-→ detectedIntent: "Testanruf ohne spezifisches Ziel"
-→ questions: [
-  {"id": "test_purpose", "question": "Was genau möchten Sie bei ${input.contactName} erreichen oder besprechen?", "type": "text", "required": true, "placeholder": "z.B. Produktdemo vereinbaren, Angebot anfragen, Interesse abfragen"},
-  {"id": "test_context", "question": "Gibt es wichtigen Kontext oder Hintergrund für ${input.contactName}?", "type": "text", "required": false, "placeholder": "z.B. Vorherige Kommunikation, gemeinsame Kontakte"},
-  {"id": "expected_outcome", "question": "Was erwarten Sie als Ergebnis?", "type": "text", "required": false, "placeholder": "z.B. Termin vereinbaren, Zusage einholen"}
-]
-
-Input: "Verschiebe meinen Termin"
-→ isComplete: false
-→ detectedIntent: "Terminverschiebung ohne Details"
-→ questions: [
-  {"id": "old_appointment", "question": "Welchen Termin möchten Sie verschieben? (Datum und Uhrzeit)", "type": "text", "required": true, "placeholder": "z.B. Montag, 8. Januar um 15:00 Uhr"},
-  {"id": "new_appointment", "question": "Auf welchen neuen Termin möchten Sie verschieben?", "type": "text", "required": true, "placeholder": "z.B. Dienstag, 9. Januar um 10:00 Uhr"},
-  {"id": "reason", "question": "Was ist der Grund für die Verschiebung?", "type": "text", "required": true, "placeholder": "z.B. Krankheit, anderer Termin, ..."},
-  {"id": "alternatives", "question": "Welche Alternativen sind für Sie möglich, falls der neue Termin nicht passt?", "type": "text", "required": false, "placeholder": "z.B. Mittwoch oder Donnerstag Vormittag"}
-]
-
-Input: "Verschiebe meinen Termin am Montag 15:00 auf Dienstag 10:00 wegen Krankheit, alternativ Mittwoch"
-→ isComplete: true
-→ enhancedPrompt: "Du bist ARAS, der KI-Assistent von ${input.userContext.userName}..."
 
 WICHTIG: Antworte NUR mit dem JSON-Objekt!`;
 
-    logger.info('[PROMPT-VALIDATOR] 📤 Sende Anfrage an Gemini 2.0 Flash...');
+    logger.info('[PROMPT-VALIDATOR] 📤 Sende Anfrage an ARAS Core LLM...');
     
-    const result = await model.generateContent(validationPrompt);
+    // System + User Message für optimale Struktur
+    const fullPrompt = `${ARAS_CORE_SYSTEM_PROMPT}\n\n---\n\n${userPrompt}`;
+    
+    const result = await model.generateContent(fullPrompt);
     const responseText = result.response.text();
     
-    logger.info('[PROMPT-VALIDATOR] 📥 Gemini Antwort erhalten', { 
+    logger.info('[PROMPT-VALIDATOR] 📥 ARAS Core Antwort erhalten', { 
       responseLength: responseText.length,
       firstChars: responseText.substring(0, 100)
     });
