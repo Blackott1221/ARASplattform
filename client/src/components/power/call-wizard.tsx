@@ -490,7 +490,7 @@ export function CallWizard({
           <div className="px-8 pb-8 flex gap-3">
             <button
               onClick={onCancel}
-              className="flex-1 px-6 py-4 rounded-2xl font-semibold transition-all hover:scale-[1.02]"
+              className="px-6 py-4 rounded-2xl font-semibold transition-all hover:scale-[1.02]"
               style={{
                 background: 'rgba(255, 255, 255, 0.05)',
                 border: '1px solid rgba(255, 255, 255, 0.15)',
@@ -499,6 +499,28 @@ export function CallWizard({
             >
               Abbrechen
             </button>
+            
+            {/* Skip Button - Jetzt anrufen ohne alle Fragen */}
+            <button
+              onClick={() => {
+                const enhancedPrompt = `${initialMessage}\n\nZusätzliche Details:\n${Object.entries(answers)
+                  .map(([key, value]) => `- ${key}: ${value}`)
+                  .join('\n')}`;
+                setFinalPrompt(enhancedPrompt);
+                setStep('settings');
+              }}
+              disabled={loading}
+              className="px-6 py-4 rounded-2xl font-semibold transition-all hover:scale-[1.02] flex items-center gap-2"
+              style={{
+                background: 'rgba(254, 145, 0, 0.15)',
+                border: '1px solid rgba(254, 145, 0, 0.4)',
+                color: CI.orange
+              }}
+            >
+              <span>Jetzt anrufen</span>
+              <ArrowRight className="w-5 h-5" />
+            </button>
+            
             <button
               onClick={handleAnswerComplete}
               disabled={!allRequiredAnswered || loading}
@@ -520,7 +542,7 @@ export function CallWizard({
                 </>
               ) : (
                 <>
-                  <span>Weiter</span>
+                  <span>Alle beantworten</span>
                   <ArrowRight className="w-5 h-5" />
                 </>
               )}
