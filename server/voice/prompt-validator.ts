@@ -171,6 +171,8 @@ ANALYSE-KRITERIEN:
 3. Ist es für ${input.contactName} verständlich?
 4. Kann die KI dies SOFORT professionell ausführen?
 
+⚠️ KRITISCHE REGEL: Frage NIEMALS "Wann soll angerufen werden?" - Der Anruf wird SOFORT ausgeführt!
+
 VALIDIERUNGS-REGELN nach ANRUF-TYP:
 - TERMINANFRAGE: Datum, Uhrzeit, Grund, 2+ Alternativen PFLICHT
 - VERSCHIEBUNG: Alter Termin, Neuer Termin, Grund, Alternativen PFLICHT
@@ -205,11 +207,12 @@ ANTWORT-SCHEMA:
 
 STRENGE REGELN:
 - Wenn Input VAGE ist → isComplete MUSS false sein
-- Stelle 2-5 SPEZIFISCHE Rückfragen basierend auf dem Anruf-Typ
+- Stelle 2-4 SPEZIFISCHE Rückfragen basierend auf dem Anruf-Typ
 - Fragen MÜSSEN zum erkannten Intent passen (z.B. bei Terminverschiebung: alter Termin, neuer Termin, Grund, Alternativen)
 - Bei unklarem Datum/Zeit: Frage KONKRET nach (nicht "wann", sondern "An welchem Tag und zu welcher Uhrzeit")
 - placeholder MUSS ein konkretes Beispiel sein
 - detectedIntent MUSS den Kontext erfassen
+- ⚠️ WICHTIG: FRAGE NIEMALS nach dem Zeitpunkt des Anrufs! Der Anruf wird SOFORT ausgeführt!
 
 BEISPIELE:
 
@@ -217,9 +220,9 @@ Input: "Testanruf"
 → isComplete: false
 → detectedIntent: "Testanruf ohne spezifisches Ziel"
 → questions: [
-  {"id": "test_purpose", "question": "Was genau möchten Sie bei ${input.contactName} testen oder besprechen?", "type": "text", "required": true, "placeholder": "z.B. Produktdemo vereinbaren, Angebot anfragen, ..."},
-  {"id": "preferred_time", "question": "Wann ist ein guter Zeitpunkt für den Anruf?", "type": "choice", "options": ["Heute", "Morgen", "Diese Woche", "Nächste Woche"], "required": true},
-  {"id": "duration", "question": "Wie lange sollte das Gespräch maximal dauern?", "type": "choice", "options": ["5 Minuten", "10 Minuten", "15 Minuten"], "required": false}
+  {"id": "test_purpose", "question": "Was genau möchten Sie bei ${input.contactName} erreichen oder besprechen?", "type": "text", "required": true, "placeholder": "z.B. Produktdemo vereinbaren, Angebot anfragen, Interesse abfragen"},
+  {"id": "test_context", "question": "Gibt es wichtigen Kontext oder Hintergrund für ${input.contactName}?", "type": "text", "required": false, "placeholder": "z.B. Vorherige Kommunikation, gemeinsame Kontakte"},
+  {"id": "expected_outcome", "question": "Was erwarten Sie als Ergebnis?", "type": "text", "required": false, "placeholder": "z.B. Termin vereinbaren, Zusage einholen"}
 ]
 
 Input: "Verschiebe meinen Termin"
