@@ -13,7 +13,6 @@ interface TimelineStep {
   id: CallStatus;
   label: string;
   description: string;
-  emoji: string;
 }
 
 interface CallTimelineProps {
@@ -25,26 +24,22 @@ const steps: TimelineStep[] = [
   {
     id: 'processing',
     label: 'Vorbereitung',
-    description: 'Anruf wird konfiguriert',
-    emoji: '⚙️'
+    description: 'Anruf wird konfiguriert'
   },
   {
     id: 'ringing',
     label: 'Verbindung',
-    description: 'Nummer wird gewählt',
-    emoji: '📞'
+    description: 'Nummer wird gewählt'
   },
   {
     id: 'connected',
     label: 'Gespräch',
-    description: 'ARAS spricht',
-    emoji: '🎤'
+    description: 'ARAS spricht'
   },
   {
     id: 'ended',
     label: 'Abgeschlossen',
-    description: 'Transkript wird erstellt',
-    emoji: '✅'
+    description: 'Transkript erstellt'
   }
 ];
 
@@ -58,115 +53,154 @@ export function CallTimeline({ currentStatus, duration = 0 }: CallTimelineProps)
   };
 
   return (
-    <div>
-      {/* Removed outer container - handled by parent */}
+    <div className="space-y-5">
+      {steps.map((step, index) => {
+        const isActive = index === currentIndex;
+        const isCompleted = index < currentIndex;
+        const isPending = index > currentIndex;
 
-      {/* Timeline */}
-      <div className="space-y-6">
-        {steps.map((step, index) => {
-          const isActive = index === currentIndex;
-          const isCompleted = index < currentIndex;
-          const isPending = index > currentIndex;
-
-          return (
-            <motion.div
-              key={step.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="relative flex items-start gap-4"
-            >
-              {/* Dot with Emoji */}
-              <div className="relative flex-shrink-0">
-                <motion.div
-                  className="w-10 h-10 rounded-full flex items-center justify-center relative z-10 text-base"
-                  style={{
-                    background: isActive 
-                      ? 'rgba(254,145,0,0.15)'
-                      : isCompleted
-                      ? 'rgba(34, 197, 94, 0.12)'
-                      : 'rgba(255,255,255,0.03)',
-                    border: isActive
-                      ? '2px solid rgba(254,145,0,0.6)'
-                      : isCompleted
-                      ? '2px solid rgba(34,197,94,0.4)'
-                      : '1px solid rgba(255,255,255,0.1)'
-                  }}
-                  animate={isActive ? {
-                    boxShadow: [
-                      '0 0 0 0 rgba(254,145,0,0.6)',
-                      '0 0 12px 4px rgba(254,145,0,0.3)',
-                      '0 0 0 0 rgba(254,145,0,0.6)'
-                    ]
-                  } : {}}
-                  transition={{
-                    duration: 2,
-                    repeat: isActive ? Infinity : 0,
-                    ease: 'easeInOut'
-                  }}
-                >
-                  {step.emoji}
-                </motion.div>
-
-                {/* Connecting Line */}
-                {index < steps.length - 1 && (
-                  <div
-                    className="absolute left-1/2 top-10 w-px h-8 -translate-x-1/2"
-                    style={{
-                      background: index < currentIndex
-                        ? 'linear-gradient(180deg, rgba(34,197,94,0.6), rgba(34,197,94,0.2))'
-                        : 'rgba(255,255,255,0.08)',
-                      boxShadow: index < currentIndex
-                        ? '0 0 4px rgba(34,197,94,0.3)'
-                        : 'none'
+        return (
+          <motion.div
+            key={step.id}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: index * 0.1 }}
+            className="relative flex items-start gap-3.5"
+          >
+            {/* Node Circle */}
+            <div className="relative flex-shrink-0">
+              {/* Main Node */}
+              <motion.div
+                className="relative z-10 rounded-full flex items-center justify-center"
+                style={{
+                  width: isActive ? '16px' : '12px',
+                  height: isActive ? '16px' : '12px',
+                  background: isActive
+                    ? 'rgba(254,145,0,0.85)'
+                    : isCompleted
+                    ? 'rgba(233,215,196,0.6)'
+                    : 'rgba(255,255,255,0.1)',
+                  border: isActive
+                    ? '2px solid rgba(254,145,0,1)'
+                    : isCompleted
+                    ? '1px solid rgba(233,215,196,0.5)'
+                    : '1px solid rgba(255,255,255,0.15)',
+                  transition: 'all 0.3s ease'
+                }}
+                animate={isActive ? {
+                  boxShadow: [
+                    '0 0 0 0 rgba(254,145,0,0.7)',
+                    '0 0 16px 2px rgba(254,145,0,0.4)',
+                    '0 0 0 0 rgba(254,145,0,0.7)'
+                  ]
+                } : {}}
+                transition={{
+                  duration: 2,
+                  repeat: isActive ? Infinity : 0,
+                  ease: 'easeInOut'
+                }}
+              >
+                {/* Inner Dot for Active */}
+                {isActive && (
+                  <motion.div
+                    className="w-1.5 h-1.5 rounded-full bg-white"
+                    animate={{
+                      scale: [1, 1.2, 1],
+                      opacity: [1, 0.8, 1]
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: 'easeInOut'
                     }}
                   />
                 )}
-              </div>
+              </motion.div>
 
-              {/* Content */}
-              <div className="flex-1 pt-1.5">
-                <div className="flex items-center justify-between mb-1">
-                  <h4 
-                    className="text-[15px] font-semibold"
-                    style={{
-                      color: isActive ? CI.orange : isCompleted ? '#22c55e' : '#9ca3af',
-                      fontFamily: 'Orbitron, sans-serif',
-                      animation: isActive ? 'aras-pulse 2s ease-in-out infinite' : 'none'
-                    }}
-                  >
-                    {step.label}
-                  </h4>
-                  
-                  {isActive && currentStatus === 'connected' && duration > 0 && (
-                    <motion.span
-                      className="text-xs font-mono px-2 py-0.5 rounded-full"
-                      style={{
-                        background: 'rgba(34, 197, 94, 0.15)',
-                        color: '#22c55e',
-                        border: '1px solid rgba(34, 197, 94, 0.3)'
-                      }}
-                      animate={{ opacity: [1, 0.6, 1] }}
-                      transition={{ duration: 1.5, repeat: Infinity }}
-                    >
-                      {formatDuration(duration)}
-                    </motion.span>
-                  )}
-                </div>
-                
-                <p 
-                  className="text-[13px]"
+              {/* Connecting Line */}
+              {index < steps.length - 1 && (
+                <motion.div
+                  className="absolute left-1/2 -translate-x-1/2"
                   style={{
-                    color: isActive ? '#d1d5db' : '#6b7280'
+                    top: isActive ? '16px' : '12px',
+                    width: '2px',
+                    height: '24px',
+                    background: isCompleted
+                      ? 'linear-gradient(180deg, rgba(233,215,196,0.6), rgba(233,215,196,0.2))'
+                      : 'rgba(255,255,255,0.08)',
+                    boxShadow: isCompleted
+                      ? '0 0 6px rgba(233,215,196,0.3)'
+                      : 'none'
+                  }}
+                />
+              )}
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 pt-0.5">
+              <div className="flex items-center justify-between mb-0.5">
+                <h4
+                  className="text-[15px] font-semibold"
+                  style={{
+                    fontFamily: 'Orbitron, sans-serif',
+                    color: isActive ? CI.orange : isCompleted ? CI.goldLight : '#9ca3af',
+                    animation: isActive ? 'aras-pulse 2s ease-in-out infinite' : 'none'
                   }}
                 >
-                  {step.description}
-                </p>
+                  {step.label}
+                </h4>
+
+                {isActive && currentStatus === 'connected' && duration > 0 && (
+                  <motion.span
+                    className="text-[11px] font-mono px-2 py-0.5 rounded-lg font-semibold"
+                    style={{
+                      background: 'rgba(34,197,94,0.12)',
+                      color: '#4ade80',
+                      border: '1px solid rgba(34,197,94,0.25)'
+                    }}
+                    animate={{ opacity: [1, 0.7, 1] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                  >
+                    {formatDuration(duration)}
+                  </motion.span>
+                )}
               </div>
-            </motion.div>
-          );
-        })}
-      </div>
+
+              <p
+                className="text-[13px] leading-relaxed"
+                style={{
+                  color: isActive ? '#d1d5db' : isCompleted ? '#a8a8a8' : '#6b7280'
+                }}
+              >
+                {step.description}
+              </p>
+
+              {/* Active Step Extra Info */}
+              {isActive && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="mt-2"
+                >
+                  <div
+                    className="px-2.5 py-1.5 rounded-lg text-[11px]"
+                    style={{
+                      background: 'rgba(254,145,0,0.06)',
+                      border: '1px solid rgba(254,145,0,0.15)',
+                      color: '#e5e7eb'
+                    }}
+                  >
+                    {currentStatus === 'processing' && '⚡ KI optimiert Gesprächsführung'}
+                    {currentStatus === 'ringing' && '📞 Verbindung wird aufgebaut'}
+                    {currentStatus === 'connected' && '🎤 Live-Konversation'}
+                    {currentStatus === 'ended' && '✅ Aufzeichnung abgeschlossen'}
+                  </div>
+                </motion.div>
+              )}
+            </div>
+          </motion.div>
+        );
+      })}
     </div>
   );
 }

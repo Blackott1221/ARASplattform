@@ -108,19 +108,26 @@ export function PowerResultCard({
           )}
         </motion.div>
 
-        {/* 🎙️ Audio Recording */}
+        {/* 🎤 Audio Recording */}
         {result.recordingUrl ? (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="rounded-2xl px-4 py-3"
+            className="rounded-2xl px-4 py-3 relative overflow-hidden"
             style={{
-              background: 'rgba(7,7,7,0.9)',
-              border: '1px solid rgba(233,215,196,0.18)',
+              background: 'rgba(10,10,10,0.92)',
+              border: '1px solid rgba(255,255,255,0.06)',
               backdropFilter: 'blur(14px)'
             }}
           >
+            {/* Dezente Audio-Wave-Linie */}
+            <div
+              className="absolute top-0 left-0 right-0 h-px"
+              style={{
+                background: 'linear-gradient(90deg, transparent, rgba(254,145,0,0.15), rgba(233,215,196,0.15), rgba(254,145,0,0.15), transparent)'
+              }}
+            />
             <div className="flex items-center justify-between text-[11px] text-neutral-400 mb-2">
               <span>Aufzeichnung des Gesprächs</span>
               {result.duration != null && (
@@ -160,9 +167,9 @@ export function PowerResultCard({
           <motion.div
             className="rounded-2xl p-4 md:p-5 relative overflow-hidden"
             style={{
-              background: 'rgba(8,8,8,0.85)',
+              background: 'rgba(10,10,10,0.88)',
               borderRadius: 18,
-              border: '1px solid rgba(233,215,196,0.20)'
+              border: '1px solid rgba(255,255,255,0.06)'
             }}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -181,38 +188,45 @@ export function PowerResultCard({
 
             <div className="relative space-y-3">
               <div className="flex items-center justify-between gap-3">
-                <div>
+                <div className="flex-1">
                   <div className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">
                     Zusammenfassung von ARAS
                   </div>
-                  <div className="mt-1 text-sm font-semibold text-neutral-100">
+                  <div
+                    className="mt-1 text-[15px] font-semibold"
+                    style={{
+                      fontFamily: 'Orbitron, sans-serif',
+                      letterSpacing: '0.01em',
+                      color: '#e5e7eb'
+                    }}
+                  >
                     {summary.outcome}
                   </div>
                 </div>
 
-                {/* Sentiment-Badge - Typography Only */}
+                {/* Sentiment-Badge - Modern mit Green-Gold Gradient */}
                 <div
-                  className="px-3 py-1.5 rounded-xl text-[11px] font-semibold uppercase tracking-wider"
+                  className="px-3 py-1.5 rounded-xl text-[11px] font-semibold uppercase tracking-wider flex-shrink-0"
                   style={{
                     fontFamily: 'Orbitron, sans-serif',
                     background:
                       summary.sentiment === 'positive'
-                        ? 'rgba(34,197,94,0.08)'
+                        ? 'linear-gradient(135deg, rgba(34,197,94,0.1), rgba(233,215,196,0.08))'
                         : summary.sentiment === 'negative'
-                        ? 'rgba(248,113,113,0.08)'
-                        : 'rgba(148,163,184,0.08)',
+                        ? 'linear-gradient(135deg, rgba(248,113,113,0.1), rgba(254,145,0,0.08))'
+                        : 'rgba(64,64,64,0.3)',
                     border:
                       summary.sentiment === 'positive'
-                        ? '1px solid rgba(34,197,94,0.25)'
+                        ? '1px solid rgba(34,197,94,0.3)'
                         : summary.sentiment === 'negative'
-                        ? '1px solid rgba(248,113,113,0.25)'
-                        : '1px solid rgba(148,163,184,0.25)',
+                        ? '1px solid rgba(248,113,113,0.3)'
+                        : '1px solid rgba(100,100,100,0.4)',
                     color:
                       summary.sentiment === 'positive'
                         ? '#4ade80'
                         : summary.sentiment === 'negative'
                         ? '#fca5a5'
-                        : '#d1d5db'
+                        : '#a8a8a8'
                   }}
                 >
                   {summary.sentiment === 'positive' && 'Positiv'}

@@ -752,7 +752,7 @@ export default function Power() {
 
                   {/* Formular */}
                   <div className="space-y-4">
-                    <div>
+                    <div className="mb-4">
                       <label className="block text-xs font-medium text-neutral-400 mb-2">
                         Gesprächspartner (Name/Firma)
                       </label>
@@ -769,14 +769,66 @@ export default function Power() {
                         />
                         <button
                           onClick={() => setShowContactPicker(true)}
-                          className="px-4 py-2.5 rounded-xl text-xs font-medium transition-all hover:scale-[1.015]"
+                          className="relative px-4 py-2.5 rounded-xl text-xs font-medium transition-all overflow-hidden"
                           style={{
-                            background: 'rgba(255,255,255,0.05)',
-                            border: '1px solid rgba(255,255,255,0.07)',
+                            background: 'rgba(255,255,255,0.03)',
+                            border: '1px solid rgba(255,255,255,0.1)',
                             color: '#d1d5db'
                           }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-1px)';
+                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(254,145,0,0.12)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = 'none';
+                          }}
                         >
-                          Aus Kontakten
+                          <span
+                            className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity"
+                            style={{
+                              background: 'linear-gradient(120deg, transparent, rgba(254,145,0,0.15), transparent)',
+                              backgroundSize: '200% 100%',
+                              animation: 'aras-border-run 8s linear infinite'
+                            }}
+                          />
+                          <span className="relative">Aus Kontakten</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setNewContactData({
+                              ...newContactData,
+                              phone: phoneNumber,
+                              firstName: contactName?.split(' ')[0] || '',
+                              lastName: contactName?.split(' ').slice(1).join(' ') || ''
+                            });
+                            setShowNewContactModal(true);
+                          }}
+                          className="relative px-3 py-2.5 rounded-xl text-xs font-semibold transition-all overflow-hidden"
+                          style={{
+                            background: 'rgba(0,0,0,0.7)',
+                            color: '#FE9100'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'scale(1.02)';
+                            e.currentTarget.style.boxShadow = '0 0 16px rgba(254,145,0,0.25)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'scale(1)';
+                            e.currentTarget.style.boxShadow = 'none';
+                          }}
+                        >
+                          <span
+                            className="absolute inset-0"
+                            style={{
+                              background: 'linear-gradient(120deg, transparent, rgba(254,145,0,0.2), transparent)',
+                              backgroundSize: '200% 100%',
+                              animation: 'aras-border-run 6s linear infinite',
+                              border: '1px solid rgba(254,145,0,0.3)',
+                              borderRadius: '12px'
+                            }}
+                          />
+                          <span className="relative">+ Neu</span>
                         </button>
                       </div>
                     </div>
@@ -1059,19 +1111,41 @@ export default function Power() {
                             // TODO: Load full call details
                             console.log('Load call:', call);
                           }}
-                          className="w-full text-left px-3 py-2 rounded-xl transition-all hover:bg-white/5"
+                          className="w-full text-left px-3 py-2.5 rounded-xl transition-all"
                           style={{
-                            border: '1px solid rgba(255,255,255,0.07)'
+                            background: 'rgba(8,8,8,0.88)',
+                            border: '1px solid rgba(255,255,255,0.06)'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(12,12,12,0.95)';
+                            e.currentTarget.style.boxShadow = '0 0 12px rgba(254,145,0,0.15)';
+                            e.currentTarget.style.borderColor = 'rgba(254,145,0,0.2)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(8,8,8,0.88)';
+                            e.currentTarget.style.boxShadow = 'none';
+                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
                           }}
                         >
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium text-neutral-200 truncate">
-                                {call.contactName || 'Unbekannt'} · {call.phoneNumber}
-                              </p>
-                              <p className="text-[10px] text-neutral-500">
-                                {call.status} · {formatDistanceToNow(new Date(call.createdAt), { addSuffix: true, locale: de })}
-                              </p>
+                          <div className="flex flex-col gap-1">
+                            <p className="text-xs font-semibold text-neutral-200 truncate">
+                              {call.contactName || 'Unbekannt'}
+                            </p>
+                            <p className="text-[11px] text-neutral-400 truncate">
+                              {call.phoneNumber}
+                            </p>
+                            <div className="flex items-center gap-2 text-[10px] text-neutral-500">
+                              <span className={`px-1.5 py-0.5 rounded ${
+                                call.status === 'completed' ? 'bg-green-500/10 text-green-400' :
+                                call.status === 'failed' ? 'bg-red-500/10 text-red-400' :
+                                'bg-yellow-500/10 text-yellow-400'
+                              }`}>
+                                {call.status === 'completed' ? 'abgeschlossen' : 
+                                 call.status === 'failed' ? 'fehlgeschlagen' : 
+                                 'initiiert'}
+                              </span>
+                              <span>·</span>
+                              <span>{formatDistanceToNow(new Date(call.createdAt), { addSuffix: true, locale: de })}</span>
                             </div>
                           </div>
                         </button>

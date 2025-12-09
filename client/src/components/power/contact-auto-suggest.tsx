@@ -59,6 +59,8 @@ export function ContactAutoSuggest({
       return;
     }
 
+    const lowerQuery = value.toLowerCase();
+    
     const filtered = contacts
       .filter(contact => {
         return (
@@ -69,6 +71,23 @@ export function ContactAutoSuggest({
           fuzzyMatch(contact.email || '', value) ||
           fuzzyMatch(`${contact.firstName} ${contact.lastName}`, value)
         );
+      })
+      .sort((a, b) => {
+        // Volltreffer zuerst (Name/Firma beginnt mit Query)
+        const aCompany = (a.company || '').toLowerCase();
+        const bCompany = (b.company || '').toLowerCase();
+        const aName = `${a.firstName || ''} ${a.lastName || ''}`.toLowerCase();
+        const bName = `${b.firstName || ''} ${b.lastName || ''}`.toLowerCase();
+        
+        const aStartsWithCompany = aCompany.startsWith(lowerQuery);
+        const bStartsWithCompany = bCompany.startsWith(lowerQuery);
+        const aStartsWithName = aName.startsWith(lowerQuery);
+        const bStartsWithName = bName.startsWith(lowerQuery);
+        
+        if ((aStartsWithCompany || aStartsWithName) && !(bStartsWithCompany || bStartsWithName)) return -1;
+        if (!(aStartsWithCompany || aStartsWithName) && (bStartsWithCompany || bStartsWithName)) return 1;
+        
+        return 0;
       })
       .slice(0, 6);
 
@@ -127,8 +146,11 @@ export function ContactAutoSuggest({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.15 }}
-            className="absolute z-50 w-full mt-2 rounded-2xl overflow-hidden"
+            className="absolute z-50 w-full rounded-2xl overflow-hidden"
             style={{
+              top: 'calc(100% + 6px)',
+              maxHeight: '260px',
+              overflowY: 'auto',
               background: 'rgba(12,12,12,0.98)',
               border: '1px solid rgba(255,255,255,0.12)',
               boxShadow: '0 12px 40px rgba(0,0,0,0.85)',
@@ -139,9 +161,17 @@ export function ContactAutoSuggest({
               <button
                 key={contact.id}
                 onClick={() => handleSelect(contact)}
-                className="w-full text-left px-4 py-3 transition-all hover:bg-white/5"
+                className="w-full text-left px-4 py-3 transition-all"
                 style={{
                   borderBottom: idx < filteredContacts.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                  e.currentTarget.style.boxShadow = '0 0 12px rgba(254,145,0,0.08)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.boxShadow = 'none';
                 }}
               >
                 <div className="flex items-center gap-3">
