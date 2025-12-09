@@ -11,6 +11,31 @@ export interface CallInput {
 // Interface für die Daten aus unserer Datenbank
 export interface UserContext {
   userName: string;       // "Manuel" (Dein Nutzer)
+  
+  // 🔥 BUSINESS INTELLIGENCE - ERWEITERT (Dezember 2025)
+  company?: string;       // "ARAS GmbH"
+  website?: string;       // "https://aras-ai.com"
+  industry?: string;      // "real_estate", "insurance", etc.
+  jobRole?: string;       // "CEO", "Sales Manager", etc.
+  phone?: string;         // User's phone number
+  
+  // 🔥 AI PROFILE - ULTRA-DEEP INTELLIGENCE
+  aiProfile?: {
+    companyDescription?: string;
+    products?: string[];
+    services?: string[];
+    targetAudience?: string;
+    brandVoice?: string;
+    valueProp?: string;
+    uniqueSellingPoints?: string[];
+    personalityType?: string;
+    communicationTone?: string;
+    decisionMakingStyle?: string;
+    salesTriggers?: string[];
+    painPoints?: string[];
+    interests?: string[];
+    vocabulary?: string[];
+  };
 }
 
 // Das Ergebnis, das wir an ElevenLabs senden
@@ -21,6 +46,18 @@ export interface EnhancedCallContext {
   purpose: string; // z.B. "Terminverschiebung (Restaurant)"
   detailsForAI: string; // Der super-menschliche Prompt
   originalMessage: string; // Die ORIGINAL Nachricht vom User für Dynamic Variables
+  
+  // 🔥 COMPANY DATA für ElevenLabs Dynamic Variables (Dezember 2025)
+  userCompany?: string;          // {{user_company}}
+  userIndustry?: string;         // {{user_industry}}
+  userWebsite?: string;          // {{user_website}}
+  userRole?: string;             // {{user_role}}
+  companyDescription?: string;   // {{company_description}}
+  companyProducts?: string;      // {{company_products}} - komma-separiert
+  companyServices?: string;      // {{company_services}} - komma-separiert
+  companyValueProp?: string;     // {{company_value_prop}}
+  userPersonality?: string;      // {{user_personality}}
+  communicationStyle?: string;   // {{communication_style}}
 }
 
 export async function enhanceCallWithGemini(
@@ -29,13 +66,24 @@ export async function enhanceCallWithGemini(
 ): Promise<EnhancedCallContext> {
   
   try {
-    logger.info('[ARAS-BRAIN] Generiere intelligenten Anruf-Kontext...');
+    logger.info('[ARAS-BRAIN] Generiere intelligenten Anruf-Kontext...', {
+      hasCompany: !!context.company,
+      hasIndustry: !!context.industry,
+      hasAiProfile: !!context.aiProfile
+    });
     
     // Erstelle einen intelligenten Prompt basierend auf dem Input
     const purpose = determinePurpose(input.message);
     const detailsForAI = generateHumanPrompt(input, context);
     
-    logger.info('[ARAS-BRAIN] Anruf-Kontext erfolgreich generiert', { purpose });
+    // 🔥 Prepare company data for ElevenLabs dynamic variables
+    const aiProfile = context.aiProfile || {};
+    
+    logger.info('[ARAS-BRAIN] Anruf-Kontext erfolgreich generiert', { 
+      purpose,
+      company: context.company,
+      hasAiProfile: !!context.aiProfile
+    });
     
     return {
       contactName: input.contactName,
@@ -43,19 +91,45 @@ export async function enhanceCallWithGemini(
       userName: context.userName,
       purpose,
       detailsForAI,
-      originalMessage: input.message  // Speichere die Original-Nachricht
+      originalMessage: input.message,
+      
+      // 🔥 COMPANY DATA für ElevenLabs (Dezember 2025)
+      userCompany: context.company,
+      userIndustry: context.industry,
+      userWebsite: context.website,
+      userRole: context.jobRole,
+      companyDescription: aiProfile.companyDescription,
+      companyProducts: aiProfile.products?.join(', '),
+      companyServices: aiProfile.services?.join(', '),
+      companyValueProp: aiProfile.valueProp,
+      userPersonality: aiProfile.personalityType,
+      communicationStyle: aiProfile.communicationTone || aiProfile.brandVoice
     };
   } catch (error: any) {
     logger.error('[ARAS-BRAIN] Fehler bei Kontext-Generierung', { error: error.message });
     
     // Fallback: Einfacher aber funktionaler Prompt
+    const aiProfile = context.aiProfile || {};
+    
     return {
       contactName: input.contactName,
       phoneNumber: input.phoneNumber,
       userName: context.userName,
       purpose: "Anruf",
       detailsForAI: `Du bist ARAS, der persönliche Assistent von ${context.userName}. Du rufst ${input.contactName} an. Dein Auftrag: ${input.message}. Sei extrem höflich, menschlich und natürlich. Verwende "ähm" und Pausen für mehr Natürlichkeit.`,
-      originalMessage: input.message  // Speichere die Original-Nachricht auch im Fallback
+      originalMessage: input.message,
+      
+      // 🔥 COMPANY DATA auch im Fallback
+      userCompany: context.company,
+      userIndustry: context.industry,
+      userWebsite: context.website,
+      userRole: context.jobRole,
+      companyDescription: aiProfile.companyDescription,
+      companyProducts: aiProfile.products?.join(', '),
+      companyServices: aiProfile.services?.join(', '),
+      companyValueProp: aiProfile.valueProp,
+      userPersonality: aiProfile.personalityType,
+      communicationStyle: aiProfile.communicationTone || aiProfile.brandVoice
     };
   }
 }

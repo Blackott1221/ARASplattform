@@ -43,12 +43,27 @@ export async function makeHumanCall(callContext: EnhancedCallContext) {
           // KEIN conversation_config_override! Behalte die Dashboard-Konfiguration!
           // Nur Dynamic Variables übergeben
           dynamic_variables: {
+            // 👤 BASIC USER INFO
             user_name: callContext.userName,           // {{user_name}} = "ADMIN" / "Manuel"
             contact_name: callContext.contactName,     // {{contact_name}} = "Justin Schwarzott"
             purpose: callContext.purpose,               // {{purpose}} = "Terminverschiebung"
             original_message: callContext.originalMessage || "Kein spezifischer Auftrag",  // Die ORIGINAL Nachricht vom User
             call_reason: callContext.purpose,           // Nochmal für Klarheit
-            phone_number: callContext.phoneNumber       // Falls benötigt im Gespräch
+            phone_number: callContext.phoneNumber,       // Falls benötigt im Gespräch
+            
+            // 🔥 COMPANY DATA (Dezember 2025)
+            user_company: callContext.userCompany || "",              // {{user_company}} = "ARAS GmbH"
+            user_industry: callContext.userIndustry || "",            // {{user_industry}} = "Insurance"
+            user_website: callContext.userWebsite || "",              // {{user_website}} = "https://aras-ai.com"
+            user_role: callContext.userRole || "",                    // {{user_role}} = "CEO"
+            
+            // 🔥 AI PROFILE DATA
+            company_description: callContext.companyDescription || "",  // {{company_description}}
+            company_products: callContext.companyProducts || "",        // {{company_products}} - komma-separiert
+            company_services: callContext.companyServices || "",        // {{company_services}} - komma-separiert
+            company_value_prop: callContext.companyValueProp || "",     // {{company_value_prop}}
+            user_personality: callContext.userPersonality || "",        // {{user_personality}}
+            communication_style: callContext.communicationStyle || ""   // {{communication_style}}
           }
         }
       },

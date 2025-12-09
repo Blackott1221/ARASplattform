@@ -2833,7 +2833,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
           company: user.company || undefined,
           website: user.website || undefined,
           industry: user.industry || undefined,
-          role: user.role || undefined,
+          role: user.jobRole || undefined,
           language: user.language || undefined,
           aiProfile: user.aiProfile || {}
         }
@@ -2882,11 +2882,21 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     let enhancedContext: any;
 
     try {
-      // 3. Rufe das 'Gehirn' auf (Gemini)
+      // 3. Rufe das 'Gehirn' auf (Gemini) mit vollständigem UserContext
       const { enhanceCallWithGemini } = await import('./voice/gemini-prompt-enhancer');
       enhancedContext = await enhanceCallWithGemini(
         { contactName: name, phoneNumber, message },
-        { userName: user.firstName || user.username || 'mein Kunde' }
+        { 
+          userName: user.firstName || user.username || 'mein Kunde',
+          // 🔥 BUSINESS INTELLIGENCE (Dezember 2025)
+          company: user.company || undefined,
+          website: user.website || undefined,
+          industry: user.industry || undefined,
+          jobRole: user.jobRole || undefined,
+          phone: user.phone || undefined,
+          // 🔥 AI PROFILE
+          aiProfile: user.aiProfile || undefined
+        }
       );
 
       // 4. Rufe den 'Mund' auf (ElevenLabs)
@@ -2916,6 +2926,11 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
             logger.info('[CALENDAR-AUTO] Starting auto-processing for call:', callLogId);
             
             // Get call with transcript
+            if (!callLogId) {
+              logger.error('[CALENDAR-AUTO] Invalid callLogId');
+              return;
+            }
+            
             const call = await db
               .select()
               .from(callLogs)
@@ -2972,7 +2987,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
                     id: eventId,
                     userId,
                     title: event.title,
-                    description: `Automatisch erstellt aus Anruf mit ${name} vom ${new Date(call[0].createdAt).toLocaleDateString('de-DE')}`,
+                    description: `Automatisch erstellt aus Anruf mit ${name} vom ${call[0].createdAt ? new Date(call[0].createdAt).toLocaleDateString('de-DE') : 'heute'}`,
                     date: event.date,
                     time: event.time,
                     duration: event.duration || 60,
@@ -2987,10 +3002,12 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
                 }
                 
                 // Mark call as processed
-                await db
-                  .update(callLogs)
-                  .set({ processedForCalendar: true })
-                  .where(eq(callLogs.id, callLogId));
+                if (callLogId) {
+                  await db
+                    .update(callLogs)
+                    .set({ processedForCalendar: true })
+                    .where(eq(callLogs.id, callLogId));
+                }
                 
                 logger.info('[CALENDAR-AUTO] ✅ Auto-processing complete!', {
                   callId: callLogId,
@@ -3420,7 +3437,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
               id: eventId,
               userId,
               title: event.title,
-              description: `Automatisch erstellt aus Anruf vom ${new Date(call.createdAt).toLocaleDateString('de-DE')}`,
+              description: `Automatisch erstellt aus Anruf vom ${call.createdAt ? new Date(call.createdAt).toLocaleDateString('de-DE') : 'heute'}`,
               date: event.date,
               time: event.time,
               duration: event.duration || 60,

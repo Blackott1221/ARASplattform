@@ -109,9 +109,29 @@ export function CallWizard({
 
       const result = await response.json();
       
-      if (result.isComplete) {
-        setFinalPrompt(result.enhancedPrompt);
+      // 🔥 WICHTIG: Wenn User alle REQUIRED Fragen beantwortet hat, weitergehen!
+      // Gemini will oft mehr Details, aber das ist optional
+      const allRequiredAnswered = result.questions
+        ?.filter((q: Question) => q.required)
+        .every((q: Question) => answers[q.id]?.trim());
+      
+      if (result.isComplete || allRequiredAnswered) {
+        // Nutze enhanced prompt wenn vorhanden, sonst original message + answers
+        const enhancedPrompt = result.enhancedPrompt || 
+          `${initialMessage}\n\nZusätzliche Details:\n${Object.entries(answers)
+            .map(([key, value]) => `- ${result.questions?.find((q: any) => q.id === key)?.question || key}: ${value}`)
+            .join('\n')}`;
+        
+        setFinalPrompt(enhancedPrompt);
         setSettings(result.suggestedSettings || settings);
+        
+        toast({
+          title: '✅ Bereit für Anruf',
+          description: result.isComplete 
+            ? 'Alle Informationen vollständig!'
+            : 'Alle Pflichtfragen beantwortet. Anruf kann gestartet werden.'
+        });
+        
         setStep('settings');
       } else {
         toast({
