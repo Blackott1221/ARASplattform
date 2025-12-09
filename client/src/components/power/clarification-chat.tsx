@@ -38,12 +38,23 @@ interface UserProfileContext {
   aiProfile?: any;
 }
 
+interface CallSummary {
+  outcome: string;
+  bulletPoints: string[];
+  nextStep: string;
+  sentiment: 'positive' | 'neutral' | 'negative' | 'mixed';
+  tags: string[];
+}
+
 interface ClarificationChatProps {
   questions: Question[];
   onAnswersComplete: (answers: Record<string, string>) => void;
   onSkip: () => void;
   initialMessage: string;
   userProfileContext?: UserProfileContext | null;
+  callStatus?: 'idle' | 'processing' | 'ringing' | 'connected' | 'ended';
+  callInProgressSummaryHint?: string;
+  finalSummary?: CallSummary | null;
 }
 
 export function ClarificationChat({ 
@@ -51,7 +62,10 @@ export function ClarificationChat({
   onAnswersComplete, 
   onSkip,
   initialMessage,
-  userProfileContext 
+  userProfileContext,
+  callStatus = 'idle',
+  callInProgressSummaryHint,
+  finalSummary
 }: ClarificationChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -59,6 +73,9 @@ export function ClarificationChat({
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  
+  // Disable input während Call läuft
+  const isInputDisabled = callStatus === 'connected';
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -288,6 +305,81 @@ export function ClarificationChat({
           </motion.div>
         )}
 
+        {/* 🔥 Live Call Status */}
+        {(callStatus === 'processing' || callStatus === 'ringing' || callStatus === 'connected') && (
+          <motion.div
+            className="flex items-start gap-2"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <img src={arasLogo} alt="ARAS" className="w-6 h-6 mt-1" />
+            <div
+              className="px-4 py-3 rounded-2xl max-w-[80%]"
+              style={{
+                background: 'linear-gradient(135deg, rgba(254,145,0,0.12), rgba(233,215,196,0.08))',
+                border: '1px solid rgba(254,145,0,0.25)',
+                boxShadow: '0 0 20px rgba(254,145,0,0.08)'
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-sm">✨</span>
+                <p className="text-sm text-gray-200">
+                  {callStatus === 'processing' && 'Ich bereite den Anruf vor – einen Moment...'}
+                  {callStatus === 'ringing' && 'Ich stelle gerade die Verbindung her – gleich geht es los.'}
+                  {callStatus === 'connected' && (
+                    callInProgressSummaryHint || 'Der Anruf läuft. Ich höre zu und bereite deine Zusammenfassung vor.'
+                  )}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* 🎯 Final Summary after Call */}
+        {callStatus === 'ended' && finalSummary && (
+          <motion.div
+            className="flex items-start gap-2"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <img src={arasLogo} alt="ARAS" className="w-6 h-6 mt-1" />
+            <div
+              className="px-4 py-4 rounded-2xl max-w-[90%]"
+              style={{
+                background: 'rgba(12,12,12,0.95)',
+                border: '1px solid rgba(233,215,196,0.25)',
+                boxShadow: '0 0 18px rgba(0,0,0,0.8)'
+              }}
+            >
+              <div className="space-y-2">
+                <div className="text-[10px] uppercase tracking-[0.18em] text-gray-500 mb-1">
+                  Call-Zusammenfassung
+                </div>
+                <div className="text-sm font-semibold text-gray-200 mb-2">
+                  {finalSummary.outcome}
+                </div>
+                {finalSummary.bulletPoints?.length > 0 && (
+                  <ul className="space-y-1.5 text-xs text-gray-300">
+                    {finalSummary.bulletPoints.slice(0, 3).map((bp, idx) => (
+                      <li key={idx} className="flex gap-2">
+                        <span className="mt-1">•</span>
+                        <span>{bp}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {finalSummary.nextStep && (
+                  <p className="mt-2 text-xs text-gray-300 pt-2 border-t border-white/10">
+                    <span className="font-semibold" style={{ color: CI.orange }}>Nächster Schritt:</span>{' '}
+                    {finalSummary.nextStep}
+                  </p>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         <div ref={chatEndRef} />
       </div>
 
@@ -330,42 +422,53 @@ export function ClarificationChat({
               ))}
             </div>
           ) : (
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSubmitAnswer()}
-                placeholder={currentQuestion.placeholder || 'Ihre Antwort...'}
-                className="flex-1 px-4 py-3 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none transition-all"
-                style={{
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.12)'
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = CI.orange;
-                  e.currentTarget.style.boxShadow = `0 0 0 3px rgba(254,145,0,0.1)`;
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-                autoFocus
-              />
-              <button
-                onClick={handleSubmitAnswer}
-                disabled={!inputValue.trim() && currentQuestion.required}
-                className="px-5 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 flex items-center gap-2"
-                style={{
-                  background: !inputValue.trim() && currentQuestion.required
-                    ? 'rgba(100,100,100,0.3)'
-                    : `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
-                  color: '#fff',
-                  fontFamily: 'Orbitron, sans-serif'
-                }}
-              >
-                {isLastQuestion ? <CheckCircle2 className="w-4 h-4" /> : <Send className="w-4 h-4" />}
-              </button>
+            <div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && !isInputDisabled && handleSubmitAnswer()}
+                  placeholder={currentQuestion.placeholder || 'Ihre Antwort...'}
+                  disabled={isInputDisabled}
+                  className="flex-1 px-4 py-3 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.12)'
+                  }}
+                  onFocus={(e) => {
+                    if (!isInputDisabled) {
+                      e.currentTarget.style.borderColor = CI.orange;
+                      e.currentTarget.style.boxShadow = `0 0 0 3px rgba(254,145,0,0.1)`;
+                    }
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                  autoFocus={!isInputDisabled}
+                />
+                <button
+                  onClick={handleSubmitAnswer}
+                  disabled={(!inputValue.trim() && currentQuestion.required) || isInputDisabled}
+                  className="px-5 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 flex items-center gap-2"
+                  style={{
+                    background: (!inputValue.trim() && currentQuestion.required) || isInputDisabled
+                      ? 'rgba(100,100,100,0.3)'
+                      : `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
+                    color: '#fff',
+                    fontFamily: 'Orbitron, sans-serif'
+                  }}
+                >
+                  {isLastQuestion ? <CheckCircle2 className="w-4 h-4" /> : <Send className="w-4 h-4" />}
+                </button>
+              </div>
+              {isInputDisabled && (
+                <p className="mt-2 text-[10px] text-gray-500">
+                  Während des laufenden Gesprächs kannst du hier nichts eingeben. 
+                  Sobald der Call beendet ist, bekommst du die Zusammenfassung.
+                </p>
+              )}
             </div>
           )}
 
