@@ -1814,6 +1814,9 @@ export default function Power() {
                 onSkip={handleSkipChat}
                 initialMessage={message}
                 userProfileContext={userProfileContext || null}
+                callStatus={callStatus}
+                finalSummary={callSummary}
+                callInProgressSummaryHint="Der Anruf läuft – ich höre zu und bereite deine Zusammenfassung vor."
               />
             </motion.div>
           </motion.div>
