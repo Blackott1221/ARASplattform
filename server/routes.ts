@@ -2844,7 +2844,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   // 🔥 NEUE ROUTE: Prompt-Validierung mit Gemini 2.5 Flash
   app.post('/api/aras-voice/validate-prompt', requireAuth, async (req: any, res) => {
     try {
-      const { message, contactName, answers, contactId, phoneNumber } = req.body;
+      const { message, contactName, answers, contactId, phoneNumber, templateId, templateScenario } = req.body;
       const userId = req.session.userId;
       const user = await storage.getUser(userId);
       
@@ -2856,7 +2856,9 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         userId, 
         messageLength: message?.length,
         hasAnswers: !!answers,
-        hasContactId: !!contactId
+        hasContactId: !!contactId,
+        hasTemplate: !!templateId,
+        templateScenario
       });
 
       // 🔥 Lade Contact-Kontext wenn contactId oder phoneNumber vorhanden
@@ -2889,6 +2891,8 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         contactName,
         previousAnswers: answers || {},
         contactContext,
+        templateId: templateId || null,
+        templateScenario: templateScenario || null,
         userContext: {
           userName: user.firstName || user.username,
           company: user.company || undefined,

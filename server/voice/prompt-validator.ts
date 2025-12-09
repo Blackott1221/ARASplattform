@@ -22,6 +22,10 @@ Du erhältst:
   - Name, Firma, E-Mail, Notizen des Ansprechpartners
   - Status: Bestandskontakt oder neuer Lead
   - Nutze diese Infos um Fragen und Call-Prompt genauer auf diese Person zuzuschneiden
+- Optional Informationen über die Art des Anrufs (CALL-SZENARIO) z.B.:
+  - "lead_qualification", "appointment_confirmation", "customer_reactivation"
+  - Nutze dies zur Orientierung für szenario-spezifische Fragen
+  - Erwähne NIEMALS das Wort "Szenario" oder "Template" in deinen Antworten
 
 **Ziele:**
 1. Prüfe, ob der Auftrag des Nutzers ausreichend klar ist, um einen hochwertigen Outbound Call durchzuführen.
@@ -82,6 +86,8 @@ interface ValidationInput {
   contactName: string;
   previousAnswers?: Record<string, string>;
   contactContext?: ContactContext;
+  templateId?: string | null;
+  templateScenario?: string | null;
   userContext: {
     userName: string;
     company?: string;
@@ -247,6 +253,11 @@ ${aiProfile.chatInsightsSummary}`;
       contactContextString += `\n- Status: Bestandskontakt (bekannte Person)`;
     }
 
+    // 🎯 Template-Szenario (wenn vorhanden)
+    const scenarioPart = input.templateScenario
+      ? `\n\n**CALL-SZENARIO:** ${input.templateScenario}\n(Nutze dies zur Orientierung - stelle szenario-spezifische Fragen)`
+      : '';
+
     // 🔥 Baue Prompt mit ARAS_CORE_SYSTEM_PROMPT
     const userPrompt = `Analysiere diese Anruf-Anfrage:
 
@@ -254,6 +265,7 @@ ${userContextString}
 
 **KONTAKT:** ${input.contactName}
 ${contactContextString}
+${scenarioPart}
 **ANFRAGE:** "${input.userInput}"
 ${answersContext}
 
