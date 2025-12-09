@@ -14,6 +14,7 @@ import { CallWizard } from '@/components/power/call-wizard';
 import { ClarificationChat } from '@/components/power/clarification-chat';
 import { CallTimeline } from '@/components/power/call-timeline';
 import { PowerResultCard } from '@/components/power/power-result-card';
+import { ContactAutoSuggest } from '@/components/power/contact-auto-suggest';
 // Templates entfernt aus POWER - bleiben im Code für spätere Features
 
 // ----------------- ARAS CI -----------------
@@ -93,6 +94,7 @@ export default function Power() {
   
   // NEW: Kontaktbuch Integration
   const [showContactPicker, setShowContactPicker] = useState(false);
+  const [showNewContactHint, setShowNewContactHint] = useState(false);
   const [showNewContactModal, setShowNewContactModal] = useState(false);
   const [contactSearchQuery, setContactSearchQuery] = useState("");
   const [newContactData, setNewContactData] = useState({
@@ -668,26 +670,17 @@ export default function Power() {
               initial={{ opacity: 0, y: -12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="flex items-start gap-4 mb-8"
+              className="mb-8"
             >
-              {/* ARAS Orb */}
-              <div
-                className="mt-1 h-11 w-11 rounded-full flex-shrink-0"
-                style={{
-                  background: 'radial-gradient(circle at 30% 20%, rgba(254,145,0,0.95), rgba(10,10,10,0.1) 70%)',
-                  boxShadow: '0 0 22px rgba(254,145,0,0.55)',
-                  border: '1px solid rgba(233,215,196,0.30)'
-                }}
-              />
-
               {/* Headline + Subheadline */}
               <div className="flex-1">
                 <h1
-                  className="text-[20px] md:text-[22px] font-semibold tracking-wide mb-2"
+                  className="text-[22px] md:text-[24px] font-semibold mb-2"
                   style={{
                     fontFamily: 'Orbitron, sans-serif',
-                    backgroundImage: 'linear-gradient(90deg, #E9D7C4, #FE9100, #ffffff)',
-                    backgroundSize: '260% 100%',
+                    letterSpacing: '0.02em',
+                    backgroundImage: 'linear-gradient(90deg, #E9D7C4, #FE9100, #ffffff, #FE9100, #E9D7C4)',
+                    backgroundSize: '300% 100%',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                     animation: 'aras-gradient-shift 14s linear infinite'
@@ -743,11 +736,11 @@ export default function Power() {
                         <span className="font-semibold">
                           {userProfileContext.aiProfile?.products?.length > 0
                             ? '✓ ARAS AI – Core PRO 1.0'
-                            : '⚠ Firmenprofil unvollständig'}
+                            : '⚠ Wissensdatenbank unvollständig'}
                         </span>
                         {!userProfileContext.aiProfile?.products?.length && (
                           <button
-                            onClick={() => window.location.href = '/app/settings?tab=profile'}
+                            onClick={() => window.location.href = '/app/leads'}
                             className="text-[10px] underline hover:no-underline"
                           >
                             Jetzt vervollständigen
@@ -764,31 +757,22 @@ export default function Power() {
                         Gesprächspartner (Name/Firma)
                       </label>
                       <div className="flex gap-2">
-                        <input
-                          type="text"
+                        <ContactAutoSuggest
                           value={contactName}
-                          onChange={(e) => setContactName(e.target.value)}
+                          onChange={(val) => {
+                            setContactName(val);
+                            setShowNewContactHint(false);
+                          }}
+                          onSelectContact={handleSelectContact}
+                          contacts={contacts || []}
                           placeholder="Max Mustermann GmbH"
-                          className="flex-1 px-4 py-2.5 rounded-xl text-sm text-white placeholder-neutral-500 transition-all outline-none"
-                          style={{
-                            background: 'rgba(0,0,0,0.4)',
-                            border: '1px solid rgba(255,255,255,0.10)'
-                          }}
-                          onFocus={(e) => {
-                            e.currentTarget.style.borderColor = CI.orange;
-                            e.currentTarget.style.boxShadow = `0 0 0 4px rgba(254,145,0,0.08)`;
-                          }}
-                          onBlur={(e) => {
-                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)';
-                            e.currentTarget.style.boxShadow = 'none';
-                          }}
                         />
                         <button
                           onClick={() => setShowContactPicker(true)}
-                          className="px-4 py-2.5 rounded-xl text-xs font-medium transition-all hover:scale-[1.02]"
+                          className="px-4 py-2.5 rounded-xl text-xs font-medium transition-all hover:scale-[1.015]"
                           style={{
                             background: 'rgba(255,255,255,0.05)',
-                            border: '1px solid rgba(255,255,255,0.12)',
+                            border: '1px solid rgba(255,255,255,0.07)',
                             color: '#d1d5db'
                           }}
                         >
@@ -804,12 +788,19 @@ export default function Power() {
                       <input
                         type="tel"
                         value={phoneNumber}
-                        onChange={(e) => handlePhoneChange(e.target.value)}
+                        onChange={(e) => {
+                          handlePhoneChange(e.target.value);
+                          // Check if number exists in contacts
+                          const exists = contacts?.some(c => 
+                            (c.phone === e.target.value) || (c.phoneNumber === e.target.value)
+                          );
+                          setShowNewContactHint(!exists && e.target.value.length > 8);
+                        }}
                         placeholder="+491701234567"
                         className="w-full px-4 py-2.5 rounded-xl text-sm text-white placeholder-neutral-500 transition-all outline-none"
                         style={{
                           background: 'rgba(0,0,0,0.4)',
-                          border: phoneError ? '1px solid rgba(248,113,113,0.5)' : '1px solid rgba(255,255,255,0.10)'
+                          border: phoneError ? '1px solid rgba(248,113,113,0.5)' : '1px solid rgba(255,255,255,0.07)'
                         }}
                         onFocus={(e) => {
                           if (!phoneError) {
@@ -818,12 +809,46 @@ export default function Power() {
                           }
                         }}
                         onBlur={(e) => {
-                          e.currentTarget.style.borderColor = phoneError ? 'rgba(248,113,113,0.5)' : 'rgba(255,255,255,0.10)';
+                          e.currentTarget.style.borderColor = phoneError ? 'rgba(248,113,113,0.5)' : 'rgba(255,255,255,0.07)';
                           e.currentTarget.style.boxShadow = 'none';
                         }}
                       />
                       {phoneError && (
                         <p className="mt-1 text-[10px] text-red-400">{phoneError}</p>
+                      )}
+                      {showNewContactHint && !phoneError && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="mt-2 flex items-center justify-between p-2.5 rounded-lg"
+                          style={{
+                            background: 'rgba(254,145,0,0.06)',
+                            border: '1px solid rgba(254,145,0,0.15)'
+                          }}
+                        >
+                          <span className="text-[10px] text-neutral-300">
+                            Diese Nummer ist noch nicht gespeichert.
+                          </span>
+                          <button
+                            onClick={() => {
+                              setNewContactData({
+                                ...newContactData,
+                                phone: phoneNumber,
+                                firstName: contactName?.split(' ')[0] || '',
+                                lastName: contactName?.split(' ').slice(1).join(' ') || ''
+                              });
+                              setShowNewContactModal(true);
+                            }}
+                            className="text-[10px] font-medium px-2 py-1 rounded-md transition-all hover:scale-[1.05]"
+                            style={{
+                              background: 'rgba(254,145,0,0.2)',
+                              border: '1px solid rgba(254,145,0,0.35)',
+                              color: '#FE9100'
+                            }}
+                          >
+                            + Neuen Kontakt speichern
+                          </button>
+                        </motion.div>
                       )}
                       <p className="mt-1 text-[10px] text-neutral-500">
                         Mit Ländervorwahl, z.B. +491701234567
@@ -842,14 +867,14 @@ export default function Power() {
                         className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-neutral-500 transition-all outline-none resize-none"
                         style={{
                           background: 'rgba(0,0,0,0.4)',
-                          border: '1px solid rgba(255,255,255,0.10)'
+                          border: '1px solid rgba(255,255,255,0.07)'
                         }}
                         onFocus={(e) => {
                           e.currentTarget.style.borderColor = CI.orange;
                           e.currentTarget.style.boxShadow = `0 0 0 4px rgba(254,145,0,0.08)`;
                         }}
                         onBlur={(e) => {
-                          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)';
+                          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)';
                           e.currentTarget.style.boxShadow = 'none';
                         }}
                       />
@@ -865,18 +890,22 @@ export default function Power() {
                     <button
                       onClick={handleStartCallProcess}
                       disabled={loading || !contactName || !phoneNumber || !message || !!phoneError}
-                      className="relative w-full overflow-hidden rounded-2xl transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:scale-[1.01]"
+                      className="relative w-full overflow-hidden rounded-2xl transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:scale-[1.015]"
                     >
                       <span
                         className="absolute inset-0 rounded-2xl"
                         style={{
-                          backgroundImage: 'linear-gradient(120deg, rgba(233,215,196,0.0), rgba(254,145,0,0.85), rgba(233,215,196,0.0))',
-                          backgroundSize: '220% 100%',
-                          animation: 'aras-border-run 8s linear infinite'
+                          backgroundImage: 'linear-gradient(120deg, rgba(254,145,0,0.0), rgba(254,145,0,1.0), rgba(254,145,0,0.0))',
+                          backgroundSize: '200% 100%',
+                          animation: 'aras-border-run 5s linear infinite',
+                          boxShadow: '0 0 20px rgba(254,145,0,0.4)'
                         }}
                       />
-                      <span className="relative flex h-[calc(100%-2px)] w-[calc(100%-2px)] items-center justify-center rounded-[18px] m-[1px] bg-black/90 px-4 py-3 text-sm font-semibold text-white"
-                        style={{ fontFamily: 'Orbitron, sans-serif' }}
+                      <span className="relative flex h-[calc(100%-2px)] w-[calc(100%-2px)] items-center justify-center rounded-[18px] m-[1px] px-4 py-3 text-sm font-semibold text-white"
+                        style={{ 
+                          fontFamily: 'Orbitron, sans-serif',
+                          background: 'rgba(0,0,0,0.85)'
+                        }}
                       >
                         {loading ? 'Wird vorbereitet...' : 'Jetzt anrufen lassen'}
                       </span>
@@ -884,7 +913,7 @@ export default function Power() {
                   </div>
                 </div>
 
-                {/* ClarificationChat Inline */}
+                {/* ClarificationChat Inline mit mehr Spacing */}
                 <AnimatePresence>
                   {showChatFlow && validationResult && (
                     <motion.div
@@ -892,6 +921,7 @@ export default function Power() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
                       transition={{ duration: 0.3 }}
+                      className="mt-6"
                     >
                       <ClarificationChat
                         questions={validationResult.questions}
@@ -922,14 +952,39 @@ export default function Power() {
                 transition={{ delay: 0.2 }}
                 className="flex flex-col gap-4"
               >
+                {/* Mini Headline */}
+                <div className="mb-3">
+                  <h2
+                    className="text-sm font-semibold mb-1"
+                    style={{
+                      fontFamily: 'Orbitron, sans-serif',
+                      letterSpacing: '0.02em',
+                      backgroundImage: 'linear-gradient(90deg, #E9D7C4, #FE9100, #ffffff, #FE9100, #E9D7C4)',
+                      backgroundSize: '300% 100%',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      animation: 'aras-gradient-shift 14s linear infinite'
+                    }}
+                  >
+                    Call-Status
+                  </h2>
+                  <div
+                    className="h-px w-20"
+                    style={{
+                      background: 'linear-gradient(90deg, rgba(254,145,0,0.6), transparent)',
+                      boxShadow: '0 0 8px rgba(254,145,0,0.3)'
+                    }}
+                  />
+                </div>
+
                 {/* Timeline */}
                 <div
                   className="rounded-3xl p-5"
                   style={{
-                    background: 'linear-gradient(155deg, rgba(8,8,8,0.95), rgba(4,4,4,0.98))',
-                    border: '1px solid rgba(255,255,255,0.06)',
+                    background: 'rgba(8,8,8,0.78)',
+                    border: '1px solid rgba(255,255,255,0.07)',
                     boxShadow: '0 18px 50px rgba(0,0,0,0.85)',
-                    backdropFilter: 'blur(20px)'
+                    backdropFilter: 'blur(22px)'
                   }}
                 >
                   <CallTimeline currentStatus={callStatus} duration={callDuration} />
@@ -960,10 +1015,10 @@ export default function Power() {
                   <div
                     className="rounded-3xl p-6 text-center"
                     style={{
-                      background: 'linear-gradient(155deg, rgba(8,8,8,0.95), rgba(4,4,4,0.98))',
-                      border: '1px solid rgba(255,255,255,0.06)',
+                      background: 'rgba(8,8,8,0.78)',
+                      border: '1px solid rgba(255,255,255,0.07)',
                       boxShadow: '0 18px 50px rgba(0,0,0,0.85)',
-                      backdropFilter: 'blur(20px)'
+                      backdropFilter: 'blur(22px)'
                     }}
                   >
                     <p className="text-xs text-neutral-500">
@@ -977,13 +1032,24 @@ export default function Power() {
                   <div
                     className="rounded-3xl p-4"
                     style={{
-                      background: 'rgba(8,8,8,0.85)',
-                      border: '1px solid rgba(255,255,255,0.06)',
-                      backdropFilter: 'blur(16px)'
+                      background: 'rgba(8,8,8,0.78)',
+                      border: '1px solid rgba(255,255,255,0.07)',
+                      backdropFilter: 'blur(22px)'
                     }}
                   >
-                    <h3 className="text-xs font-semibold text-neutral-400 mb-3 uppercase tracking-wider">
-                      Letzte Anrufe
+                    <h3
+                      className="text-xs font-semibold mb-3 uppercase tracking-wider"
+                      style={{
+                        fontFamily: 'Orbitron, sans-serif',
+                        letterSpacing: '0.02em',
+                        backgroundImage: 'linear-gradient(90deg, #E9D7C4, #FE9100, #ffffff, #FE9100, #E9D7C4)',
+                        backgroundSize: '300% 100%',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        animation: 'aras-gradient-shift 14s linear infinite'
+                      }}
+                    >
+                      Gesprächsverlauf
                     </h3>
                     <div className="space-y-2">
                       {callHistory.slice(0, 5).map((call, idx) => (
@@ -995,7 +1061,7 @@ export default function Power() {
                           }}
                           className="w-full text-left px-3 py-2 rounded-xl transition-all hover:bg-white/5"
                           style={{
-                            border: '1px solid rgba(255,255,255,0.05)'
+                            border: '1px solid rgba(255,255,255,0.07)'
                           }}
                         >
                           <div className="flex justify-between items-start">

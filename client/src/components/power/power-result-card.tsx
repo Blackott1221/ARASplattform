@@ -190,28 +190,29 @@ export function PowerResultCard({
                   </div>
                 </div>
 
-                {/* Sentiment-Badge */}
+                {/* Sentiment-Badge - Typography Only */}
                 <div
-                  className="px-3 py-1 rounded-full text-[11px] font-medium"
+                  className="px-3 py-1.5 rounded-xl text-[11px] font-semibold uppercase tracking-wider"
                   style={{
+                    fontFamily: 'Orbitron, sans-serif',
                     background:
                       summary.sentiment === 'positive'
-                        ? 'rgba(34,197,94,0.12)'
+                        ? 'rgba(34,197,94,0.08)'
                         : summary.sentiment === 'negative'
-                        ? 'rgba(248,113,113,0.12)'
-                        : 'rgba(148,163,184,0.12)',
+                        ? 'rgba(248,113,113,0.08)'
+                        : 'rgba(148,163,184,0.08)',
                     border:
                       summary.sentiment === 'positive'
-                        ? '1px solid rgba(34,197,94,0.45)'
+                        ? '1px solid rgba(34,197,94,0.25)'
                         : summary.sentiment === 'negative'
-                        ? '1px solid rgba(248,113,113,0.45)'
-                        : '1px solid rgba(148,163,184,0.45)',
+                        ? '1px solid rgba(248,113,113,0.25)'
+                        : '1px solid rgba(148,163,184,0.25)',
                     color:
                       summary.sentiment === 'positive'
                         ? '#4ade80'
                         : summary.sentiment === 'negative'
                         ? '#fca5a5'
-                        : '#e5e7eb'
+                        : '#d1d5db'
                   }}
                 >
                   {summary.sentiment === 'positive' && 'Positiv'}
@@ -221,25 +222,45 @@ export function PowerResultCard({
                 </div>
               </div>
 
-              {/* Bulletpoints */}
+              {/* Bulletpoints - Radial Gradient Dots */}
               {summary.bulletPoints?.length > 0 && (
                 <ul className="mt-2 space-y-1.5 text-xs text-neutral-300">
                   {summary.bulletPoints.map((bp, idx) => (
-                    <li key={idx} className="flex gap-2">
-                      <span className="mt-[3px] h-[6px] w-[6px] rounded-full bg-gradient-to-br from-[#E9D7C4] to-[#FE9100] flex-shrink-0" />
+                    <li key={idx} className="flex gap-2.5">
+                      <span
+                        className="mt-[3px] h-[7px] w-[7px] rounded-full flex-shrink-0"
+                        style={{
+                          background: 'radial-gradient(circle at 30% 30%, #FE9100, #E9D7C4)',
+                          boxShadow: '0 0 4px rgba(254,145,0,0.4)'
+                        }}
+                      />
                       <span>{bp}</span>
                     </li>
                   ))}
                 </ul>
               )}
 
-              {/* Next Step */}
+              {/* Next Step - Custom Border */}
               {summary.nextStep && (
-                <div className="mt-3 rounded-xl px-3 py-2 text-xs text-neutral-200 bg-white/3 border border-white/10">
-                  <span className="text-[11px] uppercase tracking-[0.18em] text-neutral-500 block mb-1">
-                    → Nächster Schritt
+                <div
+                  className="mt-3 rounded-xl px-3 py-2.5 text-xs text-neutral-200"
+                  style={{
+                    background: 'rgba(0,0,0,0.25)',
+                    border: '1px solid rgba(254,145,0,0.25)',
+                    borderLeft: '3px solid rgba(254,145,0,0.65)',
+                    boxShadow: '0 0 12px rgba(254,145,0,0.08)'
+                  }}
+                >
+                  <span
+                    className="text-[10px] uppercase tracking-wider font-semibold block mb-1"
+                    style={{
+                      color: '#FE9100',
+                      fontFamily: 'Orbitron, sans-serif'
+                    }}
+                  >
+                    → NÄCHSTER SCHRITT
                   </span>
-                  <span>{summary.nextStep}</span>
+                  <span className="leading-relaxed">{summary.nextStep}</span>
                 </div>
               )}
 
