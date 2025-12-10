@@ -2711,15 +2711,20 @@ export default function AuthPage() {
                 <AnimatePresence>
                   {authMode === "idle" && (
                     <div className="flex flex-col gap-3">
-                      {/* PRIMARY: Alpha Zugang beitreten – ORANGE OUTLINE, innen transparent */}
+                      {/* PRIMARY: Alpha Zugang beitreten – NEON GLOW */}
                       <button
                         type="button"
                         onClick={() => {
                           setAuthMode("signup");
                           setActiveTab("register");
                         }}
-                        className="relative w-full rounded-full overflow-hidden uppercase tracking-[0.08em] font-semibold text-sm md:text-base"
-                        style={{ fontFamily: "Orbitron, sans-serif", color: "#E9D7C4", boxShadow: "0 0 20px rgba(254,145,0,0.2)" }}
+                        className="relative w-full rounded-full overflow-hidden uppercase tracking-[0.08em] font-bold text-sm md:text-base"
+                        style={{ 
+                          fontFamily: "Orbitron, sans-serif", 
+                          color: "#FFFFFF", // Helles Weiß
+                          textShadow: "0 0 15px rgba(254,145,0,0.8), 0 0 30px rgba(254,145,0,0.4)", // Starkes Leuchten
+                          boxShadow: "0 0 30px rgba(254,145,0,0.25)" 
+                        }}
                       >
                         {/* Outline-Gradient (nur Rand) */}
                         <span
@@ -2727,21 +2732,22 @@ export default function AuthPage() {
                           style={{
                             padding: "2px",
                             background:
-                              "linear-gradient(120deg, rgba(254,145,0,0.95), rgba(233,215,196,0.7), rgba(254,145,0,0.95))",
-                            backgroundSize: "260% 100%",
-                            animation: "aras-border-run 8s linear infinite",
+                              "linear-gradient(120deg, #FE9100, #FFD700, #FE9100)", // Kräftigeres Gold/Orange
+                            backgroundSize: "200% 100%",
+                            animation: "aras-border-run 3s linear infinite", // Schnellerer Flow
                           }}
                         />
 
                         {/* Innen transparent, Glow außen */}
                         <motion.span
-                          className="relative flex items-center justify-center rounded-full px-6 py-3"
+                          className="relative flex items-center justify-center rounded-full px-6 py-3.5"
                           style={{
-                            background: "rgba(0,0,0,0)", // WIEDER TRANSPARENT
+                            background: "rgba(0,0,0,0.2)", // Leicht abgedunkelt für Kontrast
                           }}
                           whileHover={{
-                            backgroundColor: "rgba(0,0,0,0.35)", // Nur bei Hover dunkel
+                            backgroundColor: "rgba(254,145,0,0.15)",
                             scale: 1.02,
+                            textShadow: "0 0 25px rgba(254,145,0,1)"
                           }}
                           whileTap={{ scale: 0.97 }}
                         >
@@ -2749,25 +2755,29 @@ export default function AuthPage() {
                         </motion.span>
                       </button>
 
-                      {/* SECONDARY: Login – Orange Outline, weiße Schrift */}
+                      {/* SECONDARY: Login – Leuchtendes Weiß */}
                       <button
                         type="button"
                         onClick={() => {
                           setAuthMode("login");
                           setActiveTab("login");
                         }}
-                        className="relative w-full rounded-full overflow-hidden uppercase tracking-[0.08em] font-semibold text-xs md:text-sm"
-                        style={{ fontFamily: "Orbitron, sans-serif", color: "#FFFFFF" }}
+                        className="relative w-full rounded-full overflow-hidden uppercase tracking-[0.08em] font-bold text-xs md:text-sm"
+                        style={{ 
+                          fontFamily: "Orbitron, sans-serif", 
+                          color: "#FFFFFF",
+                          textShadow: "0 0 12px rgba(255,255,255,0.6)" // Weißes Leuchten
+                        }}
                       >
-                        {/* Orange/Gold Outline-Gradient (wie Alpha, etwas dezenter) */}
+                        {/* Orange/Gold Outline-Gradient */}
                         <span
                           className="absolute inset-0 rounded-full pointer-events-none"
                           style={{
-                            padding: "2px",
+                            padding: "1px",
                             background:
-                              "linear-gradient(120deg, rgba(254,145,0,0.8), rgba(255,255,255,0.6), rgba(254,145,0,0.8))",
+                              "linear-gradient(120deg, rgba(255,255,255,0.5), rgba(254,145,0,0.8), rgba(255,255,255,0.5))",
                             backgroundSize: "260% 100%",
-                            animation: "aras-border-run 10s linear infinite",
+                            animation: "aras-border-run 6s linear infinite",
                           }}
                         />
 
@@ -2775,11 +2785,12 @@ export default function AuthPage() {
                         <motion.span
                           className="relative flex items-center justify-center rounded-full px-6 py-3"
                           style={{
-                            background: "rgba(0,0,0,0)", // KEIN FILL
+                            background: "rgba(0,0,0,0)", 
                           }}
                           whileHover={{
-                            backgroundColor: "rgba(254,145,0,0.1)", // Ganz leichter Orange-Hauch bei Hover
+                            backgroundColor: "rgba(255,255,255,0.05)",
                             scale: 1.02,
+                            textShadow: "0 0 20px rgba(255,255,255,0.9)"
                           }}
                           whileTap={{ scale: 0.97 }}
                         >
