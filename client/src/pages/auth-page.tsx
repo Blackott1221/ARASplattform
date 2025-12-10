@@ -21,10 +21,9 @@ const TYPED_LINES = [
 
 // Auth Subtitle Lines for Typing Animation
 const AUTH_SUBLINES = [
-  "Alpha Zugang ist kostenlos. Dein Account bleibt auch nach dem offiziellen Marktstart bestehen.",
-  "Wenn von uns eine E-Mail kam, haben wir dich bereits als Alpha-Kunden vorgesehen.",
-  "Mit dem Alpha Zugang testest du ARAS früh – mit denselben Funktionen wie unsere späteren Pro-Kunden.",
-  "Dein Feedback aus der Alpha-Phase fließt direkt in die Weiterentwicklung der Plattform ein."
+  "Alpha Zugang ist kostenlos.",
+  "Dein Account bleibt auch nach dem Marktstart bestehen.",
+  "Wenn du eine E-Mail von uns bekommen hast, bist du bereits Alpha-Kunde."
 ];
 
 // Live Date and Time Component with Milliseconds
@@ -2652,7 +2651,7 @@ export default function AuthPage() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
-            className="w-full max-w-md mx-auto mt-[-12px] md:mt-[-40px]"
+            className="w-full max-w-md mx-auto mt-[-70px] md:mt-[-80px]"
           >
             {/* Card Container */}
             <div className="relative">
@@ -2707,33 +2706,31 @@ export default function AuthPage() {
                           setAuthMode('signup');
                           setActiveTab('register');
                         }}
-                        className="relative w-full overflow-hidden rounded-full text-sm md:text-[15px] font-semibold tracking-[0.08em] uppercase"
-                        style={{ fontFamily: 'Orbitron, sans-serif' }}
+                        className="relative w-full rounded-full overflow-hidden uppercase tracking-[0.08em] font-semibold text-sm md:text-base"
+                        style={{ fontFamily: 'Orbitron, sans-serif', color: '#E9D7C4' }}
                       >
-                        {/* Animated Gradient Border – außen */}
+                        {/* Animated outline */}
                         <span
                           className="absolute inset-0 rounded-full pointer-events-none"
                           style={{
-                            background: 'linear-gradient(120deg, rgba(254,145,0,0.95), rgba(233,215,196,0.7), rgba(254,145,0,0.95))',
+                            padding: '2px',
+                            background: 'linear-gradient(120deg, rgba(254,145,0,0.9), rgba(233,215,196,0.6), rgba(254,145,0,0.9))',
                             backgroundSize: '260% 100%',
-                            animation: 'aras-border-run 8s linear infinite',
-                            padding: '1px'
+                            animation: 'aras-border-run 8s linear infinite'
                           }}
                         />
 
-                        {/* Innen: komplett transparent, nur Text */}
+                        {/* Inner transparent area */}
                         <motion.span
                           className="relative flex items-center justify-center rounded-full px-6 py-3"
                           style={{
-                            background: 'transparent',
-                            color: '#E9D7C4'
+                            background: 'rgba(0,0,0,0)'
                           }}
                           whileHover={{
                             backgroundColor: 'rgba(0,0,0,0.35)',
                             scale: 1.02
                           }}
                           whileTap={{ scale: 0.97 }}
-                          transition={{ duration: 0.16 }}
                         >
                           Alpha Zugang beitreten
                         </motion.span>
@@ -2746,40 +2743,38 @@ export default function AuthPage() {
                           setAuthMode('login');
                           setActiveTab('login');
                         }}
-                        className="relative w-full overflow-hidden rounded-full text-sm md:text-[15px] font-semibold tracking-[0.08em] uppercase"
-                        style={{ fontFamily: 'Orbitron, sans-serif' }}
+                        className="relative w-full rounded-full overflow-hidden uppercase tracking-[0.08em] font-semibold text-sm md:text-base"
+                        style={{ fontFamily: 'Orbitron, sans-serif', color: '#D1D5DB' }}
                       >
-                        {/* Animated Gradient Border – außen */}
+                        {/* Animated outline */}
                         <span
                           className="absolute inset-0 rounded-full pointer-events-none"
                           style={{
-                            background: 'linear-gradient(120deg, rgba(255,255,255,0.3), rgba(100,116,139,0.7), rgba(255,255,255,0.3))',
+                            padding: '2px',
+                            background: 'linear-gradient(120deg, rgba(255,255,255,0.4), rgba(100,116,139,0.65), rgba(255,255,255,0.4))',
                             backgroundSize: '260% 100%',
-                            animation: 'aras-border-run 10s linear infinite',
-                            padding: '1px'
+                            animation: 'aras-border-run 10s linear infinite'
                           }}
                         />
 
-                        {/* Innen: komplett transparent, nur Text */}
+                        {/* Inner transparent area */}
                         <motion.span
                           className="relative flex items-center justify-center rounded-full px-6 py-3"
                           style={{
-                            background: 'transparent',
-                            color: '#E5E7EB'
+                            background: 'rgba(0,0,0,0)'
                           }}
                           whileHover={{
                             backgroundColor: 'rgba(0,0,0,0.35)',
                             scale: 1.02
                           }}
                           whileTap={{ scale: 0.97 }}
-                          transition={{ duration: 0.16 }}
                         >
                           Login
                         </motion.span>
                       </button>
 
                       {/* Typewriter Subtitle */}
-                      <div className="mt-1 text-[11px] md:text-xs text-center text-neutral-300/80 min-h-[32px]">
+                      <div className="mt-1 text-[11px] md:text-xs text-center min-h-[32px]" style={{ color: '#C7B8A3', opacity: 0.65 }}>
                         <span className="inline-flex items-center justify-center gap-1">
                           <span className="font-normal max-w-xs">
                             {AUTH_SUBLINES[subtitleIndex].slice(0, typedLength)}
