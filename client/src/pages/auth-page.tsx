@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
-import { Loader2, Eye, EyeOff, AlertCircle, CheckCircle2, ArrowRight, Phone, Calendar, Sparkles, Building, Globe, User, Target, ChevronLeft, ChevronDown, Search, Mic, TrendingUp, Shield } from "lucide-react";
+import { Loader2, Eye, EyeOff, AlertCircle, CheckCircle2, ArrowRight, Phone, Calendar, Sparkles, Building, Globe, User, Target, ChevronLeft, ChevronDown, Search, Mic, TrendingUp, Shield, ShieldCheck, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { trackLogin, trackSignup, captureUTMParameters } from "@/lib/analytics";
@@ -131,334 +131,330 @@ function LiveDateTime() {
 
 // 📞 Call Flow Timeline Component
 function CallFlowTimeline() {
-  const [activeStep, setActiveStep] = useState<number | null>(null);
-  const [detailPanelStep, setDetailPanelStep] = useState<number | null>(null);
-
   const steps = [
     {
-      number: 1,
+      step: 1,
       title: "Auftrag geben",
       description: "Sie definieren das Ziel – per natürlicher Sprache oder strukturierter Form:",
-      example: "\"Rufe alle Leads aus Kampagne A an und qualifiziere nach Kriterium B.\"",
-      details: "ARAS versteht natürliche Sprache und strukturierte Befehle. Sie können Kampagnen direkt über Text oder über das UI konfigurieren. Die KI interpretiert Ihre Anweisungen und erstellt automatisch einen optimierten Call-Plan."
+      quote: '"Rufe alle Leads aus Kampagne A an und qualifiziere nach Kriterium B."'
     },
     {
-      number: 2,
+      step: 2,
       title: "Kontextanalyse",
-      description: "ARAS verarbeitet:",
-      bullets: [
-        "CRM-Daten",
-        "bisherige Interaktionen",
-        "Lead-Informationen",
-        "Ziel der Kampagne",
-        "Tonfall-Anweisungen"
-      ],
-      additional: "Das System erkennt Absicht, Emotion & Gesprächssituation.",
-      details: "ARAS nutzt eine Kombination aus strukturierten CRM-Daten, Sprachmodellierung und regelbasierten Sicherheitsmechanismen, um die optimale Gesprächsstrategie zu wählen. Die Analyse läuft in unter 200ms ab – vollständig innerhalb europäischer Server."
+      description: "ARAS verarbeitet CRM-Daten, bisherige Interaktionen & Lead-Informationen. Das System erkennt Absicht, Emotion & Gesprächssituation."
     },
     {
-      number: 3,
+      step: 3,
       title: "Der Anruf läuft",
-      description: "ARAS spricht mit einer ruhigen, strukturierten Stimme.",
-      bullets: [
-        "Dialoge sind kontextbezogen, präzise und nachvollziehbar",
-        "Einwände werden logisch behandelt"
-      ],
-      details: "Die ARAS Voice Engine nutzt neuronale Text-to-Speech-Modelle mit natürlicher Prosodie. Das System kann Pausen setzen, Tonhöhe anpassen und auf Gesprächspartner reagieren – in Echtzeit."
+      description: "ARAS spricht mit einer ruhigen, strukturierten Stimme. Dialoge sind kontextbezogen, präzise und nachvollziehbar. Einwände werden logisch behandelt."
     },
     {
-      number: 4,
+      step: 4,
       title: "Ergebnis & Zusammenfassung",
-      description: "Direkt nach dem Gespräch erhalten Sie:",
-      bullets: [
-        "qualifiziertes Ergebnis",
-        "Gesprächszusammenfassung",
-        "Empfehlung für den nächsten Schritt",
-        "Gesprächston (positiv / neutral / unsicher)"
-      ],
-      details: "Jedes Gespräch wird automatisch analysiert und kategorisiert. Sie erhalten strukturierte Daten für Ihr CRM, inklusive Sentiment-Analyse und handlungsbasierten Empfehlungen."
+      description: "Direkt nach dem Gespräch erhalten Sie: qualifiziertes Ergebnis, Gesprächszusammenfassung, Empfehlung für den nächsten Schritt & Gesprächston."
     }
   ];
 
   return (
-    <div className="relative">
-      {/* Animated Vertical Line */}
-      <div className="absolute left-[7px] top-0 bottom-0 w-[1px]">
+    <div className="space-y-12 relative">
+      {/* Vertical Line */}
+      <div className="absolute left-[19px] top-4 bottom-4 w-[2px] bg-gradient-to-b from-[#FE9100]/50 via-[#FE9100]/20 to-transparent z-0" />
+
+      {steps.map((item, i) => (
         <motion.div
-          className="h-full w-full"
-          style={{
-            background: 'linear-gradient(180deg, #e9d7c4, #FE9100)',
-          }}
-          initial={{ scaleY: 0 }}
-          whileInView={{ scaleY: 1 }}
+          key={i}
+          initial={{ opacity: 0, x: -20 }}
+          whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 1.5, ease: "easeOut" }}
-        />
-      </div>
+          transition={{ delay: i * 0.2 }}
+          className="relative z-10 flex gap-6"
+        >
+          {/* Number Bubble */}
+          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-[#1a1a1a] border border-[#FE9100]/30 flex items-center justify-center text-[#FE9100] font-bold shadow-[0_0_15px_rgba(254,145,0,0.15)]">
+            {item.step}
+          </div>
 
-      {/* Steps */}
-      <div className="space-y-[70px]">
-        {steps.map((step, index) => (
-          <motion.div
-            key={step.number}
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.7, delay: index * 0.2 }}
-            onMouseEnter={() => setActiveStep(step.number)}
-            onMouseLeave={() => setActiveStep(null)}
-            onClick={() => setDetailPanelStep(detailPanelStep === step.number ? null : step.number)}
-            className="relative pl-12 cursor-pointer group"
-          >
-            {/* Timeline Point */}
-            <motion.div
-              className="absolute left-0 top-2"
-              initial={{ scale: 0.8 }}
-              whileInView={{ scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.2 }}
-            >
-              <motion.div
-                className="relative w-[14px] h-[14px] rounded-full border-2"
-                style={{
-                  borderColor: activeStep === step.number ? '#FE9100' : '#e9d7c4',
-                  background: activeStep === step.number ? '#FE9100' : '#e9d7c4'
-                }}
-                animate={activeStep === step.number ? {
-                  scale: [1, 1.3, 1],
-                } : {}}
-                transition={{ duration: 0.6 }}
-              >
-                <motion.div
-                  className="absolute inset-[4px] rounded-full"
-                  style={{ background: '#0f0f0f' }}
-                />
-              </motion.div>
-            </motion.div>
-
-            {/* Content */}
-            <div>
-              <motion.h3
-                className="text-2xl font-black mb-3 transition-colors duration-300"
-                style={{
-                  fontFamily: 'Orbitron, sans-serif',
-                  color: activeStep === step.number ? '#FE9100' : '#e9d7c4'
-                }}
-              >
-                {step.number}. {step.title}
-              </motion.h3>
-              <p className="text-[17px] text-white/70 leading-relaxed mb-2">
-                {step.description}
-              </p>
-              {step.example && (
-                <p className="text-[15px] text-[#FE9100]/80 italic mb-2">
-                  {step.example}
+          {/* Content */}
+          <div className="pt-1">
+            <h3 className="text-xl font-bold text-white mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+              {item.title}
+            </h3>
+            <p className="text-white/60 leading-relaxed max-w-md">
+              {item.description}
+            </p>
+            {item.quote && (
+              <div className="mt-3 p-3 bg-[#FE9100]/5 border-l-2 border-[#FE9100] rounded-r-lg">
+                <p className="text-sm text-[#FE9100] italic">
+                  {item.quote}
                 </p>
-              )}
-              {step.bullets && (
-                <ul className="space-y-1 mb-2 ml-4">
-                  {step.bullets.map((bullet, i) => (
-                    <li key={i} className="text-[16px] text-white/60 list-disc">
-                      {bullet}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {step.additional && (
-                <p className="text-[15px] text-white/60 italic">
-                  {step.additional}
-                </p>
-              )}
-
-              {/* Detail Panel */}
-              <AnimatePresence>
-                {detailPanelStep === step.number && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                    animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
-                    exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                    transition={{ duration: 0.4 }}
-                    className="rounded-xl border overflow-hidden"
-                    style={{
-                      background: 'rgba(15, 15, 15, 0.7)',
-                      borderColor: 'rgba(254, 145, 0, 0.3)',
-                      backdropFilter: 'blur(10px)'
-                    }}
-                  >
-                    <div className="p-4">
-                      <h4 className="text-sm font-bold text-[#FE9100] mb-2 uppercase tracking-wide">
-                        {step.title} — Details
-                      </h4>
-                      <p className="text-[15px] text-white/70 leading-relaxed">
-                        {step.details}
-                      </p>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </motion.div>
-        ))}
-      </div>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      ))}
     </div>
   );
 }
 
 // 📞 Live Call Window Component
 function LiveCallWindow() {
-  const [isActive, setIsActive] = useState(false);
-  const [callTime, setCallTime] = useState(0);
-
-  useEffect(() => {
-    // Start call simulation when component is in view
-    const timer = setTimeout(() => setIsActive(true), 500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    if (!isActive) return;
-    const interval = setInterval(() => {
-      setCallTime(prev => prev + 1);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [isActive]);
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
   return (
     <motion.div
-      initial={{ opacity: 0, x: 40 }}
+      initial={{ opacity: 0, x: 20 }}
       whileInView={{ opacity: 1, x: 0 }}
       viewport={{ once: true }}
-      transition={{ duration: 0.7 }}
-      className="sticky top-8"
+      transition={{ duration: 0.8 }}
+      className="relative rounded-2xl overflow-hidden border border-white/10 bg-[#0A0A0A]/80 backdrop-blur-xl shadow-2xl"
     >
-      <div
-        className="rounded-2xl p-6 border"
-        style={{
-          background: '#151515',
-          borderColor: 'rgba(254, 145, 0, 0.3)'
-        }}
-      >
-        {/* Status Badge */}
-        <div className="flex justify-between items-start mb-6">
-          <motion.div
-            animate={isActive ? { opacity: [1, 0.6, 1] } : {}}
-            transition={{ duration: 2, repeat: Infinity }}
-            className="px-3 py-1 rounded-full border text-xs font-bold uppercase tracking-wider"
-            style={{
-              fontFamily: 'Orbitron, sans-serif',
-              borderColor: '#FE9100',
-              color: '#FE9100',
-              boxShadow: '0 0 10px rgba(254, 145, 0, 0.2)'
-            }}
-          >
-            LIVE CALL — ARAS OPERATING
-          </motion.div>
+      {/* Window Header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-white/5">
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-red-500/80" />
+            <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
+            <div className="w-3 h-3 rounded-full bg-green-500/80" />
+          </div>
+          <div className="pl-4 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            <span className="text-xs font-bold text-white/60 tracking-wider">LIVE CALL — ARAS OPERATING</span>
+          </div>
+        </div>
+        <div className="font-mono text-xs text-[#FE9100]">01:45</div>
+      </div>
 
-          {/* Call Timer */}
-          <div
-            className="text-lg font-bold"
-            style={{
-              fontFamily: 'Orbitron, sans-serif',
-              color: '#e9d7c4'
-            }}
-          >
-            {formatTime(callTime)}
+      {/* Chat Area */}
+      <div className="p-6 space-y-6 max-h-[400px] overflow-y-auto">
+        {/* ARAS */}
+        <div className="flex gap-4">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FE9100] to-[#a34e00] flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-[0_0_10px_rgba(254,145,0,0.4)]">
+            AI
+          </div>
+          <div className="space-y-1">
+            <div className="text-[10px] font-bold text-[#FE9100]">ARAS AI</div>
+            <div className="bg-white/5 p-3 rounded-r-xl rounded-bl-xl border border-white/5 text-sm text-gray-300 leading-relaxed">
+              Guten Tag, hier spricht ARAS AI im Auftrag von Ihrer Firma. Haben Sie eine Minute Zeit?
+            </div>
           </div>
         </div>
 
-        {/* Waveform */}
-        <div className="mb-6">
-          <Waveform isActive={isActive} />
+        {/* Lead */}
+        <div className="flex gap-4 flex-row-reverse">
+          <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-white text-xs font-bold shrink-0">
+            L
+          </div>
+          <div className="space-y-1 text-right">
+            <div className="text-[10px] font-bold text-gray-500">LEAD</div>
+            <div className="bg-[#FE9100]/10 p-3 rounded-l-xl rounded-br-xl border border-[#FE9100]/20 text-sm text-white/90 leading-relaxed text-left">
+              Ja, worum geht es?
+            </div>
+          </div>
         </div>
 
-        {/* Transcript Box */}
-        <div
-          className="rounded-xl p-4 border max-h-[300px] overflow-y-auto custom-scrollbar"
-          style={{
-            background: '#151515',
-            borderColor: 'rgba(254, 145, 0, 0.2)'
-          }}
-        >
-          <TranscriptContent isActive={isActive} />
+        {/* ARAS */}
+        <div className="flex gap-4">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FE9100] to-[#a34e00] flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-[0_0_10px_rgba(254,145,0,0.4)]">
+            AI
+          </div>
+          <div className="space-y-1">
+            <div className="text-[10px] font-bold text-[#FE9100]">ARAS AI</div>
+            <div className="bg-white/5 p-3 rounded-r-xl rounded-bl-xl border border-white/5 text-sm text-gray-300 leading-relaxed">
+              Es geht um eine Optimierung Ihrer Outbound-Prozesse. Wir haben gesehen, dass Sie im B2B-Bereich tätig sind.
+            </div>
+          </div>
+        </div>
+
+        {/* Lead */}
+        <div className="flex gap-4 flex-row-reverse">
+          <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-white text-xs font-bold shrink-0">
+            L
+          </div>
+          <div className="space-y-1 text-right">
+            <div className="text-[10px] font-bold text-gray-500">LEAD</div>
+            <div className="bg-[#FE9100]/10 p-3 rounded-l-xl rounded-br-xl border border-[#FE9100]/20 text-sm text-white/90 leading-relaxed text-left">
+              Interessant. Erzählen Sie mehr.
+            </div>
+          </div>
+        </div>
+
+        {/* Typing Indicator */}
+        <div className="flex gap-4 items-end">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FE9100] to-[#a34e00] flex items-center justify-center text-white text-xs font-bold shrink-0 opacity-50">
+            AI
+          </div>
+          <div className="bg-white/5 px-4 py-3 rounded-r-xl rounded-bl-xl border border-white/5">
+            <div className="flex gap-1">
+              <motion.div
+                animate={{ y: [0, -4, 0] }}
+                transition={{ duration: 0.6, repeat: Infinity, delay: 0 }}
+                className="w-1.5 h-1.5 rounded-full bg-[#FE9100]"
+              />
+              <motion.div
+                animate={{ y: [0, -4, 0] }}
+                transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }}
+                className="w-1.5 h-1.5 rounded-full bg-[#FE9100]"
+              />
+              <motion.div
+                animate={{ y: [0, -4, 0] }}
+                transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }}
+                className="w-1.5 h-1.5 rounded-full bg-[#FE9100]"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </motion.div>
   );
 }
 
-// Waveform Animation Component
-function Waveform({ isActive }: { isActive: boolean }) {
-  const bars = [
-    { height: 40, delay: 0 },
-    { height: 60, delay: 0.1 },
-    { height: 80, delay: 0.2 },
-    { height: 70, delay: 0.3 },
-    { height: 50, delay: 0.4 },
-    { height: 65, delay: 0.5 },
-    { height: 45, delay: 0.6 }
+// 🏷️ Pricing Section
+function PricingSection() {
+  const plans = [
+    {
+      name: "STARTER",
+      role: "ARAS Pro",
+      alphaPrice: "€59",
+      standardPrice: "€1.990",
+      savings: "€1.931",
+      features: ["100 Outbound Calls pro Monat", "500 Chatnachrichten", "ARAS Konsole (Basic)", "Automatische Zusammenfassungen", "E-Mail Support"],
+      isPopular: false
+    },
+    {
+      name: "PRO",
+      role: "ARAS Ultra",
+      alphaPrice: "€249",
+      standardPrice: "€4.990",
+      savings: "€4.741",
+      features: ["1.000 Outbound Calls pro Monat", "10.000 Chatnachrichten", "ARAS Voice Model (erweitert)", "Mehrbenutzerzugang", "Erweiterte Analysen", "Priorisierter Support"],
+      isPopular: true
+    },
+    {
+      name: "ENTERPRISE",
+      role: "ARAS Ultimate",
+      alphaPrice: "€1990",
+      standardPrice: "€19.990",
+      savings: "€18.000",
+      features: ["10.000 Outbound Calls pro Monat", "Unbegrenzte Chatnachrichten", "Dediziertes ARAS Enterprise-LLM", "API & CRM Integrationen", "Swiss Hosting", "24/7 Support", "Early Access zu neuen Modulen"],
+      isPopular: false
+    },
+    {
+      name: "ARAS Free",
+      role: "Kostenlos – dauerhaft",
+      alphaPrice: "€0",
+      standardPrice: "€0",
+      savings: "€0",
+      features: ["2 Outbound Calls", "10 Chatnachrichten", "Zugriff auf ARAS Basic Console", "Kostenlos starten"],
+      isPopular: false,
+      isFree: true
+    }
   ];
 
   return (
-    <div className="flex items-center justify-center gap-2 h-24">
-      {bars.map((bar, index) => (
-        <motion.div
-          key={index}
-          className="w-2 rounded-full"
-          style={{
-            background: 'linear-gradient(180deg, #e9d7c4, #FE9100)',
-            height: isActive ? bar.height : 20
-          }}
-          animate={isActive ? {
-            height: [bar.height, bar.height * 0.6, bar.height],
-          } : {}}
-          transition={{
-            duration: 0.6,
-            repeat: Infinity,
-            delay: bar.delay,
-            ease: [0.25, 0.8, 0.25, 1]
-          }}
-        />
-      ))}
-    </div>
-  );
-}
+    <section className="relative py-20 px-4 md:px-8">
+      <div className="max-w-[1400px] mx-auto">
+        {/* Header */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-center mb-16"
+        >
+          <h2 className="text-4xl md:text-5xl font-black mb-6 bg-clip-text text-transparent bg-gradient-to-r from-[#e9d7c4] via-[#FE9100] to-[#a34e00]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+            Die ARAS Alpha-Vorteile
+          </h2>
+          <div className="space-y-2 text-lg md:text-xl font-light text-white/80">
+            <p className="text-[#FE9100] font-bold uppercase tracking-wider text-sm mb-4">Die Alpha-Phase ist streng limitiert</p>
+            <p>Alle Nutzer, die heute testen, behalten ihre aktuellen Preise – <span className="text-[#FE9100] font-bold">dauerhaft</span>.</p>
+            <p className="text-white/50 text-base">Die zukünftigen Enterprise-Preise werden am 01.01.2026 aktiviert.</p>
+            <p className="text-green-400 font-bold flex items-center justify-center gap-2">
+              <ShieldCheck className="w-5 h-5" />
+              Ihr Zugang bleibt geschützt.
+            </p>
+          </div>
+        </motion.div>
 
-// Transcript Content Component
-function TranscriptContent({ isActive }: { isActive: boolean }) {
-  const transcript = [
-    { speaker: 'ARAS', text: 'Guten Tag, hier spricht ARAS AI im Auftrag von Ihrer Firma. Haben Sie eine Minute Zeit?' },
-    { speaker: 'Lead', text: 'Ja, worum geht es?' },
-    { speaker: 'ARAS', text: 'Es geht um eine Optimierung Ihrer Outbound-Prozesse. Wir haben gesehen, dass Sie im B2B-Bereich tätig sind.' },
-    { speaker: 'Lead', text: 'Interessant. Erzählen Sie mehr.' },
-    { speaker: 'ARAS', text: 'Gerne. Mit unserer Lösung können Sie bis zu 10.000 Anrufe parallel durchführen...' }
-  ];
+        {/* Pricing Grid */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {plans.map((plan, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1 }}
+              className={`relative rounded-2xl p-6 flex flex-col h-full ${
+                plan.isPopular 
+                  ? 'bg-gradient-to-b from-[#FE9100]/10 to-black border-[#FE9100] shadow-[0_0_30px_rgba(254,145,0,0.15)]' 
+                  : 'bg-[#111] border-white/10'
+              } border`}
+            >
+              {plan.isPopular && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#FE9100] text-black text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                  ⭐ Beliebteste Wahl
+                </div>
+              )}
 
-  return (
-    <div className="space-y-3">
-      <AnimatePresence>
-        {isActive && transcript.map((line, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 1.5, duration: 0.5 }}
-          >
-            <div className="text-xs font-bold text-[#FE9100] mb-1">
-              {line.speaker}:
-            </div>
-            <div className="text-sm text-white/70">
-              {line.text}
-            </div>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-    </div>
+              {/* Header */}
+              <div className="mb-6">
+                <div className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">{plan.name}</div>
+                <h3 className="text-2xl font-bold text-white mb-4" style={{ fontFamily: 'Orbitron, sans-serif' }}>{plan.role}</h3>
+                
+                {!plan.isFree && (
+                  <div className="space-y-4 bg-white/5 p-4 rounded-xl border border-white/5">
+                    <div>
+                      <div className="text-[10px] text-[#FE9100] font-bold uppercase">Alpha-Preis (Jetzt)</div>
+                      <div className="text-2xl font-bold text-white">{plan.alphaPrice}<span className="text-sm font-normal text-gray-500">/ Monat</span></div>
+                      <div className="text-[10px] text-green-400">Preisgarantie aktiv</div>
+                    </div>
+                    
+                    <div className="pt-3 border-t border-white/10">
+                      <div className="text-[10px] text-gray-500 uppercase">Standard ab 01.01.2026</div>
+                      <div className="text-lg font-bold text-gray-500 line-through Decoration-red-500">{plan.standardPrice}</div>
+                    </div>
+
+                    <div className="bg-[#FE9100]/10 p-2 rounded text-center border border-[#FE9100]/20">
+                      <div className="text-[10px] text-white/70">Ihre Ersparnis</div>
+                      <div className="text-[#FE9100] font-bold">{plan.savings}</div>
+                      <div className="text-[10px] text-white/50">monatlich</div>
+                    </div>
+                  </div>
+                )}
+
+                {plan.isFree && (
+                  <div className="bg-white/5 p-4 rounded-xl border border-white/5 min-h-[180px] flex flex-col justify-center">
+                    <div className="text-2xl font-bold text-white mb-2">Kostenlos</div>
+                    <p className="text-sm text-gray-400">Für alle Nutzer, die ARAS in kleinem Rahmen testen wollen.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Features */}
+              <div className="space-y-3 mb-8 flex-grow">
+                <div className="text-[10px] font-bold text-gray-500 uppercase mb-2">Enthalten</div>
+                {plan.features.map((feature, idx) => (
+                  <div key={idx} className="flex items-start gap-2 text-sm text-gray-300">
+                    <Check className="w-4 h-4 text-[#FE9100] shrink-0 mt-0.5" />
+                    <span className="text-xs">{feature}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* CTA */}
+              <button 
+                className={`w-full py-3 rounded-lg font-bold text-sm transition-all ${
+                  plan.isPopular 
+                    ? 'bg-[#FE9100] text-black hover:bg-[#ffaa33] shadow-[0_0_15px_rgba(254,145,0,0.3)]' 
+                    : plan.isFree
+                      ? 'bg-white/10 text-white hover:bg-white/20'
+                      : 'bg-white text-black hover:bg-gray-200'
+                }`}
+              >
+                {plan.isFree ? 'Kostenlos starten' : 'Plan wählen'}
+              </button>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -2698,7 +2694,7 @@ export default function AuthPage() {
                     background: 'linear-gradient(90deg, transparent, rgba(254,145,0,0.15), transparent)',
                     filter: 'blur(40px)',
                     transform: 'rotate(-45deg)',
-                    zIndex: 0
+                    zIndex: 1
                   }}
                 />
 
@@ -3810,6 +3806,9 @@ export default function AuthPage() {
           </div> {/* Close max-w-7xl */}
         </div> {/* Close py-20 */}
 
+        {/* PRICING SECTION */}
+        <PricingSection />
+
         {/* 📞 CALL-FLOW SECTION - Wie ARAS telefoniert */}
         <section className="relative py-32 px-8" style={{ background: 'transparent' }}>
           <div className="max-w-7xl mx-auto">
@@ -3968,7 +3967,11 @@ export default function AuthPage() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className="group relative px-12 py-5 text-lg font-bold overflow-hidden rounded-xl"
-                style={{ fontFamily: 'Orbitron, sans-serif', cursor: 'pointer' }}
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)'
+                }}
               >
                 {/* Animated Border */}
                 <motion.div
@@ -4049,7 +4052,7 @@ export default function AuthPage() {
                   <motion.div
                     className="absolute top-0 left-0 right-0 h-[2px]"
                     style={{
-                      background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
+                      background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #e9d7c4)',
                       backgroundSize: '200% 100%'
                     }}
                     animate={{
@@ -4209,7 +4212,7 @@ export default function AuthPage() {
         
         {/* ⭐ SECTION 3 - WARUM ARAS? - Ultra Clean Redesign */}
         <section className="relative py-32" style={{ background: 'transparent' }}>
-          <div className="max-w-7xl mx-auto px-8">
+          <div className="max-w-7xl mx-auto">
             {/* Header with Typing Animation */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
@@ -4840,7 +4843,7 @@ function ArasLandingContent() {
                     animate={{
                       y2: [100, 100 - Math.random() * 40 - 10, 100 + Math.random() * 40 + 10, 100]
                     }}
-                    transition={{ duration: 2 + Math.random(), repeat: Infinity, ease: "easeInOut", delay: i * 0.03 }}
+                    transition={{ duration: 2 + Math.random(), repeat: Infinity, ease: 'easeInOut' }}
                   />
                 ))}
               </svg>
@@ -4901,8 +4904,7 @@ function ArasLandingContent() {
                 <h3 className="text-2xl font-bold mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
                   {item.title}
                 </h3>
-                <p className="text-sm text-[#ff6a00] mb-4 font-semibold">{item.subtitle}</p>
-                <p className="text-white/70 leading-relaxed">{item.desc}</p>
+                <p className="text-sm text-white/70">{item.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -4980,7 +4982,7 @@ function ArasLandingContent() {
             {/* Right - Dashboard Screenshot Placeholder */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
+              animate={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               className="relative h-[600px] rounded-2xl overflow-hidden"
               style={{
@@ -5128,7 +5130,7 @@ function ArasLandingContent() {
             {/* Right - Demo Window */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
+              animate={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               className="relative h-[700px] rounded-2xl p-8 flex items-center justify-center"
               style={{
