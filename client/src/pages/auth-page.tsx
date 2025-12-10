@@ -22,7 +22,7 @@ const TYPED_LINES = [
 // Auth Subtitle Lines for Typing Animation
 const AUTH_SUBLINES = [
   "Alpha Zugang ist kostenlos. Dein Account bleibt auch nach dem offiziellen Marktstart bestehen.",
-  "Wenn du eine E-Mail von uns erhalten hast, bist du von uns bereits als Alpha-Kunde vorgesehen.",
+  "Wenn von uns eine E-Mail kam, haben wir dich bereits als Alpha-Kunden vorgesehen.",
   "Mit dem Alpha Zugang testest du ARAS früh – mit denselben Funktionen wie unsere späteren Pro-Kunden.",
   "Dein Feedback aus der Alpha-Phase fließt direkt in die Weiterentwicklung der Plattform ein."
 ];
@@ -1767,6 +1767,7 @@ Transparenz statt Blackbox.`
 export default function AuthPage() {
   const [authMode, setAuthMode] = useState<'idle' | 'login' | 'signup'>('idle');
   const [subtitleIndex, setSubtitleIndex] = useState(0);
+  const [typedLength, setTypedLength] = useState(0);
   const [showFeaturesPanel, setShowFeaturesPanel] = useState(false);
   const [, setLocation] = useLocation();
   const { user, isLoading, loginMutation, registerMutation } = useAuth();
@@ -1796,15 +1797,36 @@ export default function AuthPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [emailError, setEmailError] = useState("");
 
-  // Subtitle rotation effect
+  // Real typewriter effect
   useEffect(() => {
     if (authMode !== 'idle') return;
 
-    const interval = setInterval(() => {
-      setSubtitleIndex((prev) => (prev + 1) % AUTH_SUBLINES.length);
-    }, 5500);
+    const currentText = AUTH_SUBLINES[subtitleIndex];
+    
+    if (typedLength < currentText.length) {
+      // Typing character by character
+      const timeout = setTimeout(() => {
+        setTypedLength((prev) => prev + 1);
+      }, 35);
 
-    return () => clearInterval(interval);
+      return () => clearTimeout(timeout);
+    } else {
+      // Pause after complete, then next sentence
+      const timeout = setTimeout(() => {
+        setTypedLength(0);
+        setSubtitleIndex((prev) => (prev + 1) % AUTH_SUBLINES.length);
+      }, 2200);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [authMode, subtitleIndex, typedLength]);
+
+  // Reset when switching to form mode
+  useEffect(() => {
+    if (authMode !== 'idle') {
+      setTypedLength(0);
+      setSubtitleIndex(0);
+    }
   }, [authMode]);
   const [usernameError, setUsernameError] = useState("");
   const [passwordError, setPasswordError] = useState("");
@@ -2630,7 +2652,7 @@ export default function AuthPage() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
-            className="w-full max-w-md mx-auto"
+            className="w-full max-w-md mx-auto mt-[-12px] md:mt-[-40px]"
           >
             {/* Card Container */}
             <div className="relative">
@@ -2650,7 +2672,7 @@ export default function AuthPage() {
 
               {/* Main Card */}
               <div
-                className="relative rounded-3xl p-8 md:p-9 mt-[-12px]"
+                className="relative rounded-3xl p-8 md:p-9"
                 style={{
                   background: 'rgba(0, 0, 0, 0.28)',
                   backdropFilter: 'blur(32px)',
@@ -2676,135 +2698,100 @@ export default function AuthPage() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -6 }}
                       transition={{ duration: 0.4, ease: 'easeOut' }}
-                      className="flex flex-col gap-3 mb-6"
+                      className="flex flex-col gap-3 mb-5"
                     >
                       {/* PRIMARY: ALPHA ZUGANG BEITRETEN */}
-                      <motion.button
+                      <button
                         type="button"
                         onClick={() => {
                           setAuthMode('signup');
                           setActiveTab('register');
                         }}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        animate={{ y: [0, -2, 0] }}
-                        transition={{
-                          y: { duration: 3, repeat: Infinity, ease: 'easeInOut' }
-                        }}
-                        className="relative w-full h-[52px] rounded-full overflow-hidden group"
+                        className="relative w-full overflow-hidden rounded-full text-sm md:text-[15px] font-semibold tracking-[0.08em] uppercase"
+                        style={{ fontFamily: 'Orbitron, sans-serif' }}
                       >
-                        {/* Animated Border */}
-                        <div
-                          className="absolute inset-0 rounded-full p-[1px]"
+                        {/* Border Layer */}
+                        <span
+                          className="absolute inset-0 rounded-full"
                           style={{
                             background: 'linear-gradient(120deg, rgba(254,145,0,0.9), rgba(233,215,196,0.7), rgba(254,145,0,0.9))',
                             backgroundSize: '260% 100%',
-                            animation: 'aras-border-run 8s linear infinite'
+                            animation: 'aras-border-run 8s linear infinite',
+                            padding: '1px'
                           }}
+                        />
+
+                        {/* Inner Layer */}
+                        <motion.span
+                          className="relative flex items-center justify-center rounded-full px-6 py-3"
+                          style={{
+                            background: 'transparent',
+                            color: '#E9D7C4'
+                          }}
+                          whileHover={{
+                            backgroundColor: 'rgba(0,0,0,0.35)',
+                            scale: 1.02
+                          }}
+                          whileTap={{ scale: 0.97 }}
+                          transition={{ duration: 0.15 }}
                         >
-                          {/* Inner Button */}
-                          <div
-                            className="w-full h-full rounded-full flex items-center justify-between px-6 transition-all duration-300"
-                            style={{
-                              background: 'rgba(0,0,0,0.65)'
-                            }}
-                          >
-                            <span
-                              className="font-semibold text-sm md:text-[15px] tracking-[0.08em]"
-                              style={{
-                                fontFamily: 'Orbitron, sans-serif',
-                                color: '#E9D7C4'
-                              }}
-                            >
-                              Alpha Zugang beitreten
-                            </span>
-                            <span
-                              className="flex h-[30px] w-[30px] items-center justify-center rounded-full text-[13px] text-white"
-                              style={{
-                                border: '1px solid rgba(233,215,196,0.7)',
-                                background: 'radial-gradient(circle at 30% 20%, rgba(254,145,0,0.9), rgba(0,0,0,0.9))',
-                                boxShadow: '0 0 14px rgba(254,145,0,0.7)'
-                              }}
-                            >
-                              ↑
-                            </span>
-                          </div>
-                        </div>
-                      </motion.button>
+                          Alpha Zugang beitreten
+                        </motion.span>
+                      </button>
 
                       {/* SECONDARY: LOGIN */}
-                      <motion.button
+                      <button
                         type="button"
                         onClick={() => {
                           setAuthMode('login');
                           setActiveTab('login');
                         }}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="relative w-full h-[52px] rounded-full overflow-hidden group"
+                        className="relative w-full overflow-hidden rounded-full text-sm md:text-[15px] font-semibold tracking-[0.08em] uppercase"
+                        style={{ fontFamily: 'Orbitron, sans-serif' }}
                       >
-                        {/* Animated Border */}
-                        <div
-                          className="absolute inset-0 rounded-full p-[1px]"
+                        {/* Border Layer */}
+                        <span
+                          className="absolute inset-0 rounded-full"
                           style={{
                             background: 'linear-gradient(120deg, rgba(255,255,255,0.35), rgba(75,85,99,0.7), rgba(255,255,255,0.35))',
                             backgroundSize: '260% 100%',
-                            animation: 'aras-border-run 8s linear infinite'
+                            animation: 'aras-border-run 10s linear infinite',
+                            padding: '1px'
                           }}
-                        >
-                          {/* Inner Button */}
-                          <div
-                            className="w-full h-full rounded-full flex items-center justify-between px-6 transition-all duration-300"
-                            style={{
-                              background: 'rgba(0,0,0,0.7)'
-                            }}
-                          >
-                            <span
-                              className="font-semibold text-sm tracking-[0.08em]"
-                              style={{
-                                fontFamily: 'Orbitron, sans-serif',
-                                color: '#E5E7EB'
-                              }}
-                            >
-                              Login
-                            </span>
-                            <span
-                              className="flex h-[30px] w-[30px] items-center justify-center rounded-full text-[13px]"
-                              style={{
-                                border: '1px solid rgba(148,163,184,0.6)',
-                                background: 'radial-gradient(circle at 30% 20%, rgba(148,163,184,0.6), rgba(0,0,0,0.9))',
-                                color: '#E5E7EB'
-                              }}
-                            >
-                              ↑
-                            </span>
-                          </div>
-                        </div>
-                      </motion.button>
+                        />
 
-                      {/* Typing Subtitle */}
-                      <AnimatePresence mode="wait">
-                        <motion.div
-                          key={subtitleIndex}
-                          initial={{ opacity: 0, y: 4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -4 }}
-                          transition={{ duration: 0.35, ease: "easeOut" }}
-                          className="mt-1 text-[11px] md:text-xs text-center text-neutral-300/80"
+                        {/* Inner Layer */}
+                        <motion.span
+                          className="relative flex items-center justify-center rounded-full px-6 py-3"
+                          style={{
+                            background: 'transparent',
+                            color: '#E5E7EB'
+                          }}
+                          whileHover={{
+                            backgroundColor: 'rgba(0,0,0,0.35)',
+                            scale: 1.02
+                          }}
+                          whileTap={{ scale: 0.97 }}
+                          transition={{ duration: 0.15 }}
                         >
-                          <span className="inline-flex items-center justify-center gap-1">
-                            <span className="font-normal max-w-xs">
-                              {AUTH_SUBLINES[subtitleIndex]}
-                            </span>
-                            {/* Cursor */}
-                            <motion.span
-                              className="w-[7px] h-[11px] bg-neutral-300/70 rounded-[2px]"
-                              animate={{ opacity: [0, 1, 0] }}
-                              transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
-                            />
+                          Login
+                        </motion.span>
+                      </button>
+
+                      {/* Typewriter Subtitle */}
+                      <div className="mt-1 text-[11px] md:text-xs text-center text-neutral-300/80 min-h-[32px]">
+                        <span className="inline-flex items-center justify-center gap-1">
+                          <span className="font-normal max-w-xs">
+                            {AUTH_SUBLINES[subtitleIndex].slice(0, typedLength)}
                           </span>
-                        </motion.div>
-                      </AnimatePresence>
+                          {/* Blinking Cursor */}
+                          <motion.span
+                            className="w-[7px] h-[11px] bg-neutral-300/70 rounded-[2px]"
+                            animate={{ opacity: [0, 1, 0] }}
+                            transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut" }}
+                          />
+                        </span>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
