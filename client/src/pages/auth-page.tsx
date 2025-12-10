@@ -19,6 +19,14 @@ const TYPED_LINES = [
   "Du hörst sie."
 ];
 
+// Auth Subtitle Lines for Typing Animation
+const AUTH_SUBLINES = [
+  "Alpha Zugang ist kostenlos. Dein Account bleibt auch nach dem offiziellen Marktstart bestehen.",
+  "Wenn du eine E-Mail von uns erhalten hast, bist du von uns bereits als Alpha-Kunde vorgesehen.",
+  "Mit dem Alpha Zugang testest du ARAS früh – mit denselben Funktionen wie unsere späteren Pro-Kunden.",
+  "Dein Feedback aus der Alpha-Phase fließt direkt in die Weiterentwicklung der Plattform ein."
+];
+
 // Live Date and Time Component with Milliseconds
 function LiveDateTime() {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -1758,6 +1766,7 @@ Transparenz statt Blackbox.`
 
 export default function AuthPage() {
   const [authMode, setAuthMode] = useState<'idle' | 'login' | 'signup'>('idle');
+  const [subtitleIndex, setSubtitleIndex] = useState(0);
   const [showFeaturesPanel, setShowFeaturesPanel] = useState(false);
   const [, setLocation] = useLocation();
   const { user, isLoading, loginMutation, registerMutation } = useAuth();
@@ -1786,6 +1795,17 @@ export default function AuthPage() {
   const [typedText, setTypedText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const [emailError, setEmailError] = useState("");
+
+  // Subtitle rotation effect
+  useEffect(() => {
+    if (authMode !== 'idle') return;
+
+    const interval = setInterval(() => {
+      setSubtitleIndex((prev) => (prev + 1) % AUTH_SUBLINES.length);
+    }, 5500);
+
+    return () => clearInterval(interval);
+  }, [authMode]);
   const [usernameError, setUsernameError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [websiteError, setWebsiteError] = useState("");
@@ -2630,106 +2650,172 @@ export default function AuthPage() {
 
               {/* Main Card */}
               <div
-                className="relative rounded-3xl p-8"
+                className="relative rounded-3xl p-8 md:p-9 mt-[-12px]"
                 style={{
-                  background: 'rgba(0, 0, 0, 0.35)',
-                  backdropFilter: 'blur(40px)',
-                  WebkitBackdropFilter: 'blur(40px)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  boxShadow: '0 50px 100px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05)'
+                  background: 'rgba(0, 0, 0, 0.28)',
+                  backdropFilter: 'blur(32px)',
+                  WebkitBackdropFilter: 'blur(32px)',
+                  border: '1px solid rgba(255, 255, 255, 0.06)',
+                  boxShadow: '0 40px 80px rgba(0, 0, 0, 0.6)'
                 }}
               >
-                {/* IDLE STATE BUTTONS */}
-                {authMode === 'idle' && (
-                  <div className="flex flex-col gap-3">
-                    {/* PRIMARY: ALPHA ZUGANG BEITRETEN */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAuthMode('signup');
-                        setActiveTab('register');
-                      }}
-                      className="relative w-full overflow-hidden rounded-2xl px-6 py-3 text-sm md:text-base font-semibold tracking-wide transition-transform hover:scale-[1.02] active:scale-[0.98]"
-                      style={{
-                        fontFamily: 'Orbitron, sans-serif',
-                        color: '#ffffff'
-                      }}
+                <style dangerouslySetInnerHTML={{
+                  __html: `
+                    @keyframes aras-border-run {
+                      0% { background-position: 0% 50%; }
+                      50% { background-position: 100% 50%; }
+                      100% { background-position: 0% 50%; }
+                    }
+                  `
+                }} />
+                {/* IDLE STATE - CTA PANEL */}
+                <AnimatePresence>
+                  {authMode === 'idle' && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.4, ease: 'easeOut' }}
+                      className="flex flex-col gap-3 mb-6"
                     >
-                      <span
-                        className="absolute inset-0 rounded-2xl"
-                        style={{
-                          background: 'linear-gradient(135deg, rgba(254,145,0,0.9), rgba(233,215,196,0.7))',
-                          padding: '1px'
+                      {/* PRIMARY: ALPHA ZUGANG BEITRETEN */}
+                      <motion.button
+                        type="button"
+                        onClick={() => {
+                          setAuthMode('signup');
+                          setActiveTab('register');
                         }}
-                      />
-                      <span
-                        className="relative flex items-center justify-between gap-3 rounded-[14px] px-4 py-2"
-                        style={{
-                          background: 'rgba(0,0,0,0.85)'
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        animate={{ y: [0, -2, 0] }}
+                        transition={{
+                          y: { duration: 3, repeat: Infinity, ease: 'easeInOut' }
                         }}
+                        className="relative w-full h-[52px] rounded-full overflow-hidden group"
                       >
-                        <span>Alpha Zugang beitreten</span>
-                        <span
-                          className="flex h-7 w-7 items-center justify-center rounded-full text-xs"
+                        {/* Animated Border */}
+                        <div
+                          className="absolute inset-0 rounded-full p-[1px]"
                           style={{
-                            border: '1px solid rgba(233,215,196,0.7)',
-                            background: 'radial-gradient(circle at 30% 20%, rgba(254,145,0,0.8), rgba(0,0,0,0.9))',
-                            boxShadow: '0 0 12px rgba(254,145,0,0.6)'
+                            background: 'linear-gradient(120deg, rgba(254,145,0,0.9), rgba(233,215,196,0.7), rgba(254,145,0,0.9))',
+                            backgroundSize: '260% 100%',
+                            animation: 'aras-border-run 8s linear infinite'
                           }}
                         >
-                          ↑
-                        </span>
-                      </span>
-                    </button>
+                          {/* Inner Button */}
+                          <div
+                            className="w-full h-full rounded-full flex items-center justify-between px-6 transition-all duration-300"
+                            style={{
+                              background: 'rgba(0,0,0,0.65)'
+                            }}
+                          >
+                            <span
+                              className="font-semibold text-sm md:text-[15px] tracking-[0.08em]"
+                              style={{
+                                fontFamily: 'Orbitron, sans-serif',
+                                color: '#E9D7C4'
+                              }}
+                            >
+                              Alpha Zugang beitreten
+                            </span>
+                            <span
+                              className="flex h-[30px] w-[30px] items-center justify-center rounded-full text-[13px] text-white"
+                              style={{
+                                border: '1px solid rgba(233,215,196,0.7)',
+                                background: 'radial-gradient(circle at 30% 20%, rgba(254,145,0,0.9), rgba(0,0,0,0.9))',
+                                boxShadow: '0 0 14px rgba(254,145,0,0.7)'
+                              }}
+                            >
+                              ↑
+                            </span>
+                          </div>
+                        </div>
+                      </motion.button>
 
-                    {/* SECONDARY: LOGIN */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAuthMode('login');
-                        setActiveTab('login');
-                      }}
-                      className="relative w-full overflow-hidden rounded-2xl px-6 py-3 text-sm font-semibold tracking-wide transition-transform hover:scale-[1.02] active:scale-[0.98]"
-                      style={{
-                        fontFamily: 'Orbitron, sans-serif',
-                        color: '#e5e7eb'
-                      }}
-                    >
-                      <span
-                        className="absolute inset-0 rounded-2xl"
-                        style={{
-                          background: 'linear-gradient(135deg, rgba(255,255,255,0.18), rgba(15,15,15,1))',
-                          padding: '1px'
+                      {/* SECONDARY: LOGIN */}
+                      <motion.button
+                        type="button"
+                        onClick={() => {
+                          setAuthMode('login');
+                          setActiveTab('login');
                         }}
-                      />
-                      <span
-                        className="relative flex items-center justify-between gap-3 rounded-[14px] px-4 py-2"
-                        style={{
-                          background: 'rgba(0,0,0,0.85)'
-                        }}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="relative w-full h-[52px] rounded-full overflow-hidden group"
                       >
-                        <span>Login</span>
-                        <span
-                          className="flex h-7 w-7 items-center justify-center rounded-full text-xs"
+                        {/* Animated Border */}
+                        <div
+                          className="absolute inset-0 rounded-full p-[1px]"
                           style={{
-                            border: '1px solid rgba(148,163,184,0.7)',
-                            background: 'radial-gradient(circle at 30% 20%, rgba(148,163,184,0.5), rgba(0,0,0,0.9))'
+                            background: 'linear-gradient(120deg, rgba(255,255,255,0.35), rgba(75,85,99,0.7), rgba(255,255,255,0.35))',
+                            backgroundSize: '260% 100%',
+                            animation: 'aras-border-run 8s linear infinite'
                           }}
                         >
-                          ↑
-                        </span>
-                      </span>
-                    </button>
+                          {/* Inner Button */}
+                          <div
+                            className="w-full h-full rounded-full flex items-center justify-between px-6 transition-all duration-300"
+                            style={{
+                              background: 'rgba(0,0,0,0.7)'
+                            }}
+                          >
+                            <span
+                              className="font-semibold text-sm tracking-[0.08em]"
+                              style={{
+                                fontFamily: 'Orbitron, sans-serif',
+                                color: '#E5E7EB'
+                              }}
+                            >
+                              Login
+                            </span>
+                            <span
+                              className="flex h-[30px] w-[30px] items-center justify-center rounded-full text-[13px]"
+                              style={{
+                                border: '1px solid rgba(148,163,184,0.6)',
+                                background: 'radial-gradient(circle at 30% 20%, rgba(148,163,184,0.6), rgba(0,0,0,0.9))',
+                                color: '#E5E7EB'
+                              }}
+                            >
+                              ↑
+                            </span>
+                          </div>
+                        </div>
+                      </motion.button>
 
-                    <p className="mt-1 text-[11px] text-neutral-400 text-center">
-                      Alpha Zugang ist kostenlos. Dein Account bleibt auch nach dem offiziellen Marktstart bestehen.
-                    </p>
-                  </div>
-                )}
+                      {/* Typing Subtitle */}
+                      <AnimatePresence mode="wait">
+                        <motion.div
+                          key={subtitleIndex}
+                          initial={{ opacity: 0, y: 4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -4 }}
+                          transition={{ duration: 0.35, ease: "easeOut" }}
+                          className="mt-1 text-[11px] md:text-xs text-center text-neutral-300/80"
+                        >
+                          <span className="inline-flex items-center justify-center gap-1">
+                            <span className="font-normal max-w-xs">
+                              {AUTH_SUBLINES[subtitleIndex]}
+                            </span>
+                            {/* Cursor */}
+                            <motion.span
+                              className="w-[7px] h-[11px] bg-neutral-300/70 rounded-[2px]"
+                              animate={{ opacity: [0, 1, 0] }}
+                              transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+                            />
+                          </span>
+                        </motion.div>
+                      </AnimatePresence>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* FORM STATE */}
                 {authMode !== 'idle' && (
-                  <>
+                  <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35, ease: "easeOut" }}
+                  >
                     {/* Tab Switcher */}
                     <div className="mb-7">
                   <div className="flex gap-1.5 p-1 rounded-full"
@@ -3725,7 +3811,7 @@ export default function AuthPage() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-                  </>
+                  </motion.div>
                 )}
               </div>
             </div>
