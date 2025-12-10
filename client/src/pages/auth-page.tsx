@@ -2702,7 +2702,7 @@ export default function AuthPage() {
                           setActiveTab("register");
                         }}
                         className="relative w-full rounded-full overflow-hidden uppercase tracking-[0.08em] font-semibold text-sm md:text-base"
-                        style={{ fontFamily: "Orbitron, sans-serif", color: "#E9D7C4" }}
+                        style={{ fontFamily: "Orbitron, sans-serif", color: "#E9D7C4", boxShadow: "0 0 20px rgba(254,145,0,0.2)" }}
                       >
                         {/* Outline-Gradient (nur Rand) */}
                         <span
@@ -2716,14 +2716,14 @@ export default function AuthPage() {
                           }}
                         />
 
-                        {/* Innen komplett transparent, nur leichtes Hover-Glas */}
+                        {/* Innen leicht dunkel getönt, mehr Glow */}
                         <motion.span
                           className="relative flex items-center justify-center rounded-full px-6 py-3"
                           style={{
-                            background: "rgba(0,0,0,0)", // WICHTIG: KEIN FILL
+                            background: "rgba(0,0,0,0.2)", // Leicht dunkler
                           }}
                           whileHover={{
-                            backgroundColor: "rgba(0,0,0,0.35)",
+                            backgroundColor: "rgba(0,0,0,0.45)", // Dunkler bei Hover
                             scale: 1.02,
                           }}
                           whileTap={{ scale: 0.97 }}
@@ -2732,7 +2732,7 @@ export default function AuthPage() {
                         </motion.span>
                       </button>
 
-                      {/* SECONDARY: Login – grauer Outline-Button, innen transparent */}
+                      {/* SECONDARY: Login – Orange Outline, weiße Schrift */}
                       <button
                         type="button"
                         onClick={() => {
@@ -2740,15 +2740,15 @@ export default function AuthPage() {
                           setActiveTab("login");
                         }}
                         className="relative w-full rounded-full overflow-hidden uppercase tracking-[0.08em] font-semibold text-xs md:text-sm"
-                        style={{ fontFamily: "Orbitron, sans-serif", color: "#D1D5DB" }}
+                        style={{ fontFamily: "Orbitron, sans-serif", color: "#FFFFFF" }}
                       >
-                        {/* Grauer Outline-Gradient */}
+                        {/* Orange/Gold Outline-Gradient (wie Alpha, etwas dezenter) */}
                         <span
                           className="absolute inset-0 rounded-full pointer-events-none"
                           style={{
                             padding: "2px",
                             background:
-                              "linear-gradient(120deg, rgba(148,163,184,0.8), rgba(255,255,255,0.5), rgba(148,163,184,0.8))",
+                              "linear-gradient(120deg, rgba(254,145,0,0.8), rgba(255,255,255,0.6), rgba(254,145,0,0.8))",
                             backgroundSize: "260% 100%",
                             animation: "aras-border-run 10s linear infinite",
                           }}
@@ -2761,7 +2761,7 @@ export default function AuthPage() {
                             background: "rgba(0,0,0,0)", // KEIN FILL
                           }}
                           whileHover={{
-                            backgroundColor: "rgba(15,23,42,0.6)",
+                            backgroundColor: "rgba(254,145,0,0.1)", // Ganz leichter Orange-Hauch bei Hover
                             scale: 1.02,
                           }}
                           whileTap={{ scale: 0.97 }}
