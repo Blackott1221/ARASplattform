@@ -2710,18 +2710,18 @@ export default function AuthPage() {
                         className="relative w-full overflow-hidden rounded-full text-sm md:text-[15px] font-semibold tracking-[0.08em] uppercase"
                         style={{ fontFamily: 'Orbitron, sans-serif' }}
                       >
-                        {/* Border Layer */}
+                        {/* Animated Gradient Border – außen */}
                         <span
-                          className="absolute inset-0 rounded-full"
+                          className="absolute inset-0 rounded-full pointer-events-none"
                           style={{
-                            background: 'linear-gradient(120deg, rgba(254,145,0,0.9), rgba(233,215,196,0.7), rgba(254,145,0,0.9))',
+                            background: 'linear-gradient(120deg, rgba(254,145,0,0.95), rgba(233,215,196,0.7), rgba(254,145,0,0.95))',
                             backgroundSize: '260% 100%',
                             animation: 'aras-border-run 8s linear infinite',
                             padding: '1px'
                           }}
                         />
 
-                        {/* Inner Layer */}
+                        {/* Innen: komplett transparent, nur Text */}
                         <motion.span
                           className="relative flex items-center justify-center rounded-full px-6 py-3"
                           style={{
@@ -2733,7 +2733,7 @@ export default function AuthPage() {
                             scale: 1.02
                           }}
                           whileTap={{ scale: 0.97 }}
-                          transition={{ duration: 0.15 }}
+                          transition={{ duration: 0.16 }}
                         >
                           Alpha Zugang beitreten
                         </motion.span>
@@ -2749,18 +2749,18 @@ export default function AuthPage() {
                         className="relative w-full overflow-hidden rounded-full text-sm md:text-[15px] font-semibold tracking-[0.08em] uppercase"
                         style={{ fontFamily: 'Orbitron, sans-serif' }}
                       >
-                        {/* Border Layer */}
+                        {/* Animated Gradient Border – außen */}
                         <span
-                          className="absolute inset-0 rounded-full"
+                          className="absolute inset-0 rounded-full pointer-events-none"
                           style={{
-                            background: 'linear-gradient(120deg, rgba(255,255,255,0.35), rgba(75,85,99,0.7), rgba(255,255,255,0.35))',
+                            background: 'linear-gradient(120deg, rgba(255,255,255,0.3), rgba(100,116,139,0.7), rgba(255,255,255,0.3))',
                             backgroundSize: '260% 100%',
                             animation: 'aras-border-run 10s linear infinite',
                             padding: '1px'
                           }}
                         />
 
-                        {/* Inner Layer */}
+                        {/* Innen: komplett transparent, nur Text */}
                         <motion.span
                           className="relative flex items-center justify-center rounded-full px-6 py-3"
                           style={{
@@ -2772,7 +2772,7 @@ export default function AuthPage() {
                             scale: 1.02
                           }}
                           whileTap={{ scale: 0.97 }}
-                          transition={{ duration: 0.15 }}
+                          transition={{ duration: 0.16 }}
                         >
                           Login
                         </motion.span>
