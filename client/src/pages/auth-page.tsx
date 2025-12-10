@@ -2657,9 +2657,51 @@ export default function AuthPage() {
                   backdropFilter: 'blur(32px)',
                   WebkitBackdropFilter: 'blur(32px)',
                   border: '1px solid rgba(255, 255, 255, 0.06)',
-                  boxShadow: '0 40px 80px rgba(0, 0, 0, 0.6)'
+                  boxShadow: '0 40px 80px rgba(0, 0, 0, 0.6)',
+                  overflow: 'hidden' // Damit das Licht nicht aus der Card rausläuft
                 }}
               >
+                {/* ✨ DIVINE LIGHT EFFECT - WOW MOMENT */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ 
+                    opacity: [0, 0.6, 0.4],
+                    scale: [0.8, 1.1, 1]
+                  }}
+                  transition={{ 
+                    duration: 2.5,
+                    ease: "easeOut",
+                    delay: 0.5,
+                    opacity: {
+                      repeat: Infinity,
+                      repeatType: "reverse",
+                      duration: 4,
+                      delay: 0.5
+                    }
+                  }}
+                  className="absolute -top-[150px] -right-[100px] w-[500px] h-[500px] pointer-events-none"
+                  style={{
+                    background: 'radial-gradient(circle, rgba(254,145,0,0.3) 0%, rgba(255,255,255,0.1) 20%, transparent 60%)',
+                    filter: 'blur(50px)',
+                    zIndex: 0,
+                    mixBlendMode: 'overlay'
+                  }}
+                />
+                
+                {/* 🔦 SUBTLE BEAM */}
+                <motion.div
+                  initial={{ opacity: 0, rotate: -45 }}
+                  animate={{ opacity: 0.3 }}
+                  transition={{ duration: 2, delay: 1 }}
+                  className="absolute -top-20 -right-20 w-[600px] h-[200px] pointer-events-none"
+                  style={{
+                    background: 'linear-gradient(90deg, transparent, rgba(254,145,0,0.15), transparent)',
+                    filter: 'blur(40px)',
+                    transform: 'rotate(-45deg)',
+                    zIndex: 0
+                  }}
+                />
+
                 <style dangerouslySetInnerHTML={{
                   __html: `
                     @keyframes aras-border-run {
