@@ -1795,6 +1795,44 @@ export default function AuthPage() {
   const [typedText, setTypedText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const [emailError, setEmailError] = useState("");
+  
+  // 🔥 HERO FEATURE STATES
+  const [benefitIndex, setBenefitIndex] = useState(0);
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0 });
+  
+  const HERO_BENEFITS = [
+    { title: "10.000+ CALLS", subtitle: "Mit nur einem Klick starten" },
+    { title: "NIE WIEDER", subtitle: "Kalte Akquise selbst machen" },
+    { title: "24/7 SALES", subtitle: "Dein Vertrieb schläft nie" }
+  ];
+
+  // Rotate Benefits
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setBenefitIndex((prev) => (prev + 1) % HERO_BENEFITS.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Countdown to 01.01.2026
+  useEffect(() => {
+    const targetDate = new Date('2026-01-01T00:00:00').getTime();
+    const interval = setInterval(() => {
+      const now = new Date().getTime();
+      const distance = targetDate - now;
+      
+      if (distance < 0) {
+        clearInterval(interval);
+      } else {
+        setTimeLeft({
+          days: Math.floor(distance / (1000 * 60 * 60 * 24)),
+          hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+          minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))
+        });
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Real typewriter effect
   useEffect(() => {
@@ -2465,7 +2503,7 @@ export default function AuthPage() {
               transition={{ delay: 1, duration: 0.8 }}
               className="grid grid-cols-2 gap-4"
             >
-              {/* Card 1 - Simultane Anrufe */}
+              {/* Card 1 - Rotating Benefits (Simultane Anrufe) */}
               <motion.div
                 whileHover={{ scale: 1.02, y: -5 }}
                 transition={{ type: 'spring', stiffness: 300 }}
@@ -2476,60 +2514,42 @@ export default function AuthPage() {
                   backdropFilter: 'blur(30px)'
                 }}
               >
-                {/* Floating Icon */}
-                <motion.div
-                  animate={{ 
-                    y: [0, -10, 0],
-                    rotate: [0, 5, 0]
-                  }}
-                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                  className="absolute -right-6 -top-6 w-28 h-28 rounded-full flex items-center justify-center"
-                  style={{
-                    background: 'radial-gradient(circle, rgba(254, 145, 0, 0.15), transparent)',
-                    filter: 'blur(20px)'
-                  }}
-                >
-                  <Phone className="w-12 h-12 text-[#FE9100] opacity-30" />
-                </motion.div>
-
-                <div className="relative">
+                <div className="relative flex flex-col justify-center h-full min-h-[80px]">
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                      style={{
-                        background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.2), rgba(163, 78, 0, 0.15))',
-                        boxShadow: '0 0 20px rgba(254, 145, 0, 0.2)'
-                      }}
-                    >
-                      <Phone className="w-5 h-5 text-[#FE9100]" />
-                    </div>
                     <span className="text-xs uppercase tracking-widest font-bold text-gray-400" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                      CALL CAPACITY
+                      SCALE & AUTOMATION
                     </span>
                   </div>
                   
-                  <div className="flex items-baseline gap-2 mb-1">
-                    <motion.span
-                      className="text-5xl font-black"
-                      style={{ 
-                        fontFamily: 'Orbitron, sans-serif',
-                        background: 'linear-gradient(135deg, #e9d7c4, #FE9100)',
-                        backgroundClip: 'text',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent'
-                      }}
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={benefitIndex}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.4 }}
                     >
-                      {callsCount.toLocaleString()}+
-                    </motion.span>
-                    <span className="text-sm text-gray-500 font-semibold">calls</span>
-                  </div>
-                  
-                  <p className="text-sm text-gray-400 leading-relaxed">
-                    Simultane Anrufe parallel ausführen
-                  </p>
+                      <div 
+                        className="text-2xl md:text-3xl font-black mb-1"
+                        style={{ 
+                          fontFamily: 'Orbitron, sans-serif',
+                          background: 'linear-gradient(135deg, #e9d7c4, #FE9100)',
+                          backgroundClip: 'text',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent'
+                        }}
+                      >
+                        {HERO_BENEFITS[benefitIndex].title}
+                      </div>
+                      <p className="text-sm text-gray-400 leading-relaxed font-medium">
+                        {HERO_BENEFITS[benefitIndex].subtitle}
+                      </p>
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
               </motion.div>
 
-              {/* Card 2 - KI-Stimme */}
+              {/* Card 2 - Kostenloser Zugang */}
               <motion.div
                 whileHover={{ scale: 1.05, y: -5 }}
                 transition={{ type: 'spring', stiffness: 300 }}
@@ -2540,48 +2560,25 @@ export default function AuthPage() {
                   backdropFilter: 'blur(30px)'
                 }}
               >
-                <motion.div
-                  animate={{ 
-                    scale: [1, 1.1, 1],
-                    opacity: [0.3, 0.5, 0.3]
-                  }}
-                  transition={{ duration: 3, repeat: Infinity }}
-                  className="absolute -right-4 -bottom-4 w-20 h-20 rounded-full"
-                  style={{
-                    background: 'radial-gradient(circle, rgba(233, 215, 196, 0.3), transparent)',
-                    filter: 'blur(15px)'
-                  }}
-                />
-
-                <div className="relative">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(233, 215, 196, 0.15), rgba(233, 215, 196, 0.08))',
-                      boxShadow: '0 0 15px rgba(233, 215, 196, 0.15)'
-                    }}
-                  >
-                    <Sparkles className="w-5 h-5 text-[#e9d7c4]" />
+                <div className="relative h-full flex flex-col justify-center">
+                  <div className="mb-2">
+                    <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">ENTRY</span>
                   </div>
                   
-                  <div className="flex items-baseline gap-2 mb-1">
-                    <motion.span
-                      className="text-3xl font-black"
-                      style={{ 
-                        fontFamily: 'Orbitron, sans-serif',
-                        color: '#e9d7c4'
-                      }}
-                    >
-                      {accuracyCount}%
-                    </motion.span>
+                  <div 
+                    className="text-xl font-bold mb-1 text-[#e9d7c4]"
+                    style={{ fontFamily: 'Orbitron, sans-serif' }}
+                  >
+                    Kostenlos
                   </div>
                   
                   <p className="text-xs text-gray-500 leading-relaxed font-medium">
-                    Menschlichste KI-Stimme
+                    Keine Kreditkarte erforderlich.
                   </p>
                 </div>
               </motion.div>
 
-              {/* Card 3 - Launch Date */}
+              {/* Card 3 - Launch Countdown */}
               <motion.div
                 whileHover={{ scale: 1.05, y: -5 }}
                 transition={{ type: 'spring', stiffness: 300 }}
@@ -2592,43 +2589,25 @@ export default function AuthPage() {
                   backdropFilter: 'blur(30px)'
                 }}
               >
-                <motion.div
-                  animate={{ 
-                    rotate: [0, 360]
-                  }}
-                  transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                  className="absolute -left-4 -top-4 w-20 h-20 rounded-full"
-                  style={{
-                    background: 'conic-gradient(from 0deg, rgba(163, 78, 0, 0.3), transparent)',
-                    filter: 'blur(20px)'
-                  }}
-                />
-
-                <div className="relative">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(163, 78, 0, 0.2), rgba(163, 78, 0, 0.1))',
-                      boxShadow: '0 0 15px rgba(163, 78, 0, 0.2)'
-                    }}
-                  >
-                    <Calendar className="w-5 h-5 text-[#a34e00]" />
+                <div className="relative h-full flex flex-col justify-center">
+                  <div className="mb-2">
+                    <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">OFFICIAL LAUNCH</span>
                   </div>
                   
-                  <div className="mb-1">
-                    <motion.span
-                      className="text-2xl font-black block"
-                      style={{ 
-                        fontFamily: 'Orbitron, sans-serif',
-                        color: '#FE9100'
-                      }}
+                  <div className="flex items-baseline gap-1 mb-1">
+                    <span 
+                      className="text-xl font-bold text-[#FE9100]"
+                      style={{ fontFamily: 'Orbitron, sans-serif' }}
                     >
                       01.01.26
-                    </motion.span>
+                    </span>
                   </div>
                   
-                  <p className="text-xs text-gray-500 leading-relaxed font-medium">
-                    Offizieller Launch
-                  </p>
+                  <div className="flex gap-2 text-xs text-gray-400 font-mono">
+                    <span>{timeLeft.days}d</span>
+                    <span>{timeLeft.hours}h</span>
+                    <span>{timeLeft.minutes}m</span>
+                  </div>
                 </div>
               </motion.div>
             </motion.div>
