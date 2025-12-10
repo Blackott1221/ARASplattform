@@ -2694,15 +2694,15 @@ export default function AuthPage() {
                 <AnimatePresence>
                   {authMode === "idle" && (
                     <div className="flex flex-col gap-3">
-                      {/* PRIMARY: Alpha Zugang beitreten – GRÖSSER & MEHR GLOW */}
+                      {/* PRIMARY: Alpha Zugang beitreten – ORANGE OUTLINE, innen transparent */}
                       <button
                         type="button"
                         onClick={() => {
                           setAuthMode("signup");
                           setActiveTab("register");
                         }}
-                        className="relative w-full rounded-full overflow-hidden uppercase tracking-[0.08em] font-semibold text-base md:text-lg"
-                        style={{ fontFamily: "Orbitron, sans-serif", color: "#E9D7C4", boxShadow: "0 0 30px rgba(254,145,0,0.35)" }}
+                        className="relative w-full rounded-full overflow-hidden uppercase tracking-[0.08em] font-semibold text-sm md:text-base"
+                        style={{ fontFamily: "Orbitron, sans-serif", color: "#E9D7C4", boxShadow: "0 0 20px rgba(254,145,0,0.2)" }}
                       >
                         {/* Outline-Gradient (nur Rand) */}
                         <span
@@ -2716,14 +2716,14 @@ export default function AuthPage() {
                           }}
                         />
 
-                        {/* Innen leicht dunkel getönt, mehr Glow */}
+                        {/* Innen transparent, Glow außen */}
                         <motion.span
-                          className="relative flex items-center justify-center rounded-full px-8 py-4"
+                          className="relative flex items-center justify-center rounded-full px-6 py-3"
                           style={{
-                            background: "rgba(0,0,0,0.2)", // Leicht dunkler
+                            background: "rgba(0,0,0,0)", // WIEDER TRANSPARENT
                           }}
                           whileHover={{
-                            backgroundColor: "rgba(0,0,0,0.45)", // Dunkler bei Hover
+                            backgroundColor: "rgba(0,0,0,0.35)", // Nur bei Hover dunkel
                             scale: 1.02,
                           }}
                           whileTap={{ scale: 0.97 }}
@@ -2732,14 +2732,14 @@ export default function AuthPage() {
                         </motion.span>
                       </button>
 
-                      {/* SECONDARY: Login – KLEINER */}
+                      {/* SECONDARY: Login – Orange Outline, weiße Schrift */}
                       <button
                         type="button"
                         onClick={() => {
                           setAuthMode("login");
                           setActiveTab("login");
                         }}
-                        className="relative w-full rounded-full overflow-hidden uppercase tracking-[0.08em] font-semibold text-[10px] md:text-xs"
+                        className="relative w-full rounded-full overflow-hidden uppercase tracking-[0.08em] font-semibold text-xs md:text-sm"
                         style={{ fontFamily: "Orbitron, sans-serif", color: "#FFFFFF" }}
                       >
                         {/* Orange/Gold Outline-Gradient (wie Alpha, etwas dezenter) */}
@@ -2756,7 +2756,7 @@ export default function AuthPage() {
 
                         {/* Innen transparent */}
                         <motion.span
-                          className="relative flex items-center justify-center rounded-full px-5 py-2.5"
+                          className="relative flex items-center justify-center rounded-full px-6 py-3"
                           style={{
                             background: "rgba(0,0,0,0)", // KEIN FILL
                           }}
