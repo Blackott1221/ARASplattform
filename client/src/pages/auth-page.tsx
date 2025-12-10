@@ -1757,6 +1757,7 @@ Transparenz statt Blackbox.`
 }
 
 export default function AuthPage() {
+  const [authMode, setAuthMode] = useState<'idle' | 'login' | 'signup'>('idle');
   const [showFeaturesPanel, setShowFeaturesPanel] = useState(false);
   const [, setLocation] = useLocation();
   const { user, isLoading, loginMutation, registerMutation } = useAuth();
@@ -2638,8 +2639,99 @@ export default function AuthPage() {
                   boxShadow: '0 50px 100px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05)'
                 }}
               >
-                {/* Tab Switcher */}
-                <div className="mb-7">
+                {/* IDLE STATE BUTTONS */}
+                {authMode === 'idle' && (
+                  <div className="flex flex-col gap-3">
+                    {/* PRIMARY: ALPHA ZUGANG BEITRETEN */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode('signup');
+                        setActiveTab('register');
+                      }}
+                      className="relative w-full overflow-hidden rounded-2xl px-6 py-3 text-sm md:text-base font-semibold tracking-wide transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                      style={{
+                        fontFamily: 'Orbitron, sans-serif',
+                        color: '#ffffff'
+                      }}
+                    >
+                      <span
+                        className="absolute inset-0 rounded-2xl"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(254,145,0,0.9), rgba(233,215,196,0.7))',
+                          padding: '1px'
+                        }}
+                      />
+                      <span
+                        className="relative flex items-center justify-between gap-3 rounded-[14px] px-4 py-2"
+                        style={{
+                          background: 'rgba(0,0,0,0.85)'
+                        }}
+                      >
+                        <span>Alpha Zugang beitreten</span>
+                        <span
+                          className="flex h-7 w-7 items-center justify-center rounded-full text-xs"
+                          style={{
+                            border: '1px solid rgba(233,215,196,0.7)',
+                            background: 'radial-gradient(circle at 30% 20%, rgba(254,145,0,0.8), rgba(0,0,0,0.9))',
+                            boxShadow: '0 0 12px rgba(254,145,0,0.6)'
+                          }}
+                        >
+                          ↑
+                        </span>
+                      </span>
+                    </button>
+
+                    {/* SECONDARY: LOGIN */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode('login');
+                        setActiveTab('login');
+                      }}
+                      className="relative w-full overflow-hidden rounded-2xl px-6 py-3 text-sm font-semibold tracking-wide transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                      style={{
+                        fontFamily: 'Orbitron, sans-serif',
+                        color: '#e5e7eb'
+                      }}
+                    >
+                      <span
+                        className="absolute inset-0 rounded-2xl"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(255,255,255,0.18), rgba(15,15,15,1))',
+                          padding: '1px'
+                        }}
+                      />
+                      <span
+                        className="relative flex items-center justify-between gap-3 rounded-[14px] px-4 py-2"
+                        style={{
+                          background: 'rgba(0,0,0,0.85)'
+                        }}
+                      >
+                        <span>Login</span>
+                        <span
+                          className="flex h-7 w-7 items-center justify-center rounded-full text-xs"
+                          style={{
+                            border: '1px solid rgba(148,163,184,0.7)',
+                            background: 'radial-gradient(circle at 30% 20%, rgba(148,163,184,0.5), rgba(0,0,0,0.9))'
+                          }}
+                        >
+                          ↑
+                        </span>
+                      </span>
+                    </button>
+
+                    <p className="mt-1 text-[11px] text-neutral-400 text-center">
+                      Alpha Zugang ist kostenlos. Dein Account bleibt auch nach dem offiziellen Marktstart bestehen.
+                    </p>
+                  </div>
+                )}
+
+                {/* FORM STATE */}
+                {authMode !== 'idle' && (
+                  <>
+                    {/* Tab Switcher */}
+                    <div className="mb-7">
                   <div className="flex gap-1.5 p-1 rounded-full"
                     style={{
                       background: 'rgba(255, 255, 255, 0.03)',
@@ -3633,6 +3725,8 @@ export default function AuthPage() {
                     </motion.div>
                   )}
                 </AnimatePresence>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>
