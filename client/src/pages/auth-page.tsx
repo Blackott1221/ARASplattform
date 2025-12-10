@@ -2651,7 +2651,8 @@ export default function AuthPage() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
-            className="w-full max-w-md mx-auto mt-[-70px] md:mt-[-80px]"
+            className="w-full max-w-md mx-auto"
+            style={{ marginTop: '-72px' }}
           >
             {/* Card Container */}
             <div className="relative">
@@ -2691,44 +2692,39 @@ export default function AuthPage() {
                 }} />
                 {/* IDLE STATE - CTA PANEL */}
                 <AnimatePresence>
-                  {authMode === 'idle' && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      transition={{ duration: 0.4, ease: 'easeOut' }}
-                      className="flex flex-col gap-3 mb-5"
-                    >
-                      {/* PRIMARY: ALPHA ZUGANG BEITRETEN */}
+                  {authMode === "idle" && (
+                    <div className="flex flex-col gap-3">
+                      {/* PRIMARY: Alpha Zugang beitreten – ORANGE OUTLINE, innen transparent */}
                       <button
                         type="button"
                         onClick={() => {
-                          setAuthMode('signup');
-                          setActiveTab('register');
+                          setAuthMode("signup");
+                          setActiveTab("register");
                         }}
                         className="relative w-full rounded-full overflow-hidden uppercase tracking-[0.08em] font-semibold text-sm md:text-base"
-                        style={{ fontFamily: 'Orbitron, sans-serif', color: '#E9D7C4' }}
+                        style={{ fontFamily: "Orbitron, sans-serif", color: "#E9D7C4" }}
                       >
-                        {/* Animated outline */}
+                        {/* Outline-Gradient (nur Rand) */}
                         <span
                           className="absolute inset-0 rounded-full pointer-events-none"
                           style={{
-                            padding: '2px',
-                            background: 'linear-gradient(120deg, rgba(254,145,0,0.9), rgba(233,215,196,0.6), rgba(254,145,0,0.9))',
-                            backgroundSize: '260% 100%',
-                            animation: 'aras-border-run 8s linear infinite'
+                            padding: "2px",
+                            background:
+                              "linear-gradient(120deg, rgba(254,145,0,0.95), rgba(233,215,196,0.7), rgba(254,145,0,0.95))",
+                            backgroundSize: "260% 100%",
+                            animation: "aras-border-run 8s linear infinite",
                           }}
                         />
 
-                        {/* Inner transparent area */}
+                        {/* Innen komplett transparent, nur leichtes Hover-Glas */}
                         <motion.span
                           className="relative flex items-center justify-center rounded-full px-6 py-3"
                           style={{
-                            background: 'rgba(0,0,0,0)'
+                            background: "rgba(0,0,0,0)", // WICHTIG: KEIN FILL
                           }}
                           whileHover={{
-                            backgroundColor: 'rgba(0,0,0,0.35)',
-                            scale: 1.02
+                            backgroundColor: "rgba(0,0,0,0.35)",
+                            scale: 1.02,
                           }}
                           whileTap={{ scale: 0.97 }}
                         >
@@ -2736,36 +2732,37 @@ export default function AuthPage() {
                         </motion.span>
                       </button>
 
-                      {/* SECONDARY: LOGIN */}
+                      {/* SECONDARY: Login – grauer Outline-Button, innen transparent */}
                       <button
                         type="button"
                         onClick={() => {
-                          setAuthMode('login');
-                          setActiveTab('login');
+                          setAuthMode("login");
+                          setActiveTab("login");
                         }}
-                        className="relative w-full rounded-full overflow-hidden uppercase tracking-[0.08em] font-semibold text-sm md:text-base"
-                        style={{ fontFamily: 'Orbitron, sans-serif', color: '#D1D5DB' }}
+                        className="relative w-full rounded-full overflow-hidden uppercase tracking-[0.08em] font-semibold text-xs md:text-sm"
+                        style={{ fontFamily: "Orbitron, sans-serif", color: "#D1D5DB" }}
                       >
-                        {/* Animated outline */}
+                        {/* Grauer Outline-Gradient */}
                         <span
                           className="absolute inset-0 rounded-full pointer-events-none"
                           style={{
-                            padding: '2px',
-                            background: 'linear-gradient(120deg, rgba(255,255,255,0.4), rgba(100,116,139,0.65), rgba(255,255,255,0.4))',
-                            backgroundSize: '260% 100%',
-                            animation: 'aras-border-run 10s linear infinite'
+                            padding: "2px",
+                            background:
+                              "linear-gradient(120deg, rgba(148,163,184,0.8), rgba(255,255,255,0.5), rgba(148,163,184,0.8))",
+                            backgroundSize: "260% 100%",
+                            animation: "aras-border-run 10s linear infinite",
                           }}
                         />
 
-                        {/* Inner transparent area */}
+                        {/* Innen transparent */}
                         <motion.span
                           className="relative flex items-center justify-center rounded-full px-6 py-3"
                           style={{
-                            background: 'rgba(0,0,0,0)'
+                            background: "rgba(0,0,0,0)", // KEIN FILL
                           }}
                           whileHover={{
-                            backgroundColor: 'rgba(0,0,0,0.35)',
-                            scale: 1.02
+                            backgroundColor: "rgba(15,23,42,0.6)",
+                            scale: 1.02,
                           }}
                           whileTap={{ scale: 0.97 }}
                         >
@@ -2773,21 +2770,11 @@ export default function AuthPage() {
                         </motion.span>
                       </button>
 
-                      {/* Typewriter Subtitle */}
-                      <div className="mt-1 text-[11px] md:text-xs text-center min-h-[32px]" style={{ color: '#C7B8A3', opacity: 0.65 }}>
-                        <span className="inline-flex items-center justify-center gap-1">
-                          <span className="font-normal max-w-xs">
-                            {AUTH_SUBLINES[subtitleIndex].slice(0, typedLength)}
-                          </span>
-                          {/* Blinking Cursor */}
-                          <motion.span
-                            className="w-[7px] h-[11px] bg-neutral-300/70 rounded-[2px]"
-                            animate={{ opacity: [0, 1, 0] }}
-                            transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut" }}
-                          />
-                        </span>
-                      </div>
-                    </motion.div>
+                      {/* Untertitel unter Buttons – statisch, clean */}
+                      <p className="mt-2 text-[11px] text-center text-neutral-400">
+                        Alpha Zugang ist kostenlos. Dein Account bleibt auch nach dem offiziellen Marktstart bestehen.
+                      </p>
+                    </div>
                   )}
                 </AnimatePresence>
 
