@@ -2674,7 +2674,7 @@ export default function AuthPage() {
               <div
                 className="relative rounded-3xl p-8 md:p-9"
                 style={{
-                  background: 'rgba(0, 0, 0, 0.28)',
+                  background: 'rgba(0, 0, 0, 0.15)', // Schwächerer Background für mehr Kontrast zu Buttons
                   backdropFilter: 'blur(32px)',
                   WebkitBackdropFilter: 'blur(32px)',
                   border: '1px solid rgba(255, 255, 255, 0.06)',
@@ -2694,15 +2694,15 @@ export default function AuthPage() {
                 <AnimatePresence>
                   {authMode === "idle" && (
                     <div className="flex flex-col gap-3">
-                      {/* PRIMARY: Alpha Zugang beitreten – ORANGE OUTLINE, innen transparent */}
+                      {/* PRIMARY: Alpha Zugang beitreten – GRÖSSER & MEHR GLOW */}
                       <button
                         type="button"
                         onClick={() => {
                           setAuthMode("signup");
                           setActiveTab("register");
                         }}
-                        className="relative w-full rounded-full overflow-hidden uppercase tracking-[0.08em] font-semibold text-sm md:text-base"
-                        style={{ fontFamily: "Orbitron, sans-serif", color: "#E9D7C4", boxShadow: "0 0 20px rgba(254,145,0,0.2)" }}
+                        className="relative w-full rounded-full overflow-hidden uppercase tracking-[0.08em] font-semibold text-base md:text-lg"
+                        style={{ fontFamily: "Orbitron, sans-serif", color: "#E9D7C4", boxShadow: "0 0 30px rgba(254,145,0,0.35)" }}
                       >
                         {/* Outline-Gradient (nur Rand) */}
                         <span
@@ -2718,7 +2718,7 @@ export default function AuthPage() {
 
                         {/* Innen leicht dunkel getönt, mehr Glow */}
                         <motion.span
-                          className="relative flex items-center justify-center rounded-full px-6 py-3"
+                          className="relative flex items-center justify-center rounded-full px-8 py-4"
                           style={{
                             background: "rgba(0,0,0,0.2)", // Leicht dunkler
                           }}
@@ -2732,14 +2732,14 @@ export default function AuthPage() {
                         </motion.span>
                       </button>
 
-                      {/* SECONDARY: Login – Orange Outline, weiße Schrift */}
+                      {/* SECONDARY: Login – KLEINER */}
                       <button
                         type="button"
                         onClick={() => {
                           setAuthMode("login");
                           setActiveTab("login");
                         }}
-                        className="relative w-full rounded-full overflow-hidden uppercase tracking-[0.08em] font-semibold text-xs md:text-sm"
+                        className="relative w-full rounded-full overflow-hidden uppercase tracking-[0.08em] font-semibold text-[10px] md:text-xs"
                         style={{ fontFamily: "Orbitron, sans-serif", color: "#FFFFFF" }}
                       >
                         {/* Orange/Gold Outline-Gradient (wie Alpha, etwas dezenter) */}
@@ -2756,7 +2756,7 @@ export default function AuthPage() {
 
                         {/* Innen transparent */}
                         <motion.span
-                          className="relative flex items-center justify-center rounded-full px-6 py-3"
+                          className="relative flex items-center justify-center rounded-full px-5 py-2.5"
                           style={{
                             background: "rgba(0,0,0,0)", // KEIN FILL
                           }}
