@@ -131,16 +131,16 @@ export default function InvestorSchwabPage() {
       <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[#FE9100] opacity-[0.02] blur-[150px] rounded-full" />
       <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-[#E9D7C4] opacity-[0.02] blur-[100px] rounded-full" />
 
-      <div className="relative z-10 max-w-[1400px] mx-auto px-4 md:px-6 py-12 md:py-16">
+      <div className="relative z-10 max-w-[1400px] mx-auto px-3 sm:px-4 md:px-6 py-8 sm:py-12 md:py-16">
         
-        <motion.section initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="mb-16 md:mb-20">
-          <div className="grid lg:grid-cols-2 gap-8 md:gap-12 items-start">
+        <motion.section initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="mb-12 sm:mb-16 md:mb-20">
+          <div className="grid lg:grid-cols-2 gap-6 sm:gap-8 md:gap-12 items-start">
             <div>
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="inline-block px-4 py-2 rounded-full mb-6" style={{background: 'rgba(254, 145, 0, 0.1)', border: '1px solid rgba(254, 145, 0, 0.3)'}}>
                 <span className="text-xs font-bold text-[#FE9100] uppercase tracking-wider">Private Allocation</span>
               </motion.div>
               <motion.h1 
-                className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black mb-6 leading-tight" 
+                className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-black mb-4 sm:mb-6 leading-tight" 
                 style={{fontFamily: 'Orbitron, sans-serif'}}
                 animate={{
                   backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
@@ -157,22 +157,22 @@ export default function InvestorSchwabPage() {
                   Herr Schwab, Ihre Position in ARAS hat sich deutlich vermehrt!
                 </span>
               </motion.h1>
-              <div className="space-y-3 text-base md:text-lg text-white/70 mb-6">
-                <p className="flex items-baseline gap-2 md:gap-3 flex-wrap">
+              <div className="space-y-2 sm:space-y-3 text-sm sm:text-base md:text-lg text-white/70 mb-4 sm:mb-6">
+                <p className="flex items-baseline gap-1.5 sm:gap-2 md:gap-3 flex-wrap">
                   <span className="text-white/50">Sie sind zu</span>
-                  <motion.span className="text-2xl md:text-3xl font-bold text-white" style={{fontFamily: 'Orbitron, sans-serif'}} animate={{textShadow: ['0 0 10px rgba(254,145,0,0.3)', '0 0 20px rgba(254,145,0,0.5)', '0 0 10px rgba(254,145,0,0.3)']}} transition={{duration: 2, repeat: Infinity}}>0,12 EUR</motion.span>
+                  <motion.span className="text-xl sm:text-2xl md:text-3xl font-bold text-white" style={{fontFamily: 'Orbitron, sans-serif'}} animate={{textShadow: ['0 0 10px rgba(254,145,0,0.3)', '0 0 20px rgba(254,145,0,0.5)', '0 0 10px rgba(254,145,0,0.3)']}} transition={{duration: 2, repeat: Infinity}}>0,12 EUR</motion.span>
                   <span className="text-white/50">eingestiegen.</span>
                 </p>
-                <p className="flex items-baseline gap-2 md:gap-3 flex-wrap">
+                <p className="flex items-baseline gap-1.5 sm:gap-2 md:gap-3 flex-wrap">
                   <span className="text-white/50">Heute stehen wir bei</span>
-                  <span className="text-2xl md:text-3xl font-bold text-[#FE9100]" style={{fontFamily: 'Orbitron, sans-serif'}}>0,57 EUR</span>
+                  <span className="text-xl sm:text-2xl md:text-3xl font-bold text-[#FE9100]" style={{fontFamily: 'Orbitron, sans-serif'}}>0,57 EUR</span>
                 </p>
-                <p className="flex items-baseline gap-2 md:gap-3 flex-wrap">
+                <p className="flex items-baseline gap-1.5 sm:gap-2 md:gap-3 flex-wrap">
                   <span className="text-white/50">Nach Launch:</span>
-                  <span className="text-2xl md:text-3xl font-bold text-[#FFD700]" style={{fontFamily: 'Orbitron, sans-serif'}}>1,14 EUR+</span>
+                  <span className="text-xl sm:text-2xl md:text-3xl font-bold text-[#FFD700]" style={{fontFamily: 'Orbitron, sans-serif'}}>1,14 EUR+</span>
                 </p>
               </div>
-              <div className="mb-6 min-h-[40px]">
+              <div className="mb-4 sm:mb-6 min-h-[32px] sm:min-h-[40px]">
                 <TippingText />
               </div>
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="p-4 rounded-xl" style={{background: 'rgba(254, 145, 0, 0.05)', border: '1px solid rgba(254, 145, 0, 0.2)'}}>
@@ -180,10 +180,10 @@ export default function InvestorSchwabPage() {
                 <p className="text-sm text-white/60 mt-2">Aktueller Wert Ihrer Position: <span className="text-[#FE9100] font-bold">{formatEUR(EXISTING_TOKENS * PRICE_NOW)}</span></p>
               </motion.div>
             </div>
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4, duration: 0.8 }} className="rounded-2xl p-6 md:p-8 relative overflow-hidden" style={{background: 'rgba(255, 255, 255, 0.02)', backdropFilter: 'blur(20px)', border: '1px solid rgba(254, 145, 0, 0.2)', boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)'}}>
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4, duration: 0.8 }} className="rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 relative overflow-hidden" style={{background: 'rgba(255, 255, 255, 0.02)', backdropFilter: 'blur(20px)', border: '1px solid rgba(254, 145, 0, 0.2)', boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)'}}>
               <motion.div className="absolute top-0 left-0 right-0 h-[2px]" style={{background: 'linear-gradient(90deg, transparent, #FE9100, #FFD700, #FE9100, transparent)', backgroundSize: '200% 100%'}} animate={{backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']}} transition={{duration: 4, repeat: Infinity, ease: 'linear'}} />
               <h3 className="text-lg md:text-xl font-bold mb-2" style={{fontFamily: 'Orbitron, sans-serif'}}>Private Allocation</h3>
-              <p className="text-xl md:text-3xl font-bold text-white mb-6" style={{fontFamily: 'Orbitron, sans-serif'}}>Only for Christian Schwab</p>
+              <p className="text-lg sm:text-xl md:text-3xl font-bold text-white mb-4 sm:mb-6" style={{fontFamily: 'Orbitron, sans-serif'}}>Only for Christian Schwab</p>
               <div className="space-y-4">
                 <div className="flex items-start gap-3"><div className="w-2 h-2 rounded-full bg-[#FE9100] mt-1.5 shrink-0" /><p className="text-sm text-white/70">Letzte Direktzuteilung vor dem DEX-Listing</p></div>
                 <div className="flex items-start gap-3"><div className="w-2 h-2 rounded-full bg-[#FE9100] mt-1.5 shrink-0" /><p className="text-sm text-white/70"><span className="text-[#FE9100] font-bold">+15 % Bonus-Token</span> auf jede Nachzeichnung</p></div>
@@ -198,8 +198,8 @@ export default function InvestorSchwabPage() {
           </div>
         </motion.section>
 
-        <motion.section initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-16 md:mb-20">
-          <div className="rounded-2xl p-5 md:p-8" style={{background: 'rgba(255, 255, 255, 0.02)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.1)'}}>
+        <motion.section initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-12 sm:mb-16 md:mb-20">
+          <div className="rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-8" style={{background: 'rgba(255, 255, 255, 0.02)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.1)'}}>
             <h3 className="text-lg md:text-xl font-bold mb-2" style={{fontFamily: 'Orbitron, sans-serif'}}>Die Preisreise</h3>
             <p className="text-sm text-white/50 mb-8">Vom Einstieg bis zur vollen Skalierung</p>
             <div className="relative">
@@ -218,28 +218,28 @@ export default function InvestorSchwabPage() {
                 transition={{duration: 2, repeat: Infinity}}
               />
               
-              <div className="flex flex-col md:flex-row justify-between items-center gap-12 md:gap-0">
-                <div className="flex flex-col items-center text-center relative z-10 bg-[#020309] md:bg-transparent p-2 md:p-0">
+              <div className="flex flex-col md:flex-row justify-between items-center gap-6 sm:gap-8 md:gap-0">
+                <div className="flex flex-col items-center text-center relative z-10 bg-[#020309] md:bg-transparent px-4 py-2 md:p-0">
                   <motion.div animate={{boxShadow: ['0 0 15px rgba(233,215,196,0.3)', '0 0 25px rgba(233,215,196,0.5)', '0 0 15px rgba(233,215,196,0.3)']}} transition={{duration: 2, repeat: Infinity}} className="w-12 h-12 rounded-full bg-[#E9D7C4] flex items-center justify-center mb-4 text-black font-bold text-lg" style={{fontFamily: 'Orbitron, sans-serif'}}>1</motion.div>
                   <p className="text-xs text-white/50 mb-1">Ihr Einstieg</p>
-                  <p className="text-xl md:text-2xl font-bold text-white" style={{fontFamily: 'Orbitron, sans-serif'}}>0,12 EUR</p>
+                  <p className="text-lg sm:text-xl md:text-2xl font-bold text-white" style={{fontFamily: 'Orbitron, sans-serif'}}>0,12 EUR</p>
                 </div>
-                <div className="flex flex-col items-center text-center relative z-10 bg-[#020309] md:bg-transparent p-2 md:p-0">
+                <div className="flex flex-col items-center text-center relative z-10 bg-[#020309] md:bg-transparent px-4 py-2 md:p-0">
                   <motion.div animate={{boxShadow: ['0 0 20px rgba(254,145,0,0.4)', '0 0 35px rgba(254,145,0,0.6)', '0 0 20px rgba(254,145,0,0.4)']}} transition={{duration: 2, repeat: Infinity}} className="w-12 h-12 rounded-full bg-[#FE9100] flex items-center justify-center mb-4 text-black font-bold text-lg" style={{fontFamily: 'Orbitron, sans-serif'}}>2</motion.div>
                   <p className="text-xs text-white/50 mb-1">Aktuell</p>
-                  <p className="text-xl md:text-2xl font-bold text-[#FE9100]" style={{fontFamily: 'Orbitron, sans-serif'}}>0,57 EUR</p>
+                  <p className="text-lg sm:text-xl md:text-2xl font-bold text-[#FE9100]" style={{fontFamily: 'Orbitron, sans-serif'}}>0,57 EUR</p>
                   <div className="mt-2 px-3 py-1 rounded-full bg-[#FE9100]/20 border border-[#FE9100]/30"><span className="text-xs font-bold text-[#FE9100]">4,75x</span></div>
                 </div>
-                <div className="flex flex-col items-center text-center relative z-10 bg-[#020309] md:bg-transparent p-2 md:p-0">
+                <div className="flex flex-col items-center text-center relative z-10 bg-[#020309] md:bg-transparent px-4 py-2 md:p-0">
                   <motion.div animate={{boxShadow: ['0 0 20px rgba(255,215,0,0.4)', '0 0 35px rgba(255,215,0,0.6)', '0 0 20px rgba(255,215,0,0.4)']}} transition={{duration: 2, repeat: Infinity}} className="w-12 h-12 rounded-full bg-[#FFD700] flex items-center justify-center mb-4 text-black font-bold text-lg" style={{fontFamily: 'Orbitron, sans-serif'}}>3</motion.div>
                   <p className="text-xs text-white/50 mb-1">Zielband Launch</p>
-                  <p className="text-xl md:text-2xl font-bold text-[#FFD700]" style={{fontFamily: 'Orbitron, sans-serif'}}>1,14 EUR</p>
+                  <p className="text-lg sm:text-xl md:text-2xl font-bold text-[#FFD700]" style={{fontFamily: 'Orbitron, sans-serif'}}>1,14 EUR</p>
                   <div className="mt-2 px-3 py-1 rounded-full bg-[#FFD700]/20 border border-[#FFD700]/30"><span className="text-xs font-bold text-[#FFD700]">9,5x</span></div>
                 </div>
-                <div className="flex flex-col items-center text-center relative z-10 bg-[#020309] md:bg-transparent p-2 md:p-0">
+                <div className="flex flex-col items-center text-center relative z-10 bg-[#020309] md:bg-transparent px-4 py-2 md:p-0">
                   <motion.div animate={{boxShadow: ['0 0 20px rgba(34,197,94,0.4)', '0 0 35px rgba(34,197,94,0.6)', '0 0 20px rgba(34,197,94,0.4)']}} transition={{duration: 2, repeat: Infinity}} className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center mb-4 text-black font-bold text-lg" style={{fontFamily: 'Orbitron, sans-serif'}}>4</motion.div>
                   <p className="text-xs text-white/50 mb-1">Volle Skalierung</p>
-                  <p className="text-xl md:text-2xl font-bold text-emerald-400" style={{fontFamily: 'Orbitron, sans-serif'}}>2,20 EUR</p>
+                  <p className="text-lg sm:text-xl md:text-2xl font-bold text-emerald-400" style={{fontFamily: 'Orbitron, sans-serif'}}>2,20 EUR</p>
                   <div className="mt-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30"><span className="text-xs font-bold text-emerald-400">18x</span></div>
                 </div>
               </div>
@@ -247,14 +247,14 @@ export default function InvestorSchwabPage() {
           </div>
         </motion.section>
 
-        <motion.section initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-16 md:mb-20">
-          <div className="rounded-2xl p-5 md:p-12" style={{background: 'rgba(255, 255, 255, 0.02)', backdropFilter: 'blur(20px)', border: '1px solid rgba(254, 145, 0, 0.2)', boxShadow: '0 20px 60px rgba(254, 145, 0, 0.1)'}}>
-            <h2 className="text-xl md:text-3xl font-bold mb-2" style={{fontFamily: 'Orbitron, sans-serif'}}>Wie viel moechten Sie nachzeichnen?</h2>
+        <motion.section initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-12 sm:mb-16 md:mb-20">
+          <div className="rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-12" style={{background: 'rgba(255, 255, 255, 0.02)', backdropFilter: 'blur(20px)', border: '1px solid rgba(254, 145, 0, 0.2)', boxShadow: '0 20px 60px rgba(254, 145, 0, 0.1)'}}>
+            <h2 className="text-lg sm:text-xl md:text-3xl font-bold mb-2" style={{fontFamily: 'Orbitron, sans-serif'}}>Wie viel moechten Sie nachzeichnen?</h2>
             <p className="text-white/60 text-sm md:text-base mb-8">Ihre Gesamtposition wird live berechnet - inklusive aller Boni.</p>
-            <div className="grid lg:grid-cols-2 gap-8 md:gap-12">
+            <div className="grid lg:grid-cols-2 gap-6 sm:gap-8 md:gap-12">
               <div>
                 <label className="block text-sm font-bold text-white/70 mb-3 uppercase tracking-wider">Zusaetzliches Investment (EUR)</label>
-                <input type="number" value={investmentEUR} onChange={(e) => setInvestmentEUR(Number(e.target.value) || 0)} placeholder="z.B. 25.000" className="w-full px-4 md:px-6 py-4 rounded-xl text-xl md:text-2xl font-bold bg-black/40 border border-white/10 focus:border-[#FE9100] focus:outline-none transition-colors" style={{fontFamily: 'Orbitron, sans-serif'}} />
+                <input type="number" value={investmentEUR} onChange={(e) => setInvestmentEUR(Number(e.target.value) || 0)} placeholder="z.B. 25.000" className="w-full px-3 sm:px-4 md:px-6 py-3 sm:py-4 rounded-xl text-lg sm:text-xl md:text-2xl font-bold bg-black/40 border border-white/10 focus:border-[#FE9100] focus:outline-none transition-colors" style={{fontFamily: 'Orbitron, sans-serif'}} />
                 <p className="text-xs text-white/40 mt-2">Empfohlen: mindestens 25.000 EUR</p>
                 
                 <div className="mt-6 space-y-3 text-sm text-white/60">
@@ -284,38 +284,38 @@ export default function InvestorSchwabPage() {
                 </div>
               </div>
               <div className="space-y-4 md:space-y-5">
-                <motion.div key={totalTokens} initial={{ scale: 0.98 }} animate={{ scale: 1 }} transition={{ duration: 0.3 }} className="p-5 md:p-6 rounded-xl" style={{background: 'linear-gradient(135deg, rgba(254,145,0,0.15), rgba(233,215,196,0.05))', border: '1px solid rgba(254, 145, 0, 0.4)'}}>
+                <motion.div key={totalTokens} initial={{ scale: 0.98 }} animate={{ scale: 1 }} transition={{ duration: 0.3 }} className="p-4 sm:p-5 md:p-6 rounded-xl" style={{background: 'linear-gradient(135deg, rgba(254,145,0,0.15), rgba(233,215,196,0.05))', border: '1px solid rgba(254, 145, 0, 0.4)'}}>
                   <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Ihre Gesamtposition (nach Nachzeichnung)</p>
-                  <p className="text-2xl sm:text-3xl md:text-4xl font-black text-white" style={{fontFamily: 'Orbitron, sans-serif'}}><AnimatedCounter value={totalTokens} suffix=" ARAS" /></p>
+                  <p className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-white" style={{fontFamily: 'Orbitron, sans-serif'}}><AnimatedCounter value={totalTokens} suffix=" ARAS" /></p>
                   <p className="text-xs text-white/50 mt-2">Davon neu: +{formatToken(newTokens)} Token (inkl. Boni)</p>
                 </motion.div>
                 <div className="p-4 md:p-5 rounded-xl bg-black/40 border border-[#FE9100]/30">
                   <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Wert bei 0,57 EUR (heute)</p>
-                  <p className="text-xl sm:text-2xl md:text-3xl font-bold text-[#FE9100]" style={{fontFamily: 'Orbitron, sans-serif'}}>{formatEUR(valueNow)}</p>
+                  <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-[#FE9100]" style={{fontFamily: 'Orbitron, sans-serif'}}>{formatEUR(valueNow)}</p>
                   <p className="text-sm text-white/60 mt-2">Multiplikator: <span className="text-[#FE9100] font-bold">{formatMultiplier(roiNow)}</span></p>
                 </div>
                 <div className="p-4 md:p-5 rounded-xl bg-black/40 border border-[#FFD700]/30">
                   <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Wert bei 1,14 EUR (Zielband)</p>
-                  <p className="text-xl sm:text-2xl md:text-3xl font-bold text-[#FFD700]" style={{fontFamily: 'Orbitron, sans-serif'}}>{formatEUR(valueTarget)}</p>
+                  <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-[#FFD700]" style={{fontFamily: 'Orbitron, sans-serif'}}>{formatEUR(valueTarget)}</p>
                   <p className="text-sm text-white/60 mt-2">Multiplikator: <span className="text-[#FFD700] font-bold">{formatMultiplier(roiTarget)}</span></p>
                 </div>
                 <div className="p-4 md:p-5 rounded-xl bg-black/40 border border-emerald-500/30">
                   <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Wert bei 2,20 EUR (Ambitioniert)</p>
-                  <p className="text-xl sm:text-2xl md:text-3xl font-bold text-emerald-400" style={{fontFamily: 'Orbitron, sans-serif'}}>{formatEUR(valueAmbitious)}</p>
+                  <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-emerald-400" style={{fontFamily: 'Orbitron, sans-serif'}}>{formatEUR(valueAmbitious)}</p>
                   <p className="text-sm text-white/60 mt-2">Multiplikator: <span className="text-emerald-400 font-bold">{formatMultiplier(roiAmbitious)}</span></p>
                 </div>
               </div>
             </div>
-            <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mt-8 p-4 md:p-6 rounded-xl text-center" style={{background: 'linear-gradient(135deg, rgba(254,145,0,0.05), rgba(34,197,94,0.05))', border: '1px solid rgba(254, 145, 0, 0.2)'}}>
+            <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mt-6 sm:mt-8 p-3 sm:p-4 md:p-6 rounded-xl text-center" style={{background: 'linear-gradient(135deg, rgba(254,145,0,0.05), rgba(34,197,94,0.05))', border: '1px solid rgba(254, 145, 0, 0.2)'}}>
               <p className="text-white/80 text-sm md:text-base">Wenn Ihre Position sich nur auf das interne Zielband entwickelt (1,14 EUR), entsteht ein Wert von <span className="text-[#FFD700] font-bold">{formatEUR(valueTarget)}</span> - ein Mehrfaches Ihres gesamten Investments von <span className="text-white font-bold">{formatEUR(totalInvested)}</span>.</p>
             </motion.div>
           </div>
         </motion.section>
 
-        <motion.section initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-16 md:mb-20">
-          <h3 className="text-xl md:text-2xl font-bold mb-2 text-center" style={{fontFamily: 'Orbitron, sans-serif'}}>Szenarien fuer Ihre Gesamtposition</h3>
+        <motion.section initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-12 sm:mb-16 md:mb-20">
+          <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-2 text-center" style={{fontFamily: 'Orbitron, sans-serif'}}>Szenarien fuer Ihre Gesamtposition</h3>
           <p className="text-white/50 text-sm text-center mb-8">Basierend auf {formatToken(totalTokens)} ARAS Token</p>
-          <div className="grid md:grid-cols-3 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
             {scenarios.map((scenario, idx) => {
               const valueScenario = totalTokens * scenario.price;
               const roiScenario = totalInvested > 0 ? valueScenario / totalInvested : 0;
@@ -327,11 +327,11 @@ export default function InvestorSchwabPage() {
                   viewport={{ once: true }} 
                   transition={{ delay: idx * 0.1 }} 
                   whileHover={{ scale: 1.03, y: -8 }} 
-                  className={`p-5 md:p-6 rounded-xl cursor-pointer transition-all border ${scenario.borderColor}`} 
+                  className={`p-4 sm:p-5 md:p-6 rounded-xl cursor-pointer transition-all border ${scenario.borderColor}`} 
                   style={{backdropFilter: 'blur(10px)', background: `linear-gradient(135deg, ${scenario.color.replace('from-', '').replace(' to-', ', ')})`}}
                 >
                   <p className="text-xs text-white/50 uppercase tracking-wider mb-1">{scenario.label}</p>
-                  <p className="text-2xl md:text-3xl font-bold text-white mb-2" style={{fontFamily: 'Orbitron, sans-serif'}}>{scenario.price.toFixed(2)} EUR</p>
+                  <p className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2" style={{fontFamily: 'Orbitron, sans-serif'}}>{scenario.price.toFixed(2)} EUR</p>
                   <p className="text-xs text-white/50 mb-4">{scenario.desc}</p>
                   <div className="space-y-2 text-sm border-t border-white/10 pt-4">
                     <p className="text-white/70">Wert Ihrer Position:</p>
@@ -345,16 +345,16 @@ export default function InvestorSchwabPage() {
         </motion.section>
 
         <motion.section initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-8">
-          <div className="rounded-2xl p-6 md:p-12 relative overflow-hidden" style={{background: 'rgba(255, 255, 255, 0.02)', backdropFilter: 'blur(20px)', border: '1px solid rgba(233, 215, 196, 0.2)'}}>
+          <div className="rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-12 relative overflow-hidden" style={{background: 'rgba(255, 255, 255, 0.02)', backdropFilter: 'blur(20px)', border: '1px solid rgba(233, 215, 196, 0.2)'}}>
             <motion.div className="absolute top-0 left-0 right-0 h-[2px]" style={{background: 'linear-gradient(90deg, #E9D7C4, #FE9100, #FFD700, #FE9100, #E9D7C4)', backgroundSize: '200% 100%'}} animate={{backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']}} transition={{duration: 8, repeat: Infinity, ease: 'linear'}} />
             <motion.div className="absolute bottom-0 left-0 right-0 h-[2px]" style={{background: 'linear-gradient(90deg, #E9D7C4, #FE9100, #FFD700, #FE9100, #E9D7C4)', backgroundSize: '200% 100%'}} animate={{backgroundPosition: ['100% 50%', '0% 50%', '100% 50%']}} transition={{duration: 8, repeat: Infinity, ease: 'linear'}} />
             <div className="max-w-3xl mx-auto">
-              <p className="text-base md:text-lg leading-relaxed text-white/80 mb-6">Lieber Herr Schwab,</p>
-              <p className="text-base md:text-lg leading-relaxed text-white/80 mb-6">Sie gehoeren zu den ersten Investoren, die ARAS AI ueberhaupt moeglich gemacht haben. Ich danke Ihnen aufrichtig.</p>
-              <p className="text-base md:text-lg leading-relaxed text-white/80 mb-6">Wir haben Ihre Zuteilung exklusiv bis <span className="text-[#FE9100] font-bold">Freitag</span> verlaengert - weiterhin zu Ihrem historischen Einstiegspreis von <span className="text-white font-bold">0,12 EUR</span>. Dazu kommt Ihr <span className="text-[#FE9100] font-bold">15%-Circle-Bonus</span> und ein zusaetzlicher Bonus, sobald Ihr Gesamtinvest 125.000 EUR ueberschreitet.</p>
-              <p className="text-base md:text-lg leading-relaxed text-white/80 mb-6">Viele Investoren waehlen derzeit bewusst, die Zahlung erst im neuen Geschaeftsjahr zu leisten - die Token werden dennoch <span className="text-emerald-400 font-bold">sofort uebertragen</span>. Keine Sperrfrist, garantierte Zuteilung.</p>
-              <p className="text-base md:text-lg leading-relaxed text-white/80 mb-6">Abwicklung, Dokumente, Onboarding - wir uebernehmen alles.</p>
-              <div className="p-4 rounded-xl mb-8" style={{background: 'rgba(254, 145, 0, 0.05)', border: '1px solid rgba(254, 145, 0, 0.2)'}}>
+              <p className="text-sm sm:text-base md:text-lg leading-relaxed text-white/80 mb-4 sm:mb-6">Lieber Herr Schwab,</p>
+              <p className="text-sm sm:text-base md:text-lg leading-relaxed text-white/80 mb-4 sm:mb-6">Sie gehoeren zu den ersten Investoren, die ARAS AI ueberhaupt moeglich gemacht haben. Ich danke Ihnen aufrichtig.</p>
+              <p className="text-sm sm:text-base md:text-lg leading-relaxed text-white/80 mb-4 sm:mb-6">Wir haben Ihre Zuteilung exklusiv bis <span className="text-[#FE9100] font-bold">Freitag</span> verlaengert - weiterhin zu Ihrem historischen Einstiegspreis von <span className="text-white font-bold">0,12 EUR</span>. Dazu kommt Ihr <span className="text-[#FE9100] font-bold">15%-Circle-Bonus</span> und ein zusaetzlicher Bonus, sobald Ihr Gesamtinvest 125.000 EUR ueberschreitet.</p>
+              <p className="text-sm sm:text-base md:text-lg leading-relaxed text-white/80 mb-4 sm:mb-6">Viele Investoren waehlen derzeit bewusst, die Zahlung erst im neuen Geschaeftsjahr zu leisten - die Token werden dennoch <span className="text-emerald-400 font-bold">sofort uebertragen</span>. Keine Sperrfrist, garantierte Zuteilung.</p>
+              <p className="text-sm sm:text-base md:text-lg leading-relaxed text-white/80 mb-4 sm:mb-6">Abwicklung, Dokumente, Onboarding - wir uebernehmen alles.</p>
+              <div className="p-3 sm:p-4 rounded-xl mb-6 sm:mb-8" style={{background: 'rgba(254, 145, 0, 0.05)', border: '1px solid rgba(254, 145, 0, 0.2)'}}>
                 <p className="text-sm text-white/70">Sie haben bereits <span className="text-[#FE9100] font-bold">{formatEUR(EXISTING_INVESTMENT)}</span> in ARAS investiert. Mit nur <span className="text-white font-bold">25.000 EUR</span> zusaetzlicher Zeichnung ueberschreiten Sie die Bonus-Schwelle und erhoehen Ihre Gesamtzahl an Bonus-Token signifikant - bei gleichzeitig <span className="text-emerald-400 font-bold">0% Risiko</span> durch die Rueckkaufgarantie.</p>
               </div>
               <div className="pt-6 border-t border-white/10 text-center">
