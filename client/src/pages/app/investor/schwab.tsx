@@ -154,7 +154,7 @@ export default function InvestorSchwabPage() {
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent'
                 }}>
-                  Christian, Ihre Position in ARAS hat sich vervielfacht.
+                  Herr Schwab, Ihre Position in ARAS hat sich deutlich vermehrt!
                 </span>
               </motion.h1>
               <div className="space-y-3 text-lg text-white/70 mb-6">
