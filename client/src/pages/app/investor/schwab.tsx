@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
-import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
-import { TrendingUp, Shield, Sparkles, MessageCircle, Phone } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 const TOKEN_PRICE = 0.12;
 const BONUS_BASE = 0.15;
 const EXTRA_THRESHOLD = 125000;
 const EXTRA_BONUS = 0.05;
-const PRICE_CURRENT = 0.57;
+const EXISTING_INVESTMENT = 100000;
+const EXISTING_TOKENS = 479166;
+const PRICE_NOW = 0.57;
 const PRICE_TARGET = 1.14;
+const PRICE_AMBITIOUS = 2.20;
+const PRICE_CONSERVATIVE = 0.78;
 
 const formatEUR = (value: number) => {
   return new Intl.NumberFormat('de-DE', {
@@ -29,36 +32,97 @@ const formatMultiplier = (value: number) => {
   return value.toFixed(1) + "x";
 };
 
-function useAnimatedNumber(target: number) {
-  const [current, setCurrent] = useState(target);
+const tippingTexts = [
+  "Ihre Entscheidung jetzt bestimmt Ihren Faktor.",
+  "Vor dem Marktstart haben nur Sie Zugang zu 0,12 EUR.",
+  "Ihre Bonus-Stufe erhoeht sich ab 125.000 EUR Gesamtinvest.",
+  "0% Risiko durch vertragliche Rueckkaufgarantie.",
+  "Token-Zuteilung sofort nach Vertragsunterzeichnung."
+];
+
+function TippingText() {
+  const [index, setIndex] = useState(0);
   useEffect(() => {
-    const timer = setTimeout(() => setCurrent(target), 50);
-    return () => clearTimeout(timer);
-  }, [target]);
-  return current;
+    const interval = setInterval(() => {
+      setIndex((prev) => (prev + 1) % tippingTexts.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+  return (
+    <div className="h-8 overflow-hidden">
+      <AnimatePresence mode="wait">
+        <motion.p
+          key={index}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.5 }}
+          className="text-sm text-[#FE9100] italic"
+        >
+          {tippingTexts[index]}
+        </motion.p>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function AnimatedCounter({ value, prefix = "", suffix = "" }: { value: number; prefix?: string; suffix?: string }) {
+  const [displayValue, setDisplayValue] = useState(value);
+  useEffect(() => {
+    const duration = 800;
+    const steps = 30;
+    const stepDuration = duration / steps;
+    const increment = (value - displayValue) / steps;
+    let current = displayValue;
+    let step = 0;
+    const timer = setInterval(() => {
+      step++;
+      current += increment;
+      if (step >= steps) {
+        setDisplayValue(value);
+        clearInterval(timer);
+      } else {
+        setDisplayValue(current);
+      }
+    }, stepDuration);
+    return () => clearInterval(timer);
+  }, [value]);
+  return <span>{prefix}{formatToken(Math.round(displayValue))}{suffix}</span>;
 }
 
 export default function InvestorSchwabPage() {
-  const [investmentEUR, setInvestmentEUR] = useState(50000);
+  const [investmentEUR, setInvestmentEUR] = useState(25000);
 
+  const totalInvestment = EXISTING_INVESTMENT + investmentEUR;
   const baseTokens = investmentEUR / TOKEN_PRICE;
-  const bonusTokens15 = baseTokens * BONUS_BASE;
-  let bonusTokensExtra5 = 0;
-  if (investmentEUR > EXTRA_THRESHOLD) {
-    const extraAmount = investmentEUR - EXTRA_THRESHOLD;
-    const extraTokens = extraAmount / TOKEN_PRICE;
-    bonusTokensExtra5 = extraTokens * EXTRA_BONUS;
+  const bonus15 = baseTokens * BONUS_BASE;
+  
+  let extraBonus = 0;
+  if (totalInvestment > EXTRA_THRESHOLD) {
+    const extraAmount = totalInvestment - EXTRA_THRESHOLD;
+    extraBonus = (extraAmount / TOKEN_PRICE) * EXTRA_BONUS;
   }
-  const totalTokens = baseTokens + bonusTokens15 + bonusTokensExtra5;
-  const valueNow = totalTokens * PRICE_CURRENT;
+  
+  const newTokens = baseTokens + bonus15 + extraBonus;
+  const totalTokens = EXISTING_TOKENS + newTokens;
+  
+  const valueNow = totalTokens * PRICE_NOW;
   const valueTarget = totalTokens * PRICE_TARGET;
-  const roiNow = investmentEUR > 0 ? valueNow / investmentEUR : 0;
-  const roiTarget = investmentEUR > 0 ? valueTarget / investmentEUR : 0;
+  const valueAmbitious = totalTokens * PRICE_AMBITIOUS;
+  const valueConservative = totalTokens * PRICE_CONSERVATIVE;
+  
+  const totalInvested = totalInvestment;
+  const roiNow = totalInvested > 0 ? valueNow / totalInvested : 0;
+  const roiTarget = totalInvested > 0 ? valueTarget / totalInvested : 0;
+  const roiAmbitious = totalInvested > 0 ? valueAmbitious / totalInvested : 0;
+  
+  const missingToBonus = Math.max(0, EXTRA_THRESHOLD - totalInvestment);
+  const bonusUnlocked = totalInvestment >= EXTRA_THRESHOLD;
 
   const scenarios = [
-    { label: "Konservativ", price: 0.78, color: "border-blue-500/30" },
-    { label: "Realistisch", price: 1.14, color: "border-[#FE9100]/50" },
-    { label: "Ambitioniert", price: 2.20, color: "border-green-500/30" }
+    { label: "Konservativ", desc: "Solide Entwicklung, niedrige Schwankung.", price: PRICE_CONSERVATIVE, color: "from-blue-500/20 to-blue-600/10", borderColor: "border-blue-500/30" },
+    { label: "Realistisch", desc: "Interne Zielsetzung zum Launch.", price: PRICE_TARGET, color: "from-[#FE9100]/20 to-[#FE9100]/10", borderColor: "border-[#FE9100]/50" },
+    { label: "Ambitioniert", desc: "Volle Skalierung von ARAS AI in Europa.", price: PRICE_AMBITIOUS, color: "from-emerald-500/20 to-emerald-600/10", borderColor: "border-emerald-500/30" }
   ];
 
   return (
@@ -75,37 +139,56 @@ export default function InvestorSchwabPage() {
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="inline-block px-4 py-2 rounded-full mb-6" style={{background: 'rgba(254, 145, 0, 0.1)', border: '1px solid rgba(254, 145, 0, 0.3)'}}>
                 <span className="text-xs font-bold text-[#FE9100] uppercase tracking-wider">Private Allocation</span>
               </motion.div>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-black mb-6 leading-tight" style={{fontFamily: 'Orbitron, sans-serif', background: 'linear-gradient(135deg, #E9D7C4, #FE9100, #FFD700)', backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'}}>
-                Christian, Ihre Position in ARAS hat sich vervielfacht.
-              </h1>
-              <div className="space-y-3 text-lg text-white/70 mb-8">
+              <motion.h1 
+                className="text-4xl md:text-5xl lg:text-6xl font-black mb-6 leading-tight" 
+                style={{fontFamily: 'Orbitron, sans-serif'}}
+                animate={{
+                  backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                }}
+                transition={{ duration: 5, repeat: Infinity, ease: 'linear' }}
+              >
+                <span style={{
+                  background: 'linear-gradient(135deg, #E9D7C4, #FE9100, #FFD700, #FE9100, #E9D7C4)',
+                  backgroundSize: '200% 100%',
+                  backgroundClip: 'text',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent'
+                }}>
+                  Christian, Ihre Position in ARAS hat sich vervielfacht.
+                </span>
+              </motion.h1>
+              <div className="space-y-3 text-lg text-white/70 mb-6">
                 <p className="flex items-baseline gap-3 flex-wrap">
-                  <span className="text-white/50">Einstieg zu</span>
+                  <span className="text-white/50">Sie sind zu</span>
                   <motion.span className="text-2xl md:text-3xl font-bold text-white" style={{fontFamily: 'Orbitron, sans-serif'}} animate={{textShadow: ['0 0 10px rgba(254,145,0,0.3)', '0 0 20px rgba(254,145,0,0.5)', '0 0 10px rgba(254,145,0,0.3)']}} transition={{duration: 2, repeat: Infinity}}>0,12 EUR</motion.span>
+                  <span className="text-white/50">eingestiegen.</span>
                 </p>
                 <p className="flex items-baseline gap-3 flex-wrap">
-                  <span className="text-white/50">Heute:</span>
+                  <span className="text-white/50">Heute stehen wir bei</span>
                   <span className="text-2xl md:text-3xl font-bold text-[#FE9100]" style={{fontFamily: 'Orbitron, sans-serif'}}>0,57 EUR</span>
                 </p>
                 <p className="flex items-baseline gap-3 flex-wrap">
-                  <span className="text-white/50">Erwartung nach Go-Live:</span>
+                  <span className="text-white/50">Nach Launch:</span>
                   <span className="text-2xl md:text-3xl font-bold text-[#FFD700]" style={{fontFamily: 'Orbitron, sans-serif'}}>1,14 EUR+</span>
                 </p>
               </div>
+              <div className="mb-6">
+                <TippingText />
+              </div>
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="p-4 rounded-xl" style={{background: 'rgba(254, 145, 0, 0.05)', border: '1px solid rgba(254, 145, 0, 0.2)'}}>
-                <p className="text-sm text-white/80 italic">Dies ist Ihre letzte exklusive Direktzuteilung vor dem DEX-Listing.</p>
+                <p className="text-sm text-white/80">Sie haben bereits <span className="text-[#FE9100] font-bold">{formatEUR(EXISTING_INVESTMENT)}</span> investiert und besitzen <span className="text-white font-bold">{formatToken(EXISTING_TOKENS)} ARAS Token</span>.</p>
+                <p className="text-sm text-white/60 mt-2">Aktueller Wert Ihrer Position: <span className="text-[#FE9100] font-bold">{formatEUR(EXISTING_TOKENS * PRICE_NOW)}</span></p>
               </motion.div>
             </div>
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4, duration: 0.8 }} className="rounded-2xl p-8" style={{background: 'rgba(255, 255, 255, 0.02)', backdropFilter: 'blur(20px)', border: '1px solid rgba(254, 145, 0, 0.2)', boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)'}}>
-              <div className="flex items-center gap-3 mb-6">
-                <Shield className="w-6 h-6 text-[#FE9100]" />
-                <h3 className="text-xl font-bold" style={{fontFamily: 'Orbitron, sans-serif'}}>Private Allocation</h3>
-              </div>
-              <p className="text-xl md:text-2xl font-bold text-white mb-6" style={{fontFamily: 'Orbitron, sans-serif'}}>Only for Christian Schwab</p>
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4, duration: 0.8 }} className="rounded-2xl p-8 relative overflow-hidden" style={{background: 'rgba(255, 255, 255, 0.02)', backdropFilter: 'blur(20px)', border: '1px solid rgba(254, 145, 0, 0.2)', boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)'}}>
+              <motion.div className="absolute top-0 left-0 right-0 h-[2px]" style={{background: 'linear-gradient(90deg, transparent, #FE9100, #FFD700, #FE9100, transparent)', backgroundSize: '200% 100%'}} animate={{backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']}} transition={{duration: 4, repeat: Infinity, ease: 'linear'}} />
+              <h3 className="text-xl font-bold mb-2" style={{fontFamily: 'Orbitron, sans-serif'}}>Private Allocation</h3>
+              <p className="text-2xl md:text-3xl font-bold text-white mb-6" style={{fontFamily: 'Orbitron, sans-serif'}}>Only for Christian Schwab</p>
               <div className="space-y-4">
                 <div className="flex items-start gap-3"><div className="w-2 h-2 rounded-full bg-[#FE9100] mt-2 shrink-0" /><p className="text-sm text-white/70">Letzte Direktzuteilung vor dem DEX-Listing</p></div>
                 <div className="flex items-start gap-3"><div className="w-2 h-2 rounded-full bg-[#FE9100] mt-2 shrink-0" /><p className="text-sm text-white/70"><span className="text-[#FE9100] font-bold">+15 % Bonus-Token</span> auf jede Nachzeichnung</p></div>
-                <div className="flex items-start gap-3"><div className="w-2 h-2 rounded-full bg-[#FE9100] mt-2 shrink-0" /><p className="text-sm text-white/70">Zuteilung nur zum historischen Preis von <span className="text-white font-bold">0,12 EUR</span></p></div>
+                <div className="flex items-start gap-3"><div className="w-2 h-2 rounded-full bg-[#FFD700] mt-2 shrink-0" /><p className="text-sm text-white/70"><span className="text-[#FFD700] font-bold">+5-7 % Zusatzbonus</span> ab 125.000 EUR Gesamtinvest</p></div>
+                <div className="flex items-start gap-3"><div className="w-2 h-2 rounded-full bg-emerald-500 mt-2 shrink-0" /><p className="text-sm text-white/70"><span className="text-emerald-400 font-bold">Rueckkaufgarantie 14 Tage</span> - 0% Risiko</p></div>
               </div>
               <div className="mt-6 pt-6 border-t border-white/10">
                 <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Deadline</p>
@@ -117,26 +200,38 @@ export default function InvestorSchwabPage() {
 
         <motion.section initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-20">
           <div className="rounded-2xl p-6 md:p-8" style={{background: 'rgba(255, 255, 255, 0.02)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.1)'}}>
-            <p className="text-sm text-white/50 uppercase tracking-wider mb-8">Ihre Preisreise</p>
+            <h3 className="text-xl font-bold mb-2" style={{fontFamily: 'Orbitron, sans-serif'}}>Die Preisreise</h3>
+            <p className="text-sm text-white/50 mb-8">Vom Einstieg bis zur vollen Skalierung</p>
             <div className="relative">
-              <div className="absolute top-6 left-0 right-0 h-[2px] bg-gradient-to-r from-[#E9D7C4] via-[#FE9100] to-[#FFD700] hidden md:block" />
+              <motion.div 
+                className="absolute top-6 left-0 right-0 h-[3px] hidden md:block rounded-full"
+                style={{background: 'linear-gradient(90deg, #E9D7C4, #FE9100, #FFD700, #22c55e)'}}
+                animate={{boxShadow: ['0 0 10px rgba(254,145,0,0.3)', '0 0 20px rgba(254,145,0,0.5)', '0 0 10px rgba(254,145,0,0.3)']}}
+                transition={{duration: 2, repeat: Infinity}}
+              />
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 md:gap-0">
                 <div className="flex flex-col items-center text-center">
-                  <motion.div animate={{boxShadow: ['0 0 20px rgba(233,215,196,0.3)', '0 0 30px rgba(233,215,196,0.5)', '0 0 20px rgba(233,215,196,0.3)']}} transition={{duration: 2, repeat: Infinity}} className="w-12 h-12 rounded-full bg-[#E9D7C4] flex items-center justify-center mb-4"><TrendingUp className="w-6 h-6 text-black" /></motion.div>
-                  <p className="text-xs text-white/50 mb-1">Einstiegspreis</p>
+                  <motion.div animate={{boxShadow: ['0 0 15px rgba(233,215,196,0.3)', '0 0 25px rgba(233,215,196,0.5)', '0 0 15px rgba(233,215,196,0.3)']}} transition={{duration: 2, repeat: Infinity}} className="w-12 h-12 rounded-full bg-[#E9D7C4] flex items-center justify-center mb-4 text-black font-bold text-lg" style={{fontFamily: 'Orbitron, sans-serif'}}>1</motion.div>
+                  <p className="text-xs text-white/50 mb-1">Ihr Einstieg</p>
                   <p className="text-xl md:text-2xl font-bold text-white" style={{fontFamily: 'Orbitron, sans-serif'}}>0,12 EUR</p>
                 </div>
                 <div className="flex flex-col items-center text-center">
-                  <motion.div animate={{boxShadow: ['0 0 20px rgba(254,145,0,0.4)', '0 0 40px rgba(254,145,0,0.6)', '0 0 20px rgba(254,145,0,0.4)']}} transition={{duration: 2, repeat: Infinity}} className="w-12 h-12 rounded-full bg-[#FE9100] flex items-center justify-center mb-4"><Sparkles className="w-6 h-6 text-black" /></motion.div>
-                  <p className="text-xs text-white/50 mb-1">aktuell</p>
+                  <motion.div animate={{boxShadow: ['0 0 20px rgba(254,145,0,0.4)', '0 0 35px rgba(254,145,0,0.6)', '0 0 20px rgba(254,145,0,0.4)']}} transition={{duration: 2, repeat: Infinity}} className="w-12 h-12 rounded-full bg-[#FE9100] flex items-center justify-center mb-4 text-black font-bold text-lg" style={{fontFamily: 'Orbitron, sans-serif'}}>2</motion.div>
+                  <p className="text-xs text-white/50 mb-1">Aktuell</p>
                   <p className="text-xl md:text-2xl font-bold text-[#FE9100]" style={{fontFamily: 'Orbitron, sans-serif'}}>0,57 EUR</p>
                   <div className="mt-2 px-3 py-1 rounded-full bg-[#FE9100]/20 border border-[#FE9100]/30"><span className="text-xs font-bold text-[#FE9100]">4,75x</span></div>
                 </div>
                 <div className="flex flex-col items-center text-center">
-                  <motion.div animate={{boxShadow: ['0 0 20px rgba(255,215,0,0.4)', '0 0 40px rgba(255,215,0,0.6)', '0 0 20px rgba(255,215,0,0.4)']}} transition={{duration: 2, repeat: Infinity}} className="w-12 h-12 rounded-full bg-[#FFD700] flex items-center justify-center mb-4"><TrendingUp className="w-6 h-6 text-black" /></motion.div>
-                  <p className="text-xs text-white/50 mb-1">Zielband nach Launch</p>
-                  <p className="text-xl md:text-2xl font-bold text-[#FFD700]" style={{fontFamily: 'Orbitron, sans-serif'}}>1,14 EUR+</p>
-                  <div className="mt-2 px-3 py-1 rounded-full bg-[#FFD700]/20 border border-[#FFD700]/30"><span className="text-xs font-bold text-[#FFD700]">9,5x+</span></div>
+                  <motion.div animate={{boxShadow: ['0 0 20px rgba(255,215,0,0.4)', '0 0 35px rgba(255,215,0,0.6)', '0 0 20px rgba(255,215,0,0.4)']}} transition={{duration: 2, repeat: Infinity}} className="w-12 h-12 rounded-full bg-[#FFD700] flex items-center justify-center mb-4 text-black font-bold text-lg" style={{fontFamily: 'Orbitron, sans-serif'}}>3</motion.div>
+                  <p className="text-xs text-white/50 mb-1">Zielband Launch</p>
+                  <p className="text-xl md:text-2xl font-bold text-[#FFD700]" style={{fontFamily: 'Orbitron, sans-serif'}}>1,14 EUR</p>
+                  <div className="mt-2 px-3 py-1 rounded-full bg-[#FFD700]/20 border border-[#FFD700]/30"><span className="text-xs font-bold text-[#FFD700]">9,5x</span></div>
+                </div>
+                <div className="flex flex-col items-center text-center">
+                  <motion.div animate={{boxShadow: ['0 0 20px rgba(34,197,94,0.4)', '0 0 35px rgba(34,197,94,0.6)', '0 0 20px rgba(34,197,94,0.4)']}} transition={{duration: 2, repeat: Infinity}} className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center mb-4 text-black font-bold text-lg" style={{fontFamily: 'Orbitron, sans-serif'}}>4</motion.div>
+                  <p className="text-xs text-white/50 mb-1">Volle Skalierung</p>
+                  <p className="text-xl md:text-2xl font-bold text-emerald-400" style={{fontFamily: 'Orbitron, sans-serif'}}>2,20 EUR</p>
+                  <div className="mt-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/30"><span className="text-xs font-bold text-emerald-400">18x</span></div>
                 </div>
               </div>
             </div>
@@ -145,52 +240,94 @@ export default function InvestorSchwabPage() {
 
         <motion.section initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-20">
           <div className="rounded-2xl p-6 md:p-12" style={{background: 'rgba(255, 255, 255, 0.02)', backdropFilter: 'blur(20px)', border: '1px solid rgba(254, 145, 0, 0.2)', boxShadow: '0 20px 60px rgba(254, 145, 0, 0.1)'}}>
-            <h2 className="text-2xl md:text-3xl font-bold mb-2" style={{fontFamily: 'Orbitron, sans-serif'}}>Ihre Nachzeichnung - live berechnet</h2>
-            <p className="text-white/60 mb-8">Sehen Sie in Echtzeit, wie sich Ihr Investment entwickeln kann.</p>
+            <h2 className="text-2xl md:text-3xl font-bold mb-2" style={{fontFamily: 'Orbitron, sans-serif'}}>Wie viel moechten Sie nachzeichnen?</h2>
+            <p className="text-white/60 mb-8">Ihre Gesamtposition wird live berechnet - inklusive aller Boni.</p>
             <div className="grid lg:grid-cols-2 gap-8 md:gap-12">
               <div>
-                <label className="block text-sm font-bold text-white/70 mb-3 uppercase tracking-wider">Geplantes Investment (EUR)</label>
-                <input type="number" value={investmentEUR} onChange={(e) => setInvestmentEUR(Number(e.target.value) || 0)} placeholder="z.B. 50.000" className="w-full px-6 py-4 rounded-xl text-xl md:text-2xl font-bold bg-black/40 border border-white/10 focus:border-[#FE9100] focus:outline-none transition-colors" style={{fontFamily: 'Orbitron, sans-serif'}} />
+                <label className="block text-sm font-bold text-white/70 mb-3 uppercase tracking-wider">Zusaetzliches Investment (EUR)</label>
+                <input type="number" value={investmentEUR} onChange={(e) => setInvestmentEUR(Number(e.target.value) || 0)} placeholder="z.B. 25.000" className="w-full px-6 py-4 rounded-xl text-xl md:text-2xl font-bold bg-black/40 border border-white/10 focus:border-[#FE9100] focus:outline-none transition-colors" style={{fontFamily: 'Orbitron, sans-serif'}} />
+                <p className="text-xs text-white/40 mt-2">Empfohlen: mindestens 25.000 EUR</p>
+                
                 <div className="mt-6 space-y-3 text-sm text-white/60">
-                  <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-[#FE9100]" /><span>Preis pro Token: <span className="text-white font-bold">0,12 EUR</span></span></div>
+                  <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-white/50" /><span>Preis pro Token: <span className="text-white font-bold">0,12 EUR</span></span></div>
                   <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-[#FE9100]" /><span><span className="text-[#FE9100] font-bold">+15 % Bonus-Token</span> auf das gesamte Investment</span></div>
-                  <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-[#FFD700]" /><span><span className="text-[#FFD700] font-bold">+5 % Zusatzbonus</span> auf den Teil ueber 125.000 EUR</span></div>
+                  <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-[#FFD700]" /><span><span className="text-[#FFD700] font-bold">+5-7 % Zusatzbonus</span> ab 125.000 EUR Gesamtinvest</span></div>
+                  <div className="flex items-center gap-2"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /><span><span className="text-emerald-400 font-bold">Rueckkaufgarantie</span> - 0% Risiko, 14 Tage</span></div>
                 </div>
-                {investmentEUR > EXTRA_THRESHOLD && (<motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="mt-4 p-4 rounded-xl bg-[#FFD700]/10 border border-[#FFD700]/30"><p className="text-sm text-[#FFD700] font-bold">Zusatzbonus aktiviert! Sie erhalten +5% auf {formatEUR(investmentEUR - EXTRA_THRESHOLD)}</p></motion.div>)}
+                
+                {!bonusUnlocked && investmentEUR > 0 && investmentEUR < 25000 && (
+                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="mt-4 p-4 rounded-xl bg-[#FE9100]/10 border border-[#FE9100]/30">
+                    <p className="text-sm text-[#FE9100]">Um Ihre Bonusstufe freizuschalten, fehlen Ihnen nur <span className="font-bold">{formatEUR(missingToBonus)}</span>.</p>
+                  </motion.div>
+                )}
+                
+                {bonusUnlocked && (
+                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="mt-4 p-4 rounded-xl bg-[#FFD700]/10 border border-[#FFD700]/30">
+                    <p className="text-sm text-[#FFD700] font-bold">Zusatzbonus aktiviert!</p>
+                    <p className="text-xs text-[#FFD700]/80 mt-1">Sie erhalten +5% Bonus auf {formatEUR(totalInvestment - EXTRA_THRESHOLD)} ueber der Schwelle.</p>
+                  </motion.div>
+                )}
+                
+                <div className="mt-6 p-4 rounded-xl bg-white/5 border border-white/10">
+                  <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Ihre bestehende Position</p>
+                  <p className="text-sm text-white/70">Bereits investiert: <span className="text-white font-bold">{formatEUR(EXISTING_INVESTMENT)}</span></p>
+                  <p className="text-sm text-white/70">Bestehende Token: <span className="text-white font-bold">{formatToken(EXISTING_TOKENS)} ARAS</span></p>
+                </div>
               </div>
-              <div className="space-y-4 md:space-y-6">
-                <motion.div key={totalTokens} initial={{ scale: 0.98 }} animate={{ scale: 1 }} transition={{ duration: 0.3 }} className="p-4 md:p-6 rounded-xl" style={{background: 'linear-gradient(135deg, rgba(254,145,0,0.1), rgba(233,215,196,0.05))', border: '1px solid rgba(254, 145, 0, 0.3)'}}>
-                  <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Total Token (inkl. Bonus)</p>
-                  <p className="text-3xl md:text-4xl font-black text-white" style={{fontFamily: 'Orbitron, sans-serif'}}>{formatToken(totalTokens)} ARAS</p>
+              <div className="space-y-4 md:space-y-5">
+                <motion.div key={totalTokens} initial={{ scale: 0.98 }} animate={{ scale: 1 }} transition={{ duration: 0.3 }} className="p-4 md:p-6 rounded-xl" style={{background: 'linear-gradient(135deg, rgba(254,145,0,0.15), rgba(233,215,196,0.05))', border: '1px solid rgba(254, 145, 0, 0.4)'}}>
+                  <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Ihre Gesamtposition (nach Nachzeichnung)</p>
+                  <p className="text-3xl md:text-4xl font-black text-white" style={{fontFamily: 'Orbitron, sans-serif'}}><AnimatedCounter value={totalTokens} suffix=" ARAS" /></p>
+                  <p className="text-xs text-white/50 mt-2">Davon neu: +{formatToken(newTokens)} Token (inkl. Boni)</p>
                 </motion.div>
-                <div className="p-4 md:p-6 rounded-xl bg-black/40 border border-white/10">
-                  <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Wert bei 0,57 EUR</p>
+                <div className="p-4 md:p-5 rounded-xl bg-black/40 border border-[#FE9100]/30">
+                  <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Wert bei 0,57 EUR (heute)</p>
                   <p className="text-2xl md:text-3xl font-bold text-[#FE9100]" style={{fontFamily: 'Orbitron, sans-serif'}}>{formatEUR(valueNow)}</p>
                   <p className="text-sm text-white/60 mt-2">Multiplikator: <span className="text-[#FE9100] font-bold">{formatMultiplier(roiNow)}</span></p>
                 </div>
-                <div className="p-4 md:p-6 rounded-xl bg-black/40 border border-white/10">
-                  <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Wert bei 1,14 EUR</p>
+                <div className="p-4 md:p-5 rounded-xl bg-black/40 border border-[#FFD700]/30">
+                  <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Wert bei 1,14 EUR (Zielband)</p>
                   <p className="text-2xl md:text-3xl font-bold text-[#FFD700]" style={{fontFamily: 'Orbitron, sans-serif'}}>{formatEUR(valueTarget)}</p>
                   <p className="text-sm text-white/60 mt-2">Multiplikator: <span className="text-[#FFD700] font-bold">{formatMultiplier(roiTarget)}</span></p>
                 </div>
+                <div className="p-4 md:p-5 rounded-xl bg-black/40 border border-emerald-500/30">
+                  <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Wert bei 2,20 EUR (Ambitioniert)</p>
+                  <p className="text-2xl md:text-3xl font-bold text-emerald-400" style={{fontFamily: 'Orbitron, sans-serif'}}>{formatEUR(valueAmbitious)}</p>
+                  <p className="text-sm text-white/60 mt-2">Multiplikator: <span className="text-emerald-400 font-bold">{formatMultiplier(roiAmbitious)}</span></p>
+                </div>
               </div>
             </div>
+            <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="mt-8 p-6 rounded-xl text-center" style={{background: 'linear-gradient(135deg, rgba(254,145,0,0.05), rgba(34,197,94,0.05))', border: '1px solid rgba(254, 145, 0, 0.2)'}}>
+              <p className="text-white/80 text-sm md:text-base">Wenn Ihre Position sich nur auf das interne Zielband entwickelt (1,14 EUR), entsteht ein Wert von <span className="text-[#FFD700] font-bold">{formatEUR(valueTarget)}</span> - ein Mehrfaches Ihres gesamten Investments von <span className="text-white font-bold">{formatEUR(totalInvested)}</span>.</p>
+            </motion.div>
           </div>
         </motion.section>
 
         <motion.section initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-20">
-          <h3 className="text-xl md:text-2xl font-bold mb-8 text-center" style={{fontFamily: 'Orbitron, sans-serif'}}>Was waere wenn...?</h3>
+          <h3 className="text-xl md:text-2xl font-bold mb-2 text-center" style={{fontFamily: 'Orbitron, sans-serif'}}>Szenarien fuer Ihre Gesamtposition</h3>
+          <p className="text-white/50 text-sm text-center mb-8">Basierend auf {formatToken(totalTokens)} ARAS Token</p>
           <div className="grid md:grid-cols-3 gap-4 md:gap-6">
             {scenarios.map((scenario, idx) => {
               const valueScenario = totalTokens * scenario.price;
-              const roiScenario = investmentEUR > 0 ? valueScenario / investmentEUR : 0;
+              const roiScenario = totalInvested > 0 ? valueScenario / totalInvested : 0;
               return (
-                <motion.div key={scenario.label} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: idx * 0.1 }} whileHover={{ scale: 1.02, y: -5 }} className={`p-4 md:p-6 rounded-xl cursor-pointer transition-all bg-black/40 border ${scenario.color}`} style={{backdropFilter: 'blur(10px)'}}>
-                  <p className="text-xs text-white/50 uppercase tracking-wider mb-2">{scenario.label}</p>
-                  <p className="text-xl md:text-2xl font-bold text-white mb-4" style={{fontFamily: 'Orbitron, sans-serif'}}>{scenario.price.toFixed(2)} EUR</p>
-                  <div className="space-y-2 text-sm">
-                    <p className="text-white/70">Wert Ihrer Position: <span className="text-white font-bold">{formatEUR(valueScenario)}</span></p>
-                    <p className="text-white/70">Multiplikator: <span className="text-white font-bold">{formatMultiplier(roiScenario)}</span></p>
+                <motion.div 
+                  key={scenario.label} 
+                  initial={{ opacity: 0, y: 20 }} 
+                  whileInView={{ opacity: 1, y: 0 }} 
+                  viewport={{ once: true }} 
+                  transition={{ delay: idx * 0.1 }} 
+                  whileHover={{ scale: 1.03, y: -8 }} 
+                  className={`p-5 md:p-6 rounded-xl cursor-pointer transition-all border ${scenario.borderColor}`} 
+                  style={{backdropFilter: 'blur(10px)', background: `linear-gradient(135deg, ${scenario.color.replace('from-', '').replace(' to-', ', ')})`}}
+                >
+                  <p className="text-xs text-white/50 uppercase tracking-wider mb-1">{scenario.label}</p>
+                  <p className="text-2xl md:text-3xl font-bold text-white mb-2" style={{fontFamily: 'Orbitron, sans-serif'}}>{scenario.price.toFixed(2)} EUR</p>
+                  <p className="text-xs text-white/50 mb-4">{scenario.desc}</p>
+                  <div className="space-y-2 text-sm border-t border-white/10 pt-4">
+                    <p className="text-white/70">Wert Ihrer Position:</p>
+                    <p className="text-xl font-bold text-white" style={{fontFamily: 'Orbitron, sans-serif'}}>{formatEUR(valueScenario)}</p>
+                    <p className="text-white/70 mt-2">Multiplikator: <span className="text-white font-bold">{formatMultiplier(roiScenario)}</span></p>
                   </div>
                 </motion.div>
               );
@@ -201,38 +338,78 @@ export default function InvestorSchwabPage() {
         <motion.section initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-20">
           <div className="rounded-2xl p-6 md:p-12 relative overflow-hidden" style={{background: 'rgba(255, 255, 255, 0.02)', backdropFilter: 'blur(20px)', border: '1px solid rgba(233, 215, 196, 0.2)'}}>
             <motion.div className="absolute top-0 left-0 right-0 h-[2px]" style={{background: 'linear-gradient(90deg, #E9D7C4, #FE9100, #FFD700, #FE9100, #E9D7C4)', backgroundSize: '200% 100%'}} animate={{backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']}} transition={{duration: 8, repeat: Infinity, ease: 'linear'}} />
-            <div className="max-w-3xl mx-auto text-center">
+            <motion.div className="absolute bottom-0 left-0 right-0 h-[2px]" style={{background: 'linear-gradient(90deg, #E9D7C4, #FE9100, #FFD700, #FE9100, #E9D7C4)', backgroundSize: '200% 100%'}} animate={{backgroundPosition: ['100% 50%', '0% 50%', '100% 50%']}} transition={{duration: 8, repeat: Infinity, ease: 'linear'}} />
+            <div className="max-w-3xl mx-auto">
               <p className="text-base md:text-lg leading-relaxed text-white/80 mb-6">Lieber Herr Schwab,</p>
-              <p className="text-base md:text-lg leading-relaxed text-white/80 mb-6">Sie sind einer der ersten Investoren, die uns auf diesem Weg begleitet haben. Wir haben die Zuteilung fuer Sie bis Freitag verlaengert - ausschliesslich zu Ihrem historischen Einstiegspreis von 0,12 EUR und mit einem zusaetzlichen Bonus auf jede Nachzeichnung.</p>
-              <p className="text-base md:text-lg leading-relaxed text-white/80 mb-6">Einige Investoren waehlen aktuell bewusst den Weg, die Zahlung erst im naechsten Geschaeftsjahr zu leisten - die Token werden trotzdem unmittelbar nach Vertragsunterzeichnung uebertragen.</p>
-              <p className="text-base md:text-lg leading-relaxed text-white/80 mb-8">Wenn Sie diese Position vor dem offiziellen Marktstart noch einmal gezielt ausbauen moechten, uebernehmen wir die gesamte Abwicklung fuer Sie - schnell, sauber und transparent.</p>
-              <div className="pt-6 border-t border-white/10">
-                <p className="text-white/60 mb-2">- Justin Schwarzott</p>
-                <p className="text-sm text-white/50">Verwaltungsratspraesident - Schwarzott Capital Partners AG</p>
-                <p className="text-sm text-[#FE9100] font-bold" style={{fontFamily: 'Orbitron, sans-serif'}}>Founder ARAS AI</p>
+              <p className="text-base md:text-lg leading-relaxed text-white/80 mb-6">Sie gehoeren zu den ersten Investoren, die ARAS AI ueberhaupt moeglich gemacht haben. Ich danke Ihnen aufrichtig.</p>
+              <p className="text-base md:text-lg leading-relaxed text-white/80 mb-6">Wir haben Ihre Zuteilung exklusiv bis <span className="text-[#FE9100] font-bold">Freitag</span> verlaengert - weiterhin zu Ihrem historischen Einstiegspreis von <span className="text-white font-bold">0,12 EUR</span>. Dazu kommt Ihr <span className="text-[#FE9100] font-bold">15%-Circle-Bonus</span> und ein zusaetzlicher Bonus, sobald Ihr Gesamtinvest 125.000 EUR ueberschreitet.</p>
+              <p className="text-base md:text-lg leading-relaxed text-white/80 mb-6">Viele Investoren waehlen derzeit bewusst, die Zahlung erst im neuen Geschaeftsjahr zu leisten - die Token werden dennoch <span className="text-emerald-400 font-bold">sofort uebertragen</span>. Keine Sperrfrist, garantierte Zuteilung.</p>
+              <p className="text-base md:text-lg leading-relaxed text-white/80 mb-6">Abwicklung, Dokumente, Onboarding - wir uebernehmen alles.</p>
+              <div className="p-4 rounded-xl mb-8" style={{background: 'rgba(254, 145, 0, 0.05)', border: '1px solid rgba(254, 145, 0, 0.2)'}}>
+                <p className="text-sm text-white/70">Sie haben bereits <span className="text-[#FE9100] font-bold">{formatEUR(EXISTING_INVESTMENT)}</span> in ARAS investiert. Mit nur <span className="text-white font-bold">25.000 EUR</span> zusaetzlicher Zeichnung ueberschreiten Sie die Bonus-Schwelle und erhoehen Ihre Gesamtzahl an Bonus-Token signifikant - bei gleichzeitig <span className="text-emerald-400 font-bold">0% Risiko</span> durch die Rueckkaufgarantie.</p>
+              </div>
+              <div className="pt-6 border-t border-white/10 text-center">
+                <p className="text-white/80 mb-2 text-lg">- Justin Schwarzott</p>
+                <p className="text-sm text-white/50">Verwaltungsratspraesident</p>
+                <p className="text-sm text-white/50">Schwarzott Capital Partners AG</p>
+                <p className="text-sm text-[#FE9100] font-bold mt-2" style={{fontFamily: 'Orbitron, sans-serif'}}>Founder ARAS AI</p>
               </div>
             </div>
           </div>
         </motion.section>
 
         <motion.section initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-20">
-          <div className="rounded-2xl p-6 md:p-12 text-center" style={{background: 'rgba(255, 255, 255, 0.02)', backdropFilter: 'blur(20px)', border: '1px solid rgba(254, 145, 0, 0.3)'}}>
-            <h2 className="text-2xl md:text-3xl font-bold mb-4" style={{fontFamily: 'Orbitron, sans-serif'}}>Wie viel moechten Sie nachzeichnen?</h2>
-            <p className="text-white/60 mb-8">Eine kurze Zahl und ein Ja - alles Weitere uebernehmen wir.</p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => console.log('WhatsApp clicked')} className="relative px-6 md:px-8 py-4 rounded-xl font-bold text-sm md:text-base overflow-hidden group" style={{fontFamily: 'Orbitron, sans-serif'}}>
-                <span className="absolute inset-0 rounded-xl p-[2px]" style={{background: 'linear-gradient(90deg, #FE9100, #FFD700, #FE9100)', backgroundSize: '200% 100%', animation: 'borderRun 3s linear infinite'}} />
-                <span className="relative flex items-center justify-center gap-2 bg-[#020309] rounded-xl px-6 md:px-8 py-4"><MessageCircle className="w-5 h-5" />Betrag per WhatsApp senden</span>
-              </motion.button>
-              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => console.log('Callback clicked')} className="relative px-6 md:px-8 py-4 rounded-xl font-bold text-sm md:text-base overflow-hidden group" style={{fontFamily: 'Orbitron, sans-serif'}}>
-                <span className="absolute inset-0 rounded-xl p-[1px]" style={{background: 'linear-gradient(90deg, rgba(255,255,255,0.3), rgba(254,145,0,0.5), rgba(255,255,255,0.3))', backgroundSize: '200% 100%', animation: 'borderRun 4s linear infinite'}} />
-                <span className="relative flex items-center justify-center gap-2 bg-[#020309] rounded-xl px-6 md:px-8 py-4"><Phone className="w-5 h-5" />Rueckruf anfragen</span>
-              </motion.button>
+          <div className="rounded-2xl p-6 md:p-12 text-center relative overflow-hidden" style={{background: 'rgba(255, 255, 255, 0.02)', backdropFilter: 'blur(20px)', border: '1px solid rgba(254, 145, 0, 0.3)'}}>
+            <motion.div className="absolute inset-0 opacity-30" style={{background: 'radial-gradient(circle at 50% 50%, rgba(254,145,0,0.1) 0%, transparent 70%)'}} animate={{scale: [1, 1.2, 1]}} transition={{duration: 4, repeat: Infinity}} />
+            <div className="relative z-10">
+              <h2 className="text-2xl md:text-3xl font-bold mb-4" style={{fontFamily: 'Orbitron, sans-serif'}}>Bereit fuer Ihre Nachzeichnung?</h2>
+              <p className="text-white/60 mb-8 max-w-xl mx-auto">Eine kurze Zahl und ein Ja - alles Weitere uebernehmen wir. Dokumente, Abwicklung, Onboarding.</p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
+                <motion.a 
+                  href="https://wa.me/41786931733?text=Hallo%20Justin%2C%20ich%20m%C3%B6chte%20gerne%20nachzeichnen.%20Mein%20gew%C3%BCnschter%20Betrag%3A%20"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ scale: 1.05 }} 
+                  whileTap={{ scale: 0.95 }} 
+                  className="relative px-8 md:px-10 py-5 rounded-xl font-bold text-base md:text-lg overflow-hidden group cursor-pointer" 
+                  style={{fontFamily: 'Orbitron, sans-serif'}}
+                >
+                  <span className="absolute inset-0 rounded-xl p-[2px]" style={{background: 'linear-gradient(90deg, #25D366, #FE9100, #FFD700, #FE9100, #25D366)', backgroundSize: '300% 100%', animation: 'borderRun 3s linear infinite'}} />
+                  <span className="relative flex items-center justify-center gap-3 bg-[#020309] rounded-xl px-8 md:px-10 py-5 text-white group-hover:text-[#25D366] transition-colors">
+                    Betrag per WhatsApp senden
+                  </span>
+                </motion.a>
+                <motion.button 
+                  whileHover={{ scale: 1.05 }} 
+                  whileTap={{ scale: 0.95 }} 
+                  onClick={() => window.location.href = 'mailto:justin@aras-ai.com?subject=R%C3%BCckruf%20anfragen%20-%20Christian%20Schwab&body=Bitte%20rufen%20Sie%20mich%20zur%C3%BCck.%20Meine%20Telefonnummer%3A%20'} 
+                  className="relative px-8 md:px-10 py-5 rounded-xl font-bold text-base md:text-lg overflow-hidden group" 
+                  style={{fontFamily: 'Orbitron, sans-serif'}}
+                >
+                  <span className="absolute inset-0 rounded-xl p-[1px]" style={{background: 'linear-gradient(90deg, rgba(255,255,255,0.2), rgba(254,145,0,0.4), rgba(255,255,255,0.2))', backgroundSize: '200% 100%', animation: 'borderRun 4s linear infinite'}} />
+                  <span className="relative flex items-center justify-center gap-3 bg-[#020309] rounded-xl px-8 md:px-10 py-5 text-white/80 group-hover:text-white transition-colors">
+                    Rueckruf durch ARAS anfragen
+                  </span>
+                </motion.button>
+              </div>
+              <div className="h-6 overflow-hidden">
+                <AnimatePresence mode="wait">
+                  <motion.p
+                    key={Math.floor(Date.now() / 5000)}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="text-sm text-[#FE9100]/80 italic"
+                  >
+                    Sie entscheiden Betrag, wir erledigen alles Weitere.
+                  </motion.p>
+                </AnimatePresence>
+              </div>
             </div>
           </div>
         </motion.section>
 
-        <style dangerouslySetInnerHTML={{__html: `@keyframes borderRun { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }`}} />
+        <style dangerouslySetInnerHTML={{__html: `@keyframes borderRun { 0% { background-position: 0% 50%; } 100% { background-position: 300% 50%; } }`}} />
       </div>
     </div>
   );
