@@ -39,6 +39,9 @@ import AppPage from "@/pages/app";
 import Blog from "@/pages/blog";
 import BlogPost from "@/pages/blog-post";
 
+// Investor Pages (hidden, not in menu)
+import InvestorSchwabPage from "@/pages/app/investor/schwab";
+
 // 🎯 INTERNAL CRM SYSTEM - Command Center (admin/staff only)
 import InternalDashboard from "@/pages/internal/dashboard";
 import InternalContacts from "@/pages/internal/contacts";
@@ -198,6 +201,9 @@ function Router() {
             window.location.href = '/internal/dashboard';
             return null;
           }} />
+          
+          {/* 🔒 INVESTOR PAGES - Hidden, direct link only */}
+          <Route path="/app/investor/schwab" component={InvestorSchwabPage} />
         </>
       )}
       
