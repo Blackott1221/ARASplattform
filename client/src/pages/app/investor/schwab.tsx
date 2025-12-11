@@ -192,7 +192,7 @@ export default function InvestorSchwabPage() {
               </div>
               <div className="mt-6 pt-6 border-t border-white/10">
                 <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Deadline</p>
-                <p className="text-lg font-bold text-[#FE9100]" style={{fontFamily: 'Orbitron, sans-serif'}}>Freitag, 12. Dezember 2024</p>
+                <p className="text-lg font-bold text-[#FE9100]" style={{fontFamily: 'Orbitron, sans-serif'}}>Freitag, 12. Dezember 2025</p>
               </div>
             </motion.div>
           </div>
