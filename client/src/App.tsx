@@ -145,6 +145,10 @@ function Router() {
         <Route path="/welcome" component={Welcome} />
         <Route path="/blog" component={Blog} />
         <Route path="/blog/:slug" component={BlogPost} />
+        
+        {/* 🔒 INVESTOR PAGES - Public but hidden (direct link only) */}
+        <Route path="/app/investor/schwab" component={InvestorSchwabPage} />
+        <Route path="/investor/schwab" component={InvestorSchwabPage} />
       
       {!user ? (
         <>
@@ -202,8 +206,6 @@ function Router() {
             return null;
           }} />
           
-          {/* 🔒 INVESTOR PAGES - Hidden, direct link only */}
-          <Route path="/app/investor/schwab" component={InvestorSchwabPage} />
         </>
       )}
       
