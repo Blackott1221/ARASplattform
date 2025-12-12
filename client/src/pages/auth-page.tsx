@@ -2751,7 +2751,7 @@ export default function AuthPage() {
                           }}
                           whileTap={{ scale: 0.97 }}
                         >
-                          Alpha Zugang beitreten
+                          Kostenlos starten
                         </motion.span>
                       </button>
 
@@ -5309,7 +5309,7 @@ function ArasLandingContent() {
                 boxShadow: '0 0 40px rgba(255, 106, 0, 0.5)'
               }}
             >
-              → JETZT ALPHA-ZUGANG SICHERN
+              → JETZT KOSTENLOS STARTEN
             </motion.button>
 
             <p className="text-sm text-white/40 mt-8">
