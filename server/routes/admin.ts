@@ -6,7 +6,7 @@ import {
   voiceTasks, feedback, usageTracking, twilioSettings,
   subscriptionPlans, sessions
 } from '../../shared/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, gt, sql, count } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 
 const router = Router();
@@ -17,6 +17,40 @@ function requireAdmin(req: Request, res: Response, next: any) {
   // For now, just proceed
   next();
 }
+
+// ═══════════════════════════════════════════════════════════════
+// 🟢 ONLINE STATUS - Get currently online users based on active sessions
+// ═══════════════════════════════════════════════════════════════
+router.get('/online-users', requireAdmin, async (req, res) => {
+  try {
+    const now = new Date();
+    
+    // Get all non-expired sessions
+    const activeSessions = await db.select().from(sessions).where(gt(sessions.expire, now));
+    
+    // Extract user IDs from session data
+    const onlineUserIds = new Set<string>();
+    activeSessions.forEach((session: any) => {
+      try {
+        const sessData = typeof session.sess === 'string' ? JSON.parse(session.sess) : session.sess;
+        if (sessData?.passport?.user) {
+          onlineUserIds.add(sessData.passport.user);
+        }
+      } catch (e) {
+        // Skip invalid sessions
+      }
+    });
+    
+    console.log(`[ADMIN] Found ${onlineUserIds.size} online users`);
+    res.json({ 
+      onlineUserIds: Array.from(onlineUserIds),
+      totalActiveSessions: activeSessions.length
+    });
+  } catch (error: any) {
+    console.error('[ADMIN ERROR] Failed to get online users:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Tables that have updatedAt column
 const TABLES_WITH_UPDATED_AT = [
@@ -170,32 +204,108 @@ router.delete('/sessions/:id', requireAdmin, async (req, res) => {
   }
 });
 
-// 📊 Dashboard Stats Endpoint
+// 📊 Dashboard Stats Endpoint - ENHANCED with real metrics
 router.get('/stats', requireAdmin, async (req, res) => {
   try {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const thisWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    
+    // Get all active sessions for online count
+    const activeSessions = await db.select().from(sessions).where(gt(sessions.expire, now));
+    const onlineUserIds = new Set<string>();
+    activeSessions.forEach((session: any) => {
+      try {
+        const sessData = typeof session.sess === 'string' ? JSON.parse(session.sess) : session.sess;
+        if (sessData?.passport?.user) {
+          onlineUserIds.add(sessData.passport.user);
+        }
+      } catch (e) {}
+    });
+    
     const [
-      userCount,
+      allUsers,
       leadCount,
       contactCount,
       campaignCount,
       callLogCount,
-      feedbackCount
+      feedbackCount,
+      chatSessionCount,
+      voiceAgentCount
     ] = await Promise.all([
-      db.select().from(users).then(r => r.length),
+      db.select().from(users),
       db.select().from(leads).then(r => r.length),
       db.select().from(contacts).then(r => r.length),
       db.select().from(campaigns).then(r => r.length),
       db.select().from(callLogs).then(r => r.length),
       db.select().from(feedback).then(r => r.length),
+      db.select().from(chatSessions).then(r => r.length),
+      db.select().from(voiceAgents).then(r => r.length),
     ]);
 
+    // Calculate plan distribution
+    const planDistribution = {
+      free: 0,
+      pro: 0,
+      ultra: 0,
+      ultimate: 0,
+      other: 0
+    };
+    
+    const statusDistribution = {
+      active: 0,
+      trialing: 0,
+      canceled: 0,
+      past_due: 0,
+      trial_pending: 0
+    };
+    
+    let totalAiMessages = 0;
+    let totalVoiceCalls = 0;
+    
+    allUsers.forEach((user: any) => {
+      // Plan distribution
+      const plan = user.subscriptionPlan?.toLowerCase() || 'free';
+      if (plan in planDistribution) {
+        planDistribution[plan as keyof typeof planDistribution]++;
+      } else {
+        planDistribution.other++;
+      }
+      
+      // Status distribution
+      const status = user.subscriptionStatus?.toLowerCase() || 'trial_pending';
+      if (status in statusDistribution) {
+        statusDistribution[status as keyof typeof statusDistribution]++;
+      }
+      
+      // Usage totals
+      totalAiMessages += user.aiMessagesUsed || 0;
+      totalVoiceCalls += user.voiceCallsUsed || 0;
+    });
+
     res.json({
-      users: userCount,
+      // Basic counts
+      users: allUsers.length,
       leads: leadCount,
       contacts: contactCount,
       campaigns: campaignCount,
       callLogs: callLogCount,
-      feedback: feedbackCount
+      feedback: feedbackCount,
+      chatSessions: chatSessionCount,
+      voiceAgents: voiceAgentCount,
+      
+      // Real-time metrics
+      onlineUsers: onlineUserIds.size,
+      activeSessions: activeSessions.length,
+      
+      // Usage metrics
+      totalAiMessages,
+      totalVoiceCalls,
+      
+      // Distributions
+      planDistribution,
+      statusDistribution
     });
   } catch (error: any) {
     console.error('Error fetching stats:', error);
