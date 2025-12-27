@@ -1,21 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
 import { 
   Users, Database, Calendar, Phone, MessageSquare, 
-  Megaphone, Settings, Bug, Activity, TrendingUp,
-  Search, Edit2, Trash2, RefreshCw, Shield, Clock, Key, 
-  CreditCard, RotateCcw, X, Check, ChevronDown, Eye,
-  Zap, Crown, Star, Sparkles, ArrowUpRight, ArrowDownRight,
-  BarChart3, PieChart, Filter, Download, MoreVertical,
-  UserPlus, Mail, Building2, Globe, AlertCircle, Wifi,
-  WifiOff, ChevronRight, LogOut, Hash
+  Megaphone, Bug, TrendingUp, Search, Trash2, RefreshCw, 
+  Shield, Clock, Key, CreditCard, RotateCcw, X, Check, Eye,
+  Zap, Crown, Star, Sparkles, Mail, Building2, AlertCircle, Wifi
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
 // ═══════════════════════════════════════════════════════════════
-// 🎨 ARAS ADMIN DASHBOARD - CLEAN & FUNCTIONAL
+// 🎨 ARAS ADMIN DASHBOARD - FULLY FUNCTIONAL
 // ═══════════════════════════════════════════════════════════════
 
 const DB_TABLES = [
@@ -31,6 +25,9 @@ const DB_TABLES = [
   { id: 'subscription_plans', name: 'Plans', icon: Crown, color: '#0EA5E9' },
   { id: 'sessions', name: 'Sessions', icon: Clock, color: '#78716C' }
 ];
+
+const PLAN_OPTIONS = ['free', 'pro', 'ultra', 'ultimate'] as const;
+const STATUS_OPTIONS = ['active', 'trialing', 'canceled', 'past_due', 'trial_pending'] as const;
 
 const PLAN_CONFIG: Record<string, { name: string; icon: any; color: string }> = {
   'free': { name: 'Free', icon: Star, color: '#6B7280' },
@@ -58,11 +55,16 @@ const STATUS_CONFIG: Record<string, { name: string; color: string }> = {
 export default function AdminDashboard() {
   const [selectedTable, setSelectedTable] = useState(DB_TABLES[0]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedUser, setSelectedUser] = useState<any>(null);
-  const [modalType, setModalType] = useState<'details' | 'plan' | 'password' | null>(null);
-  const [newPassword, setNewPassword] = useState("");
-  const [selectedPlan, setSelectedPlan] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("");
+  
+  // Modal states - SIMPLE and DIRECT
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [formPlan, setFormPlan] = useState("");
+  const [formStatus, setFormStatus] = useState("");
+  const [formPassword, setFormPassword] = useState("");
+  
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -99,7 +101,7 @@ export default function AdminDashboard() {
       if (!res.ok) throw new Error('Failed to fetch stats');
       return res.json();
     },
-    refetchInterval: 30000 // Refresh every 30 seconds
+    refetchInterval: 30000
   });
 
   const { data: onlineData, refetch: refetchOnline } = useQuery({
@@ -109,7 +111,7 @@ export default function AdminDashboard() {
       if (!res.ok) throw new Error('Failed to fetch online users');
       return res.json();
     },
-    refetchInterval: 15000 // Refresh every 15 seconds
+    refetchInterval: 10000 // Check every 10 seconds
   });
 
   const { data: tableData, isLoading, error, refetch } = useQuery({
@@ -122,9 +124,10 @@ export default function AdminDashboard() {
     }
   });
 
-  // Check if user is online
-  const isUserOnline = (userId: string) => {
-    return onlineData?.onlineUserIds?.includes(userId) || false;
+  // Check if user is online - based on active session
+  const isUserOnline = (userId: string): boolean => {
+    if (!onlineData?.onlineUserIds) return false;
+    return onlineData.onlineUserIds.includes(userId);
   };
 
   // ═══════════════════════════════════════════════════════════════
@@ -145,8 +148,7 @@ export default function AdminDashboard() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', selectedTable.id] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['admin'] });
       toast({ title: "✅ Erfolgreich gelöscht!" });
     },
     onError: (err: any) => {
@@ -156,7 +158,6 @@ export default function AdminDashboard() {
 
   const changePasswordMutation = useMutation({
     mutationFn: async ({ id, password }: { id: string; password: string }) => {
-      console.log('[ADMIN] Changing password for user:', id);
       const res = await fetch(`/api/admin/users/${id}/change-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -171,7 +172,8 @@ export default function AdminDashboard() {
     },
     onSuccess: () => {
       toast({ title: "✅ Passwort geändert!" });
-      closeModal();
+      setShowPasswordModal(false);
+      setFormPassword("");
     },
     onError: (err: any) => {
       toast({ title: "❌ Fehler", description: err.message, variant: "destructive" });
@@ -180,7 +182,6 @@ export default function AdminDashboard() {
 
   const changePlanMutation = useMutation({
     mutationFn: async ({ id, plan, status }: { id: string; plan: string; status?: string }) => {
-      console.log('[ADMIN] Changing plan for user:', id, 'to:', plan, status);
       const res = await fetch(`/api/admin/users/${id}/change-plan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -194,10 +195,9 @@ export default function AdminDashboard() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
+      queryClient.invalidateQueries({ queryKey: ['admin'] });
       toast({ title: "✅ Plan geändert!" });
-      closeModal();
+      setShowPlanModal(false);
     },
     onError: (err: any) => {
       toast({ title: "❌ Fehler", description: err.message, variant: "destructive" });
@@ -206,7 +206,6 @@ export default function AdminDashboard() {
 
   const resetUsageMutation = useMutation({
     mutationFn: async (id: string) => {
-      console.log('[ADMIN] Resetting usage for user:', id);
       const res = await fetch(`/api/admin/users/${id}/reset-usage`, {
         method: 'POST',
         credentials: 'include',
@@ -230,48 +229,26 @@ export default function AdminDashboard() {
   // 🎨 HELPER FUNCTIONS
   // ═══════════════════════════════════════════════════════════════
 
-  const closeModal = () => {
-    setModalType(null);
-    setSelectedUser(null);
-    setNewPassword("");
-    setSelectedPlan("");
-    setSelectedStatus("");
-  };
-
-  const openPlanModal = (user: any) => {
-    setSelectedUser(user);
-    setSelectedPlan(user.subscriptionPlan || 'free');
-    setSelectedStatus(user.subscriptionStatus || 'active');
-    setModalType('plan');
-  };
-
-  const openPasswordModal = (user: any) => {
-    setSelectedUser(user);
-    setNewPassword("");
-    setModalType('password');
-  };
-
-  const openDetailsModal = (user: any) => {
-    setSelectedUser(user);
-    setModalType('details');
-  };
-
   const filteredData = tableData?.filter((item: any) =>
     Object.values(item).some(val =>
       String(val || '').toLowerCase().includes(searchQuery.toLowerCase())
     )
   ) || [];
 
-  const formatDate = (date: string) => {
+  const formatDate = (date: string | null | undefined) => {
     if (!date) return '-';
-    return new Date(date).toLocaleDateString('de-DE', {
-      day: '2-digit', month: '2-digit', year: '2-digit',
-      hour: '2-digit', minute: '2-digit'
-    });
+    try {
+      return new Date(date).toLocaleDateString('de-DE', {
+        day: '2-digit', month: '2-digit', year: '2-digit',
+        hour: '2-digit', minute: '2-digit'
+      });
+    } catch {
+      return '-';
+    }
   };
 
-  const getPlanBadge = (plan: string) => {
-    const config = PLAN_CONFIG[plan?.toLowerCase()] || PLAN_CONFIG.free;
+  const getPlanBadge = (plan: string | null | undefined) => {
+    const config = PLAN_CONFIG[plan?.toLowerCase() || 'free'] || PLAN_CONFIG.free;
     const Icon = config.icon;
     return (
       <span 
@@ -284,8 +261,8 @@ export default function AdminDashboard() {
     );
   };
 
-  const getStatusBadge = (status: string) => {
-    const config = STATUS_CONFIG[status?.toLowerCase()] || { name: status, color: '#6B7280' };
+  const getStatusBadge = (status: string | null | undefined) => {
+    const config = STATUS_CONFIG[status?.toLowerCase() || 'trial_pending'] || { name: status || 'Unknown', color: '#6B7280' };
     return (
       <span 
         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs"
@@ -297,23 +274,43 @@ export default function AdminDashboard() {
     );
   };
 
+  // Open modals - DIRECT state setting
+  const handleOpenPlanModal = (user: any) => {
+    console.log('Opening plan modal for:', user.username);
+    setCurrentUser(user);
+    setFormPlan(user.subscriptionPlan || 'free');
+    setFormStatus(user.subscriptionStatus || 'active');
+    setShowPlanModal(true);
+  };
+
+  const handleOpenPasswordModal = (user: any) => {
+    console.log('Opening password modal for:', user.username);
+    setCurrentUser(user);
+    setFormPassword("");
+    setShowPasswordModal(true);
+  };
+
+  const handleOpenDetailsModal = (user: any) => {
+    console.log('Opening details modal for:', user.username);
+    setCurrentUser(user);
+    setShowDetailsModal(true);
+  };
+
   // ═══════════════════════════════════════════════════════════════
   // 🖼️ RENDER
   // ═══════════════════════════════════════════════════════════════
 
   return (
     <div className="min-h-screen bg-[#0A0A0B] text-white">
-      {/* Subtle gradient background */}
-      <div className="fixed inset-0 pointer-events-none">
+      {/* Background */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 left-1/3 w-[500px] h-[500px] bg-[#FE9100]/[0.03] rounded-full blur-[150px]" />
         <div className="absolute bottom-0 right-1/3 w-[400px] h-[400px] bg-violet-500/[0.02] rounded-full blur-[150px]" />
       </div>
 
       <div className="relative z-10 max-w-[1600px] mx-auto p-6">
         
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* 🎯 HEADER */}
-        {/* ═══════════════════════════════════════════════════════════════ */}
+        {/* HEADER */}
         <header className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-white flex items-center gap-3">
@@ -328,11 +325,10 @@ export default function AdminDashboard() {
           </div>
           
           <div className="flex items-center gap-3">
-            {/* Online indicator */}
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10">
               <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-sm text-white/70">
-                <span className="text-emerald-400 font-semibold">{stats?.onlineUsers || 0}</span> online
+                <span className="text-emerald-400 font-semibold">{onlineData?.onlineUserIds?.length || 0}</span> online
               </span>
             </div>
             
@@ -345,13 +341,11 @@ export default function AdminDashboard() {
           </div>
         </header>
 
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* 📊 STATS OVERVIEW */}
-        {/* ═══════════════════════════════════════════════════════════════ */}
+        {/* STATS */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
           {[
             { label: 'Total Users', value: stats?.users || 0, icon: Users, color: '#FE9100' },
-            { label: 'Online Now', value: stats?.onlineUsers || 0, icon: Wifi, color: '#10B981' },
+            { label: 'Online Now', value: onlineData?.onlineUserIds?.length || 0, icon: Wifi, color: '#10B981' },
             { label: 'Leads', value: stats?.leads || 0, icon: TrendingUp, color: '#8B5CF6' },
             { label: 'Calls', value: stats?.callLogs || 0, icon: Phone, color: '#06B6D4' },
             { label: 'AI Messages', value: stats?.totalAiMessages || 0, icon: MessageSquare, color: '#EC4899' },
@@ -370,12 +364,10 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* 🗂️ MAIN LAYOUT */}
-        {/* ═══════════════════════════════════════════════════════════════ */}
+        {/* MAIN LAYOUT */}
         <div className="grid grid-cols-12 gap-4">
           
-          {/* Sidebar - Table Selection */}
+          {/* Sidebar */}
           <div className="col-span-12 lg:col-span-2">
             <div className="rounded-xl bg-white/[0.02] border border-white/5 p-3 sticky top-6">
               <div className="text-xs text-white/30 uppercase tracking-wider font-medium mb-3 px-2">
@@ -443,9 +435,7 @@ export default function AdminDashboard() {
                   </button>
                 </div>
               ) : selectedTable.id === 'users' ? (
-                /* ═══════════════════════════════════════════════════════════════ */
-                /* 👥 USERS TABLE - SPECIAL LAYOUT */
-                /* ═══════════════════════════════════════════════════════════════ */
+                /* USERS TABLE */
                 <div className="divide-y divide-white/5">
                   {filteredData.length === 0 ? (
                     <div className="p-16 text-center text-white/40">No users found</div>
@@ -455,7 +445,7 @@ export default function AdminDashboard() {
                       <div key={user.id} className="p-4 hover:bg-white/[0.02] transition-colors">
                         <div className="flex items-center gap-4">
                           {/* Avatar with online indicator */}
-                          <div className="relative">
+                          <div className="relative flex-shrink-0">
                             <div 
                               className="w-11 h-11 rounded-full flex items-center justify-center text-base font-semibold"
                               style={{ 
@@ -485,7 +475,7 @@ export default function AdminDashboard() {
                               {getPlanBadge(user.subscriptionPlan)}
                               {getStatusBadge(user.subscriptionStatus)}
                               {online && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-400">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-400 font-medium">
                                   <Wifi className="w-2.5 h-2.5" /> LIVE
                                 </span>
                               )}
@@ -516,30 +506,34 @@ export default function AdminDashboard() {
                             </div>
                           </div>
 
-                          {/* ALWAYS VISIBLE Action Buttons */}
-                          <div className="flex items-center gap-1.5">
+                          {/* Action Buttons - ALWAYS VISIBLE */}
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
                             <button
-                              onClick={() => openDetailsModal(user)}
+                              type="button"
+                              onClick={() => handleOpenDetailsModal(user)}
                               className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all"
                               title="Details anzeigen"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => openPlanModal(user)}
+                              type="button"
+                              onClick={() => handleOpenPlanModal(user)}
                               className="p-2 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-all"
                               title="Plan ändern"
                             >
                               <CreditCard className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => openPasswordModal(user)}
+                              type="button"
+                              onClick={() => handleOpenPasswordModal(user)}
                               className="p-2 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 transition-all"
                               title="Passwort ändern"
                             >
                               <Key className="w-4 h-4" />
                             </button>
                             <button
+                              type="button"
                               onClick={() => {
                                 if (window.confirm(`Usage für ${user.username} zurücksetzen?`)) {
                                   resetUsageMutation.mutate(user.id);
@@ -551,8 +545,9 @@ export default function AdminDashboard() {
                               <RotateCcw className="w-4 h-4" />
                             </button>
                             <button
+                              type="button"
                               onClick={() => {
-                                if (window.confirm(`⚠️ User "${user.username}" wirklich löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden!`)) {
+                                if (window.confirm(`⚠️ User "${user.username}" wirklich löschen?`)) {
                                   deleteMutation.mutate(user.id);
                                 }
                               }}
@@ -568,9 +563,7 @@ export default function AdminDashboard() {
                   })}
                 </div>
               ) : (
-                /* ═══════════════════════════════════════════════════════════════ */
-                /* 📋 GENERIC TABLE */
-                /* ═══════════════════════════════════════════════════════════════ */
+                /* GENERIC TABLE */
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
@@ -619,6 +612,7 @@ export default function AdminDashboard() {
                           }
                           <td className="p-3 text-right">
                             <button
+                              type="button"
                               onClick={() => {
                                 if (window.confirm('Diesen Eintrag wirklich löschen?')) {
                                   deleteMutation.mutate(item.id);
@@ -642,200 +636,297 @@ export default function AdminDashboard() {
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* 🔲 MODALS */}
+      {/* 🔲 PLAN MODAL - Pure React, no Framer Motion */}
       {/* ═══════════════════════════════════════════════════════════════ */}
-      
-      <AnimatePresence>
-        {modalType && selectedUser && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}
-            onClick={closeModal}
+      {showPlanModal && currentUser && (
+        <div 
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}
+          onClick={() => setShowPlanModal(false)}
+        >
+          <div 
+            className="w-full max-w-md rounded-2xl bg-[#141416] border border-white/10 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
           >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-lg rounded-2xl bg-[#111113] border border-white/10 shadow-2xl"
-            >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between p-5 border-b border-white/5">
-                <h2 className="text-lg font-semibold text-white">
-                  {modalType === 'details' && 'User Details'}
-                  {modalType === 'plan' && 'Plan ändern'}
-                  {modalType === 'password' && 'Passwort ändern'}
-                </h2>
-                <button onClick={closeModal} className="p-1.5 rounded-lg hover:bg-white/10 text-white/60">
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-white/10">
+              <h2 className="text-lg font-bold text-white">Plan ändern</h2>
+              <button 
+                type="button"
+                onClick={() => setShowPlanModal(false)} 
+                className="p-2 rounded-lg hover:bg-white/10 text-white/60"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-5 space-y-5">
+              <div>
+                <div className="text-sm text-white/50 mb-1">User</div>
+                <div className="text-white font-medium text-lg">{currentUser.username}</div>
+                <div className="text-white/40 text-sm">{currentUser.email}</div>
+              </div>
+
+              <div>
+                <div className="text-sm text-white/50 mb-3">Plan auswählen</div>
+                <div className="grid grid-cols-2 gap-3">
+                  {PLAN_OPTIONS.map((plan) => {
+                    const config = PLAN_CONFIG[plan];
+                    const Icon = config.icon;
+                    const isSelected = formPlan === plan;
+                    return (
+                      <button
+                        key={plan}
+                        type="button"
+                        onClick={() => setFormPlan(plan)}
+                        className={`p-4 rounded-xl text-left transition-all border-2 ${
+                          isSelected 
+                            ? '' 
+                            : 'border-transparent bg-white/5 hover:bg-white/10'
+                        }`}
+                        style={isSelected ? { 
+                          backgroundColor: `${config.color}15`,
+                          borderColor: config.color 
+                        } : {}}
+                      >
+                        <Icon className="w-6 h-6 mb-2" style={{ color: config.color }} />
+                        <div className="font-semibold text-white">{config.name}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <div className="text-sm text-white/50 mb-3">Status</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {STATUS_OPTIONS.map((status) => {
+                    const config = STATUS_CONFIG[status];
+                    const isSelected = formStatus === status;
+                    return (
+                      <button
+                        key={status}
+                        type="button"
+                        onClick={() => setFormStatus(status)}
+                        className={`p-3 rounded-xl text-center transition-all border-2 ${
+                          isSelected 
+                            ? '' 
+                            : 'border-transparent bg-white/5 hover:bg-white/10'
+                        }`}
+                        style={isSelected ? { 
+                          backgroundColor: `${config.color}15`,
+                          borderColor: config.color 
+                        } : {}}
+                      >
+                        <span className="text-sm font-medium" style={{ color: isSelected ? config.color : 'white' }}>
+                          {config.name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowPlanModal(false)}
+                  className="flex-1 py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-medium transition-colors"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    console.log('Saving plan:', formPlan, formStatus);
+                    changePlanMutation.mutate({ 
+                      id: currentUser.id, 
+                      plan: formPlan,
+                      status: formStatus 
+                    });
+                  }}
+                  disabled={changePlanMutation.isPending}
+                  className="flex-1 py-3 rounded-xl bg-[#FE9100] hover:bg-[#FF7A00] text-black font-bold transition-colors disabled:opacity-50"
+                >
+                  {changePlanMutation.isPending ? 'Speichern...' : 'Speichern'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* 🔲 PASSWORD MODAL */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {showPasswordModal && currentUser && (
+        <div 
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}
+          onClick={() => setShowPasswordModal(false)}
+        >
+          <div 
+            className="w-full max-w-md rounded-2xl bg-[#141416] border border-white/10 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-white/10">
+              <h2 className="text-lg font-bold text-white">Passwort ändern</h2>
+              <button 
+                type="button"
+                onClick={() => setShowPasswordModal(false)} 
+                className="p-2 rounded-lg hover:bg-white/10 text-white/60"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-5 space-y-5">
+              <div>
+                <div className="text-sm text-white/50 mb-1">User</div>
+                <div className="text-white font-medium text-lg">{currentUser.username}</div>
+              </div>
+
+              <div>
+                <div className="text-sm text-white/50 mb-2">Neues Passwort</div>
+                <input
+                  type="password"
+                  value={formPassword}
+                  onChange={(e) => setFormPassword(e.target.value)}
+                  placeholder="Mindestens 6 Zeichen"
+                  className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-violet-500/50 text-lg"
+                  autoFocus
+                />
+                {formPassword && formPassword.length < 6 && (
+                  <p className="text-xs text-red-400 mt-2">Mindestens 6 Zeichen erforderlich</p>
+                )}
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordModal(false)}
+                  className="flex-1 py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-medium transition-colors"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (formPassword.length >= 6) {
+                      changePasswordMutation.mutate({ id: currentUser.id, password: formPassword });
+                    } else {
+                      toast({ title: "❌ Passwort zu kurz", variant: "destructive" });
+                    }
+                  }}
+                  disabled={changePasswordMutation.isPending || formPassword.length < 6}
+                  className="flex-1 py-3 rounded-xl bg-violet-500 hover:bg-violet-600 text-white font-bold transition-colors disabled:opacity-50"
+                >
+                  {changePasswordMutation.isPending ? 'Speichern...' : 'Speichern'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* 🔲 DETAILS MODAL - SHOWS ALL USER DATA */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {showDetailsModal && currentUser && (
+        <div 
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}
+          onClick={() => setShowDetailsModal(false)}
+        >
+          <div 
+            className="w-full max-w-3xl max-h-[90vh] rounded-2xl bg-[#141416] border border-white/10 shadow-2xl overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-white/10 flex-shrink-0">
+              <div>
+                <h2 className="text-lg font-bold text-white">User Details</h2>
+                <p className="text-white/40 text-sm">{currentUser.username} • {currentUser.email}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {isUserOnline(currentUser.id) && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-emerald-500/20 text-emerald-400 font-medium">
+                    <Wifi className="w-3 h-3" /> ONLINE
+                  </span>
+                )}
+                <button 
+                  type="button"
+                  onClick={() => setShowDetailsModal(false)} 
+                  className="p-2 rounded-lg hover:bg-white/10 text-white/60"
+                >
                   <X className="w-5 h-5" />
                 </button>
               </div>
+            </div>
 
-              {/* Modal Content */}
-              <div className="p-5">
-                
-                {/* DETAILS MODAL */}
-                {modalType === 'details' && (
-                  <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-                    {Object.entries(selectedUser)
-                      .filter(([key]) => key !== 'password')
-                      .map(([key, value]) => (
-                        <div key={key} className="flex gap-3 p-3 rounded-lg bg-white/5">
-                          <div className="text-xs text-white/40 w-32 flex-shrink-0">{key}</div>
-                          <div className="text-sm text-white break-all flex-1">
-                            {typeof value === 'object' 
-                              ? <pre className="text-xs whitespace-pre-wrap">{JSON.stringify(value, null, 2)}</pre>
-                              : String(value ?? '-')}
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                )}
-
-                {/* PLAN MODAL */}
-                {modalType === 'plan' && (
-                  <div className="space-y-5">
-                    <div>
-                      <div className="text-sm text-white/50 mb-1">User</div>
-                      <div className="text-white font-medium">{selectedUser.username}</div>
-                    </div>
-
-                    <div>
-                      <div className="text-sm text-white/50 mb-3">Plan auswählen</div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {['free', 'pro', 'ultra', 'ultimate'].map((plan) => {
-                          const config = PLAN_CONFIG[plan];
-                          const Icon = config.icon;
-                          const isSelected = selectedPlan === plan;
-                          return (
-                            <button
-                              key={plan}
-                              onClick={() => setSelectedPlan(plan)}
-                              className={`p-3 rounded-xl text-left transition-all border-2 ${
-                                isSelected ? '' : 'border-transparent bg-white/5 hover:bg-white/10'
-                              }`}
-                              style={isSelected ? { 
-                                background: `${config.color}15`,
-                                borderColor: config.color 
-                              } : {}}
-                            >
-                              <Icon className="w-5 h-5 mb-2" style={{ color: config.color }} />
-                              <div className="font-medium text-white">{config.name}</div>
-                            </button>
-                          );
-                        })}
+            {/* Content - ALL USER DATA */}
+            <div className="p-5 overflow-y-auto flex-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {Object.entries(currentUser)
+                  .filter(([key]) => key !== 'password') // Don't show password
+                  .sort(([a], [b]) => {
+                    // Sort important fields first
+                    const priority = ['id', 'username', 'email', 'firstName', 'lastName', 'subscriptionPlan', 'subscriptionStatus'];
+                    const aIdx = priority.indexOf(a);
+                    const bIdx = priority.indexOf(b);
+                    if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+                    if (aIdx !== -1) return -1;
+                    if (bIdx !== -1) return 1;
+                    return a.localeCompare(b);
+                  })
+                  .map(([key, value]) => (
+                    <div 
+                      key={key} 
+                      className={`p-3 rounded-xl bg-white/5 ${
+                        typeof value === 'object' && value !== null ? 'md:col-span-2' : ''
+                      }`}
+                    >
+                      <div className="text-xs text-white/40 mb-1 font-mono">{key}</div>
+                      <div className="text-sm text-white break-all">
+                        {value === null || value === undefined ? (
+                          <span className="text-white/30 italic">null</span>
+                        ) : typeof value === 'boolean' ? (
+                          <span className={value ? 'text-emerald-400' : 'text-red-400'}>
+                            {value ? 'true' : 'false'}
+                          </span>
+                        ) : typeof value === 'object' ? (
+                          <pre className="text-xs whitespace-pre-wrap overflow-x-auto bg-black/20 p-2 rounded-lg mt-1 text-white/70">
+                            {JSON.stringify(value, null, 2)}
+                          </pre>
+                        ) : key.toLowerCase().includes('at') || key.toLowerCase().includes('date') ? (
+                          <span>{formatDate(String(value))} <span className="text-white/30">({value})</span></span>
+                        ) : (
+                          String(value)
+                        )}
                       </div>
                     </div>
-
-                    <div>
-                      <div className="text-sm text-white/50 mb-3">Status</div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {['active', 'trialing', 'canceled', 'past_due'].map((status) => {
-                          const config = STATUS_CONFIG[status];
-                          const isSelected = selectedStatus === status;
-                          return (
-                            <button
-                              key={status}
-                              onClick={() => setSelectedStatus(status)}
-                              className={`p-2.5 rounded-xl text-center transition-all border-2 ${
-                                isSelected ? '' : 'border-transparent bg-white/5 hover:bg-white/10'
-                              }`}
-                              style={isSelected ? { 
-                                background: `${config.color}15`,
-                                borderColor: config.color 
-                              } : {}}
-                            >
-                              <span className="text-sm" style={{ color: isSelected ? config.color : 'white' }}>
-                                {config.name}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <div className="flex gap-3 pt-2">
-                      <button
-                        onClick={closeModal}
-                        className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-medium transition-colors"
-                      >
-                        Abbrechen
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (!selectedPlan) {
-                            toast({ title: "❌ Bitte Plan auswählen", variant: "destructive" });
-                            return;
-                          }
-                          changePlanMutation.mutate({ 
-                            id: selectedUser.id, 
-                            plan: selectedPlan,
-                            status: selectedStatus 
-                          });
-                        }}
-                        disabled={changePlanMutation.isPending}
-                        className="flex-1 py-2.5 rounded-xl bg-[#FE9100] hover:bg-[#FF7A00] text-black font-semibold transition-colors disabled:opacity-50"
-                      >
-                        {changePlanMutation.isPending ? 'Speichern...' : 'Speichern'}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* PASSWORD MODAL */}
-                {modalType === 'password' && (
-                  <div className="space-y-5">
-                    <div>
-                      <div className="text-sm text-white/50 mb-1">User</div>
-                      <div className="text-white font-medium">{selectedUser.username}</div>
-                    </div>
-
-                    <div>
-                      <div className="text-sm text-white/50 mb-2">Neues Passwort</div>
-                      <input
-                        type="password"
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Mindestens 6 Zeichen"
-                        className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-violet-500/50"
-                        autoFocus
-                      />
-                      {newPassword && newPassword.length < 6 && (
-                        <p className="text-xs text-red-400 mt-2">Mindestens 6 Zeichen erforderlich</p>
-                      )}
-                    </div>
-
-                    <div className="flex gap-3 pt-2">
-                      <button
-                        onClick={closeModal}
-                        className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-medium transition-colors"
-                      >
-                        Abbrechen
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (newPassword.length < 6) {
-                            toast({ title: "❌ Passwort zu kurz", description: "Mindestens 6 Zeichen", variant: "destructive" });
-                            return;
-                          }
-                          changePasswordMutation.mutate({ id: selectedUser.id, password: newPassword });
-                        }}
-                        disabled={changePasswordMutation.isPending || newPassword.length < 6}
-                        className="flex-1 py-2.5 rounded-xl bg-violet-500 hover:bg-violet-600 text-white font-semibold transition-colors disabled:opacity-50"
-                      >
-                        {changePasswordMutation.isPending ? 'Speichern...' : 'Speichern'}
-                      </button>
-                    </div>
-                  </div>
-                )}
+                  ))}
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </div>
+
+            {/* Footer */}
+            <div className="p-5 border-t border-white/10 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowDetailsModal(false)}
+                className="w-full py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-medium transition-colors"
+              >
+                Schließen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
