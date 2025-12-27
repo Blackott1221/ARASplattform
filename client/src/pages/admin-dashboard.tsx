@@ -9,7 +9,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 // ═══════════════════════════════════════════════════════════════
-// 🎨 ARAS ADMIN DASHBOARD - FULLY FUNCTIONAL
+// 🎨 ARAS ADMIN DASHBOARD - FULLY FUNCTIONAL v2.0
 // ═══════════════════════════════════════════════════════════════
 
 const DB_TABLES = [
