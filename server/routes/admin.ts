@@ -18,6 +18,13 @@ function requireAdmin(req: Request, res: Response, next: any) {
   next();
 }
 
+// Tables that have updatedAt column
+const TABLES_WITH_UPDATED_AT = [
+  'users', 'leads', 'calendar-events', 'contacts', 'campaigns',
+  'chat-sessions', 'chat-messages', 'voice-agents', 'call-logs',
+  'voice-tasks', 'feedback', 'twilio-settings'
+];
+
 // Helper function to create CRUD routes for any table
 function createCRUDRoutes(
   tableName: string,
@@ -25,12 +32,13 @@ function createCRUDRoutes(
   router: Router
 ) {
   const basePath = `/${tableName}`;
+  const hasUpdatedAt = TABLES_WITH_UPDATED_AT.includes(tableName);
 
   // GET ALL - List all records (sorted by createdAt DESC if available)
   router.get(basePath, requireAdmin, async (req, res) => {
     try {
       // Check if table has createdAt column for sorting
-      const hasCreatedAt = 'createdAt' in table;
+      const hasCreatedAt = table.createdAt !== undefined;
       const records = hasCreatedAt 
         ? await db.select().from(table).orderBy(desc(table.createdAt))
         : await db.select().from(table);
@@ -75,18 +83,25 @@ function createCRUDRoutes(
     try {
       const { id } = req.params;
       const parsedId = isNaN(Number(id)) ? id : Number(id);
+      
+      // Only add updatedAt if the table has that column
+      const updateData = hasUpdatedAt 
+        ? { ...req.body, updatedAt: new Date() }
+        : { ...req.body };
+      
       const updatedRecord = await db
         .update(table)
-        .set({ ...req.body, updatedAt: new Date() })
+        .set(updateData)
         .where(eq(table.id, parsedId))
         .returning();
       
       if (updatedRecord.length === 0) {
         return res.status(404).json({ error: 'Record not found' });
       }
+      console.log(`[ADMIN] Updated ${tableName} record ${id}:`, Object.keys(req.body));
       res.json(updatedRecord[0]);
     } catch (error: any) {
-      console.error(`Error updating ${tableName}:`, error);
+      console.error(`[ADMIN ERROR] Error updating ${tableName}:`, error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -101,9 +116,10 @@ function createCRUDRoutes(
       if (deletedRecord.length === 0) {
         return res.status(404).json({ error: 'Record not found' });
       }
+      console.log(`[ADMIN] Deleted ${tableName} record ${id}`);
       res.json({ success: true, deleted: deletedRecord[0] });
     } catch (error: any) {
-      console.error(`Error deleting ${tableName}:`, error);
+      console.error(`[ADMIN ERROR] Error deleting ${tableName}:`, error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -125,13 +141,31 @@ createCRUDRoutes('usage-tracking', usageTracking, router);
 createCRUDRoutes('twilio-settings', twilioSettings, router);
 createCRUDRoutes('subscription-plans', subscriptionPlans, router);
 
-// Sessions endpoint (special handling - no update/delete)
+// Sessions endpoint (special handling - uses 'sid' as primary key)
 router.get('/sessions', requireAdmin, async (req, res) => {
   try {
-    const allSessions = await db.select().from(sessions);
-    res.json(allSessions);
+    const allSessions = await db.select().from(sessions).orderBy(desc(sessions.expire));
+    // Map sid to id for frontend compatibility
+    const mapped = allSessions.map(s => ({ ...s, id: s.sid }));
+    res.json(mapped);
   } catch (error: any) {
     console.error('Error fetching sessions:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete session by sid
+router.delete('/sessions/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deleted = await db.delete(sessions).where(eq(sessions.sid, id)).returning();
+    if (deleted.length === 0) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+    console.log(`[ADMIN] Deleted session ${id}`);
+    res.json({ success: true, deleted: deleted[0] });
+  } catch (error: any) {
+    console.error('Error deleting session:', error);
     res.status(500).json({ error: error.message });
   }
 });
