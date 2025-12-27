@@ -217,10 +217,12 @@ export default function AdminDashboard() {
   };
 
   const handleChangePlan = (id: string, currentPlan: string) => {
-    const plans = ['starter', 'professional', 'enterprise', 'free'];
-    const plan = prompt(`Change plan to (${plans.join(', ')}):`, currentPlan);
+    const plans = ['free', 'pro', 'ultra', 'ultimate'];
+    const plan = prompt(`Change plan to (${plans.join(', ')}):`, currentPlan || 'free');
     if (plan && plans.includes(plan.toLowerCase())) {
       changePlanMutation.mutate({ id, plan: plan.toLowerCase(), status: 'active' });
+    } else if (plan) {
+      toast({ title: "❌ Invalid plan", description: `Valid plans: ${plans.join(', ')}`, variant: "destructive" });
     }
   };
 
