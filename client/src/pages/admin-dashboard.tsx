@@ -1,15 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   Users, Database, Calendar, Phone, MessageSquare, 
   Megaphone, Bug, TrendingUp, Search, Trash2, RefreshCw, 
   Shield, Clock, Key, CreditCard, RotateCcw, X, Check, Eye,
-  Zap, Crown, Star, Sparkles, Mail, Building2, AlertCircle, Wifi
+  Zap, Crown, Star, Sparkles, Mail, Building2, AlertCircle, Wifi, Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 // ═══════════════════════════════════════════════════════════════
-// ARAS ADMIN DASHBOARD v3.0 - SIMPLE & WORKING
+// ARAS ADMIN DASHBOARD v3.1 - FIXED MODALS + ROBUST DATA HANDLING
 // ═══════════════════════════════════════════════════════════════
 
 const DB_TABLES = [
@@ -26,14 +26,102 @@ const DB_TABLES = [
   { id: 'sessions', name: 'Sessions', icon: Clock, color: '#78716C' }
 ];
 
+const PLAN_OPTIONS = ['free', 'pro', 'ultra', 'ultimate'] as const;
+const STATUS_OPTIONS = ['active', 'trialing', 'canceled', 'past_due'] as const;
+
+// ═══════════════════════════════════════════════════════════════
+// UTILITY: Convert snake_case to camelCase for frontend compatibility
+// ═══════════════════════════════════════════════════════════════
+function snakeToCamel(obj: any): any {
+  if (Array.isArray(obj)) {
+    return obj.map(snakeToCamel);
+  }
+  if (obj !== null && typeof obj === 'object') {
+    return Object.keys(obj).reduce((acc, key) => {
+      const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+      acc[camelKey] = snakeToCamel(obj[key]);
+      return acc;
+    }, {} as any);
+  }
+  return obj;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UTILITY: Extract array from various API response formats
+// ═══════════════════════════════════════════════════════════════
+function extractArray(data: any): any[] {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  if (data.users && Array.isArray(data.users)) return data.users;
+  if (data.data && Array.isArray(data.data)) return data.data;
+  if (data.records && Array.isArray(data.records)) return data.records;
+  // If it's an object with success flag, try to find the array
+  if (typeof data === 'object') {
+    const keys = Object.keys(data).filter(k => k !== 'success' && k !== 'message');
+    for (const key of keys) {
+      if (Array.isArray(data[key])) return data[key];
+    }
+  }
+  return [];
+}
+
 export default function AdminDashboard() {
   const [selectedTable, setSelectedTable] = useState(DB_TABLES[0]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [modal, setModal] = useState<{type: string; user: any} | null>(null);
-  const [formData, setFormData] = useState({ plan: '', status: '', password: '' });
+  
+  // Modal state - explicitly typed for clarity
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalType, setModalType] = useState<'plan' | 'password' | 'details' | null>(null);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  
+  // Form state for modals
+  const [formPlan, setFormPlan] = useState('free');
+  const [formStatus, setFormStatus] = useState('active');
+  const [formPassword, setFormPassword] = useState('');
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // ═══════════════════════════════════════════════════════════════
+  // MODAL HANDLERS - Explicit and debuggable
+  // ═══════════════════════════════════════════════════════════════
+  const openModal = useCallback((type: 'plan' | 'password' | 'details', user: any) => {
+    console.log('[AdminDashboard] Opening modal:', type, 'for user:', user?.username || user?.id);
+    
+    // Set user first
+    setSelectedUser(user);
+    
+    // Set form defaults based on user data
+    setFormPlan(user?.subscriptionPlan || user?.subscription_plan || 'free');
+    setFormStatus(user?.subscriptionStatus || user?.subscription_status || 'active');
+    setFormPassword('');
+    
+    // Set modal type and open
+    setModalType(type);
+    setModalOpen(true);
+  }, []);
+
+  const closeModal = useCallback(() => {
+    console.log('[AdminDashboard] Closing modal');
+    setModalOpen(false);
+    // Delay clearing data to allow animation
+    setTimeout(() => {
+      setModalType(null);
+      setSelectedUser(null);
+      setFormPassword('');
+    }, 150);
+  }, []);
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && modalOpen) {
+        closeModal();
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [modalOpen, closeModal]);
 
   const getEndpoint = (tableId: string) => {
     const map: Record<string, string> = {
@@ -52,12 +140,18 @@ export default function AdminDashboard() {
     return map[tableId] || `/api/admin/${tableId}`;
   };
 
+  // ═══════════════════════════════════════════════════════════════
+  // DATA FETCHING - Robust handling of various response formats
+  // ═══════════════════════════════════════════════════════════════
+
   // Fetch stats
   const { data: stats } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: async () => {
       const res = await fetch('/api/admin/stats', { credentials: 'include' });
-      return res.ok ? res.json() : {};
+      if (!res.ok) return {};
+      const data = await res.json();
+      return data.stats || data;
     },
     refetchInterval: 30000
   });
@@ -72,12 +166,20 @@ export default function AdminDashboard() {
     refetchInterval: 10000
   });
 
-  // Fetch table data
+  // Fetch table data with robust extraction and conversion
   const { data: tableData = [], isLoading, refetch } = useQuery({
     queryKey: ['admin-table', selectedTable.id],
     queryFn: async () => {
       const res = await fetch(getEndpoint(selectedTable.id), { credentials: 'include' });
-      return res.ok ? res.json() : [];
+      if (!res.ok) {
+        console.error('[AdminDashboard] Failed to fetch:', res.status);
+        return [];
+      }
+      const rawData = await res.json();
+      const arrayData = extractArray(rawData);
+      const camelData = snakeToCamel(arrayData);
+      console.log('[AdminDashboard] Fetched', camelData.length, 'records for', selectedTable.id);
+      return camelData;
     }
   });
 
@@ -99,39 +201,55 @@ export default function AdminDashboard() {
 
   const changePlanMutation = useMutation({
     mutationFn: async ({ id, plan, status }: { id: string; plan: string; status: string }) => {
+      console.log('[AdminDashboard] Changing plan for', id, 'to', plan, status);
       const res = await fetch(`/api/admin/users/${id}/change-plan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ plan, status })
       });
-      if (!res.ok) throw new Error('Failed');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to change plan');
+      }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('[AdminDashboard] Plan changed successfully:', data);
       queryClient.invalidateQueries({ queryKey: ['admin-table'] });
-      toast({ title: "✅ Plan geändert!" });
-      setModal(null);
+      toast({ title: "✅ Plan erfolgreich geändert!", description: `Neuer Plan: ${formPlan}` });
+      closeModal();
     },
-    onError: () => toast({ title: "❌ Fehler", variant: "destructive" })
+    onError: (error: any) => {
+      console.error('[AdminDashboard] Plan change error:', error);
+      toast({ title: "❌ Fehler beim Plan-Ändern", description: error.message, variant: "destructive" });
+    }
   });
 
   const changePasswordMutation = useMutation({
     mutationFn: async ({ id, password }: { id: string; password: string }) => {
+      console.log('[AdminDashboard] Changing password for', id);
       const res = await fetch(`/api/admin/users/${id}/change-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ newPassword: password })
       });
-      if (!res.ok) throw new Error('Failed');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to change password');
+      }
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: "✅ Passwort geändert!" });
-      setModal(null);
+      console.log('[AdminDashboard] Password changed successfully');
+      toast({ title: "✅ Passwort erfolgreich geändert!" });
+      closeModal();
     },
-    onError: () => toast({ title: "❌ Fehler", variant: "destructive" })
+    onError: (error: any) => {
+      console.error('[AdminDashboard] Password change error:', error);
+      toast({ title: "❌ Fehler beim Passwort-Ändern", description: error.message, variant: "destructive" });
+    }
   });
 
   const resetUsageMutation = useMutation({
@@ -152,19 +270,11 @@ export default function AdminDashboard() {
 
   const isOnline = (id: string) => onlineData?.onlineUserIds?.includes(id);
   
-  const filteredData = tableData.filter((item: any) =>
-    Object.values(item).some(v => String(v || '').toLowerCase().includes(searchQuery.toLowerCase()))
-  );
-
-  const openModal = (type: string, user: any) => {
-    console.log('Opening modal:', type, user.username);
-    setFormData({
-      plan: user.subscriptionPlan || 'free',
-      status: user.subscriptionStatus || 'active',
-      password: ''
-    });
-    setModal({ type, user });
-  };
+  const filteredData = Array.isArray(tableData) 
+    ? tableData.filter((item: any) =>
+        Object.values(item).some(v => String(v || '').toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+    : [];
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white p-6">
@@ -367,166 +477,208 @@ export default function AdminDashboard() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      {/* MODALS - SIMPLE CONDITIONAL RENDERING */}
+      {/* MODALS - ROBUST IMPLEMENTATION WITH NEW STATE VARIABLES */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
       
-      {modal && (
+      {modalOpen && (
         <div 
-          className="fixed inset-0 bg-black/80 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
           style={{ zIndex: 99999 }}
-          onClick={() => setModal(null)}
+          onClick={closeModal}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-title"
         >
           <div 
-            className="bg-[#1a1a1c] rounded-2xl w-full max-w-lg border border-white/20 shadow-2xl"
+            className="bg-[#1a1a1c] rounded-2xl w-full max-w-lg border border-white/20 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
             onClick={e => e.stopPropagation()}
+            style={{ position: 'relative', zIndex: 100000 }}
           >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-white/10">
-              <h2 className="text-lg font-bold">
-                {modal.type === 'plan' && 'Plan ändern'}
-                {modal.type === 'password' && 'Passwort ändern'}
-                {modal.type === 'details' && 'User Details'}
+              <h2 id="modal-title" className="text-lg font-bold flex items-center gap-2">
+                {modalType === 'plan' && <><CreditCard className="w-5 h-5 text-[#FE9100]" /> Plan ändern</>}
+                {modalType === 'password' && <><Key className="w-5 h-5 text-violet-400" /> Passwort ändern</>}
+                {modalType === 'details' && <><Eye className="w-5 h-5 text-white/60" /> User Details</>}
               </h2>
-              <button onClick={() => setModal(null)} className="p-2 hover:bg-white/10 rounded-lg">
+              <button 
+                onClick={closeModal} 
+                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                aria-label="Modal schließen"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Content */}
+            {/* Content - with fallback for missing data */}
             <div className="p-4">
-              {/* PLAN MODAL */}
-              {modal.type === 'plan' && (
-                <div className="space-y-4">
-                  <div>
-                    <div className="text-sm text-white/50 mb-1">User</div>
-                    <div className="text-lg font-bold">{modal.user.username}</div>
-                  </div>
-                  
-                  <div>
-                    <div className="text-sm text-white/50 mb-2">Plan</div>
-                    <div className="grid grid-cols-4 gap-2">
-                      {['free', 'pro', 'ultra', 'ultimate'].map(p => (
-                        <button
-                          key={p}
-                          onClick={() => setFormData(d => ({ ...d, plan: p }))}
-                          className={`p-3 rounded-xl text-center capitalize ${
-                            formData.plan === p 
-                              ? 'bg-[#FE9100] text-black font-bold' 
-                              : 'bg-white/10 hover:bg-white/20'
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="text-sm text-white/50 mb-2">Status</div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {['active', 'trialing', 'canceled', 'past_due'].map(s => (
-                        <button
-                          key={s}
-                          onClick={() => setFormData(d => ({ ...d, status: s }))}
-                          className={`p-2 rounded-xl text-center text-sm ${
-                            formData.status === s 
-                              ? 'bg-emerald-500 text-black font-bold' 
-                              : 'bg-white/10 hover:bg-white/20'
-                          }`}
-                        >
-                          {s}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 pt-2">
-                    <button
-                      onClick={() => setModal(null)}
-                      className="flex-1 py-3 rounded-xl bg-white/10 hover:bg-white/20"
-                    >
-                      Abbrechen
-                    </button>
-                    <button
-                      onClick={() => {
-                        changePlanMutation.mutate({
-                          id: modal.user.id,
-                          plan: formData.plan,
-                          status: formData.status
-                        });
-                      }}
-                      disabled={changePlanMutation.isPending}
-                      className="flex-1 py-3 rounded-xl bg-[#FE9100] text-black font-bold hover:bg-[#ff8000] disabled:opacity-50"
-                    >
-                      {changePlanMutation.isPending ? 'Saving...' : 'Speichern'}
-                    </button>
-                  </div>
+              {!selectedUser ? (
+                <div className="text-center py-8 text-white/40">
+                  <AlertCircle className="w-8 h-8 mx-auto mb-2" />
+                  <p>Keine Daten verfügbar</p>
                 </div>
-              )}
-
-              {/* PASSWORD MODAL */}
-              {modal.type === 'password' && (
-                <div className="space-y-4">
-                  <div>
-                    <div className="text-sm text-white/50 mb-1">User</div>
-                    <div className="text-lg font-bold">{modal.user.username}</div>
-                  </div>
-                  
-                  <div>
-                    <div className="text-sm text-white/50 mb-2">Neues Passwort</div>
-                    <input
-                      type="password"
-                      value={formData.password}
-                      onChange={e => setFormData(d => ({ ...d, password: e.target.value }))}
-                      placeholder="Min. 6 Zeichen"
-                      className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-lg"
-                      autoFocus
-                    />
-                  </div>
-
-                  <div className="flex gap-2 pt-2">
-                    <button
-                      onClick={() => setModal(null)}
-                      className="flex-1 py-3 rounded-xl bg-white/10 hover:bg-white/20"
-                    >
-                      Abbrechen
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (formData.password.length >= 6) {
-                          changePasswordMutation.mutate({
-                            id: modal.user.id,
-                            password: formData.password
-                          });
-                        } else {
-                          alert('Mindestens 6 Zeichen!');
-                        }
-                      }}
-                      disabled={changePasswordMutation.isPending}
-                      className="flex-1 py-3 rounded-xl bg-violet-500 text-white font-bold hover:bg-violet-600 disabled:opacity-50"
-                    >
-                      {changePasswordMutation.isPending ? 'Saving...' : 'Speichern'}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* DETAILS MODAL */}
-              {modal.type === 'details' && (
-                <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-                  {Object.entries(modal.user)
-                    .filter(([k]) => k !== 'password')
-                    .map(([k, v]) => (
-                      <div key={k} className="flex gap-2 p-2 rounded-lg bg-white/5">
-                        <div className="w-32 text-xs text-white/40 flex-shrink-0">{k}</div>
-                        <div className="text-sm break-all flex-1">
-                          {v === null ? <span className="text-white/30">null</span> : 
-                           typeof v === 'object' ? <pre className="text-xs">{JSON.stringify(v, null, 2)}</pre> : 
-                           String(v)}
+              ) : (
+                <>
+                  {/* PLAN MODAL */}
+                  {modalType === 'plan' && (
+                    <div className="space-y-4">
+                      <div>
+                        <div className="text-sm text-white/50 mb-1">User</div>
+                        <div className="text-lg font-bold">{selectedUser.username || selectedUser.email || 'Unbekannt'}</div>
+                        <div className="text-xs text-white/40">ID: {selectedUser.id}</div>
+                      </div>
+                      
+                      <div>
+                        <div className="text-sm text-white/50 mb-2">Plan auswählen</div>
+                        <div className="grid grid-cols-4 gap-2">
+                          {PLAN_OPTIONS.map(p => (
+                            <button
+                              key={p}
+                              onClick={() => setFormPlan(p)}
+                              className={`p-3 rounded-xl text-center capitalize transition-all ${
+                                formPlan === p 
+                                  ? 'bg-[#FE9100] text-black font-bold ring-2 ring-[#FE9100]/50' 
+                                  : 'bg-white/10 hover:bg-white/20'
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          ))}
                         </div>
                       </div>
-                    ))}
-                </div>
+
+                      <div>
+                        <div className="text-sm text-white/50 mb-2">Status</div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {STATUS_OPTIONS.map(s => (
+                            <button
+                              key={s}
+                              onClick={() => setFormStatus(s)}
+                              className={`p-2 rounded-xl text-center text-sm transition-all ${
+                                formStatus === s 
+                                  ? 'bg-emerald-500 text-black font-bold ring-2 ring-emerald-500/50' 
+                                  : 'bg-white/10 hover:bg-white/20'
+                              }`}
+                            >
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 pt-4">
+                        <button
+                          onClick={closeModal}
+                          className="flex-1 py-3 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+                        >
+                          Abbrechen
+                        </button>
+                        <button
+                          onClick={() => {
+                            console.log('[AdminDashboard] Submitting plan change:', selectedUser.id, formPlan, formStatus);
+                            changePlanMutation.mutate({
+                              id: selectedUser.id,
+                              plan: formPlan,
+                              status: formStatus
+                            });
+                          }}
+                          disabled={changePlanMutation.isPending}
+                          className="flex-1 py-3 rounded-xl bg-[#FE9100] text-black font-bold hover:bg-[#ff8000] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                        >
+                          {changePlanMutation.isPending ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Speichere...
+                            </>
+                          ) : (
+                            <>
+                              <Check className="w-4 h-4" />
+                              Speichern
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* PASSWORD MODAL */}
+                  {modalType === 'password' && (
+                    <div className="space-y-4">
+                      <div>
+                        <div className="text-sm text-white/50 mb-1">User</div>
+                        <div className="text-lg font-bold">{selectedUser.username || selectedUser.email || 'Unbekannt'}</div>
+                      </div>
+                      
+                      <div>
+                        <div className="text-sm text-white/50 mb-2">Neues Passwort</div>
+                        <input
+                          type="password"
+                          value={formPassword}
+                          onChange={e => setFormPassword(e.target.value)}
+                          placeholder="Min. 6 Zeichen"
+                          className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-lg focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all"
+                          autoFocus
+                        />
+                        {formPassword.length > 0 && formPassword.length < 6 && (
+                          <p className="text-red-400 text-xs mt-1">Mindestens 6 Zeichen erforderlich</p>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2 pt-4">
+                        <button
+                          onClick={closeModal}
+                          className="flex-1 py-3 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+                        >
+                          Abbrechen
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (formPassword.length >= 6) {
+                              changePasswordMutation.mutate({
+                                id: selectedUser.id,
+                                password: formPassword
+                              });
+                            } else {
+                              toast({ title: "❌ Mindestens 6 Zeichen!", variant: "destructive" });
+                            }
+                          }}
+                          disabled={changePasswordMutation.isPending || formPassword.length < 6}
+                          className="flex-1 py-3 rounded-xl bg-violet-500 text-white font-bold hover:bg-violet-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                        >
+                          {changePasswordMutation.isPending ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Speichere...
+                            </>
+                          ) : (
+                            <>
+                              <Check className="w-4 h-4" />
+                              Speichern
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* DETAILS MODAL */}
+                  {modalType === 'details' && (
+                    <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                      {Object.entries(selectedUser)
+                        .filter(([k]) => k !== 'password')
+                        .map(([k, v]) => (
+                          <div key={k} className="flex gap-2 p-2 rounded-lg bg-white/5">
+                            <div className="w-32 text-xs text-white/40 flex-shrink-0 font-mono">{k}</div>
+                            <div className="text-sm break-all flex-1">
+                              {v === null ? <span className="text-white/30">null</span> : 
+                               typeof v === 'object' ? <pre className="text-xs overflow-x-auto">{JSON.stringify(v, null, 2)}</pre> : 
+                               String(v)}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
