@@ -9,7 +9,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 // ═══════════════════════════════════════════════════════════════
-// ARAS ADMIN DASHBOARD v3.1 - FIXED MODALS + ROBUST DATA HANDLING
+// ARAS ADMIN DASHBOARD v3.2 - BULLETPROOF MODALS (2024-12-29)
 // ═══════════════════════════════════════════════════════════════
 
 const DB_TABLES = [
@@ -285,7 +285,7 @@ export default function AdminDashboard() {
             <Shield className="w-5 h-5 text-black" />
           </div>
           <div>
-            <h1 className="text-xl font-bold">Admin Dashboard v3</h1>
+            <h1 className="text-xl font-bold">Admin Dashboard v3.2</h1>
             <p className="text-sm text-white/40">Manage everything</p>
           </div>
         </div>
@@ -477,7 +477,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      {/* MODALS - ROBUST IMPLEMENTATION WITH NEW STATE VARIABLES */}
+      {/* MODALS v3.2 - BULLETPROOF WITH EXHAUSTIVE SWITCH */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
       
       {modalOpen && (
@@ -487,198 +487,203 @@ export default function AdminDashboard() {
           onClick={closeModal}
           role="dialog"
           aria-modal="true"
-          aria-labelledby="modal-title"
         >
           <div 
-            className="bg-[#1a1a1c] rounded-2xl w-full max-w-lg border border-white/20 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+            className="bg-[#1a1a1c] rounded-2xl w-full max-w-lg border border-white/20 shadow-2xl"
             onClick={e => e.stopPropagation()}
-            style={{ position: 'relative', zIndex: 100000 }}
+            style={{ zIndex: 100000 }}
           >
-            {/* Header */}
+            {/* DEBUG HEADER - always visible */}
             <div className="flex items-center justify-between p-4 border-b border-white/10">
-              <h2 id="modal-title" className="text-lg font-bold flex items-center gap-2">
-                {modalType === 'plan' && <><CreditCard className="w-5 h-5 text-[#FE9100]" /> Plan ändern</>}
-                {modalType === 'password' && <><Key className="w-5 h-5 text-violet-400" /> Passwort ändern</>}
-                {modalType === 'details' && <><Eye className="w-5 h-5 text-white/60" /> User Details</>}
+              <h2 className="text-lg font-bold flex items-center gap-2">
+                {modalType === 'plan' ? (
+                  <><CreditCard className="w-5 h-5 text-[#FE9100]" /> Plan ändern</>
+                ) : modalType === 'password' ? (
+                  <><Key className="w-5 h-5 text-violet-400" /> Passwort ändern</>
+                ) : modalType === 'details' ? (
+                  <><Eye className="w-5 h-5 text-white/60" /> User Details</>
+                ) : (
+                  <><AlertCircle className="w-5 h-5 text-red-500" /> Modal (type: {String(modalType)})</>
+                )}
               </h2>
               <button 
+                type="button"
                 onClick={closeModal} 
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                aria-label="Modal schließen"
+                className="p-2 hover:bg-white/10 rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Content - with fallback for missing data */}
+            {/* CONTENT - exhaustive rendering */}
             <div className="p-4">
-              {!selectedUser ? (
+              {/* Case: No user selected */}
+              {!selectedUser && (
                 <div className="text-center py-8 text-white/40">
                   <AlertCircle className="w-8 h-8 mx-auto mb-2" />
-                  <p>Keine Daten verfügbar</p>
+                  <p>Keine User-Daten</p>
+                  <p className="text-xs mt-2">modalType: {String(modalType)}</p>
                 </div>
-              ) : (
-                <>
-                  {/* PLAN MODAL */}
-                  {modalType === 'plan' && (
-                    <div className="space-y-4">
-                      <div>
-                        <div className="text-sm text-white/50 mb-1">User</div>
-                        <div className="text-lg font-bold">{selectedUser.username || selectedUser.email || 'Unbekannt'}</div>
-                        <div className="text-xs text-white/40">ID: {selectedUser.id}</div>
-                      </div>
-                      
-                      <div>
-                        <div className="text-sm text-white/50 mb-2">Plan auswählen</div>
-                        <div className="grid grid-cols-4 gap-2">
-                          {PLAN_OPTIONS.map(p => (
-                            <button
-                              key={p}
-                              onClick={() => setFormPlan(p)}
-                              className={`p-3 rounded-xl text-center capitalize transition-all ${
-                                formPlan === p 
-                                  ? 'bg-[#FE9100] text-black font-bold ring-2 ring-[#FE9100]/50' 
-                                  : 'bg-white/10 hover:bg-white/20'
-                              }`}
-                            >
-                              {p}
-                            </button>
-                          ))}
+              )}
+
+              {/* Case: User selected + Plan modal */}
+              {selectedUser && modalType === 'plan' && (
+                <div className="space-y-4">
+                  <div className="p-3 rounded-lg bg-white/5">
+                    <div className="text-sm text-white/50">User</div>
+                    <div className="text-lg font-bold">{selectedUser.username || selectedUser.email || '?'}</div>
+                    <div className="text-xs text-white/40 font-mono">ID: {selectedUser.id}</div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-sm text-white/50 mb-2">Plan auswählen</div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {['free', 'pro', 'ultra', 'ultimate'].map(p => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setFormPlan(p)}
+                          className={`p-3 rounded-xl text-center capitalize font-medium ${
+                            formPlan === p 
+                              ? 'bg-[#FE9100] text-black font-bold' 
+                              : 'bg-white/10 hover:bg-white/20 text-white'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-sm text-white/50 mb-2">Status</div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {['active', 'trialing', 'canceled', 'past_due'].map(s => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setFormStatus(s)}
+                          className={`p-2 rounded-xl text-center text-sm ${
+                            formStatus === s 
+                              ? 'bg-emerald-500 text-black font-bold' 
+                              : 'bg-white/10 hover:bg-white/20 text-white'
+                          }`}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-4">
+                    <button
+                      type="button"
+                      onClick={closeModal}
+                      className="flex-1 py-3 rounded-xl bg-white/10 hover:bg-white/20"
+                    >
+                      Abbrechen
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        changePlanMutation.mutate({
+                          id: selectedUser.id,
+                          plan: formPlan,
+                          status: formStatus
+                        });
+                      }}
+                      disabled={changePlanMutation.isPending}
+                      className="flex-1 py-3 rounded-xl bg-[#FE9100] text-black font-bold hover:bg-[#ff8000] disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {changePlanMutation.isPending ? (
+                        <><Loader2 className="w-4 h-4 animate-spin" /> Speichere...</>
+                      ) : (
+                        <><Check className="w-4 h-4" /> Speichern</>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Case: User selected + Password modal */}
+              {selectedUser && modalType === 'password' && (
+                <div className="space-y-4">
+                  <div className="p-3 rounded-lg bg-white/5">
+                    <div className="text-sm text-white/50">User</div>
+                    <div className="text-lg font-bold">{selectedUser.username || selectedUser.email || '?'}</div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-sm text-white/50 mb-2">Neues Passwort</div>
+                    <input
+                      type="password"
+                      value={formPassword}
+                      onChange={e => setFormPassword(e.target.value)}
+                      placeholder="Min. 6 Zeichen"
+                      className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-lg"
+                      autoFocus
+                    />
+                    {formPassword.length > 0 && formPassword.length < 6 && (
+                      <p className="text-red-400 text-xs mt-1">Mindestens 6 Zeichen</p>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2 pt-4">
+                    <button
+                      type="button"
+                      onClick={closeModal}
+                      className="flex-1 py-3 rounded-xl bg-white/10 hover:bg-white/20"
+                    >
+                      Abbrechen
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (formPassword.length >= 6) {
+                          changePasswordMutation.mutate({
+                            id: selectedUser.id,
+                            password: formPassword
+                          });
+                        }
+                      }}
+                      disabled={changePasswordMutation.isPending || formPassword.length < 6}
+                      className="flex-1 py-3 rounded-xl bg-violet-500 text-white font-bold hover:bg-violet-600 disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {changePasswordMutation.isPending ? (
+                        <><Loader2 className="w-4 h-4 animate-spin" /> Speichere...</>
+                      ) : (
+                        <><Check className="w-4 h-4" /> Speichern</>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Case: User selected + Details modal */}
+              {selectedUser && modalType === 'details' && (
+                <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+                  {Object.entries(selectedUser)
+                    .filter(([k]) => k !== 'password')
+                    .map(([k, v]) => (
+                      <div key={k} className="flex gap-2 p-2 rounded-lg bg-white/5">
+                        <div className="w-32 text-xs text-white/40 flex-shrink-0 font-mono">{k}</div>
+                        <div className="text-sm break-all flex-1">
+                          {v === null ? <span className="text-white/30">null</span> : 
+                           typeof v === 'object' ? <pre className="text-xs">{JSON.stringify(v, null, 2)}</pre> : 
+                           String(v)}
                         </div>
                       </div>
+                    ))}
+                </div>
+              )}
 
-                      <div>
-                        <div className="text-sm text-white/50 mb-2">Status</div>
-                        <div className="grid grid-cols-2 gap-2">
-                          {STATUS_OPTIONS.map(s => (
-                            <button
-                              key={s}
-                              onClick={() => setFormStatus(s)}
-                              className={`p-2 rounded-xl text-center text-sm transition-all ${
-                                formStatus === s 
-                                  ? 'bg-emerald-500 text-black font-bold ring-2 ring-emerald-500/50' 
-                                  : 'bg-white/10 hover:bg-white/20'
-                              }`}
-                            >
-                              {s}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2 pt-4">
-                        <button
-                          onClick={closeModal}
-                          className="flex-1 py-3 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
-                        >
-                          Abbrechen
-                        </button>
-                        <button
-                          onClick={() => {
-                            console.log('[AdminDashboard] Submitting plan change:', selectedUser.id, formPlan, formStatus);
-                            changePlanMutation.mutate({
-                              id: selectedUser.id,
-                              plan: formPlan,
-                              status: formStatus
-                            });
-                          }}
-                          disabled={changePlanMutation.isPending}
-                          className="flex-1 py-3 rounded-xl bg-[#FE9100] text-black font-bold hover:bg-[#ff8000] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
-                        >
-                          {changePlanMutation.isPending ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              Speichere...
-                            </>
-                          ) : (
-                            <>
-                              <Check className="w-4 h-4" />
-                              Speichern
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* PASSWORD MODAL */}
-                  {modalType === 'password' && (
-                    <div className="space-y-4">
-                      <div>
-                        <div className="text-sm text-white/50 mb-1">User</div>
-                        <div className="text-lg font-bold">{selectedUser.username || selectedUser.email || 'Unbekannt'}</div>
-                      </div>
-                      
-                      <div>
-                        <div className="text-sm text-white/50 mb-2">Neues Passwort</div>
-                        <input
-                          type="password"
-                          value={formPassword}
-                          onChange={e => setFormPassword(e.target.value)}
-                          placeholder="Min. 6 Zeichen"
-                          className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-lg focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all"
-                          autoFocus
-                        />
-                        {formPassword.length > 0 && formPassword.length < 6 && (
-                          <p className="text-red-400 text-xs mt-1">Mindestens 6 Zeichen erforderlich</p>
-                        )}
-                      </div>
-
-                      <div className="flex gap-2 pt-4">
-                        <button
-                          onClick={closeModal}
-                          className="flex-1 py-3 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
-                        >
-                          Abbrechen
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (formPassword.length >= 6) {
-                              changePasswordMutation.mutate({
-                                id: selectedUser.id,
-                                password: formPassword
-                              });
-                            } else {
-                              toast({ title: "❌ Mindestens 6 Zeichen!", variant: "destructive" });
-                            }
-                          }}
-                          disabled={changePasswordMutation.isPending || formPassword.length < 6}
-                          className="flex-1 py-3 rounded-xl bg-violet-500 text-white font-bold hover:bg-violet-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
-                        >
-                          {changePasswordMutation.isPending ? (
-                            <>
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              Speichere...
-                            </>
-                          ) : (
-                            <>
-                              <Check className="w-4 h-4" />
-                              Speichern
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* DETAILS MODAL */}
-                  {modalType === 'details' && (
-                    <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-                      {Object.entries(selectedUser)
-                        .filter(([k]) => k !== 'password')
-                        .map(([k, v]) => (
-                          <div key={k} className="flex gap-2 p-2 rounded-lg bg-white/5">
-                            <div className="w-32 text-xs text-white/40 flex-shrink-0 font-mono">{k}</div>
-                            <div className="text-sm break-all flex-1">
-                              {v === null ? <span className="text-white/30">null</span> : 
-                               typeof v === 'object' ? <pre className="text-xs overflow-x-auto">{JSON.stringify(v, null, 2)}</pre> : 
-                               String(v)}
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  )}
-                </>
+              {/* Case: Unknown modalType (should never happen) */}
+              {selectedUser && modalType !== 'plan' && modalType !== 'password' && modalType !== 'details' && (
+                <div className="text-center py-8 text-red-400">
+                  <AlertCircle className="w-8 h-8 mx-auto mb-2" />
+                  <p>Unbekannter Modal-Typ</p>
+                  <p className="text-xs mt-2 font-mono">modalType: "{String(modalType)}"</p>
+                </div>
               )}
             </div>
           </div>
