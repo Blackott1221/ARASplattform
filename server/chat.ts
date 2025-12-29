@@ -4,6 +4,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { db } from "./db";
 import { chatMessages, chatSessions, users } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
+import { getKnowledgeDigest } from './knowledge/context-builder';
 
 // Extend express-session types
 declare module "express-session" {
@@ -268,12 +269,21 @@ router.post("/chat/messages", async (req: Request, res: Response) => {
       content: msg.message,
     }));
 
-    // Generate enhanced system prompt with full user context
-    const enhancedSystemPrompt = getSystemPrompt(user);
+    // 🧠 Inject Knowledge Digest from user data sources
+    const knowledgeDigest = await getKnowledgeDigest(userId, 'space');
+    const digestCharCount = knowledgeDigest.length;
+    const digestSourceCount = (knowledgeDigest.match(/• \[/g) || []).length;
+    
+    // Generate enhanced system prompt with full user context + knowledge digest
+    const baseSystemPrompt = getSystemPrompt(user);
+    const enhancedSystemPrompt = knowledgeDigest 
+      ? `${baseSystemPrompt}\n\n${knowledgeDigest}` 
+      : baseSystemPrompt;
 
     console.log(`[CHAT] 💬 ${user.firstName} (${user.company}) | Session: ${currentSessionId}`);
     console.log(`[CHAT] 📊 Context: ${contextMessages.length} messages | Profile enriched: ${user.profileEnriched}`);
-    console.log(`[CHAT] 🔥 Using Gemini EXP-1206 (NEWEST) with LIVE DATA & GROUNDING`);
+    console.log(`[CHAT] 🧠 knowledgeDigestInjected: { userId: ${userId}, sourceCount: ${digestSourceCount}, charCount: ${digestCharCount}, first200: "${knowledgeDigest.slice(0, 200).replace(/\n/g, ' ')}" }`);
+    console.log(`[CHAT] 🔥 Using Gemini 2.5 Flash with LIVE DATA & GROUNDING`);
 
     // Build conversation history for Gemini
     const conversationHistory = contextMessages.map(msg => ({

@@ -179,8 +179,8 @@ function Router() {
           <Route path="/app/power" component={Power} />
           <Route path="/voice-agents" component={VoiceAgents} />
           <Route path="/app/voice-agents" component={VoiceAgents} />
-          <Route path="/leads" component={Leads} />
-          <Route path="/app/leads" component={Leads} />
+          <Route path="/leads" component={AppPage} />
+          <Route path="/app/leads" component={AppPage} />
           <Route path="/admin" component={AdminDashboard} />
           <Route path="/admin-dashboard" component={AdminDashboard} />
           <Route path="/app/admin" component={AdminDashboard} />

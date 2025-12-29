@@ -96,7 +96,7 @@ export default function Leads() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/user'] });
-      toast({ title: 'Saved', description: 'Business intelligence updated.' });
+      toast({ title: 'Gespeichert', description: 'Business Intelligence aktualisiert.' });
       setIsEditingBusiness(false);
     },
     onError: (error: any) => {
@@ -146,15 +146,15 @@ export default function Leads() {
 
     // Validation
     if (newDataSource.type === 'text' && !newDataSource.content.trim()) {
-      setAddSourceError('Please enter text content');
+      setAddSourceError('Bitte Textinhalt eingeben');
       return;
     }
     if (newDataSource.type === 'url' && !newDataSource.url.trim()) {
-      setAddSourceError('Please enter a URL');
+      setAddSourceError('Bitte URL eingeben');
       return;
     }
     if (newDataSource.type === 'file' && !selectedFile) {
-      setAddSourceError('Please select a file');
+      setAddSourceError('Bitte Datei auswählen');
       return;
     }
 
@@ -197,7 +197,7 @@ export default function Leads() {
         throw new Error(data.message || `Server error: ${response.status}`);
       }
 
-      toast({ title: 'Success', description: 'Data source added!' });
+      toast({ title: 'Erfolg', description: 'Datenquelle hinzugefügt!' });
       queryClient.invalidateQueries({ queryKey: ['/api/user/data-sources'] });
       refetchDataSources();
       setShowAddDataDialog(false);
@@ -206,9 +206,9 @@ export default function Leads() {
       setAddSourceError(null);
     } catch (error: any) {
       console.error('[ADD_SOURCE] Error:', error);
-      const errMsg = error.message || 'Failed to add data source';
+      const errMsg = error.message || 'Datenquelle konnte nicht hinzugefügt werden';
       setAddSourceError(errMsg); // Persistent error display
-      toast({ title: 'Error', description: errMsg, variant: 'destructive' });
+      toast({ title: 'Fehler', description: errMsg, variant: 'destructive' });
     } finally {
       setIsAddingSource(false);
     }
@@ -222,7 +222,7 @@ export default function Leads() {
         credentials: 'include',
       });
       if (!response.ok) throw new Error('Failed to delete');
-      toast({ title: 'Deleted', description: 'Data source removed.' });
+      toast({ title: 'Gelöscht', description: 'Datenquelle entfernt.' });
       refetchDataSources();
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -245,8 +245,8 @@ export default function Leads() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-white">Knowledge Base</h1>
-            <p className="text-sm text-gray-400 mt-1">Manage your AI data sources and business intelligence</p>
+            <h1 className="text-2xl font-bold text-white">Wissensdatenbank</h1>
+            <p className="text-sm text-gray-400 mt-1">Verwalte deine KI-Datenquellen und Business Intelligence</p>
           </div>
           <div className="text-right text-xs text-gray-500">
             <div>{format(new Date(), 'dd. MMM yyyy', { locale: de })}</div>
@@ -257,17 +257,17 @@ export default function Leads() {
         {/* Stats Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-            <div className="text-xs text-gray-400 mb-1">Data Sources</div>
+            <div className="text-xs text-gray-400 mb-1">Datenquellen</div>
             <div className="text-xl font-bold text-white">{dataSources.length}</div>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-            <div className="text-xs text-gray-400 mb-1">AI Messages</div>
+            <div className="text-xs text-gray-400 mb-1">KI-Nachrichten</div>
             <div className="text-xl font-bold text-white">
               {subscriptionData?.aiMessagesUsed || 0} / {subscriptionData?.aiMessagesLimit || 100}
             </div>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-            <div className="text-xs text-gray-400 mb-1">Voice Calls</div>
+            <div className="text-xs text-gray-400 mb-1">Anrufe</div>
             <div className="text-xl font-bold text-white">
               {subscriptionData?.voiceCallsUsed || 0} / {subscriptionData?.voiceCallsLimit || 50}
             </div>
@@ -284,22 +284,22 @@ export default function Leads() {
           {/* Data Sources */}
           <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
             <div className="p-4 border-b border-white/10 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-white">Data Sources</h2>
+              <h2 className="text-base font-semibold text-white">Datenquellen</h2>
               <Button
                 type="button"
                 onClick={() => setShowAddDataDialog(true)}
                 size="sm"
                 className="bg-[#FE9100] hover:bg-[#FE9100]/80 text-white text-xs h-8 px-3"
               >
-                + Add
+                + Hinzufügen
               </Button>
             </div>
             <div className="p-4 space-y-2 max-h-[400px] overflow-y-auto">
               {isLoadingDataSources ? (
-                <div className="text-center py-8 text-gray-500">Loading...</div>
+                <div className="text-center py-8 text-gray-500">Laden...</div>
               ) : dataSources.length === 0 ? (
                 <div className="text-center py-8 text-gray-500 text-sm">
-                  No data sources yet. Add your first one!
+                  Noch keine Datenquellen. Füge deine erste hinzu!
                 </div>
               ) : (
                 dataSources.map((source) => (
@@ -321,7 +321,7 @@ export default function Leads() {
                         </span>
                       </div>
                       <div className="text-sm text-white mt-1 truncate">
-                        {source.title || source.fileName || source.url || 'Untitled'}
+                        {source.title || source.fileName || source.url || 'Ohne Titel'}
                       </div>
                       <div className="text-xs text-gray-500 mt-0.5">
                         {safeDateLabel(source.createdAt)}
@@ -352,7 +352,7 @@ export default function Leads() {
                   variant="outline"
                   className="text-xs h-8 px-3 border-white/20 text-gray-300 hover:bg-white/10"
                 >
-                  Edit
+                  Bearbeiten
                 </Button>
               ) : (
                 <div className="flex gap-2">
@@ -363,7 +363,7 @@ export default function Leads() {
                     variant="outline"
                     className="text-xs h-8 px-3 border-white/20 text-gray-300 hover:bg-white/10"
                   >
-                    Cancel
+                    Abbrechen
                   </Button>
                   <Button
                     type="button"
@@ -372,7 +372,7 @@ export default function Leads() {
                     className="bg-[#FE9100] hover:bg-[#FE9100]/80 text-white text-xs h-8 px-3"
                     disabled={updateAiProfileMutation.isPending}
                   >
-                    {updateAiProfileMutation.isPending ? 'Saving...' : 'Save'}
+                    {updateAiProfileMutation.isPending ? 'Speichern...' : 'Speichern'}
                   </Button>
                 </div>
               )}
@@ -381,58 +381,58 @@ export default function Leads() {
               {isEditingBusiness ? (
                 <>
                   <div>
-                    <label className="text-xs text-gray-400 mb-1 block">Company Description</label>
+                    <label className="text-xs text-gray-400 mb-1 block">Unternehmensbeschreibung</label>
                     <Textarea
                       value={editedBusiness.companyDescription}
                       onChange={(e) => setEditedBusiness({...editedBusiness, companyDescription: e.target.value})}
                       className="bg-white/5 border-white/10 text-white text-sm min-h-[80px]"
-                      placeholder="Describe your company..."
+                      placeholder="Beschreibe dein Unternehmen..."
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 mb-1 block">Target Audience</label>
+                    <label className="text-xs text-gray-400 mb-1 block">Zielgruppe</label>
                     <Input
                       value={editedBusiness.targetAudience}
                       onChange={(e) => setEditedBusiness({...editedBusiness, targetAudience: e.target.value})}
                       className="bg-white/5 border-white/10 text-white text-sm"
-                      placeholder="Who are your customers?"
+                      placeholder="Wer sind deine Kunden?"
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 mb-1 block">Keywords (comma-separated)</label>
+                    <label className="text-xs text-gray-400 mb-1 block">Keywords (kommagetrennt)</label>
                     <Input
                       value={editedBusiness.effectiveKeywords}
                       onChange={(e) => setEditedBusiness({...editedBusiness, effectiveKeywords: e.target.value})}
                       className="bg-white/5 border-white/10 text-white text-sm"
-                      placeholder="keyword1, keyword2, ..."
+                      placeholder="Keyword1, Keyword2, ..."
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 mb-1 block">Competitors (comma-separated)</label>
+                    <label className="text-xs text-gray-400 mb-1 block">Wettbewerber (kommagetrennt)</label>
                     <Input
                       value={editedBusiness.competitors}
                       onChange={(e) => setEditedBusiness({...editedBusiness, competitors: e.target.value})}
                       className="bg-white/5 border-white/10 text-white text-sm"
-                      placeholder="competitor1, competitor2, ..."
+                      placeholder="Wettbewerber1, Wettbewerber2, ..."
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 mb-1 block">Services</label>
+                    <label className="text-xs text-gray-400 mb-1 block">Dienstleistungen</label>
                     <Textarea
                       value={editedBusiness.services}
                       onChange={(e) => setEditedBusiness({...editedBusiness, services: e.target.value})}
                       className="bg-white/5 border-white/10 text-white text-sm min-h-[60px]"
-                      placeholder="What services do you offer?"
+                      placeholder="Welche Dienstleistungen bietest du an?"
                     />
                   </div>
                 </>
               ) : (
                 <>
-                  <InfoRow label="Company" value={aiProfile.companyDescription || 'Not set'} />
-                  <InfoRow label="Target Audience" value={aiProfile.targetAudience || 'Not set'} />
-                  <InfoRow label="Keywords" value={Array.isArray(aiProfile.effectiveKeywords) ? aiProfile.effectiveKeywords.join(', ') : 'Not set'} />
-                  <InfoRow label="Competitors" value={Array.isArray(aiProfile.competitors) ? aiProfile.competitors.join(', ') : 'Not set'} />
-                  <InfoRow label="Services" value={aiProfile.services || 'Not set'} />
+                  <InfoRow label="Unternehmen" value={aiProfile.companyDescription || 'Nicht gesetzt'} />
+                  <InfoRow label="Zielgruppe" value={aiProfile.targetAudience || 'Nicht gesetzt'} />
+                  <InfoRow label="Keywords" value={Array.isArray(aiProfile.effectiveKeywords) ? aiProfile.effectiveKeywords.join(', ') : 'Nicht gesetzt'} />
+                  <InfoRow label="Wettbewerber" value={Array.isArray(aiProfile.competitors) ? aiProfile.competitors.join(', ') : 'Nicht gesetzt'} />
+                  <InfoRow label="Dienstleistungen" value={aiProfile.services || 'Nicht gesetzt'} />
                 </>
               )}
             </div>
@@ -441,12 +441,12 @@ export default function Leads() {
 
         {/* Profile Info */}
         <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-          <h2 className="text-base font-semibold text-white mb-4">Profile</h2>
+          <h2 className="text-base font-semibold text-white mb-4">Profil</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <InfoRow label="Name" value={userProfile.fullName || userProfile.username || 'Unknown'} />
-            <InfoRow label="Email" value={userProfile.email || 'Not set'} />
-            <InfoRow label="Company" value={userProfile.company || 'Not set'} />
-            <InfoRow label="Member Since" value={safeFormatDate(userProfile.createdAt, 'dd.MM.yyyy')} />
+            <InfoRow label="Name" value={userProfile.fullName || userProfile.username || 'Unbekannt'} />
+            <InfoRow label="E-Mail" value={userProfile.email || 'Nicht gesetzt'} />
+            <InfoRow label="Unternehmen" value={userProfile.company || 'Nicht gesetzt'} />
+            <InfoRow label="Mitglied seit" value={safeFormatDate(userProfile.createdAt, 'dd.MM.yyyy')} />
           </div>
         </div>
       </div>
@@ -455,9 +455,9 @@ export default function Leads() {
       <Dialog open={showAddDataDialog} onOpenChange={(open) => { setShowAddDataDialog(open); if (open) setAddSourceError(null); }}>
         <DialogContent className="bg-[#111] border border-white/10 text-white max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-lg font-semibold">Add Data Source</DialogTitle>
+            <DialogTitle className="text-lg font-semibold">Datenquelle hinzufügen</DialogTitle>
             <DialogDescription className="text-gray-400 text-sm">
-              Add information to enhance your AI assistant
+              Informationen hinzufügen, um deinen KI-Assistenten zu verbessern
             </DialogDescription>
           </DialogHeader>
           
@@ -471,7 +471,7 @@ export default function Leads() {
             
             {/* Type Selection */}
             <div>
-              <label className="text-xs text-gray-400 mb-2 block">Type</label>
+              <label className="text-xs text-gray-400 mb-2 block">Typ</label>
               <div className="flex gap-2">
                 {(['text', 'url', 'file'] as const).map((t) => (
                   <button
@@ -484,7 +484,7 @@ export default function Leads() {
                         : 'bg-white/5 text-gray-400 hover:bg-white/10'
                     }`}
                   >
-                    {t === 'file' ? 'File' : t.charAt(0).toUpperCase() + t.slice(1)}
+                    {t === 'file' ? 'Datei' : t === 'text' ? 'Text' : 'URL'}
                   </button>
                 ))}
               </div>
@@ -492,11 +492,11 @@ export default function Leads() {
             
             {/* Title */}
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Title (optional)</label>
+              <label className="text-xs text-gray-400 mb-1 block">Titel (optional)</label>
               <Input
                 value={newDataSource.title}
                 onChange={(e) => setNewDataSource({...newDataSource, title: e.target.value})}
-                placeholder="e.g. Product Catalog"
+                placeholder="z.B. Produktkatalog"
                 className="bg-white/5 border-white/10 text-white text-sm"
               />
             </div>
@@ -504,11 +504,11 @@ export default function Leads() {
             {/* Content based on type */}
             {newDataSource.type === 'text' && (
               <div>
-                <label className="text-xs text-gray-400 mb-1 block">Text Content</label>
+                <label className="text-xs text-gray-400 mb-1 block">Textinhalt</label>
                 <Textarea
                   value={newDataSource.content}
                   onChange={(e) => setNewDataSource({...newDataSource, content: e.target.value})}
-                  placeholder="Paste your text content here..."
+                  placeholder="Füge deinen Text hier ein..."
                   className="bg-white/5 border-white/10 text-white text-sm min-h-[120px]"
                 />
                 <p className="text-xs text-gray-500 mt-1">{newDataSource.content.length} / 50,000</p>
@@ -529,7 +529,7 @@ export default function Leads() {
 
             {newDataSource.type === 'file' && (
               <div>
-                <label className="text-xs text-gray-400 mb-1 block">File (PDF, TXT, DOC - max 25MB)</label>
+                <label className="text-xs text-gray-400 mb-1 block">Datei (PDF, TXT, DOC - max 25MB)</label>
                 <div className={`border border-dashed rounded-lg p-6 text-center transition-colors ${
                   selectedFile ? 'border-[#FE9100] bg-[#FE9100]/5' : 'border-white/20 hover:border-white/30'
                 }`}>
@@ -547,7 +547,7 @@ export default function Leads() {
                         <p className="text-xs text-gray-400 mt-1">{Math.round(selectedFile.size / 1024)} KB</p>
                       </div>
                     ) : (
-                      <p className="text-gray-400 text-sm">Click to select a file</p>
+                      <p className="text-gray-400 text-sm">Klicke, um eine Datei auszuwählen</p>
                     )}
                   </label>
                 </div>
@@ -563,7 +563,7 @@ export default function Leads() {
                 className="border-white/20 text-gray-300 hover:bg-white/10 text-sm"
                 disabled={isAddingSource}
               >
-                Cancel
+                Abbrechen
               </Button>
               <Button
                 type="button"
@@ -571,7 +571,7 @@ export default function Leads() {
                 disabled={isAddingSource}
                 className="bg-[#FE9100] hover:bg-[#FE9100]/80 text-white text-sm"
               >
-                {isAddingSource ? 'Adding...' : 'Add Source'}
+                {isAddingSource ? 'Hinzufügen...' : 'Hinzufügen'}
               </Button>
             </div>
           </div>
