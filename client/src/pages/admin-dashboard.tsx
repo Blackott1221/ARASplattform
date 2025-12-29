@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   Users, Database, Calendar, Phone, MessageSquare, 
@@ -9,7 +10,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 // ═══════════════════════════════════════════════════════════════
-// ARAS ADMIN DASHBOARD v3.2 - BULLETPROOF MODALS (2024-12-29)
+// ARAS ADMIN DASHBOARD v3.3 - PORTAL MODAL + ALL PLANS (2024-12-29)
 // ═══════════════════════════════════════════════════════════════
 
 const DB_TABLES = [
@@ -26,8 +27,18 @@ const DB_TABLES = [
   { id: 'sessions', name: 'Sessions', icon: Clock, color: '#78716C' }
 ];
 
-const PLAN_OPTIONS = ['free', 'pro', 'ultra', 'ultimate'] as const;
+// Plan options with keys that match the database
+// These are the ONLY valid plan values - sent directly to API
+const PLAN_OPTIONS: { key: string; label: string }[] = [
+  { key: 'free', label: 'Free' },
+  { key: 'pro', label: 'Pro' },
+  { key: 'ultra', label: 'Ultra' },
+  { key: 'ultimate', label: 'Ultimate' }
+];
 const STATUS_OPTIONS = ['active', 'trialing', 'canceled', 'past_due'] as const;
+
+// Type for valid plan keys
+type PlanKey = 'free' | 'pro' | 'ultra' | 'ultimate';
 
 // ═══════════════════════════════════════════════════════════════
 // UTILITY: Convert snake_case to camelCase for frontend compatibility
@@ -112,7 +123,7 @@ export default function AdminDashboard() {
     }, 150);
   }, []);
 
-  // Handle ESC key to close modal
+  // Handle ESC key to close modal + scroll lock
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && modalOpen) {
@@ -120,7 +131,18 @@ export default function AdminDashboard() {
       }
     };
     window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
+    
+    // Scroll lock when modal is open
+    if (modalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    
+    return () => {
+      window.removeEventListener('keydown', handleEsc);
+      document.body.style.overflow = '';
+    };
   }, [modalOpen, closeModal]);
 
   const getEndpoint = (tableId: string) => {
@@ -201,28 +223,43 @@ export default function AdminDashboard() {
 
   const changePlanMutation = useMutation({
     mutationFn: async ({ id, plan, status }: { id: string; plan: string; status: string }) => {
-      console.log('[AdminDashboard] Changing plan for', id, 'to', plan, status);
+      console.log('[AdminDashboard] API Request - Changing plan:', { userId: id, plan, status });
+      
       const res = await fetch(`/api/admin/users/${id}/change-plan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ plan, status })
       });
+      
+      const responseData = await res.json().catch(() => ({ error: 'Invalid response' }));
+      console.log('[AdminDashboard] API Response:', { status: res.status, data: responseData });
+      
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to change plan');
+        throw new Error(responseData.error || `HTTP ${res.status}: Failed to change plan`);
       }
-      return res.json();
+      
+      // Verify the plan was actually changed
+      if (responseData.user && responseData.user.subscription_plan !== plan) {
+        console.warn('[AdminDashboard] Plan mismatch! Expected:', plan, 'Got:', responseData.user.subscription_plan);
+      }
+      
+      return responseData;
     },
     onSuccess: (data) => {
       console.log('[AdminDashboard] Plan changed successfully:', data);
       queryClient.invalidateQueries({ queryKey: ['admin-table'] });
-      toast({ title: "✅ Plan erfolgreich geändert!", description: `Neuer Plan: ${formPlan}` });
+      const savedPlan = data?.user?.subscription_plan || formPlan;
+      toast({ title: "✅ Plan erfolgreich geändert!", description: `Neuer Plan: ${savedPlan.toUpperCase()}` });
       closeModal();
     },
     onError: (error: any) => {
-      console.error('[AdminDashboard] Plan change error:', error);
-      toast({ title: "❌ Fehler beim Plan-Ändern", description: error.message, variant: "destructive" });
+      console.error('[AdminDashboard] Plan change FAILED:', error);
+      toast({ 
+        title: "❌ Plan konnte nicht geändert werden", 
+        description: error.message || 'Unbekannter Fehler - siehe Console', 
+        variant: "destructive" 
+      });
     }
   });
 
@@ -285,7 +322,7 @@ export default function AdminDashboard() {
             <Shield className="w-5 h-5 text-black" />
           </div>
           <div>
-            <h1 className="text-xl font-bold">Admin Dashboard v3.2</h1>
+            <h1 className="text-xl font-bold">Admin Dashboard v3.3</h1>
             <p className="text-sm text-white/40">Manage everything</p>
           </div>
         </div>
@@ -477,24 +514,24 @@ export default function AdminDashboard() {
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      {/* MODALS v3.2 - BULLETPROOF WITH EXHAUSTIVE SWITCH */}
+      {/* MODALS v3.3 - PORTAL-BASED, ALWAYS CENTERED IN VIEWPORT */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
       
-      {modalOpen && (
+      {modalOpen && createPortal(
         <div 
           className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
-          style={{ zIndex: 99999 }}
+          style={{ zIndex: 99999, position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
           onClick={closeModal}
           role="dialog"
           aria-modal="true"
         >
           <div 
-            className="bg-[#1a1a1c] rounded-2xl w-full max-w-lg border border-white/20 shadow-2xl"
+            className="bg-[#1a1a1c] rounded-2xl w-full max-w-lg border border-white/20 shadow-2xl max-h-[90vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}
             style={{ zIndex: 100000 }}
           >
-            {/* DEBUG HEADER - always visible */}
-            <div className="flex items-center justify-between p-4 border-b border-white/10">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-white/10 sticky top-0 bg-[#1a1a1c]">
               <h2 className="text-lg font-bold flex items-center gap-2">
                 {modalType === 'plan' ? (
                   <><CreditCard className="w-5 h-5 text-[#FE9100]" /> Plan ändern</>
@@ -515,14 +552,13 @@ export default function AdminDashboard() {
               </button>
             </div>
 
-            {/* CONTENT - exhaustive rendering */}
+            {/* CONTENT */}
             <div className="p-4">
               {/* Case: No user selected */}
               {!selectedUser && (
                 <div className="text-center py-8 text-white/40">
                   <AlertCircle className="w-8 h-8 mx-auto mb-2" />
                   <p>Keine User-Daten</p>
-                  <p className="text-xs mt-2">modalType: {String(modalType)}</p>
                 </div>
               )}
 
@@ -533,37 +569,44 @@ export default function AdminDashboard() {
                     <div className="text-sm text-white/50">User</div>
                     <div className="text-lg font-bold">{selectedUser.username || selectedUser.email || '?'}</div>
                     <div className="text-xs text-white/40 font-mono">ID: {selectedUser.id}</div>
+                    <div className="text-xs text-white/40 mt-1">Aktueller Plan: <span className="text-[#FE9100] font-medium">{selectedUser.subscriptionPlan || 'free'}</span></div>
                   </div>
                   
                   <div>
                     <div className="text-sm text-white/50 mb-2">Plan auswählen</div>
-                    <div className="grid grid-cols-4 gap-2">
-                      {['free', 'pro', 'ultra', 'ultimate'].map(p => (
+                    <div className="grid grid-cols-2 gap-2">
+                      {PLAN_OPTIONS.map(({ key, label }) => (
                         <button
-                          key={p}
+                          key={key}
                           type="button"
-                          onClick={() => setFormPlan(p)}
-                          className={`p-3 rounded-xl text-center capitalize font-medium ${
-                            formPlan === p 
-                              ? 'bg-[#FE9100] text-black font-bold' 
+                          onClick={() => {
+                            console.log('[Plan Button] Selected:', key);
+                            setFormPlan(key);
+                          }}
+                          className={`p-3 rounded-xl text-center font-medium transition-all ${
+                            formPlan === key 
+                              ? 'bg-[#FE9100] text-black font-bold ring-2 ring-[#FE9100]/50' 
                               : 'bg-white/10 hover:bg-white/20 text-white'
                           }`}
                         >
-                          {p}
+                          {label}
                         </button>
                       ))}
+                    </div>
+                    <div className="text-xs text-white/30 mt-2 text-center">
+                      Gewählt: <span className="text-[#FE9100] font-mono">{formPlan}</span>
                     </div>
                   </div>
 
                   <div>
                     <div className="text-sm text-white/50 mb-2">Status</div>
                     <div className="grid grid-cols-2 gap-2">
-                      {['active', 'trialing', 'canceled', 'past_due'].map(s => (
+                      {STATUS_OPTIONS.map(s => (
                         <button
                           key={s}
                           type="button"
                           onClick={() => setFormStatus(s)}
-                          className={`p-2 rounded-xl text-center text-sm ${
+                          className={`p-2 rounded-xl text-center text-sm transition-all ${
                             formStatus === s 
                               ? 'bg-emerald-500 text-black font-bold' 
                               : 'bg-white/10 hover:bg-white/20 text-white'
@@ -586,6 +629,7 @@ export default function AdminDashboard() {
                     <button
                       type="button"
                       onClick={() => {
+                        console.log('[Save Button] Submitting:', { id: selectedUser.id, plan: formPlan, status: formStatus });
                         changePlanMutation.mutate({
                           id: selectedUser.id,
                           plan: formPlan,
@@ -677,17 +721,17 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              {/* Case: Unknown modalType (should never happen) */}
+              {/* Case: Unknown modalType */}
               {selectedUser && modalType !== 'plan' && modalType !== 'password' && modalType !== 'details' && (
                 <div className="text-center py-8 text-red-400">
                   <AlertCircle className="w-8 h-8 mx-auto mb-2" />
-                  <p>Unbekannter Modal-Typ</p>
-                  <p className="text-xs mt-2 font-mono">modalType: "{String(modalType)}"</p>
+                  <p>Unbekannter Modal-Typ: {String(modalType)}</p>
                 </div>
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
