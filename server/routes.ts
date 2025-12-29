@@ -1597,6 +1597,78 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     }
   });
   
+  // Change user plan and status (used by admin dashboard)
+  app.post('/api/admin/users/:userId/change-plan', requireAdmin, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const { plan, status } = req.body;
+      
+      if (!plan) {
+        return res.status(400).json({ error: 'Plan is required' });
+      }
+
+      const targetStatus = status || 'active';
+      
+      const [user] = await client`
+        UPDATE users
+        SET subscription_plan = ${plan},
+            subscription_status = ${targetStatus},
+            updated_at = NOW()
+        WHERE id = ${userId}
+        RETURNING id, username, subscription_plan, subscription_status`;
+      
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      logger.info('[ADMIN] User plan changed', { userId, username: user.username, plan, status: targetStatus });
+      
+      res.json({
+        success: true,
+        message: `User ${user.username} plan changed to ${plan}`,
+        user
+      });
+    } catch (error: any) {
+      logger.error('[ADMIN] Change plan failed', { error: error.message });
+      res.status(500).json({ error: 'Failed to change user plan' });
+    }
+  });
+
+  // Change user password (admin)
+  app.post('/api/admin/users/:userId/change-password', requireAdmin, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const { newPassword } = req.body;
+      
+      if (!newPassword || newPassword.length < 6) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters' });
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      
+      const [user] = await client`
+        UPDATE users
+        SET password = ${hashedPassword},
+            updated_at = NOW()
+        WHERE id = ${userId}
+        RETURNING id, username`;
+      
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      logger.info('[ADMIN] User password changed', { userId, username: user.username });
+      
+      res.json({
+        success: true,
+        message: `Password changed for ${user.username}`
+      });
+    } catch (error: any) {
+      logger.error('[ADMIN] Change password failed', { error: error.message });
+      res.status(500).json({ error: 'Failed to change password' });
+    }
+  });
+
   // Reset user usage counters
   app.post('/api/admin/users/:userId/reset-usage', requireAdmin, async (req: any, res) => {
     try {
