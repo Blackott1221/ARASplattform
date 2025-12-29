@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Sidebar } from '@/components/layout/sidebar';
-import { TopBar } from '@/components/layout/topbar';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -50,7 +48,7 @@ interface DataSource {
 }
 
 export default function Leads() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Note: Sidebar/TopBar are rendered by app.tsx, this page only renders content
   const [currentTime, setCurrentTime] = useState(new Date());
   const [aiSummary, setAiSummary] = useState<string>('');
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
@@ -71,14 +69,6 @@ export default function Leads() {
   const [digestPreview, setDigestPreview] = useState<{ digest: string; meta: { sourceCount: number; charCount: number; mode: string } } | null>(null);
   const [isLoadingDigest, setIsLoadingDigest] = useState(false);
   const [digestMode, setDigestMode] = useState<'space' | 'power'>('space');
-
-  // Fetch data sources from API
-  const { data: dataSourcesResponse, isLoading: isLoadingDataSources, refetch: refetchDataSources } = useQuery<{ success: boolean; dataSources: DataSource[] }>({
-    queryKey: ['/api/user/data-sources'],
-    enabled: !!user && !authLoading,
-  });
-
-  const dataSources = dataSourcesResponse?.dataSources || [];
   
   // Edit States
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -94,14 +84,20 @@ export default function Leads() {
     sources: true
   });
   
+  // Hooks must be called before any queries that depend on them
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: subscriptionData } = useQuery<SubscriptionResponse>({
-    queryKey: ['/api/user/subscription'],
+  // Fetch data sources from API
+  const { data: dataSourcesResponse, isLoading: isLoadingDataSources, refetch: refetchDataSources } = useQuery<{ success: boolean; dataSources: DataSource[] }>({
+    queryKey: ['/api/user/data-sources'],
     enabled: !!user && !authLoading,
   });
+
+  const dataSources = dataSourcesResponse?.dataSources || [];
+
+  // subscriptionData is handled by app.tsx
 
   // Mutation to update AI profile (business intelligence)
   const updateAiProfileMutation = useMutation({
@@ -636,23 +632,8 @@ Gib mir jetzt eine KRASSE 4-5 Satz Zusammenfassung die ${userProfile.firstName} 
   };
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar 
-        activeSection="leads"
-        onSectionChange={() => {}}
-        isCollapsed={sidebarCollapsed} 
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} 
-      />
-      
-      <div className="flex-1 flex flex-col">
-        <TopBar 
-          currentSection="leads"
-          user={userProfile}
-          subscriptionData={subscriptionData}
-          isVisible={true}
-        />
-        
-        <div className="flex-1 overflow-y-auto p-8 premium-scroll">
+    <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <div className="flex-1 overflow-y-auto p-8 premium-scroll">
           <div className="max-w-[1600px] mx-auto space-y-8">
             
             {/* 🔥 ULTRA PREMIUM HEADER */}
@@ -1486,7 +1467,6 @@ Gib mir jetzt eine KRASSE 4-5 Satz Zusammenfassung die ${userProfile.firstName} 
             </motion.div>
           </div>
         </div>
-      </div>
 
       {/* 🔥 ADD DATA SOURCE DIALOG */}
       <Dialog open={showAddDataDialog} onOpenChange={setShowAddDataDialog}>
