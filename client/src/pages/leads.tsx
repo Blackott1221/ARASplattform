@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Sidebar } from '@/components/layout/sidebar';
-import { TopBar } from '@/components/layout/topbar';
+// Layout components removed - app.tsx handles Sidebar/TopBar
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -97,6 +96,18 @@ interface DataSource {
   updatedAt: string;
 }
 
+// Safe date helper to prevent RangeError
+const safeDateLabel = (value: string | null | undefined): string => {
+  if (!value) return '—';
+  try {
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return '—';
+    return formatDistanceToNow(d, { locale: de, addSuffix: true });
+  } catch {
+    return '—';
+  }
+};
+
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
@@ -105,7 +116,7 @@ export default function Leads() {
   // ─────────────────────────────────────────────────────────────
   // STATE (preserved exactly as before)
   // ─────────────────────────────────────────────────────────────
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // sidebarCollapsed removed - app.tsx handles sidebar state
   const [currentTime, setCurrentTime] = useState(new Date());
   const [aiSummary, setAiSummary] = useState<string>('');
   const [isLoadingSummary, setIsLoadingSummary] = useState(false);
@@ -120,6 +131,7 @@ export default function Leads() {
   const [newDataSource, setNewDataSource] = useState({ type: 'text' as 'text' | 'url' | 'file', title: '', content: '', url: '' });
   const [isAddingSource, setIsAddingSource] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [addSourceError, setAddSourceError] = useState<string | null>(null); // Persistent error display
   
   // Knowledge Digest Preview State
   const [showDigestPreview, setShowDigestPreview] = useState(false);
@@ -337,20 +349,24 @@ Format as JSON array with: { "type": "opportunity|risk|strategy", "title": "..."
   }, [user]);
 
   const handleAddDataSource = async () => {
+    setAddSourceError(null); // Clear previous error
+    
+    // Validation
     if (newDataSource.type === 'text' && !newDataSource.content) {
-      toast({ title: 'Error', description: 'Please enter text content', variant: 'destructive' });
+      setAddSourceError('Please enter text content');
       return;
     }
     if (newDataSource.type === 'url' && !newDataSource.url) {
-      toast({ title: 'Error', description: 'Please enter a URL', variant: 'destructive' });
+      setAddSourceError('Please enter a URL');
       return;
     }
     if (newDataSource.type === 'file' && !selectedFile) {
-      toast({ title: 'Error', description: 'Please select a file', variant: 'destructive' });
+      setAddSourceError('Please select a file');
       return;
     }
 
     setIsAddingSource(true);
+    console.log('[ADD_SOURCE] Starting...', { type: newDataSource.type, title: newDataSource.title });
 
     try {
       let response: Response;
@@ -359,35 +375,47 @@ Format as JSON array with: { "type": "opportunity|risk|strategy", "title": "..."
         const formData = new FormData();
         formData.append('file', selectedFile);
         if (newDataSource.title) formData.append('title', newDataSource.title);
+        console.log('[ADD_SOURCE] Uploading file:', selectedFile.name);
         response = await fetch('/api/user/data-sources/upload', {
           method: 'POST',
           credentials: 'include',
           body: formData,
         });
       } else {
+        const payload = {
+          type: newDataSource.type,
+          title: newDataSource.title || undefined,
+          contentText: newDataSource.type === 'text' ? newDataSource.content : undefined,
+          url: newDataSource.type === 'url' ? newDataSource.url : undefined,
+        };
+        console.log('[ADD_SOURCE] POST JSON:', payload);
         response = await fetch('/api/user/data-sources', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({
-            type: newDataSource.type,
-            title: newDataSource.title || undefined,
-            contentText: newDataSource.type === 'text' ? newDataSource.content : undefined,
-            url: newDataSource.type === 'url' ? newDataSource.url : undefined,
-          }),
+          body: JSON.stringify(payload),
         });
       }
 
       const data = await response.json();
-      if (!response.ok || !data.success) throw new Error(data.message || 'Failed to add data source');
+      console.log('[ADD_SOURCE] Response:', response.status, data);
+      
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || `Server error: ${response.status}`);
+      }
 
       toast({ title: 'Success', description: 'Data source added to your knowledge base!' });
+      queryClient.invalidateQueries({ queryKey: ['/api/user/data-sources'] });
       refetchDataSources();
       setShowAddDataDialog(false);
       setNewDataSource({ type: 'text', title: '', content: '', url: '' });
       setSelectedFile(null);
+      setAddSourceError(null);
     } catch (error: any) {
-      toast({ title: 'Error', description: error.message || 'Failed to add data source', variant: 'destructive' });
+      console.error('[ADD_SOURCE] Error:', error);
+      const errMsg = error.message || 'Failed to add data source';
+      setAddSourceError(errMsg);
+      toast({ title: 'Error', description: errMsg, variant: 'destructive' });
     } finally {
       setIsAddingSource(false);
     }
@@ -476,26 +504,9 @@ Format as JSON array with: { "type": "opportunity|risk|strategy", "title": "..."
   // RENDER
   // ─────────────────────────────────────────────────────────────
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0b0b0f]">
+    <div className="flex-1 min-h-0 overflow-y-auto bg-[#0b0b0f] relative">
       {/* Subtle radial vignette */}
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.4)_100%)] pointer-events-none" />
-      
-      <Sidebar 
-        activeSection="leads"
-        onSectionChange={() => {}}
-        isCollapsed={sidebarCollapsed} 
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} 
-      />
-      
-      <div className="flex-1 flex flex-col relative">
-        <TopBar 
-          currentSection="leads"
-          user={userProfile}
-          subscriptionData={subscriptionData}
-          isVisible={true}
-        />
-        
-        <div className="flex-1 overflow-y-auto">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.4)_100%)] pointer-events-none" />
           <div className="max-w-[1480px] mx-auto px-8 py-10">
             
             {/* ═══════════════════════════════════════════════════════════════
@@ -539,7 +550,7 @@ Format as JSON array with: { "type": "opportunity|risk|strategy", "title": "..."
                 </Chip>
                 {userProfile.updatedAt && (
                   <Chip>
-                    Updated {formatDistanceToNow(new Date(userProfile.updatedAt), { locale: de, addSuffix: true })}
+                    Updated {safeDateLabel(userProfile.updatedAt)}
                   </Chip>
                 )}
                 <Chip variant={userProfile.profileEnriched ? 'success' : 'warning'}>
@@ -775,7 +786,7 @@ Format as JSON array with: { "type": "opportunity|risk|strategy", "title": "..."
                     <div className="space-y-2">
                       <p className="text-xs uppercase tracking-wider text-white/40 font-medium">Account Age</p>
                       <p className="text-2xl font-semibold text-white">
-                        {userProfile.createdAt ? formatDistanceToNow(new Date(userProfile.createdAt), { locale: de }) : '—'}
+                        {safeDateLabel(userProfile.createdAt)}
                       </p>
                       <p className="text-xs text-white/40">Since creation</p>
                     </div>
@@ -915,13 +926,11 @@ Format as JSON array with: { "type": "opportunity|risk|strategy", "title": "..."
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
       {/* ═══════════════════════════════════════════════════════════════
           ADD DATA SOURCE DIALOG
       ═══════════════════════════════════════════════════════════════ */}
-      <Dialog open={showAddDataDialog} onOpenChange={setShowAddDataDialog}>
+      <Dialog open={showAddDataDialog} onOpenChange={(open) => { setShowAddDataDialog(open); if (open) setAddSourceError(null); }}>
         <DialogContent className="bg-[#0f0f13] border border-white/10 backdrop-blur-2xl text-white max-w-lg rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-white">
@@ -933,6 +942,13 @@ Format as JSON array with: { "type": "opportunity|risk|strategy", "title": "..."
           </DialogHeader>
           
           <div className="space-y-5 mt-4">
+            {/* Persistent Error Display */}
+            {addSourceError && (
+              <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+                <p className="text-sm text-red-400 font-medium">{addSourceError}</p>
+              </div>
+            )}
+            
             {/* Type Selection */}
             <div className="space-y-2">
               <label className="text-xs uppercase tracking-wider text-white/40 font-medium">Type</label>
