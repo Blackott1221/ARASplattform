@@ -49,12 +49,12 @@ export default function VoiceTasks() {
   };
 
   const executeTask = async (taskId: number) => {
-    await fetch(\`/api/voice/tasks/\${taskId}/execute\`, { method: "POST" });
+    await fetch(`/api/voice/tasks/${taskId}/execute`, { method: "POST" });
     fetchTasks();
   };
 
   const deleteTask = async (taskId: number) => {
-    await fetch(\`/api/voice/tasks/\${taskId}\`, { method: "DELETE" });
+    await fetch(`/api/voice/tasks/${taskId}`, { method: "DELETE" });
     fetchTasks();
   };
 
@@ -163,11 +163,11 @@ export default function VoiceTasks() {
                       <Clock className="w-4 h-4" />
                       {new Date(task.createdAt).toLocaleDateString('de-DE')}
                     </span>
-                    <span className={\`px-3 py-1 rounded-full text-xs \${
+                    <span className={`px-3 py-1 rounded-full text-xs ${
                       task.status === 'completed' ? 'bg-green-500/20 text-green-500' :
                       task.status === 'executing' ? 'bg-yellow-500/20 text-yellow-500' :
                       'bg-gray-500/20 text-gray-500'
-                    }\`}>
+                    }`}>
                       {task.status}
                     </span>
                   </div>
