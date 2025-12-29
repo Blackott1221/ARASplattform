@@ -2221,11 +2221,37 @@ export class MemStorage implements IStorage {
     try {
       const { client } = await import('./db');
       
-      // First check if table exists and has any rows
+      // Ensure table exists first
+      await client`
+        CREATE TABLE IF NOT EXISTS user_data_sources (
+          id SERIAL PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          type TEXT NOT NULL,
+          title TEXT,
+          status TEXT DEFAULT 'active',
+          content_text TEXT,
+          url TEXT,
+          file_name TEXT,
+          file_mime TEXT,
+          file_size INTEGER,
+          file_storage_key TEXT,
+          error_message TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `.catch((e: any) => logger.warn(`[STORAGE] Table creation warning: ${e.message}`));
+      
+      // First check if table has any rows
       const countResult = await client`
         SELECT COUNT(*) as total FROM user_data_sources
       `.catch(() => [{ total: 0 }]);
       logger.info(`[STORAGE] Total rows in user_data_sources: ${countResult[0]?.total || 0}`);
+      
+      // Get distinct user_ids for debugging
+      const distinctIds = await client`
+        SELECT DISTINCT user_id FROM user_data_sources LIMIT 5
+      `.catch(() => []);
+      logger.info(`[STORAGE] Distinct user_ids in table: ${distinctIds.map((r: any) => r.user_id).join(', ') || 'none'}`);
       
       const result = await client`
         SELECT * FROM user_data_sources 
@@ -2237,15 +2263,12 @@ export class MemStorage implements IStorage {
       // Log first source if exists for debugging
       if (result.length > 0) {
         logger.info(`[STORAGE] First source: id=${result[0].id} type=${result[0].type} user_id=${result[0].user_id}`);
+      } else {
+        logger.warn(`[STORAGE] No sources found for userId=${userId} - check if userId matches stored user_id values`);
       }
       
       return result;
     } catch (error: any) {
-      // If table doesn't exist, return empty array
-      if (error.code === '42P01') {
-        logger.warn(`[STORAGE] user_data_sources table does not exist yet`);
-        return [];
-      }
       logger.error(`[STORAGE] Error fetching data sources:`, error);
       return [];
     }

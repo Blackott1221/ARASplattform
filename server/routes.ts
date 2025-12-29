@@ -364,6 +364,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========================================
+  // DEBUG ROUTE: Show exact DB state for data sources
+  // ========================================
+  app.get('/api/user/data-sources/debug', requireAuth, async (req: any, res) => {
+    try {
+      const canonicalUserId = getAuthUserId(req);
+      const sessionUserId = req.session?.userId || null;
+      const passportUserId = req.user?.id || null;
+      
+      logger.info(`[DATA_SOURCES_DEBUG] canonicalUserId=${canonicalUserId} sessionUserId=${sessionUserId} passportUserId=${passportUserId}`);
+      
+      // Ensure table exists first
+      await client`
+        CREATE TABLE IF NOT EXISTS user_data_sources (
+          id SERIAL PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          type TEXT NOT NULL CHECK (type IN ('text', 'url', 'file')),
+          title TEXT,
+          status TEXT DEFAULT 'active' CHECK (status IN ('pending', 'processing', 'active', 'failed')),
+          content_text TEXT,
+          url TEXT,
+          file_name TEXT,
+          file_mime TEXT,
+          file_size INTEGER,
+          file_storage_key TEXT,
+          error_message TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `;
+      
+      // Get total row count
+      const totalResult = await client`SELECT COUNT(*) as total FROM user_data_sources`;
+      const rowsTotal = parseInt(totalResult[0]?.total || '0');
+      
+      // Get rows for canonical userId
+      const canonicalRows = canonicalUserId 
+        ? await client`SELECT COUNT(*) as count FROM user_data_sources WHERE user_id = ${canonicalUserId}`
+        : [{ count: 0 }];
+      const rowsForCanonical = parseInt(canonicalRows[0]?.count || '0');
+      
+      // Get rows for session userId (if different)
+      let rowsForSession = 0;
+      if (sessionUserId && sessionUserId !== canonicalUserId) {
+        const sessionRows = await client`SELECT COUNT(*) as count FROM user_data_sources WHERE user_id = ${sessionUserId}`;
+        rowsForSession = parseInt(sessionRows[0]?.count || '0');
+      }
+      
+      // Get rows for passport userId (if different)
+      let rowsForPassport = 0;
+      if (passportUserId && passportUserId !== canonicalUserId && passportUserId !== sessionUserId) {
+        const passportRows = await client`SELECT COUNT(*) as count FROM user_data_sources WHERE user_id = ${passportUserId}`;
+        rowsForPassport = parseInt(passportRows[0]?.count || '0');
+      }
+      
+      // Get sample of ALL rows (to see what user_ids exist)
+      const sample = await client`
+        SELECT id, user_id, type, title, status, 
+               LEFT(content_text, 50) as content_preview,
+               url, created_at
+        FROM user_data_sources 
+        ORDER BY created_at DESC 
+        LIMIT 10
+      `;
+      
+      // Get distinct user_ids in the table
+      const distinctUserIds = await client`SELECT DISTINCT user_id FROM user_data_sources LIMIT 20`;
+      
+      res.json({
+        success: true,
+        canonicalUserId,
+        sessionUserId,
+        passportUserId,
+        table: 'user_data_sources',
+        rowsTotal,
+        rowsForCanonical,
+        rowsForSession,
+        rowsForPassport,
+        distinctUserIds: distinctUserIds.map((r: any) => r.user_id),
+        sample
+      });
+    } catch (error: any) {
+      logger.error('❌ Error in debug route:', error);
+      res.status(500).json({ success: false, message: error.message, stack: error.stack });
+    }
+  });
+
   // GET all data sources for user
   app.get('/api/user/data-sources', requireAuth, async (req: any, res) => {
     try {
@@ -371,21 +458,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!userId) {
         return res.status(401).json({ success: false, message: 'User ID not found' });
       }
+      
+      // Ensure table exists
+      await client`
+        CREATE TABLE IF NOT EXISTS user_data_sources (
+          id SERIAL PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          type TEXT NOT NULL CHECK (type IN ('text', 'url', 'file')),
+          title TEXT,
+          status TEXT DEFAULT 'active',
+          content_text TEXT,
+          url TEXT,
+          file_name TEXT,
+          file_mime TEXT,
+          file_size INTEGER,
+          file_storage_key TEXT,
+          error_message TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `;
+      
       logger.info(`[DATA_SOURCES] GET userId=${userId}`);
       const result = await client`
         SELECT * FROM user_data_sources 
         WHERE user_id = ${userId} 
         ORDER BY created_at DESC
       `;
-      res.json({ success: true, dataSources: result });
+      
+      logger.info(`[DATA_SOURCES] GET found ${result.length} sources for userId=${userId}`);
+      res.json({ 
+        success: true, 
+        userId,
+        count: result.length,
+        dataSources: result 
+      });
     } catch (error: any) {
       logger.error('❌ Error fetching data sources:', error);
-      // If table doesn't exist, return empty array
-      if (error.code === '42P01') {
-        res.json({ success: true, dataSources: [] });
-      } else {
-        res.status(500).json({ success: false, message: 'Failed to fetch data sources' });
-      }
+      res.status(500).json({ success: false, message: error.message || 'Failed to fetch data sources' });
     }
   });
 
@@ -438,8 +548,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         RETURNING *
       `;
 
-      logger.info(`[DATA_SOURCES] ✅ CREATED id=${newSource.id} userId=${userId} type=${type}`);
-      res.json({ success: true, dataSource: newSource, userId });
+      logger.info(`[DATA_SOURCES] ✅ CREATED id=${newSource.id} userId=${userId} type=${type} content_length=${(contentText || '').length}`);
+      
+      // Verify it was actually saved by re-reading
+      const verifyResult = await client`SELECT id, user_id, type FROM user_data_sources WHERE id = ${newSource.id}`;
+      logger.info(`[DATA_SOURCES] VERIFY: saved row exists=${verifyResult.length > 0} user_id=${verifyResult[0]?.user_id}`);
+      
+      res.json({ 
+        success: true, 
+        userId,
+        source: {
+          id: newSource.id,
+          userId: newSource.user_id,
+          type: newSource.type,
+          title: newSource.title,
+          content: newSource.content_text,
+          url: newSource.url,
+          createdAt: newSource.created_at
+        }
+      });
     } catch (error: any) {
       logger.error('❌ Error creating data source:', error);
       res.status(500).json({ success: false, message: error.message || 'Failed to create data source' });
@@ -461,6 +588,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       logger.error('❌ Error in file upload route:', error);
       res.status(500).json({ success: false, message: 'Fehler beim Datei-Upload' });
+    }
+  });
+
+  // MIGRATE data sources from old userId to canonical userId
+  app.post('/api/user/data-sources/migrate', requireAuth, async (req: any, res) => {
+    try {
+      const canonicalUserId = getAuthUserId(req);
+      const { oldUserId } = req.body;
+      
+      if (!canonicalUserId) {
+        return res.status(401).json({ success: false, message: 'User ID not found' });
+      }
+      if (!oldUserId) {
+        return res.status(400).json({ success: false, message: 'oldUserId is required' });
+      }
+      if (oldUserId === canonicalUserId) {
+        return res.status(400).json({ success: false, message: 'oldUserId same as canonicalUserId' });
+      }
+      
+      logger.info(`[MIGRATE] Attempting to migrate data sources from ${oldUserId} to ${canonicalUserId}`);
+      
+      // Count rows to migrate
+      const countResult = await client`SELECT COUNT(*) as count FROM user_data_sources WHERE user_id = ${oldUserId}`;
+      const rowsToMigrate = parseInt(countResult[0]?.count || '0');
+      
+      if (rowsToMigrate === 0) {
+        return res.json({ success: true, message: 'No rows to migrate', migrated: 0 });
+      }
+      
+      // Migrate
+      const result = await client`
+        UPDATE user_data_sources 
+        SET user_id = ${canonicalUserId}, updated_at = NOW()
+        WHERE user_id = ${oldUserId}
+        RETURNING id
+      `;
+      
+      logger.info(`[MIGRATE] ✅ Migrated ${result.length} rows from ${oldUserId} to ${canonicalUserId}`);
+      
+      res.json({ 
+        success: true, 
+        message: `Migrated ${result.length} data sources`,
+        migrated: result.length,
+        fromUserId: oldUserId,
+        toUserId: canonicalUserId
+      });
+    } catch (error: any) {
+      logger.error('❌ Error migrating data sources:', error);
+      res.status(500).json({ success: false, message: error.message });
     }
   });
 

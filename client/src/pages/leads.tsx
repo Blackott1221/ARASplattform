@@ -252,9 +252,18 @@ function LeadsContent() {
         throw new Error(data.message || `Server error: ${response.status}`);
       }
 
+      console.log('[ADD_SOURCE] ✅ Success! userId from response:', data.userId);
       toast({ title: 'Erfolg', description: 'Datenquelle hinzugefügt!' });
+      
+      // Invalidate ALL relevant queries
       queryClient.invalidateQueries({ queryKey: ['/api/user/data-sources'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user/knowledge/digest', 'space'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user/knowledge/digest', 'power'] });
+      
+      // Refetch data
       refetchDataSources();
+      refetchDigest();
+      
       setShowAddDataDialog(false);
       setNewDataSource({ type: 'text', title: '', content: '', url: '' });
       setSelectedFile(null);
