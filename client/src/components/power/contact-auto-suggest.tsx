@@ -144,61 +144,61 @@ export function ContactAutoSuggest({
       <AnimatePresence>
         {showSuggestions && filteredContacts.length > 0 && (
           <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.15 }}
-            className="absolute w-full rounded-2xl overflow-hidden"
+            initial={{ opacity: 0, y: -4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: 0.12, ease: 'easeOut' }}
+            className="absolute left-0 right-0 mt-2 rounded-xl overflow-hidden"
             style={{
-              top: 'calc(100% + 8px)',
-              maxHeight: '260px',
+              top: '100%',
+              maxHeight: '156px',
               overflowY: 'auto',
-              zIndex: 40,
-              background: 'rgba(12,12,12,0.98)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              boxShadow: '0 12px 40px rgba(0,0,0,0.85)',
-              backdropFilter: 'blur(20px)'
+              zIndex: 50,
+              background: 'linear-gradient(180deg, rgba(18,18,20,0.98) 0%, rgba(12,12,14,0.99) 100%)',
+              border: '1px solid rgba(254,145,0,0.15)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05) inset, 0 4px 16px rgba(254,145,0,0.08)',
+              backdropFilter: 'blur(16px)'
             }}
           >
-            {filteredContacts.map((contact, idx) => (
-              <button
-                key={contact.id}
-                onClick={() => handleSelect(contact)}
-                className="w-full text-left px-4 py-3 transition-all"
-                style={{
-                  borderBottom: idx < filteredContacts.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-                  e.currentTarget.style.boxShadow = '0 0 0 1px rgba(254,145,0,0.3) inset';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(233,215,196,0.16), rgba(254,145,0,0.18))',
-                      border: '1px solid rgba(254,145,0,0.3)',
-                      color: '#FE9100'
-                    }}
-                  >
-                    {(contact.company?.[0] || contact.firstName?.[0] || '?').toUpperCase()}
+            <div className="py-1">
+              {filteredContacts.map((contact, idx) => (
+                <button
+                  key={contact.id}
+                  onClick={() => handleSelect(contact)}
+                  className="w-full text-left px-3 py-2.5 transition-all duration-150 group"
+                  style={{
+                    borderBottom: idx < filteredContacts.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(254,145,0,0.08)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className="h-7 w-7 rounded-lg flex items-center justify-center text-[11px] font-bold flex-shrink-0 transition-all duration-150"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(254,145,0,0.12), rgba(254,145,0,0.06))',
+                        border: '1px solid rgba(254,145,0,0.25)',
+                        color: '#FE9100'
+                      }}
+                    >
+                      {(contact.company?.[0] || contact.firstName?.[0] || '?').toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-medium text-white/90 truncate leading-tight group-hover:text-white transition-colors">
+                        {contact.company || `${contact.firstName} ${contact.lastName}`.trim() || 'Unbenannt'}
+                      </p>
+                      <p className="text-[11px] text-neutral-500 truncate leading-tight mt-0.5">
+                        {contact.phone || contact.phoneNumber || contact.email || ''}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">
-                      {contact.company || `${contact.firstName} ${contact.lastName}`.trim() || 'Unbenannt'}
-                    </p>
-                    <p className="text-xs text-neutral-400 truncate">
-                      {contact.phone || contact.phoneNumber || contact.email || ''}
-                    </p>
-                  </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              ))}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
