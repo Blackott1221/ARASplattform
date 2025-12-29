@@ -2217,14 +2217,28 @@ export class MemStorage implements IStorage {
   
   // User Data Sources (Knowledge Base) - Query from user_data_sources table
   async getUserDataSources(userId: string): Promise<any[]> {
+    logger.info(`[STORAGE] getUserDataSources called with userId=${userId}`);
     try {
       const { client } = await import('./db');
+      
+      // First check if table exists and has any rows
+      const countResult = await client`
+        SELECT COUNT(*) as total FROM user_data_sources
+      `.catch(() => [{ total: 0 }]);
+      logger.info(`[STORAGE] Total rows in user_data_sources: ${countResult[0]?.total || 0}`);
+      
       const result = await client`
         SELECT * FROM user_data_sources 
         WHERE user_id = ${userId} 
         ORDER BY created_at DESC
       `;
-      logger.info(`[STORAGE] getUserDataSources for ${userId}: found ${result.length} sources`);
+      logger.info(`[STORAGE] getUserDataSources for userId=${userId}: found ${result.length} sources`);
+      
+      // Log first source if exists for debugging
+      if (result.length > 0) {
+        logger.info(`[STORAGE] First source: id=${result[0].id} type=${result[0].type} user_id=${result[0].user_id}`);
+      }
+      
       return result;
     } catch (error: any) {
       // If table doesn't exist, return empty array

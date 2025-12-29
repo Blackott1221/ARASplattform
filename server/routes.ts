@@ -67,20 +67,37 @@ async function comparePasswords(supplied: string, stored: string) {
   return testHex === hashed;
 }
 
+// ========================================
+// CANONICAL USER ID HELPER
+// All routes MUST use this to get userId
+// ========================================
+function getAuthUserId(req: any): string | null {
+  // Priority 1: Passport user object (most reliable)
+  if (req.user?.id) {
+    return req.user.id;
+  }
+  // Priority 2: Session userId (fallback)
+  if (req.session?.userId) {
+    return req.session.userId;
+  }
+  return null;
+}
+
 // Authentication middleware (Passport compatible)
 function requireAuth(req: any, res: any, next: any) {
   console.log('[REQUIREAUTH] Checking authentication...');
   console.log('[REQUIREAUTH] isAuthenticated:', req.isAuthenticated ? req.isAuthenticated() : 'no method');
-  console.log('[REQUIREAUTH] req.user:', req.user ? 'exists' : 'null');
+  console.log('[REQUIREAUTH] req.user?.id:', req.user?.id || 'null');
   console.log('[REQUIREAUTH] session.userId:', req.session?.userId);
   
   // Check if user is authenticated via Passport
   if (req.isAuthenticated && req.isAuthenticated()) {
     console.log('[REQUIREAUTH] ✅ Passport authenticated');
-    // Ensure session.userId is set for backwards compatibility
-    if (req.user && !req.session.userId) {
+    // ALWAYS sync session.userId with req.user.id for consistency
+    if (req.user?.id) {
       req.session.userId = req.user.id;
       req.session.username = req.user.username;
+      console.log('[REQUIREAUTH] Synced session.userId =', req.user.id);
     }
     return next();
   }
@@ -266,8 +283,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update AI Profile (Business Intelligence) - User can edit their business data
   app.patch('/api/user/ai-profile', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.session.userId;
+      const userId = getAuthUserId(req);
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'User ID not found' });
+      }
       const { companyDescription, targetAudience, effectiveKeywords, competitors, services } = req.body;
+      logger.info(`[AI_PROFILE] PATCH userId=${userId}`);
 
       // Get current user to merge with existing ai_profile data
       const [currentUser] = await client`
@@ -315,7 +336,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET Knowledge Digest Preview (Debug Route)
   app.get('/api/user/knowledge/digest', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.session.userId;
+      const userId = getAuthUserId(req);
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'User ID not found' });
+      }
       const mode = (req.query.mode === 'power' ? 'power' : 'space') as 'space' | 'power';
       
       // Import and use the same builder function as Chat/Call
@@ -343,7 +367,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET all data sources for user
   app.get('/api/user/data-sources', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.session.userId;
+      const userId = getAuthUserId(req);
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'User ID not found' });
+      }
+      logger.info(`[DATA_SOURCES] GET userId=${userId}`);
       const result = await client`
         SELECT * FROM user_data_sources 
         WHERE user_id = ${userId} 
@@ -364,10 +392,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST new data source (text or url)
   app.post('/api/user/data-sources', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.session.userId;
+      const userId = getAuthUserId(req);
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'User ID not found' });
+      }
       const { type, title, contentText, url } = req.body;
 
-      logger.info(`📥 Adding data source: type=${type}, title=${title}, userId=${userId}`);
+      logger.info(`[DATA_SOURCES] POST userId=${userId} type=${type} title=${title}`);
 
       // Validate
       if (!type || !['text', 'url'].includes(type)) {
@@ -407,8 +438,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         RETURNING *
       `;
 
-      logger.info(`✅ Data source created: id=${newSource.id}`);
-      res.json({ success: true, dataSource: newSource });
+      logger.info(`[DATA_SOURCES] ✅ CREATED id=${newSource.id} userId=${userId} type=${type}`);
+      res.json({ success: true, dataSource: newSource, userId });
     } catch (error: any) {
       logger.error('❌ Error creating data source:', error);
       res.status(500).json({ success: false, message: error.message || 'Failed to create data source' });
@@ -418,7 +449,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST file upload - Returns proper response instead of 501
   app.post('/api/user/data-sources/upload', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.session.userId;
+      const userId = getAuthUserId(req);
       logger.info(`[UPLOAD] File upload attempted by user ${userId} - feature not yet available`);
       
       // Return 200 with success:false and code for client-side handling
@@ -436,7 +467,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // DELETE data source
   app.delete('/api/user/data-sources/:id', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.session.userId;
+      const userId = getAuthUserId(req);
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'User ID not found' });
+      }
       const sourceId = parseInt(req.params.id);
 
       if (isNaN(sourceId)) {
