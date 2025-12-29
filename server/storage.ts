@@ -2308,8 +2308,10 @@ export class MemStorage implements IStorage {
       
       return transformed;
     } catch (error: any) {
-      logger.error(`[STORAGE] Error fetching data sources:`, error);
-      return [];
+      // NO SILENT CATCH - log and RETHROW so callers know something failed
+      logger.error(`[STORAGE] ❌ ERROR fetching data sources for userId=${userId}:`, error.message);
+      logger.error(`[STORAGE] Stack:`, error.stack);
+      throw error; // Rethrow - don't hide errors with empty array
     }
   }
 }

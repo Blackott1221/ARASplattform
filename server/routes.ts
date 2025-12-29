@@ -369,6 +369,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========================================
+  // VERIFICATION ROUTE: Raw sources from same codepath as digest
+  // ========================================
+  app.get('/api/user/knowledge/sources/raw', requireAuth, async (req: any, res) => {
+    try {
+      const userId = getAuthUserId(req);
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'User ID not found' });
+      }
+      
+      logger.info(`[SOURCES_RAW] Fetching sources for userId=${userId}`);
+      
+      // Use EXACT same codepath as digest: storage.getUserDataSources
+      const sources = await storage.getUserDataSources(userId);
+      
+      logger.info(`[SOURCES_RAW] Got ${sources.length} sources for userId=${userId}`);
+      
+      // Return raw data for verification
+      res.json({
+        success: true,
+        userId,
+        count: sources.length,
+        rows: sources.map((s: any) => ({
+          id: s.id,
+          user_id: s.userId,
+          type: s.type,
+          title: s.title,
+          status: s.status,
+          content_preview: (s.contentText || '').substring(0, 100),
+          content_text_length: (s.contentText || '').length,
+          url: s.url,
+          createdAt: s.createdAt
+        }))
+      });
+    } catch (error: any) {
+      logger.error('❌ Error getting raw sources:', error);
+      res.status(500).json({ success: false, message: error.message, stack: error.stack });
+    }
+  });
+
+  // ========================================
   // DEBUG ROUTE: Show exact DB state for data sources
   // ========================================
   app.get('/api/user/data-sources/debug', requireAuth, async (req: any, res) => {
@@ -403,25 +443,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalResult = await client`SELECT COUNT(*) as total FROM user_data_sources`;
       const rowsTotal = parseInt(totalResult[0]?.total || '0');
       
-      // Get rows for canonical userId
-      const canonicalRows = canonicalUserId 
-        ? await client`SELECT COUNT(*) as count FROM user_data_sources WHERE user_id = ${canonicalUserId}`
-        : [{ count: 0 }];
-      const rowsForCanonical = parseInt(canonicalRows[0]?.count || '0');
+      // Helper: count rows for a specific userId
+      const countByUserId = async (uid: string | null): Promise<number> => {
+        if (!uid) return 0;
+        const result = await client`SELECT COUNT(*) as count FROM user_data_sources WHERE user_id = ${uid}`;
+        return parseInt(result[0]?.count || '0');
+      };
       
-      // Get rows for session userId (if different)
-      let rowsForSession = 0;
-      if (sessionUserId && sessionUserId !== canonicalUserId) {
-        const sessionRows = await client`SELECT COUNT(*) as count FROM user_data_sources WHERE user_id = ${sessionUserId}`;
-        rowsForSession = parseInt(sessionRows[0]?.count || '0');
-      }
+      // Count for each ID (ALWAYS count, even if IDs are identical - they MUST match)
+      const rowsForCanonical = await countByUserId(canonicalUserId);
+      const rowsForSession = await countByUserId(sessionUserId);
+      const rowsForPassport = await countByUserId(passportUserId);
       
-      // Get rows for passport userId (if different)
-      let rowsForPassport = 0;
-      if (passportUserId && passportUserId !== canonicalUserId && passportUserId !== sessionUserId) {
-        const passportRows = await client`SELECT COUNT(*) as count FROM user_data_sources WHERE user_id = ${passportUserId}`;
-        rowsForPassport = parseInt(passportRows[0]?.count || '0');
-      }
+      logger.info(`[DATA_SOURCES_DEBUG] canonical=${canonicalUserId} session=${sessionUserId} passport=${passportUserId} counts: c=${rowsForCanonical}/s=${rowsForSession}/p=${rowsForPassport}`);
       
       // Get sample of ALL rows (to see what user_ids exist)
       const sample = await client`
@@ -436,6 +470,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get distinct user_ids in the table
       const distinctUserIds = await client`SELECT DISTINCT user_id FROM user_data_sources LIMIT 20`;
       
+      // Also test storage.getUserDataSources to verify it works
+      let storageTest = { count: 0, error: null as string | null };
+      try {
+        const storageSources = await storage.getUserDataSources(canonicalUserId);
+        storageTest.count = storageSources.length;
+      } catch (e: any) {
+        storageTest.error = e.message;
+      }
+      
       res.json({
         success: true,
         canonicalUserId,
@@ -446,6 +489,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         rowsForCanonical,
         rowsForSession,
         rowsForPassport,
+        storageTest,
         distinctUserIds: distinctUserIds.map((r: any) => r.user_id),
         sample
       });
