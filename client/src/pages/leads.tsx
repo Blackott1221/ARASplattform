@@ -9,7 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { ChevronDown, ChevronRight, Database, Brain, Sparkles, FileText, Link, Upload } from 'lucide-react';
 import type { User as UserType, SubscriptionResponse } from '@shared/schema';
+import '@/styles/animations.css';
 
 // ErrorBoundary to prevent black screen crashes
 class LeadsErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
@@ -303,14 +305,21 @@ function LeadsContent() {
   }
 
   return (
-    <div className="relative flex-1 min-h-0 overflow-y-auto bg-black/50">
+    <div className="relative flex-1 min-h-0 overflow-y-auto">
       <div className="p-6 max-w-6xl mx-auto space-y-6">
         
-        {/* Header */}
+        {/* Header - ARAS CI with Orbitron + Animated Gradient */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Wissensdatenbank</h1>
-            <p className="text-sm text-gray-400 mt-1">Verwalte deine KI-Datenquellen und Business Intelligence</p>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff6a00] to-[#e9d7c4] flex items-center justify-center">
+              <Database className="w-5 h-5 text-black" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold aras-headline-gradient" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                Wissensdatenbank
+              </h1>
+              <p className="text-sm text-gray-400 mt-0.5">Verwalte deine KI-Datenquellen und Business Intelligence</p>
+            </div>
           </div>
           <div className="text-right text-xs text-gray-500">
             <div>{format(new Date(), 'dd. MMM yyyy', { locale: de })}</div>
@@ -318,37 +327,40 @@ function LeadsContent() {
           </div>
         </div>
 
-        {/* Stats Row */}
+        {/* Stats Row - Dark Glass Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+          <div className="bg-black/45 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-lg">
             <div className="text-xs text-gray-400 mb-1">Datenquellen</div>
             <div className="text-xl font-bold text-white">{dataSources.length}</div>
           </div>
-          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+          <div className="bg-black/45 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-lg">
             <div className="text-xs text-gray-400 mb-1">KI-Nachrichten</div>
             <div className="text-xl font-bold text-white">
               {subscriptionData?.aiMessagesUsed || 0} / {subscriptionData?.aiMessagesLimit || 100}
             </div>
           </div>
-          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+          <div className="bg-black/45 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-lg">
             <div className="text-xs text-gray-400 mb-1">Anrufe</div>
             <div className="text-xl font-bold text-white">
               {subscriptionData?.voiceCallsUsed || 0} / {subscriptionData?.voiceCallsLimit || 50}
             </div>
           </div>
-          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+          <div className="bg-black/45 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-lg">
             <div className="text-xs text-gray-400 mb-1">Plan</div>
-            <div className="text-xl font-bold text-[#FE9100]">{subscriptionData?.plan?.toUpperCase() || 'FREE'}</div>
+            <div className="text-xl font-bold text-[#ff6a00]">{subscriptionData?.plan?.toUpperCase() || 'FREE'}</div>
           </div>
         </div>
 
         {/* Two Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
-          {/* Data Sources */}
-          <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+          {/* Data Sources - Dark Glass Card */}
+          <div className="bg-black/45 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-lg">
             <div className="p-4 border-b border-white/10 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-white">Datenquellen</h2>
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-[#ff6a00]" />
+                <h2 className="text-base font-semibold text-white">Datenquellen</h2>
+              </div>
               <Button
                 type="button"
                 onClick={() => setShowAddDataDialog(true)}
@@ -404,10 +416,13 @@ function LeadsContent() {
             </div>
           </div>
 
-          {/* Business Intelligence */}
-          <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+          {/* Business Intelligence - Dark Glass Card */}
+          <div className="bg-black/45 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-lg">
             <div className="p-4 border-b border-white/10 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-white">Business Intelligence</h2>
+              <div className="flex items-center gap-2">
+                <Brain className="w-4 h-4 text-[#ff6a00]" />
+                <h2 className="text-base font-semibold text-white">Business Intelligence</h2>
+              </div>
               {!isEditingBusiness ? (
                 <Button
                   type="button"
@@ -503,9 +518,12 @@ function LeadsContent() {
           </div>
         </div>
 
-        {/* Profile Info */}
-        <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-          <h2 className="text-base font-semibold text-white mb-4">Profil</h2>
+        {/* Profile Info - Dark Glass Card */}
+        <div className="bg-black/45 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-lg">
+          <h2 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#ff6a00]" />
+            Profil
+          </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <InfoRow label="Name" value={userProfile.fullName || userProfile.username || 'Unbekannt'} />
             <InfoRow label="E-Mail" value={userProfile.email || 'Nicht gesetzt'} />
@@ -514,12 +532,17 @@ function LeadsContent() {
           </div>
         </div>
 
-        {/* Knowledge Context Preview (SPACE/POWER) */}
-        <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+        {/* Knowledge Context Preview (SPACE/POWER) - Dark Glass Card */}
+        <div className="bg-black/45 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-lg">
           <div className="p-4 border-b border-white/10 flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-semibold text-white">Kontext-Vorschau</h2>
-              <p className="text-xs text-gray-500 mt-0.5">Was ARAS AI über dich weiß</p>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#ff6a00]/20 to-[#e9d7c4]/20 flex items-center justify-center">
+                <Sparkles className="w-4 h-4 text-[#ff6a00]" />
+              </div>
+              <div>
+                <h2 className="text-base font-semibold text-white">Kontext-Vorschau</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Was ARAS AI über dich weiß</p>
+              </div>
             </div>
             <div className="flex gap-2">
               <button
@@ -541,12 +564,20 @@ function LeadsContent() {
             </div>
           </div>
           <div className="p-4">
-            <div className="flex items-center gap-4 mb-3 text-xs text-gray-400">
+            {/* Debug Stats Row */}
+            <div className="flex flex-wrap items-center gap-4 mb-3 text-xs text-gray-400">
               <span>Quellen: <span className="text-white font-medium">{digestData?.sourceCount ?? 0}</span></span>
               <span>Zeichen: <span className="text-white font-medium">{digestData?.charCount ?? 0}</span></span>
-              <span>Modus: <span className="text-[#FE9100] font-medium uppercase">{digestMode}</span></span>
+              <span>Modus: <span className="text-[#ff6a00] font-medium uppercase">{digestMode}</span></span>
               {digestData?.truncated && <span className="text-yellow-500">(gekürzt)</span>}
             </div>
+            {/* Sources Debug Info */}
+            {(digestData as any)?.sourcesDebug && (
+              <div className="mb-3 p-2 bg-black/30 rounded-lg border border-white/5 text-xs">
+                <div className="text-gray-500 mb-1">Debug: raw={((digestData as any).sourcesDebug?.rawCount) ?? '?'} mapped={((digestData as any).sourcesDebug?.mappedCount) ?? '?'} filtered={((digestData as any).sourcesDebug?.filteredCount) ?? '?'}</div>
+                <div className="text-gray-400">IDs: {((digestData as any).sourcesDebug?.ids || []).join(', ') || 'keine'}</div>
+              </div>
+            )}
             <pre className="bg-black/40 border border-white/5 rounded-lg p-3 text-xs text-gray-300 font-mono overflow-x-auto max-h-[200px] overflow-y-auto whitespace-pre-wrap">
               {digestData?.digest || 'Lade Kontext...'}
             </pre>
@@ -668,12 +699,27 @@ function LeadsContent() {
   );
 }
 
-// Helper component for info rows
-function InfoRow({ label, value }: { label: string; value: string }) {
+// Helper component for info rows with "Noch nicht hinterlegt" for empty values
+function InfoRow({ label, value, onAdd }: { label: string; value: string; onAdd?: () => void }) {
+  const isEmpty = !value || value === 'Nicht gesetzt' || value === '—';
   return (
     <div>
       <div className="text-xs text-gray-500">{label}</div>
-      <div className="text-sm text-white truncate">{value}</div>
+      {isEmpty ? (
+        <div className="text-sm text-gray-500 flex items-center gap-2">
+          <span>Noch nicht hinterlegt</span>
+          {onAdd && (
+            <button 
+              onClick={onAdd}
+              className="text-[#ff6a00] hover:underline text-xs"
+            >
+              Jetzt hinzufügen
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="text-sm text-white truncate">{value}</div>
+      )}
     </div>
   );
 }

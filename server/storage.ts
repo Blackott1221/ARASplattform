@@ -2215,77 +2215,96 @@ export class MemStorage implements IStorage {
     };
   }
   
+  // Helper: Convert Postgres timestamp to ISO string safely
+  private toIsoDate(value: any): string | null {
+    if (!value) return null;
+    try {
+      // If already a Date object
+      if (value instanceof Date) {
+        return value.toISOString();
+      }
+      // If string like "2025-12-29 22:42:15.305864+00" convert to ISO
+      if (typeof value === 'string') {
+        // Replace space with T and handle microseconds
+        let iso = value.replace(' ', 'T');
+        // Truncate microseconds to milliseconds (6 digits -> 3 digits)
+        iso = iso.replace(/\.(\d{3})\d*/, '.$1');
+        // Ensure timezone format
+        if (iso.endsWith('+00')) {
+          iso = iso.replace('+00', 'Z');
+        } else if (!iso.endsWith('Z') && !iso.match(/[+-]\d{2}:\d{2}$/)) {
+          iso += 'Z';
+        }
+        // Validate by parsing
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return null;
+        return d.toISOString();
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
   // User Data Sources (Knowledge Base) - Query from user_data_sources table
   async getUserDataSources(userId: string): Promise<any[]> {
     logger.info(`[STORAGE] getUserDataSources called with userId=${userId}`);
     try {
       const { client } = await import('./db');
       
-      // Ensure table exists first
-      await client`
-        CREATE TABLE IF NOT EXISTS user_data_sources (
-          id SERIAL PRIMARY KEY,
-          user_id TEXT NOT NULL,
-          type TEXT NOT NULL,
-          title TEXT,
-          status TEXT DEFAULT 'active',
-          content_text TEXT,
-          url TEXT,
-          file_name TEXT,
-          file_mime TEXT,
-          file_size INTEGER,
-          file_storage_key TEXT,
-          error_message TEXT,
-          created_at TIMESTAMPTZ DEFAULT NOW(),
-          updated_at TIMESTAMPTZ DEFAULT NOW()
-        )
-      `.catch((e: any) => logger.warn(`[STORAGE] Table creation warning: ${e.message}`));
+      // One-time schema inspection (logged once)
+      if (!(globalThis as any).__schemaLogged) {
+        (globalThis as any).__schemaLogged = true;
+        try {
+          const schema = await client`
+            SELECT column_name, data_type 
+            FROM information_schema.columns 
+            WHERE table_name = 'user_data_sources'
+            ORDER BY ordinal_position
+          `;
+          logger.info(`[STORAGE] ═══ SCHEMA user_data_sources ═══`);
+          schema.forEach((col: any) => logger.info(`  ${col.column_name}: ${col.data_type}`));
+        } catch (e) {
+          logger.warn(`[STORAGE] Schema inspection failed`);
+        }
+      }
       
-      // First check if table has any rows
-      const countResult = await client`
-        SELECT COUNT(*) as total FROM user_data_sources
-      `.catch(() => [{ total: 0 }]);
-      logger.info(`[STORAGE] Total rows in user_data_sources: ${countResult[0]?.total || 0}`);
-      
-      // Get distinct user_ids for debugging
-      const distinctIds = await client`
-        SELECT DISTINCT user_id FROM user_data_sources LIMIT 5
-      `.catch(() => []);
-      logger.info(`[STORAGE] Distinct user_ids in table: ${distinctIds.map((r: any) => r.user_id).join(', ') || 'none'}`);
-      
+      // Query all rows for this user
       const result = await client`
         SELECT * FROM user_data_sources 
         WHERE user_id = ${userId} 
         ORDER BY created_at DESC
       `;
-      logger.info(`[STORAGE] getUserDataSources for userId=${userId}: found ${result.length} sources`);
       
-      // Log first source if exists for debugging
+      logger.info(`[STORAGE] getUserDataSources for userId=${userId}: found ${result.length} raw rows`);
+      
+      // Log first row's actual keys for debugging
       if (result.length > 0) {
-        logger.info(`[STORAGE] First source RAW: id=${result[0].id} type=${result[0].type} user_id=${result[0].user_id} status=${result[0].status}`);
-      } else {
-        logger.warn(`[STORAGE] No sources found for userId=${userId} - check if userId matches stored user_id values`);
+        const keys = Object.keys(result[0]);
+        logger.info(`[STORAGE] First row KEYS: ${keys.join(', ')}`);
+        logger.info(`[STORAGE] First row VALUES: id=${result[0].id} type=${result[0].type} status=${result[0].status} content_text=${result[0].content_text?.length || 'N/A'} content_preview=${result[0].content_preview?.length || 'N/A'}`);
       }
       
-      // Transform snake_case DB columns to camelCase for TypeScript
+      // Transform with ROBUST column mapping (handle both content_text AND content_preview)
       const transformed = result.map((row: any) => ({
         id: row.id,
         userId: row.user_id,
         type: row.type,
-        title: row.title,
-        status: row.status || 'active',  // Default to active if null
-        contentText: row.content_text,   // Map content_text -> contentText
-        url: row.url,
-        fileName: row.file_name,
-        fileMime: row.file_mime,
-        fileSize: row.file_size,
-        fileStorageKey: row.file_storage_key,
-        errorMessage: row.error_message,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at
+        title: row.title || '',
+        status: row.status || 'active',
+        // CRITICAL: Try content_text first, then content_preview, then empty
+        contentText: row.content_text ?? row.content_preview ?? '',
+        url: row.url || '',
+        fileName: row.file_name || null,
+        fileMime: row.file_mime || null,
+        fileSize: row.file_size || null,
+        fileStorageKey: row.file_storage_key || null,
+        errorMessage: row.error_message || null,
+        createdAt: this.toIsoDate(row.created_at),
+        updatedAt: this.toIsoDate(row.updated_at)
       }));
       
-      logger.info(`[STORAGE] Transformed ${transformed.length} sources. First contentText length: ${transformed[0]?.contentText?.length || 0}`);
+      logger.info(`[STORAGE] Transformed ${transformed.length} sources. First: id=${transformed[0]?.id} contentText.length=${transformed[0]?.contentText?.length || 0}`);
       
       return transformed;
     } catch (error: any) {

@@ -1,5 +1,27 @@
 /* Clean Background Animation - Single Layer */
 
+/* ARAS Headline Gradient Animation - Orange to Gold to White */
+@keyframes arasHeadlineGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.aras-headline-gradient {
+  background: linear-gradient(90deg, #ff6a00, #e9d7c4, #ffffff, #e9d7c4, #ff6a00);
+  background-size: 200% 200%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: arasHeadlineGradient 6s ease infinite;
+}
+
 @keyframes aras-gradient-shift {
   0% {
     background-position: 0% 50%;

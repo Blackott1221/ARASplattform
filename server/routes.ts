@@ -349,15 +349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const context = await buildKnowledgeContext(userId, { mode });
       
       logger.info(`[DIGEST-ROUTE] Digest built: userId=${userId}, mode=${mode}, sources=${context.sourceCount}, chars=${context.digest.length}`);
-      
-      // Build sourcesDebug for transparency
-      const sourcesDebug = {
-        count: context.sources.length,
-        ids: context.sources.map((s: any) => s.id),
-        types: context.sources.map((s: any) => s.type),
-        titles: context.sources.map((s: any) => s.title || '(no title)'),
-        statuses: context.sources.map((s: any) => s.status)
-      };
+      logger.info(`[DIGEST-ROUTE] sourcesDebug: raw=${context.sourcesDebug.rawCount} mapped=${context.sourcesDebug.mappedCount} filtered=${context.sourcesDebug.filteredCount} ids=${context.sourcesDebug.ids.join(',')}`);
       
       res.json({
         success: true,
@@ -368,7 +360,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         truncated: context.truncated,
         digest: context.digest,
         aiProfile: context.aiProfile ? Object.keys(context.aiProfile) : [],
-        sourcesDebug
+        sourcesDebug: context.sourcesDebug
       });
     } catch (error: any) {
       logger.error('❌ Error getting knowledge digest:', error);
