@@ -187,40 +187,60 @@ export function ClarificationChat({
     <div 
       className="relative rounded-2xl overflow-hidden"
       style={{
-        background: 'rgba(0,0,0,0.55)',
-        border: '1px solid rgba(255,255,255,0.10)',
-        backdropFilter: 'blur(16px)',
+        background: 'linear-gradient(180deg, rgba(12,12,14,0.95) 0%, rgba(8,8,10,0.98) 100%)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        backdropFilter: 'blur(20px)',
+        boxShadow: '0 24px 80px rgba(0,0,0,0.6), 0 0 1px rgba(255,255,255,0.1) inset',
         minHeight: '500px',
         maxHeight: '600px',
         display: 'flex',
         flexDirection: 'column'
       }}
     >
-      {/* Header */}
+      {/* Premium Header */}
       <div 
-        className="px-4 py-3 border-b"
+        className="px-5 py-4"
         style={{
-          borderColor: 'rgba(255,255,255,0.08)',
-          background: 'linear-gradient(135deg, rgba(254,145,0,0.05), rgba(233,215,196,0.03))'
+          background: 'linear-gradient(180deg, rgba(254,145,0,0.04) 0%, transparent 100%)',
+          borderBottom: '1px solid rgba(255,255,255,0.06)'
         }}
       >
         <div className="flex items-center gap-3">
-          <div 
-            className="h-8 w-8 rounded-full flex items-center justify-center"
-            style={{
-              background: 'radial-gradient(circle at 30% 20%, rgba(254,145,0,0.85), rgba(10,10,10,0.1) 70%)',
-              boxShadow: '0 0 16px rgba(254,145,0,0.35)',
-              border: '1px solid rgba(233,215,196,0.25)'
-            }}
-          >
-            <div className="h-2 w-2 rounded-full bg-white/60" />
+          {/* ARAS Core Orb - Modern Indicator */}
+          <div className="relative">
+            <div 
+              className="h-10 w-10 rounded-xl flex items-center justify-center"
+              style={{
+                background: 'linear-gradient(135deg, rgba(254,145,0,0.15) 0%, rgba(254,145,0,0.05) 100%)',
+                border: '1px solid rgba(254,145,0,0.25)',
+                boxShadow: '0 0 20px rgba(254,145,0,0.15), 0 0 40px rgba(254,145,0,0.05)'
+              }}
+            >
+              {/* Inner Core with Pulse */}
+              <motion.div
+                className="h-3 w-3 rounded-full"
+                style={{
+                  background: 'radial-gradient(circle at 30% 30%, #FE9100, #A34E00)',
+                  boxShadow: '0 0 8px rgba(254,145,0,0.8), 0 0 16px rgba(254,145,0,0.4)'
+                }}
+                animate={{ 
+                  scale: [1, 1.15, 1],
+                  opacity: [0.9, 1, 0.9]
+                }}
+                transition={{ 
+                  duration: 2.5, 
+                  repeat: Infinity, 
+                  ease: 'easeInOut' 
+                }}
+              />
+            </div>
           </div>
           <div>
             <h3 
-              className="text-sm font-bold"
+              className="text-[15px] font-semibold tracking-wide"
               style={{
                 fontFamily: 'Orbitron, sans-serif',
-                background: `linear-gradient(90deg, ${CI.goldLight}, ${CI.orange})`,
+                background: `linear-gradient(90deg, #ffffff 0%, ${CI.orange} 100%)`,
                 WebkitBackgroundClip: 'text',
                 backgroundClip: 'text',
                 WebkitTextFillColor: 'transparent'
@@ -228,51 +248,51 @@ export function ClarificationChat({
             >
               ARAS Klärungsdialog
             </h3>
-            <p className="text-[11px] text-gray-400">Optimiert deinen Anruf in Echtzeit</p>
+            <p className="text-[11px] text-white/40 tracking-wide mt-0.5">Optimiert deinen Anruf in Echtzeit</p>
           </div>
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4 premium-scroll">
+      {/* Messages Container */}
+      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 premium-scroll">
         <AnimatePresence mode="popLayout">
           {messages.map((msg) => (
             <motion.div
               key={msg.id}
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
               className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
-              <div className="flex items-start gap-2 max-w-[85%]">
+              <div className={`flex items-start gap-2.5 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`} style={{ maxWidth: '85%' }}>
+                {/* Mini Orb Indicator for ARAS messages */}
                 {msg.role === 'aras' && (
                   <div 
-                    className="mt-1 h-6 w-6 rounded-full flex items-center justify-center flex-shrink-0"
+                    className="mt-2 h-2 w-2 rounded-full flex-shrink-0"
                     style={{
-                      background: 'radial-gradient(circle, rgba(254,145,0,0.75), rgba(10,10,10,0.1) 65%)',
-                      border: '1px solid rgba(233,215,196,0.2)'
+                      background: 'radial-gradient(circle at 30% 30%, #FE9100, #A34E00)',
+                      boxShadow: '0 0 6px rgba(254,145,0,0.6)'
                     }}
-                  >
-                    <div className="h-1.5 w-1.5 rounded-full bg-white/50" />
-                  </div>
+                  />
                 )}
                 
+                {/* Message Bubble - Glass Card Style */}
                 <div
-                  className="px-4 py-3 rounded-2xl"
+                  className="px-4 py-3 rounded-2xl transition-all duration-150"
                   style={msg.role === 'aras' ? {
-                    background: 'linear-gradient(135deg, rgba(254,145,0,0.12), rgba(233,215,196,0.08))',
-                    border: '1px solid rgba(254,145,0,0.25)',
-                    boxShadow: '0 0 20px rgba(254,145,0,0.08)'
+                    background: 'linear-gradient(135deg, rgba(18,18,20,0.9) 0%, rgba(12,12,14,0.95) 100%)',
+                    border: '1px solid rgba(254,145,0,0.12)',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.03) inset'
                   } : {
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(254,145,0,0.3)',
-                    marginLeft: 'auto'
+                    background: 'linear-gradient(135deg, rgba(254,145,0,0.08) 0%, rgba(254,145,0,0.04) 100%)',
+                    border: '1px solid rgba(254,145,0,0.2)',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
                   }}
                 >
-                  <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">
+                  <p className="text-[13px] text-white/90 leading-relaxed whitespace-pre-wrap">
                     {msg.content}
                   </p>
-                  <p className="text-[10px] text-gray-500 mt-1">
+                  <p className="text-[10px] text-white/30 mt-2 text-right">
                     {msg.timestamp.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
@@ -281,40 +301,38 @@ export function ClarificationChat({
           ))}
         </AnimatePresence>
 
-        {/* Typing Indicator */}
+        {/* Typing Indicator - Minimal */}
         {isTyping && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex items-start gap-2"
+            className="flex items-start gap-2.5"
           >
             <div 
-              className="mt-1 h-6 w-6 rounded-full flex items-center justify-center flex-shrink-0"
+              className="mt-2 h-2 w-2 rounded-full flex-shrink-0"
               style={{
-                background: 'radial-gradient(circle, rgba(254,145,0,0.75), rgba(10,10,10,0.1) 65%)',
-                border: '1px solid rgba(233,215,196,0.2)'
+                background: 'radial-gradient(circle at 30% 30%, #FE9100, #A34E00)',
+                boxShadow: '0 0 6px rgba(254,145,0,0.6)'
               }}
-            >
-              <div className="h-1.5 w-1.5 rounded-full bg-white/50" />
-            </div>
+            />
             <div 
               className="px-4 py-3 rounded-2xl"
               style={{
-                background: 'linear-gradient(135deg, rgba(254,145,0,0.08), rgba(233,215,196,0.05))',
-                border: '1px solid rgba(254,145,0,0.2)'
+                background: 'linear-gradient(135deg, rgba(18,18,20,0.9) 0%, rgba(12,12,14,0.95) 100%)',
+                border: '1px solid rgba(254,145,0,0.12)'
               }}
             >
-              <div className="flex gap-1">
+              <div className="flex gap-1.5">
                 {[0, 1, 2].map((i) => (
                   <motion.div
                     key={i}
-                    className="w-2 h-2 rounded-full"
+                    className="w-1.5 h-1.5 rounded-full"
                     style={{ background: CI.orange }}
-                    animate={{ opacity: [0.3, 1, 0.3] }}
+                    animate={{ opacity: [0.3, 1, 0.3], scale: [0.85, 1, 0.85] }}
                     transition={{
-                      duration: 1.2,
+                      duration: 1,
                       repeat: Infinity,
-                      delay: i * 0.2
+                      delay: i * 0.15
                     }}
                   />
                 ))}
@@ -396,15 +414,15 @@ export function ClarificationChat({
         <div ref={chatEndRef} />
       </div>
 
-      {/* Input Area */}
+      {/* Premium Input Area */}
       {currentQuestion && !isTyping && currentQuestionIndex < questions.length && (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-4 border-t"
+          className="px-5 py-4"
           style={{
-            borderColor: 'rgba(255,255,255,0.08)',
-            background: 'rgba(0,0,0,0.3)'
+            borderTop: '1px solid rgba(255,255,255,0.06)',
+            background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.2) 100%)'
           }}
         >
           {currentQuestion.type === 'choice' && currentQuestion.options ? (
@@ -416,18 +434,20 @@ export function ClarificationChat({
                     setInputValue(option);
                     setTimeout(handleSubmitAnswer, 100);
                   }}
-                  className="w-full px-4 py-3 rounded-xl text-left text-sm transition-all hover:scale-[1.02]"
+                  className="w-full px-4 py-3 rounded-xl text-left text-[13px] text-white/80 transition-all duration-150"
                   style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.12)'
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(255,255,255,0.08)'
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.background = 'rgba(254,145,0,0.08)';
-                    e.currentTarget.style.borderColor = CI.orange;
+                    e.currentTarget.style.borderColor = 'rgba(254,145,0,0.3)';
+                    e.currentTarget.style.color = '#fff';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)';
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                    e.currentTarget.style.color = 'rgba(255,255,255,0.8)';
                   }}
                 >
                   {option}
@@ -444,42 +464,46 @@ export function ClarificationChat({
                   onKeyDown={(e) => e.key === 'Enter' && !isInputDisabled && handleSubmitAnswer()}
                   placeholder={currentQuestion.placeholder || 'Ihre Antwort...'}
                   disabled={isInputDisabled}
-                  className="flex-1 px-4 py-3 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-3 rounded-xl text-[13px] text-white placeholder-white/30 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.12)'
+                    background: 'rgba(0,0,0,0.4)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)',
+                    outline: 'none'
                   }}
                   onFocus={(e) => {
                     if (!isInputDisabled) {
-                      e.currentTarget.style.borderColor = CI.orange;
-                      e.currentTarget.style.boxShadow = `0 0 0 3px rgba(254,145,0,0.1)`;
+                      e.currentTarget.style.borderColor = 'rgba(254,145,0,0.4)';
+                      e.currentTarget.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.2), 0 0 0 2px rgba(254,145,0,0.15)';
                     }
                   }}
                   onBlur={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)';
-                    e.currentTarget.style.boxShadow = 'none';
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                    e.currentTarget.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.2)';
                   }}
                   autoFocus={!isInputDisabled}
                 />
                 <button
                   onClick={handleSubmitAnswer}
                   disabled={(!inputValue.trim() && currentQuestion.required) || isInputDisabled}
-                  className="px-5 rounded-xl font-semibold text-sm transition-all disabled:opacity-40 flex items-center gap-2"
+                  className="px-5 rounded-xl font-medium text-sm transition-all duration-150 disabled:opacity-30"
                   style={{
                     background: (!inputValue.trim() && currentQuestion.required) || isInputDisabled
-                      ? 'rgba(100,100,100,0.3)'
-                      : `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
+                      ? 'rgba(60,60,60,0.4)'
+                      : `linear-gradient(135deg, ${CI.orange} 0%, ${CI.goldDark} 100%)`,
                     color: '#fff',
-                    fontFamily: 'Orbitron, sans-serif'
+                    border: '1px solid rgba(254,145,0,0.3)',
+                    boxShadow: (!inputValue.trim() && currentQuestion.required) || isInputDisabled
+                      ? 'none'
+                      : '0 4px 12px rgba(254,145,0,0.2)'
                   }}
                 >
                   {isLastQuestion ? '✓' : '→'}
                 </button>
               </div>
               {isInputDisabled && (
-                <p className="mt-2 text-[10px] text-gray-500">
-                  Während des laufenden Gesprächs kannst du hier nichts eingeben. 
-                  Sobald der Call beendet ist, bekommst du die Zusammenfassung.
+                <p className="mt-2 text-[10px] text-white/30">
+                  Während des laufenden Gesprächs kannst du hier nichts eingeben.
                 </p>
               )}
             </div>
@@ -491,7 +515,7 @@ export function ClarificationChat({
                 setInputValue('');
                 handleSubmitAnswer();
               }}
-              className="mt-2 text-[11px] text-gray-400 hover:text-gray-300 transition-colors"
+              className="mt-3 text-[11px] text-white/30 hover:text-white/50 transition-colors"
             >
               Frage überspringen
             </button>
@@ -499,25 +523,25 @@ export function ClarificationChat({
         </motion.div>
       )}
 
-      {/* Skip All Button */}
-      <div className="p-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+      {/* Skip All Button - Minimal */}
+      <div className="px-5 py-3" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
         <button
           onClick={onSkip}
-          className="w-full py-2 rounded-xl text-xs font-medium transition-all"
+          className="w-full py-2.5 rounded-xl text-[11px] font-medium tracking-wide transition-all duration-150"
           style={{
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            color: '#9ca3af'
+            background: 'transparent',
+            border: '1px solid rgba(255,255,255,0.06)',
+            color: 'rgba(255,255,255,0.35)'
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = 'rgba(254,145,0,0.05)';
-            e.currentTarget.style.borderColor = 'rgba(254,145,0,0.3)';
+            e.currentTarget.style.borderColor = 'rgba(254,145,0,0.2)';
             e.currentTarget.style.color = CI.orange;
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
-            e.currentTarget.style.color = '#9ca3af';
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
+            e.currentTarget.style.color = 'rgba(255,255,255,0.35)';
           }}
         >
           Alle Fragen überspringen & sofort anrufen
