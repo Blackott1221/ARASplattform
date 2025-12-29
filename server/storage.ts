@@ -2262,12 +2262,32 @@ export class MemStorage implements IStorage {
       
       // Log first source if exists for debugging
       if (result.length > 0) {
-        logger.info(`[STORAGE] First source: id=${result[0].id} type=${result[0].type} user_id=${result[0].user_id}`);
+        logger.info(`[STORAGE] First source RAW: id=${result[0].id} type=${result[0].type} user_id=${result[0].user_id} status=${result[0].status}`);
       } else {
         logger.warn(`[STORAGE] No sources found for userId=${userId} - check if userId matches stored user_id values`);
       }
       
-      return result;
+      // Transform snake_case DB columns to camelCase for TypeScript
+      const transformed = result.map((row: any) => ({
+        id: row.id,
+        userId: row.user_id,
+        type: row.type,
+        title: row.title,
+        status: row.status || 'active',  // Default to active if null
+        contentText: row.content_text,   // Map content_text -> contentText
+        url: row.url,
+        fileName: row.file_name,
+        fileMime: row.file_mime,
+        fileSize: row.file_size,
+        fileStorageKey: row.file_storage_key,
+        errorMessage: row.error_message,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      }));
+      
+      logger.info(`[STORAGE] Transformed ${transformed.length} sources. First contentText length: ${transformed[0]?.contentText?.length || 0}`);
+      
+      return transformed;
     } catch (error: any) {
       logger.error(`[STORAGE] Error fetching data sources:`, error);
       return [];

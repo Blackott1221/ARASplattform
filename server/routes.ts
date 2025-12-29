@@ -342,11 +342,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const mode = (req.query.mode === 'power' ? 'power' : 'space') as 'space' | 'power';
       
+      logger.info(`[DIGEST-ROUTE] Starting digest build for userId=${userId} mode=${mode}`);
+      
       // Import and use the same builder function as Chat/Call
       const { buildKnowledgeContext } = await import('./knowledge/context-builder');
       const context = await buildKnowledgeContext(userId, { mode });
       
-      logger.info(`[KNOWLEDGE-DEBUG] Digest requested: userId=${userId}, mode=${mode}, sources=${context.sourceCount}, chars=${context.digest.length}`);
+      logger.info(`[DIGEST-ROUTE] Digest built: userId=${userId}, mode=${mode}, sources=${context.sourceCount}, chars=${context.digest.length}`);
+      
+      // Build sourcesDebug for transparency
+      const sourcesDebug = {
+        count: context.sources.length,
+        ids: context.sources.map((s: any) => s.id),
+        types: context.sources.map((s: any) => s.type),
+        titles: context.sources.map((s: any) => s.title || '(no title)'),
+        statuses: context.sources.map((s: any) => s.status)
+      };
       
       res.json({
         success: true,
@@ -356,7 +367,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         charCount: context.digest.length,
         truncated: context.truncated,
         digest: context.digest,
-        aiProfile: context.aiProfile ? Object.keys(context.aiProfile) : []
+        aiProfile: context.aiProfile ? Object.keys(context.aiProfile) : [],
+        sourcesDebug
       });
     } catch (error: any) {
       logger.error('❌ Error getting knowledge digest:', error);

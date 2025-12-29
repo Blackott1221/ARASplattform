@@ -157,9 +157,19 @@ export async function buildKnowledgeContext(
     let sources: UserDataSource[] = [];
     try {
       const allSources = await storage.getUserDataSources(userId);
+      logger.info(`[DIGEST] Raw sources from storage: ${allSources.length} for userId=${userId}`);
+      
+      // Log each source for debugging
+      allSources.forEach((s: any, i: number) => {
+        logger.info(`[DIGEST] Source[${i}]: id=${s.id} type=${s.type} status=${s.status} title="${s.title}" contentText=${s.contentText?.length || 0}chars`);
+      });
+      
+      // Filter active sources (be lenient - include null/undefined status)
       sources = allSources
-        .filter(s => s.status === 'active')
+        .filter((s: any) => !s.status || s.status === 'active')
         .slice(0, maxSources);
+      
+      logger.info(`[DIGEST] After filter: ${sources.length} active sources (mode=${mode})`);
     } catch (err) {
       logger.error('[KNOWLEDGE] Failed to load data sources:', err);
       // Continue with empty sources
