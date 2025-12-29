@@ -308,6 +308,208 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================================
+  // 📁 USER DATA SOURCES - Knowledge Base CRUD
+  // ============================================================================
+
+  // GET all data sources for user
+  app.get('/api/user/data-sources', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+      }
+
+      const dataSources = await storage.getUserDataSources(userId);
+      res.json({ success: true, dataSources });
+    } catch (error: any) {
+      logger.error('[DATA-SOURCES] Error fetching data sources:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch data sources' });
+    }
+  });
+
+  // POST create data source (text or url)
+  app.post('/api/user/data-sources', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+      }
+
+      const { type, title, contentText, url } = req.body;
+
+      // Validation
+      if (!type || !['text', 'url'].includes(type)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Invalid type. Must be "text" or "url"' 
+        });
+      }
+
+      if (type === 'text') {
+        if (!contentText || typeof contentText !== 'string') {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'Content text is required for text type' 
+          });
+        }
+        if (contentText.length < 10) {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'Content text must be at least 10 characters' 
+          });
+        }
+        if (contentText.length > 50000) {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'Content text must be less than 50,000 characters' 
+          });
+        }
+      }
+
+      if (type === 'url') {
+        if (!url || typeof url !== 'string') {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'URL is required for url type' 
+          });
+        }
+        // Basic URL validation
+        try {
+          new URL(url);
+        } catch {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'Invalid URL format' 
+          });
+        }
+        if (url.length > 2000) {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'URL must be less than 2,000 characters' 
+          });
+        }
+      }
+
+      const dataSource = await storage.createUserDataSource({
+        userId,
+        type,
+        title: title || (type === 'url' ? url : 'Text Content'),
+        contentText: type === 'text' ? contentText : null,
+        url: type === 'url' ? url : null,
+        status: 'active',
+      });
+
+      logger.info(`[DATA-SOURCES] Created ${type} source for user ${userId}`);
+      res.status(201).json({ success: true, dataSource });
+    } catch (error: any) {
+      logger.error('[DATA-SOURCES] Error creating data source:', error);
+      res.status(500).json({ success: false, message: 'Failed to create data source' });
+    }
+  });
+
+  // Configure multer for data source file uploads
+  const dataSourceUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: 25 * 1024 * 1024, // 25MB limit
+    },
+    fileFilter: (req, file, cb) => {
+      const allowedMimes = [
+        'application/pdf',
+        'text/plain',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      ];
+      const allowedExtensions = ['.pdf', '.txt', '.doc', '.docx'];
+      
+      const ext = file.originalname.toLowerCase().slice(file.originalname.lastIndexOf('.'));
+      
+      if (allowedMimes.includes(file.mimetype) || allowedExtensions.includes(ext)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type. Allowed: PDF, TXT, DOC, DOCX'));
+      }
+    }
+  });
+
+  // POST upload file data source
+  app.post('/api/user/data-sources/upload', requireAuth, dataSourceUpload.single('file'), async (req: any, res) => {
+    try {
+      const userId = req.session.userId || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ success: false, message: 'No file uploaded' });
+      }
+
+      const file = req.file;
+      const title = req.body.title || file.originalname;
+
+      // For now, store file content as base64 in the database
+      // In production, you'd upload to S3/R2 and store the key
+      const fileStorageKey = `user_${userId}_${Date.now()}_${file.originalname}`;
+      
+      // Extract text content for text files
+      let contentText: string | null = null;
+      if (file.mimetype === 'text/plain') {
+        contentText = file.buffer.toString('utf-8');
+      }
+      // For PDF/DOC extraction, you'd use a library like pdf-parse
+      // For now, we store the file and mark for processing
+
+      const dataSource = await storage.createUserDataSource({
+        userId,
+        type: 'file',
+        title,
+        contentText,
+        fileName: file.originalname,
+        fileMime: file.mimetype,
+        fileSize: file.size,
+        fileStorageKey,
+        status: contentText ? 'active' : 'active', // Mark as active even without text extraction for now
+      });
+
+      logger.info(`[DATA-SOURCES] Uploaded file for user ${userId}: ${file.originalname}`);
+      res.status(201).json({ success: true, dataSource });
+    } catch (error: any) {
+      logger.error('[DATA-SOURCES] Error uploading file:', error);
+      if (error.message?.includes('Invalid file type')) {
+        return res.status(400).json({ success: false, message: error.message });
+      }
+      res.status(500).json({ success: false, message: 'Failed to upload file' });
+    }
+  });
+
+  // DELETE data source
+  app.delete('/api/user/data-sources/:id', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+      }
+
+      const sourceId = parseInt(req.params.id, 10);
+      if (isNaN(sourceId)) {
+        return res.status(400).json({ success: false, message: 'Invalid source ID' });
+      }
+
+      const deleted = await storage.deleteUserDataSource(sourceId, userId);
+      
+      if (!deleted) {
+        return res.status(404).json({ success: false, message: 'Data source not found' });
+      }
+
+      logger.info(`[DATA-SOURCES] Deleted source ${sourceId} for user ${userId}`);
+      res.json({ success: true, message: 'Data source deleted' });
+    } catch (error: any) {
+      logger.error('[DATA-SOURCES] Error deleting data source:', error);
+      res.status(500).json({ success: false, message: 'Failed to delete data source' });
+    }
+  });
+
   // Leads routes
   app.get('/api/leads', requireAuth, async (req: any, res) => {
     try {

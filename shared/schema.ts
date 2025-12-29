@@ -464,6 +464,57 @@ export const feedback = pgTable("feedback", {
 export type Feedback = typeof feedback.$inferSelect;
 export type InsertFeedback = typeof feedback.$inferInsert;
 
+// ============================================================================
+// 📁 USER DATA SOURCES - Knowledge Base for SPACE/POWER
+// ============================================================================
+// User-uploaded content: PDFs, text snippets, URLs
+// Used to enrich AI context in chat and voice calls
+// ============================================================================
+
+export const userDataSources = pgTable("user_data_sources", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  
+  // Type: "file" | "text" | "url"
+  type: varchar("type", { enum: ["file", "text", "url"] }).notNull(),
+  
+  // Metadata
+  title: varchar("title"), // User-provided title (optional)
+  status: varchar("status", { enum: ["pending", "processing", "active", "failed"] }).default("active").notNull(),
+  
+  // Content (for text/url types, or extracted text from files)
+  contentText: text("content_text"),
+  
+  // URL specific
+  url: text("url"),
+  
+  // File specific
+  fileName: varchar("file_name"),
+  fileMime: varchar("file_mime"),
+  fileSize: integer("file_size"), // in bytes
+  fileStorageKey: varchar("file_storage_key"), // path or key for file storage
+  
+  // Error handling
+  errorMessage: text("error_message"),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("user_data_sources_user_id_idx").on(table.userId),
+  index("user_data_sources_user_created_idx").on(table.userId, table.createdAt),
+  index("user_data_sources_type_idx").on(table.userId, table.type),
+]);
+
+export type UserDataSource = typeof userDataSources.$inferSelect;
+export type InsertUserDataSource = typeof userDataSources.$inferInsert;
+
+export const insertUserDataSourceSchema = createInsertSchema(userDataSources).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertCallLogSchema = createInsertSchema(callLogs).omit({
   id: true,
   createdAt: true,

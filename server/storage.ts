@@ -10,6 +10,7 @@ import {
   subscriptionPlans,
   usageTracking,
   twilioSettings,
+  userDataSources,
   type User,
   type UpsertUser,
   type Lead,
@@ -26,6 +27,8 @@ import {
   type UsageTracking,
   type TwilioSettings,
   type InsertTwilioSettings,
+  type UserDataSource,
+  type InsertUserDataSource,
 } from "@shared/schema";
 import { db } from "./db";
 import { logger } from "./logger";
@@ -163,6 +166,12 @@ export interface IStorage {
   }): Promise<number | null>;
   getCallLogByRetellId(retellCallId: string, userId: string): Promise<any>;
   getUserCallLogs(userId: string): Promise<any[]>;
+  
+  // User Data Sources operations
+  getUserDataSources(userId: string): Promise<any[]>;
+  createUserDataSource(data: any): Promise<any>;
+  getUserDataSourceById(id: number, userId: string): Promise<any | null>;
+  deleteUserDataSource(id: number, userId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2210,6 +2219,105 @@ export class MemStorage implements IStorage {
       totalCalls: 0,
       totalMessages: 0
     };
+  }
+  
+  // ============================================================================
+  // User Data Sources - Knowledge Base
+  // ============================================================================
+  
+  async getUserDataSources(userId: string): Promise<UserDataSource[]> {
+    try {
+      const sources = await db
+        .select()
+        .from(userDataSources)
+        .where(eq(userDataSources.userId, userId))
+        .orderBy(desc(userDataSources.createdAt));
+      return sources;
+    } catch (error) {
+      logger.error('[DATA-SOURCES] Error fetching user data sources:', error);
+      throw error;
+    }
+  }
+  
+  async createUserDataSource(data: InsertUserDataSource): Promise<UserDataSource> {
+    try {
+      const [source] = await db
+        .insert(userDataSources)
+        .values({
+          ...data,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+      logger.info('[DATA-SOURCES] Created new data source:', { id: source.id, type: source.type, userId: source.userId });
+      return source;
+    } catch (error) {
+      logger.error('[DATA-SOURCES] Error creating data source:', error);
+      throw error;
+    }
+  }
+  
+  async getUserDataSourceById(id: number, userId: string): Promise<UserDataSource | null> {
+    try {
+      const [source] = await db
+        .select()
+        .from(userDataSources)
+        .where(and(
+          eq(userDataSources.id, id),
+          eq(userDataSources.userId, userId)
+        ));
+      return source || null;
+    } catch (error) {
+      logger.error('[DATA-SOURCES] Error fetching data source by id:', error);
+      throw error;
+    }
+  }
+  
+  async deleteUserDataSource(id: number, userId: string): Promise<boolean> {
+    try {
+      const result = await db
+        .delete(userDataSources)
+        .where(and(
+          eq(userDataSources.id, id),
+          eq(userDataSources.userId, userId)
+        ))
+        .returning();
+      
+      if (result.length > 0) {
+        logger.info('[DATA-SOURCES] Deleted data source:', { id, userId });
+        return true;
+      }
+      return false;
+    } catch (error) {
+      logger.error('[DATA-SOURCES] Error deleting data source:', error);
+      throw error;
+    }
+  }
+  
+  async updateCallLogByConversationId(conversationId: string, updates: any): Promise<void> {
+    try {
+      // Find call log by retellCallId (which stores the conversation ID)
+      const [existingLog] = await db
+        .select()
+        .from(callLogs)
+        .where(eq(callLogs.retellCallId, conversationId));
+      
+      if (existingLog) {
+        await db
+          .update(callLogs)
+          .set({
+            ...updates,
+            updatedAt: new Date(),
+          })
+          .where(eq(callLogs.retellCallId, conversationId));
+        logger.info('[CALL-LOGS] Updated call log by conversation ID:', conversationId);
+      } else {
+        logger.warn('[CALL-LOGS] No call log found for conversation ID:', conversationId);
+      }
+    } catch (error) {
+      logger.error('[CALL-LOGS] Error updating call log by conversation ID:', error);
+      throw error;
+    }
   }
 }
 
