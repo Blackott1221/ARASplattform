@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage, getUserDataSourcesStandalone } from "./storage";
 import { client, db } from "./db";
 import { campaigns, chatMessages, chatSessions, contacts, calendarEvents, leads, subscriptionPlans, users, usageTracking, voiceAgents, callLogs } from "@shared/schema";
 import { logger } from "./logger";
@@ -333,6 +333,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // USER DATA SOURCES API (Knowledge Base)
   // ========================================
 
+  // HEALTH CHECK: Verify storage methods exist at runtime
+  app.get('/api/user/knowledge/health', requireAuth, async (req: any, res) => {
+    try {
+      const userId = getAuthUserId(req);
+      const storageKeys = Object.keys(storage).slice(0, 50);
+      const hasClassMethod = typeof storage.getUserDataSources === 'function';
+      const hasStandaloneFunction = typeof getUserDataSourcesStandalone === 'function';
+      
+      logger.info(`[HEALTH] userId=${userId} hasClassMethod=${hasClassMethod} hasStandalone=${hasStandaloneFunction}`);
+      logger.info(`[HEALTH] storageKeys: ${storageKeys.join(', ')}`);
+      
+      res.json({
+        success: true,
+        userId,
+        hasGetUserDataSources: hasClassMethod,
+        hasStandaloneFunction,
+        storageKeys,
+        recommendation: hasStandaloneFunction ? 'Use getUserDataSourcesStandalone' : 'Fix storage class'
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
   // GET Knowledge Digest Preview (Debug Route)
   app.get('/api/user/knowledge/digest', requireAuth, async (req: any, res) => {
     try {
@@ -380,8 +404,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       logger.info(`[SOURCES_RAW] Fetching sources for userId=${userId}`);
       
-      // Use EXACT same codepath as digest: storage.getUserDataSources
-      const sources = await storage.getUserDataSources(userId);
+      // Use STANDALONE function to bypass potential class method binding issues
+      const sources = await getUserDataSourcesStandalone(userId);
       
       logger.info(`[SOURCES_RAW] Got ${sources.length} sources for userId=${userId}`);
       

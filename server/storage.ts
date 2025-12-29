@@ -2319,3 +2319,49 @@ export class MemStorage implements IStorage {
 
 // Use database storage for persistent data
 export const storage = new DatabaseStorage();
+
+// ============================================
+// STANDALONE EXPORT: getUserDataSources
+// Ensures this function is ALWAYS available regardless of class binding issues
+// ============================================
+export async function getUserDataSourcesStandalone(userId: string): Promise<any[]> {
+  const { client } = await import('./db');
+  
+  logger.info(`[STORAGE-STANDALONE] getUserDataSources called for userId=${userId}`);
+  
+  try {
+    const result = await client`
+      SELECT * FROM user_data_sources 
+      WHERE user_id = ${userId} 
+      ORDER BY created_at DESC
+      LIMIT 200
+    `;
+    
+    logger.info(`[STORAGE-STANDALONE] Found ${result.length} rows for userId=${userId}`);
+    
+    // Transform with robust column mapping
+    const transformed = result.map((row: any) => ({
+      id: row.id,
+      userId: row.user_id,
+      type: row.type,
+      title: row.title || '',
+      status: row.status || 'active',
+      contentText: row.content_text ?? row.content_preview ?? '',
+      url: row.url || '',
+      fileName: row.file_name || null,
+      fileMime: row.file_mime || null,
+      fileSize: row.file_size || null,
+      fileStorageKey: row.file_storage_key || null,
+      errorMessage: row.error_message || null,
+      createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+      updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null
+    }));
+    
+    logger.info(`[STORAGE-STANDALONE] Transformed ${transformed.length} sources`);
+    return transformed;
+  } catch (error: any) {
+    logger.error(`[STORAGE-STANDALONE] ❌ ERROR: ${error.message}`);
+    logger.error(`[STORAGE-STANDALONE] Stack: ${error.stack}`);
+    throw error;
+  }
+}

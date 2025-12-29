@@ -7,7 +7,7 @@
  * Budgeted, defensive, and optimized for LLM prompt injection.
  */
 
-import { storage } from '../storage';
+import { storage, getUserDataSourcesStandalone } from '../storage';
 import { logger } from '../logger';
 import type { User, UserDataSource } from '@shared/schema';
 
@@ -32,6 +32,8 @@ export interface SourcesDebug {
   types: string[];
   statuses: string[];
   titlesPreview: string[];
+  error?: string;
+  stackTop?: string;
 }
 
 export interface KnowledgeContext {
@@ -178,11 +180,12 @@ export async function buildKnowledgeContext(
     };
     
     try {
-      const allSources = await storage.getUserDataSources(userId);
+      // Use STANDALONE function to bypass potential class method binding issues
+      logger.info(`[DIGEST] ═══ LOADING SOURCES for userId=${userId} mode=${mode} ═══`);
+      const allSources = await getUserDataSourcesStandalone(userId);
       sourcesDebug.rawCount = allSources.length;
       
-      logger.info(`[DIGEST] ═══ LOADING SOURCES for userId=${userId} mode=${mode} ═══`);
-      logger.info(`[DIGEST] Raw sources from storage: ${allSources.length}`);
+      logger.info(`[DIGEST] Raw sources from standalone function: ${allSources.length}`);
       
       // Log each source for debugging
       allSources.forEach((s: any, i: number) => {
@@ -217,9 +220,13 @@ export async function buildKnowledgeContext(
       
       logger.info(`[DIGEST] After filter: ${sources.length} sources (raw=${sourcesDebug.rawCount} mapped=${sourcesDebug.mappedCount} filtered=${sourcesDebug.filteredCount})`);
       logger.info(`[DIGEST] IDs: ${sourcesDebug.ids.join(', ')}`);
-    } catch (err) {
-      logger.error('[KNOWLEDGE] Failed to load data sources:', err);
-      // Continue with empty sources
+    } catch (err: any) {
+      logger.error('[KNOWLEDGE] ❌ Failed to load data sources:', err.message);
+      logger.error('[KNOWLEDGE] Stack:', err.stack);
+      // Capture error in sourcesDebug for visibility
+      sourcesDebug.error = err.message || 'Unknown error';
+      sourcesDebug.stackTop = (err.stack || '').split('\n').slice(0, 3).join(' | ');
+      // Continue with empty sources but error is visible
     }
 
     // 3. Build digest
