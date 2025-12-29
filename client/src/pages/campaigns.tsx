@@ -47,11 +47,33 @@ export default function Campaigns() {
     enabled: !!user,
   });
 
+  // 🔥 Plan normalization helper - handles all known plan variants
+  const normalizePlan = (input: unknown): 'free' | 'pro' | 'ultra' | 'ultimate' | null => {
+    if (!input || typeof input !== 'string') return null;
+    const lower = input.toLowerCase().trim();
+    
+    // Free variants
+    if (lower === 'free' || lower === 'starter' || lower === 'trial') return 'free';
+    // Pro variants
+    if (lower === 'pro' || lower === 'professional') return 'pro';
+    // Ultra variants
+    if (lower === 'ultra' || lower === 'aras ultra' || lower.includes('ultra')) return 'ultra';
+    // Ultimate variants
+    if (lower === 'ultimate' || lower === 'enterprise' || lower.includes('ultimate') || 
+        lower.includes('enterprise') || lower === 'aras ultimate – enterprise mode') return 'ultimate';
+    
+    console.warn('[CAMPAIGNS] Unknown plan value:', input);
+    return null;
+  };
+
   // Check if user has access to campaigns (Ultra or Ultimate plan)
-  const hasAccess = () => {
-    if (!subscriptionData?.subscription) return false;
-    const plan = subscriptionData.subscription.plan_id;
-    return plan === 'ultra' || plan === 'ultimate';
+  const hasAccess = (): boolean => {
+    // subscriptionData returns { plan: "...", ... } at top level, NOT nested
+    const rawPlan = subscriptionData?.plan;
+    const normalizedPlan = normalizePlan(rawPlan);
+    
+    if (!normalizedPlan) return false;
+    return normalizedPlan === 'ultra' || normalizedPlan === 'ultimate';
   };
 
   const isPremiumLocked = !hasAccess();
