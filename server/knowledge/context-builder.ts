@@ -7,7 +7,7 @@
  * Budgeted, defensive, and optimized for LLM prompt injection.
  */
 
-import { storage, getUserDataSourcesStandalone } from '../storage';
+import { storage } from '../storage';
 import { logger } from '../logger';
 import type { User, UserDataSource } from '@shared/schema';
 
@@ -180,12 +180,12 @@ export async function buildKnowledgeContext(
     };
     
     try {
-      // Use STANDALONE function to bypass potential class method binding issues
+      // Use storage.getUserDataSources (Single Source of Truth)
       logger.info(`[DIGEST] ═══ LOADING SOURCES for userId=${userId} mode=${mode} ═══`);
-      const allSources = await getUserDataSourcesStandalone(userId);
+      const allSources = await storage.getUserDataSources(userId);
       sourcesDebug.rawCount = allSources.length;
       
-      logger.info(`[DIGEST] Raw sources from standalone function: ${allSources.length}`);
+      logger.info(`[DIGEST] Raw sources from storage: ${allSources.length}`);
       
       // Log each source for debugging
       allSources.forEach((s: any, i: number) => {

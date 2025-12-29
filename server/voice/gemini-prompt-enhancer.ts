@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { logger } from '../logger';
+import { getKnowledgeDigest } from '../knowledge/context-builder';
 
 // Interface für die Rohdaten vom Formular
 export interface CallInput {
@@ -11,6 +12,7 @@ export interface CallInput {
 // Interface für die Daten aus unserer Datenbank
 export interface UserContext {
   userName: string;       // "Manuel" (Dein Nutzer)
+  userId?: string;        // 🔥 REQUIRED for knowledge digest injection
   
   // 🔥 BUSINESS INTELLIGENCE - ERWEITERT (Dezember 2025)
   company?: string;       // "ARAS GmbH"
@@ -69,12 +71,30 @@ export async function enhanceCallWithGemini(
     logger.info('[ARAS-BRAIN] Generiere intelligenten Anruf-Kontext...', {
       hasCompany: !!context.company,
       hasIndustry: !!context.industry,
-      hasAiProfile: !!context.aiProfile
+      hasAiProfile: !!context.aiProfile,
+      hasUserId: !!context.userId
     });
+    
+    // 🧠 INJECT KNOWLEDGE DIGEST for POWER calls
+    let knowledgeDigest = '';
+    let digestSourceCount = 0;
+    if (context.userId) {
+      try {
+        knowledgeDigest = await getKnowledgeDigest(context.userId, 'power');
+        digestSourceCount = (knowledgeDigest.match(/• \[/g) || []).length;
+        logger.info('[POWER] knowledgeDigestInjected', {
+          userId: context.userId,
+          sourceCount: digestSourceCount,
+          charCount: knowledgeDigest.length
+        });
+      } catch (e: any) {
+        logger.error('[POWER] Failed to get knowledge digest:', e.message);
+      }
+    }
     
     // Erstelle einen intelligenten Prompt basierend auf dem Input
     const purpose = determinePurpose(input.message);
-    const detailsForAI = generateHumanPrompt(input, context);
+    const detailsForAI = generateHumanPrompt(input, context, knowledgeDigest);
     
     // 🔥 Prepare company data for ElevenLabs dynamic variables
     const aiProfile = context.aiProfile || {};
@@ -158,7 +178,7 @@ function determinePurpose(message: string): string {
 }
 
 // Hilfsfunktion: Generiere menschlichen Prompt (EINFACHE VERSION für Fallback)
-function generateHumanPrompt(input: CallInput, context: UserContext): string {
+function generateHumanPrompt(input: CallInput, context: UserContext, knowledgeDigest: string = ''): string {
   const purpose = determinePurpose(input.message);
   
   let basePrompt = `Du bist ARAS, der persönliche KI-Assistent von ${context.userName}.
@@ -184,6 +204,11 @@ Beginne mit: "Guten Tag, hier spricht ARAS, der persönliche Assistent von ${con
 4. Verabschiede dich freundlich
 
 Jetzt führe das Gespräch!`;
+
+  // 🧠 INJECT KNOWLEDGE DIGEST if available
+  if (knowledgeDigest && knowledgeDigest.length > 0) {
+    basePrompt += `\n\n${knowledgeDigest}`;
+  }
   
   return basePrompt;
 }

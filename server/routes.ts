@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
-import { storage, getUserDataSourcesStandalone } from "./storage";
+import { storage } from "./storage";
 import { client, db } from "./db";
 import { campaigns, chatMessages, chatSessions, contacts, calendarEvents, leads, subscriptionPlans, users, usageTracking, voiceAgents, callLogs } from "@shared/schema";
 import { logger } from "./logger";
@@ -337,20 +337,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/user/knowledge/health', requireAuth, async (req: any, res) => {
     try {
       const userId = getAuthUserId(req);
-      const storageKeys = Object.keys(storage).slice(0, 50);
-      const hasClassMethod = typeof storage.getUserDataSources === 'function';
-      const hasStandaloneFunction = typeof getUserDataSourcesStandalone === 'function';
+      const hasMethod = typeof storage.getUserDataSources === 'function';
       
-      logger.info(`[HEALTH] userId=${userId} hasClassMethod=${hasClassMethod} hasStandalone=${hasStandaloneFunction}`);
-      logger.info(`[HEALTH] storageKeys: ${storageKeys.join(', ')}`);
+      logger.info(`[HEALTH] userId=${userId} hasGetUserDataSources=${hasMethod}`);
+      
+      // Quick test: try to call the method
+      let testResult = { success: false, count: 0, error: null as string | null };
+      if (hasMethod) {
+        try {
+          const sources = await storage.getUserDataSources(userId);
+          testResult = { success: true, count: sources.length, error: null };
+        } catch (e: any) {
+          testResult = { success: false, count: 0, error: e.message };
+        }
+      }
       
       res.json({
         success: true,
         userId,
-        hasGetUserDataSources: hasClassMethod,
-        hasStandaloneFunction,
-        storageKeys,
-        recommendation: hasStandaloneFunction ? 'Use getUserDataSourcesStandalone' : 'Fix storage class'
+        hasGetUserDataSources: hasMethod,
+        testResult,
+        status: hasMethod ? 'OK' : 'BROKEN'
       });
     } catch (error: any) {
       res.status(500).json({ success: false, message: error.message });
@@ -404,8 +411,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       logger.info(`[SOURCES_RAW] Fetching sources for userId=${userId}`);
       
-      // Use STANDALONE function to bypass potential class method binding issues
-      const sources = await getUserDataSourcesStandalone(userId);
+      // Use storage.getUserDataSources (now properly defined in DatabaseStorage class)
+      const sources = await storage.getUserDataSources(userId);
       
       logger.info(`[SOURCES_RAW] Got ${sources.length} sources for userId=${userId}`);
       
@@ -3545,6 +3552,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         { contactName: name, phoneNumber, message },
         { 
           userName: user.firstName || user.username || 'mein Kunde',
+          userId: userId, // 🧠 REQUIRED for knowledge digest injection
           // 🔥 BUSINESS INTELLIGENCE (Dezember 2025)
           company: user.company || undefined,
           website: user.website || undefined,
