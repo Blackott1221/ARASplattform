@@ -163,6 +163,9 @@ export interface IStorage {
   }): Promise<number | null>;
   getCallLogByRetellId(retellCallId: string, userId: string): Promise<any>;
   getUserCallLogs(userId: string): Promise<any[]>;
+  
+  // User Data Sources (Knowledge Base)
+  getUserDataSources(userId: string): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2210,6 +2213,28 @@ export class MemStorage implements IStorage {
       totalCalls: 0,
       totalMessages: 0
     };
+  }
+  
+  // User Data Sources (Knowledge Base) - Query from user_data_sources table
+  async getUserDataSources(userId: string): Promise<any[]> {
+    try {
+      const { client } = await import('./db');
+      const result = await client`
+        SELECT * FROM user_data_sources 
+        WHERE user_id = ${userId} 
+        ORDER BY created_at DESC
+      `;
+      logger.info(`[STORAGE] getUserDataSources for ${userId}: found ${result.length} sources`);
+      return result;
+    } catch (error: any) {
+      // If table doesn't exist, return empty array
+      if (error.code === '42P01') {
+        logger.warn(`[STORAGE] user_data_sources table does not exist yet`);
+        return [];
+      }
+      logger.error(`[STORAGE] Error fetching data sources:`, error);
+      return [];
+    }
   }
 }
 

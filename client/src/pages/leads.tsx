@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
@@ -10,6 +10,47 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import type { User as UserType, SubscriptionResponse } from '@shared/schema';
+
+// ErrorBoundary to prevent black screen crashes
+class LeadsErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('[LEADS] ErrorBoundary caught:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 max-w-md text-center">
+            <h2 className="text-lg font-semibold text-red-400 mb-2">Fehler aufgetreten</h2>
+            <p className="text-sm text-gray-400 mb-4">
+              Die Wissensdatenbank konnte nicht geladen werden.
+            </p>
+            <pre className="text-xs text-red-300 bg-black/40 p-3 rounded-lg overflow-auto max-h-[100px] mb-4">
+              {this.state.error?.message || 'Unbekannter Fehler'}
+            </pre>
+            <Button
+              onClick={() => window.location.reload()}
+              className="bg-[#FE9100] hover:bg-[#FE9100]/80 text-white"
+            >
+              Seite neu laden
+            </Button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // Safe date helper to prevent RangeError
 const safeDateLabel = (value: string | null | undefined, addSuffix = true): string => {
@@ -52,7 +93,7 @@ interface DataSource {
   updatedAt: string;
 }
 
-export default function Leads() {
+function LeadsContent() {
   const [showAddDataDialog, setShowAddDataDialog] = useState(false);
   const [newDataSource, setNewDataSource] = useState({ type: 'text' as 'text' | 'url' | 'file', title: '', content: '', url: '' });
   const [isAddingSource, setIsAddingSource] = useState(false);
@@ -79,6 +120,26 @@ export default function Leads() {
     enabled: !!user && !authLoading,
   });
 
+  // Fetch knowledge digest preview (SPACE mode)
+  const [digestMode, setDigestMode] = useState<'space' | 'power'>('space');
+  const { data: digestData, refetch: refetchDigest } = useQuery<{
+    success: boolean;
+    mode: string;
+    userId: string;
+    sourceCount: number;
+    charCount: number;
+    truncated: boolean;
+    digest: string;
+  }>({
+    queryKey: ['/api/user/knowledge/digest', digestMode],
+    queryFn: async () => {
+      const res = await fetch(`/api/user/knowledge/digest?mode=${digestMode}`, { credentials: 'include' });
+      return res.json();
+    },
+    enabled: !!user && !authLoading,
+    refetchInterval: 10000, // Refresh every 10s
+  });
+
   // Mutation to update AI profile
   const updateAiProfileMutation = useMutation({
     mutationFn: async (updates: any) => {
@@ -96,11 +157,13 @@ export default function Leads() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user/knowledge/digest'] });
+      refetchDigest();
       toast({ title: 'Gespeichert', description: 'Business Intelligence aktualisiert.' });
       setIsEditingBusiness(false);
     },
     onError: (error: any) => {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      toast({ title: 'Fehler', description: error.message, variant: 'destructive' });
     }
   });
 
@@ -153,8 +216,8 @@ export default function Leads() {
       setAddSourceError('Bitte URL eingeben');
       return;
     }
-    if (newDataSource.type === 'file' && !selectedFile) {
-      setAddSourceError('Bitte Datei auswählen');
+    if (newDataSource.type === 'file') {
+      setAddSourceError('Datei-Upload kommt bald. Bitte nutze Text oder URL.');
       return;
     }
 
@@ -163,17 +226,9 @@ export default function Leads() {
     try {
       let response: Response;
 
-      if (newDataSource.type === 'file' && selectedFile) {
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-        if (newDataSource.title) formData.append('title', newDataSource.title);
-
-        console.log('[ADD_SOURCE] Uploading file:', selectedFile.name);
-        response = await fetch('/api/user/data-sources/upload', {
-          method: 'POST',
-          credentials: 'include',
-          body: formData,
-        });
+      // File upload is disabled - this block should not be reached due to validation above
+      if (newDataSource.type === 'file') {
+        throw new Error('Datei-Upload ist noch nicht verfügbar');
       } else {
         const payload = {
           type: newDataSource.type,
@@ -449,6 +504,45 @@ export default function Leads() {
             <InfoRow label="Mitglied seit" value={safeFormatDate(userProfile.createdAt, 'dd.MM.yyyy')} />
           </div>
         </div>
+
+        {/* Knowledge Context Preview (SPACE/POWER) */}
+        <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+          <div className="p-4 border-b border-white/10 flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-white">Kontext-Vorschau</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Was ARAS AI über dich weiß</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDigestMode('space')}
+                className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                  digestMode === 'space' ? 'bg-[#FE9100] text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                SPACE
+              </button>
+              <button
+                onClick={() => setDigestMode('power')}
+                className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                  digestMode === 'power' ? 'bg-[#FE9100] text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                POWER
+              </button>
+            </div>
+          </div>
+          <div className="p-4">
+            <div className="flex items-center gap-4 mb-3 text-xs text-gray-400">
+              <span>Quellen: <span className="text-white font-medium">{digestData?.sourceCount ?? 0}</span></span>
+              <span>Zeichen: <span className="text-white font-medium">{digestData?.charCount ?? 0}</span></span>
+              <span>Modus: <span className="text-[#FE9100] font-medium uppercase">{digestMode}</span></span>
+              {digestData?.truncated && <span className="text-yellow-500">(gekürzt)</span>}
+            </div>
+            <pre className="bg-black/40 border border-white/5 rounded-lg p-3 text-xs text-gray-300 font-mono overflow-x-auto max-h-[200px] overflow-y-auto whitespace-pre-wrap">
+              {digestData?.digest || 'Lade Kontext...'}
+            </pre>
+          </div>
+        </div>
       </div>
 
       {/* Add Data Source Dialog */}
@@ -529,27 +623,11 @@ export default function Leads() {
 
             {newDataSource.type === 'file' && (
               <div>
-                <label className="text-xs text-gray-400 mb-1 block">Datei (PDF, TXT, DOC - max 25MB)</label>
-                <div className={`border border-dashed rounded-lg p-6 text-center transition-colors ${
-                  selectedFile ? 'border-[#FE9100] bg-[#FE9100]/5' : 'border-white/20 hover:border-white/30'
-                }`}>
-                  <input
-                    type="file"
-                    accept=".pdf,.txt,.doc,.docx"
-                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                    className="hidden"
-                    id="file-upload"
-                  />
-                  <label htmlFor="file-upload" className="cursor-pointer">
-                    {selectedFile ? (
-                      <div>
-                        <p className="text-white text-sm">{selectedFile.name}</p>
-                        <p className="text-xs text-gray-400 mt-1">{Math.round(selectedFile.size / 1024)} KB</p>
-                      </div>
-                    ) : (
-                      <p className="text-gray-400 text-sm">Klicke, um eine Datei auszuwählen</p>
-                    )}
-                  </label>
+                <label className="text-xs text-gray-400 mb-1 block">Datei-Upload</label>
+                <div className="border border-dashed border-white/20 rounded-lg p-6 text-center bg-white/5">
+                  <p className="text-[#FE9100] text-sm font-medium">Kommt bald</p>
+                  <p className="text-gray-500 text-xs mt-1">Datei-Upload wird in Kürze verfügbar sein.</p>
+                  <p className="text-gray-500 text-xs mt-2">Nutze vorerst Text oder URL.</p>
                 </div>
               </div>
             )}
@@ -588,5 +666,14 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       <div className="text-xs text-gray-500">{label}</div>
       <div className="text-sm text-white truncate">{value}</div>
     </div>
+  );
+}
+
+// Export with ErrorBoundary wrapper to prevent black screen crashes
+export default function Leads() {
+  return (
+    <LeadsErrorBoundary>
+      <LeadsContent />
+    </LeadsErrorBoundary>
   );
 }

@@ -312,6 +312,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // USER DATA SOURCES API (Knowledge Base)
   // ========================================
 
+  // GET Knowledge Digest Preview (Debug Route)
+  app.get('/api/user/knowledge/digest', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const mode = (req.query.mode === 'power' ? 'power' : 'space') as 'space' | 'power';
+      
+      // Import and use the same builder function as Chat/Call
+      const { buildKnowledgeContext } = await import('./knowledge/context-builder');
+      const context = await buildKnowledgeContext(userId, { mode });
+      
+      logger.info(`[KNOWLEDGE-DEBUG] Digest requested: userId=${userId}, mode=${mode}, sources=${context.sourceCount}, chars=${context.digest.length}`);
+      
+      res.json({
+        success: true,
+        mode,
+        userId,
+        sourceCount: context.sourceCount,
+        charCount: context.digest.length,
+        truncated: context.truncated,
+        digest: context.digest,
+        aiProfile: context.aiProfile ? Object.keys(context.aiProfile) : []
+      });
+    } catch (error: any) {
+      logger.error('❌ Error getting knowledge digest:', error);
+      res.status(500).json({ success: false, message: error.message || 'Failed to get knowledge digest' });
+    }
+  });
+
   // GET all data sources for user
   app.get('/api/user/data-sources', requireAuth, async (req: any, res) => {
     try {
@@ -387,17 +415,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST file upload
+  // POST file upload - Returns proper response instead of 501
   app.post('/api/user/data-sources/upload', requireAuth, async (req: any, res) => {
     try {
       const userId = req.session.userId;
+      logger.info(`[UPLOAD] File upload attempted by user ${userId} - feature not yet available`);
       
-      // For now, return not implemented - file uploads need multer middleware
-      logger.warn('⚠️ File upload attempted but not fully implemented');
-      res.status(501).json({ success: false, message: 'File upload not yet implemented. Please use Text or URL.' });
+      // Return 200 with success:false and code for client-side handling
+      res.status(200).json({ 
+        success: false, 
+        code: 'NOT_IMPLEMENTED',
+        message: 'Datei-Upload kommt in Kürze. Bitte nutze Text oder URL.' 
+      });
     } catch (error: any) {
-      logger.error('❌ Error uploading file:', error);
-      res.status(500).json({ success: false, message: 'Failed to upload file' });
+      logger.error('❌ Error in file upload route:', error);
+      res.status(500).json({ success: false, message: 'Fehler beim Datei-Upload' });
     }
   });
 
