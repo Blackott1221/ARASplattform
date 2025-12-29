@@ -115,7 +115,7 @@ export function ContactAutoSuggest({
   };
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="w-full">
       <input
         ref={inputRef}
         type="text"
@@ -141,23 +141,22 @@ export function ContactAutoSuggest({
         }}
       />
 
+      {/* DROPDOWN IN LAYOUT FLOW - NOT ABSOLUTE - pushes content down instead of overlapping */}
       <AnimatePresence>
         {showSuggestions && filteredContacts.length > 0 && (
           <motion.div
-            initial={{ opacity: 0, y: -4, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -4, scale: 0.98 }}
-            transition={{ duration: 0.12, ease: 'easeOut' }}
-            className="absolute left-0 right-0 mt-2 rounded-xl overflow-hidden"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="w-full mt-2 rounded-xl overflow-hidden"
             style={{
-              top: '100%',
-              maxHeight: '156px',
+              maxHeight: '160px',
               overflowY: 'auto',
-              zIndex: 50,
               background: 'linear-gradient(180deg, rgba(18,18,20,0.98) 0%, rgba(12,12,14,0.99) 100%)',
-              border: '1px solid rgba(254,145,0,0.15)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05) inset, 0 4px 16px rgba(254,145,0,0.08)',
-              backdropFilter: 'blur(16px)'
+              border: '1px solid rgba(254,145,0,0.18)',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04) inset',
+              backdropFilter: 'blur(12px)'
             }}
           >
             <div className="py-1">
@@ -165,12 +164,12 @@ export function ContactAutoSuggest({
                 <button
                   key={contact.id}
                   onClick={() => handleSelect(contact)}
-                  className="w-full text-left px-3 py-2.5 transition-all duration-150 group"
+                  className="w-full text-left px-3 py-2 transition-all duration-100 group"
                   style={{
                     borderBottom: idx < filteredContacts.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(254,145,0,0.08)';
+                    e.currentTarget.style.background = 'rgba(254,145,0,0.1)';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = 'transparent';
@@ -178,10 +177,10 @@ export function ContactAutoSuggest({
                 >
                   <div className="flex items-center gap-2.5">
                     <div
-                      className="h-7 w-7 rounded-lg flex items-center justify-center text-[11px] font-bold flex-shrink-0 transition-all duration-150"
+                      className="h-6 w-6 rounded-md flex items-center justify-center text-[10px] font-bold flex-shrink-0"
                       style={{
-                        background: 'linear-gradient(135deg, rgba(254,145,0,0.12), rgba(254,145,0,0.06))',
-                        border: '1px solid rgba(254,145,0,0.25)',
+                        background: 'linear-gradient(135deg, rgba(254,145,0,0.15), rgba(254,145,0,0.08))',
+                        border: '1px solid rgba(254,145,0,0.3)',
                         color: '#FE9100'
                       }}
                     >
@@ -191,7 +190,7 @@ export function ContactAutoSuggest({
                       <p className="text-[13px] font-medium text-white/90 truncate leading-tight group-hover:text-white transition-colors">
                         {contact.company || `${contact.firstName} ${contact.lastName}`.trim() || 'Unbenannt'}
                       </p>
-                      <p className="text-[11px] text-neutral-500 truncate leading-tight mt-0.5">
+                      <p className="text-[11px] text-neutral-500 truncate leading-tight">
                         {contact.phone || contact.phoneNumber || contact.email || ''}
                       </p>
                     </div>
