@@ -65,6 +65,12 @@ export default function Leads() {
   const [newDataSource, setNewDataSource] = useState({ type: 'text' as 'text' | 'url' | 'file', title: '', content: '', url: '' });
   const [isAddingSource, setIsAddingSource] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  
+  // Knowledge Digest Preview State
+  const [showDigestPreview, setShowDigestPreview] = useState(false);
+  const [digestPreview, setDigestPreview] = useState<{ digest: string; meta: { sourceCount: number; charCount: number; mode: string } } | null>(null);
+  const [isLoadingDigest, setIsLoadingDigest] = useState(false);
+  const [digestMode, setDigestMode] = useState<'space' | 'power'>('space');
 
   // Fetch data sources from API
   const { data: dataSourcesResponse, isLoading: isLoadingDataSources, refetch: refetchDataSources } = useQuery<{ success: boolean; dataSources: DataSource[] }>({
@@ -561,6 +567,29 @@ Gib mir jetzt eine KRASSE 4-5 Satz Zusammenfassung die ${userProfile.firstName} 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: '✅ Copied!', description: 'Copied to clipboard' });
+  };
+
+  // 🔍 Fetch Knowledge Digest Preview
+  const fetchDigestPreview = async (mode: 'space' | 'power') => {
+    setIsLoadingDigest(true);
+    setDigestMode(mode);
+    try {
+      const response = await fetch(`/api/user/knowledge-digest?mode=${mode}`, {
+        credentials: 'include',
+      });
+      const data = await response.json();
+      if (data.success) {
+        setDigestPreview({ digest: data.digest, meta: data.meta });
+        setShowDigestPreview(true);
+      } else {
+        toast({ title: '❌ Error', description: 'Failed to load digest preview', variant: 'destructive' });
+      }
+    } catch (error) {
+      console.error('Failed to fetch digest:', error);
+      toast({ title: '❌ Error', description: 'Failed to load digest preview', variant: 'destructive' });
+    } finally {
+      setIsLoadingDigest(false);
+    }
   };
 
   const openDetailModal = (item: any) => {
@@ -1381,6 +1410,72 @@ Gib mir jetzt eine KRASSE 4-5 Satz Zusammenfassung die ${userProfile.firstName} 
                               <Plus className="w-12 h-12 text-gray-500 mb-3" />
                               <p className="text-sm text-gray-500 font-medium">New Source</p>
                             </motion.div>
+                          </div>
+
+                          {/* 🔍 Knowledge Digest Preview */}
+                          <div className="mt-6 pt-6 border-t border-white/10">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Preview: What ARAS Sees</h3>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => fetchDigestPreview('space')}
+                                  disabled={isLoadingDigest}
+                                  className="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-all disabled:opacity-50 flex items-center gap-1.5"
+                                >
+                                  {isLoadingDigest && digestMode === 'space' ? (
+                                    <div className="w-3 h-3 border border-blue-400 border-t-transparent rounded-full animate-spin" />
+                                  ) : (
+                                    <Eye className="w-3 h-3" />
+                                  )}
+                                  SPACE
+                                </button>
+                                <button
+                                  onClick={() => fetchDigestPreview('power')}
+                                  disabled={isLoadingDigest}
+                                  className="px-3 py-1.5 text-xs font-medium rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-all disabled:opacity-50 flex items-center gap-1.5"
+                                >
+                                  {isLoadingDigest && digestMode === 'power' ? (
+                                    <div className="w-3 h-3 border border-purple-400 border-t-transparent rounded-full animate-spin" />
+                                  ) : (
+                                    <Eye className="w-3 h-3" />
+                                  )}
+                                  POWER
+                                </button>
+                              </div>
+                            </div>
+
+                            <AnimatePresence>
+                              {showDigestPreview && digestPreview && (
+                                <motion.div
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: 'auto' }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  className="overflow-hidden"
+                                >
+                                  <div className="relative bg-black/40 border border-white/10 rounded-xl p-4">
+                                    <div className="flex items-center justify-between mb-3">
+                                      <div className="flex items-center gap-3">
+                                        <span className={`px-2 py-0.5 text-xs font-medium rounded ${digestPreview.meta.mode === 'space' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'}`}>
+                                          {digestPreview.meta.mode.toUpperCase()}
+                                        </span>
+                                        <span className="text-xs text-gray-500">
+                                          {digestPreview.meta.sourceCount} sources • {digestPreview.meta.charCount} chars
+                                        </span>
+                                      </div>
+                                      <button
+                                        onClick={() => setShowDigestPreview(false)}
+                                        className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"
+                                      >
+                                        <X className="w-3 h-3 text-gray-400" />
+                                      </button>
+                                    </div>
+                                    <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap max-h-[300px] overflow-y-auto custom-scrollbar leading-relaxed">
+                                      {digestPreview.digest || 'No knowledge context available.'}
+                                    </pre>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
                           </div>
                         </div>
                       </motion.div>

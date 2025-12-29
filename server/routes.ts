@@ -510,6 +510,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET Knowledge Digest Preview (for debugging/visualization)
+  app.get('/api/user/knowledge-digest', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId || req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+      }
+
+      const mode = (req.query.mode === 'power' ? 'power' : 'space') as 'space' | 'power';
+      
+      // Dynamic import to avoid circular dependency
+      const { buildKnowledgeContext } = await import('./knowledge/context-builder');
+      const context = await buildKnowledgeContext(userId, { mode });
+
+      logger.info('[KNOWLEDGE-DIGEST] Preview requested', {
+        userId,
+        mode,
+        sourceCount: context.sourceCount,
+        charCount: context.digest.length
+      });
+
+      res.json({
+        success: true,
+        digest: context.digest,
+        meta: {
+          sourceCount: context.sourceCount,
+          charCount: context.digest.length,
+          truncated: context.truncated,
+          mode
+        }
+      });
+    } catch (error: any) {
+      logger.error('[KNOWLEDGE-DIGEST] Error fetching digest:', error);
+      res.status(500).json({ success: false, message: 'Failed to fetch knowledge digest' });
+    }
+  });
+
   // Leads routes
   app.get('/api/leads', requireAuth, async (req: any, res) => {
     try {

@@ -266,6 +266,14 @@ router.post("/chat/messages", async (req: Request, res: Response) => {
     // Load knowledge digest (user data sources + AI profile in budgeted format)
     const knowledgeDigest = await getKnowledgeDigest(userId, 'space');
     
+    // 📊 Observability: Log knowledge digest injection
+    console.log('[CHAT] 📁 knowledgeDigestInjected:', {
+      userId,
+      mode: 'space',
+      sourceCount: knowledgeDigest ? (knowledgeDigest.match(/\[(?:FILE|TEXT|URL)\]/g) || []).length : 0,
+      charCount: knowledgeDigest?.length || 0
+    });
+    
     // Generate enhanced system prompt with full user context + knowledge
     const enhancedSystemPrompt = getSystemPrompt(user, knowledgeDigest);
 
