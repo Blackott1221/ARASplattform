@@ -11,6 +11,29 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import type { User as UserType, SubscriptionResponse } from '@shared/schema';
 
+// Safe date helper to prevent RangeError
+const safeDateLabel = (value: string | null | undefined, addSuffix = true): string => {
+  if (!value) return '—';
+  try {
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return '—';
+    return formatDistanceToNow(d, { locale: de, addSuffix });
+  } catch {
+    return '—';
+  }
+};
+
+const safeFormatDate = (value: string | null | undefined, formatStr: string): string => {
+  if (!value) return '—';
+  try {
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return '—';
+    return format(d, formatStr);
+  } catch {
+    return '—';
+  }
+};
+
 // Data Source type from API
 interface DataSource {
   id: number;
@@ -34,6 +57,7 @@ export default function Leads() {
   const [newDataSource, setNewDataSource] = useState({ type: 'text' as 'text' | 'url' | 'file', title: '', content: '', url: '' });
   const [isAddingSource, setIsAddingSource] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [addSourceError, setAddSourceError] = useState<string | null>(null); // Persistent error display
   const [isEditingBusiness, setIsEditingBusiness] = useState(false);
   const [editedBusiness, setEditedBusiness] = useState<any>({});
   
@@ -109,8 +133,10 @@ export default function Leads() {
 
   // Handle add data source
   const handleAddDataSource = async () => {
+    setAddSourceError(null); // Clear previous error
+    
     // Debug logging
-    console.log('ADD_SOURCE_CLICK', {
+    console.log('[ADD_SOURCE] Click', {
       type: newDataSource.type,
       title: newDataSource.title,
       textLen: newDataSource.content?.length || 0,
@@ -120,15 +146,15 @@ export default function Leads() {
 
     // Validation
     if (newDataSource.type === 'text' && !newDataSource.content.trim()) {
-      toast({ title: 'Error', description: 'Please enter text content', variant: 'destructive' });
+      setAddSourceError('Please enter text content');
       return;
     }
     if (newDataSource.type === 'url' && !newDataSource.url.trim()) {
-      toast({ title: 'Error', description: 'Please enter a URL', variant: 'destructive' });
+      setAddSourceError('Please enter a URL');
       return;
     }
     if (newDataSource.type === 'file' && !selectedFile) {
-      toast({ title: 'Error', description: 'Please select a file', variant: 'destructive' });
+      setAddSourceError('Please select a file');
       return;
     }
 
@@ -142,7 +168,7 @@ export default function Leads() {
         formData.append('file', selectedFile);
         if (newDataSource.title) formData.append('title', newDataSource.title);
 
-        console.log('ADD_SOURCE_REQUEST', 'file upload', { fileName: selectedFile.name });
+        console.log('[ADD_SOURCE] Uploading file:', selectedFile.name);
         response = await fetch('/api/user/data-sources/upload', {
           method: 'POST',
           credentials: 'include',
@@ -155,7 +181,7 @@ export default function Leads() {
           contentText: newDataSource.type === 'text' ? newDataSource.content : undefined,
           url: newDataSource.type === 'url' ? newDataSource.url : undefined,
         };
-        console.log('ADD_SOURCE_REQUEST', 'json', payload);
+        console.log('[ADD_SOURCE] POST JSON:', payload);
         response = await fetch('/api/user/data-sources', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -165,10 +191,10 @@ export default function Leads() {
       }
 
       const data = await response.json();
-      console.log('ADD_SOURCE_RESPONSE', response.status, data);
+      console.log('[ADD_SOURCE] Response:', response.status, data);
 
       if (!response.ok || !data.success) {
-        throw new Error(data.message || 'Failed to add data source');
+        throw new Error(data.message || `Server error: ${response.status}`);
       }
 
       toast({ title: 'Success', description: 'Data source added!' });
@@ -177,9 +203,12 @@ export default function Leads() {
       setShowAddDataDialog(false);
       setNewDataSource({ type: 'text', title: '', content: '', url: '' });
       setSelectedFile(null);
+      setAddSourceError(null);
     } catch (error: any) {
-      console.error('ADD_SOURCE_ERROR', error);
-      toast({ title: 'Error', description: error.message || 'Failed to add data source', variant: 'destructive' });
+      console.error('[ADD_SOURCE] Error:', error);
+      const errMsg = error.message || 'Failed to add data source';
+      setAddSourceError(errMsg); // Persistent error display
+      toast({ title: 'Error', description: errMsg, variant: 'destructive' });
     } finally {
       setIsAddingSource(false);
     }
@@ -295,7 +324,7 @@ export default function Leads() {
                         {source.title || source.fileName || source.url || 'Untitled'}
                       </div>
                       <div className="text-xs text-gray-500 mt-0.5">
-                        {formatDistanceToNow(new Date(source.createdAt), { locale: de, addSuffix: true })}
+                        {safeDateLabel(source.createdAt)}
                       </div>
                     </div>
                     <button
@@ -417,13 +446,13 @@ export default function Leads() {
             <InfoRow label="Name" value={userProfile.fullName || userProfile.username || 'Unknown'} />
             <InfoRow label="Email" value={userProfile.email || 'Not set'} />
             <InfoRow label="Company" value={userProfile.company || 'Not set'} />
-            <InfoRow label="Member Since" value={userProfile.createdAt ? format(new Date(userProfile.createdAt), 'dd.MM.yyyy') : 'Unknown'} />
+            <InfoRow label="Member Since" value={safeFormatDate(userProfile.createdAt, 'dd.MM.yyyy')} />
           </div>
         </div>
       </div>
 
       {/* Add Data Source Dialog */}
-      <Dialog open={showAddDataDialog} onOpenChange={setShowAddDataDialog}>
+      <Dialog open={showAddDataDialog} onOpenChange={(open) => { setShowAddDataDialog(open); if (open) setAddSourceError(null); }}>
         <DialogContent className="bg-[#111] border border-white/10 text-white max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold">Add Data Source</DialogTitle>
@@ -433,6 +462,13 @@ export default function Leads() {
           </DialogHeader>
           
           <div className="space-y-4 mt-4">
+            {/* Persistent Error Display */}
+            {addSourceError && (
+              <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                <p className="text-sm text-red-400">{addSourceError}</p>
+              </div>
+            )}
+            
             {/* Type Selection */}
             <div>
               <label className="text-xs text-gray-400 mb-2 block">Type</label>
