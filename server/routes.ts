@@ -18,6 +18,7 @@ import multer from "multer";
 import twilio from "twilio";
 import chatRouter from "./chat";
 import { requireAdmin } from "./middleware/admin";
+import { getKnowledgeDigest } from "./knowledge/context-builder";
 import { checkCallLimit, checkMessageLimit } from "./middleware/usage-limits";
 import { setupSimpleAuth } from "./simple-auth";
 import { setupTranslationRoute } from "./translate-route";
@@ -358,6 +359,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         hasGetUserDataSources: hasMethod,
         testResult,
         status: hasMethod ? 'OK' : 'BROKEN'
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  // DEBUG: Preview system prompt with knowledge digest
+  app.get('/api/chat/debug/system-prompt', requireAuth, async (req: any, res) => {
+    try {
+      const userId = getAuthUserId(req);
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'User ID not found' });
+      }
+      const mode = (req.query.mode === 'power' ? 'power' : 'space') as 'space' | 'power';
+      
+      const user = await storage.getUser(userId);
+      const userName = user?.firstName || user?.username || 'User';
+      
+      // Get knowledge digest
+      const digest = await getKnowledgeDigest(userId, mode);
+      const sourceCount = (digest.match(/• \[/g) || []).length;
+      
+      // Build sample system prompt (abbreviated)
+      const basePrompt = `ARAS AI - Du bist der persönliche KI-Assistent von ${userName}.\n[...ARAS Identity...]`;
+      const finalPrompt = digest ? `${basePrompt}\n\n${digest}` : basePrompt;
+      
+      res.json({
+        success: true,
+        mode,
+        userId,
+        userName,
+        digest: {
+          present: digest.length > 0,
+          sourceCount,
+          charCount: digest.length,
+          preview: digest.slice(0, 500),
+          full: digest
+        },
+        systemPrompt: {
+          baseLength: basePrompt.length,
+          finalLength: finalPrompt.length,
+          digestInjected: digest.length > 0
+        }
       });
     } catch (error: any) {
       res.status(500).json({ success: false, message: error.message });
@@ -1327,12 +1371,34 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       }
       openaiMessages.push({ role: "user", content: currentMessage });
       
+      // 🧠 FETCH KNOWLEDGE DIGEST FIRST (before streaming starts)
+      let knowledgeDigest = '';
+      let digestSourceCount = 0;
+      let digestCharCount = 0;
+      try {
+        knowledgeDigest = await getKnowledgeDigest(userId, 'space');
+        digestSourceCount = (knowledgeDigest.match(/• \[/g) || []).length;
+        digestCharCount = knowledgeDigest.length;
+        logger.info(`[CHAT] 🧠 knowledgeDigestFetched: { mode: "space", userId: "${userId}", sourceCount: ${digestSourceCount}, charCount: ${digestCharCount} }`);
+      } catch (digestError: any) {
+        logger.error(`[CHAT] ❌ Failed to get knowledge digest for userId=${userId}:`, digestError.message);
+      }
+      
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
       
-      // ⚡ INSTANT FEEDBACK: Send "thinking" signal immediately
-      res.write(`data: ${JSON.stringify({ thinking: true })}
+      // ⚡ INSTANT FEEDBACK: Send "thinking" signal immediately + knowledge meta
+      res.write(`data: ${JSON.stringify({ 
+        thinking: true,
+        meta: {
+          knowledge: {
+            injected: digestCharCount > 0,
+            sourceCount: digestSourceCount,
+            charCount: digestCharCount
+          }
+        }
+      })}
 
 `);
       
@@ -1408,6 +1474,14 @@ Du bist ARAS AI, eigenentwickeltes Large Language Model der Schwarzott Group. Du
 Der User heisst ${userName}. Sprich ihn mit seinem Namen an!
 
 Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge wie ARAS.`;
+        }
+        
+        // 🧠 INJECT KNOWLEDGE DIGEST into system prompt (already fetched above)
+        if (knowledgeDigest && knowledgeDigest.length > 0) {
+          systemInstruction += `\n\n${knowledgeDigest}`;
+          logger.info(`[CHAT] 🧠 knowledgeDigestInjected: { mode: "space", userId: "${userId}", sourceCount: ${digestSourceCount}, charCount: ${digestCharCount}, digestPreview: "${knowledgeDigest.slice(0, 80).replace(/\n/g, ' ')}..." }`);
+        } else {
+          logger.info(`[CHAT] ⚠️ No knowledge digest to inject for userId=${userId}`);
         }
         
         // Initialize Gemini 2.5 Flash - Optimized for chat with Live Google Search
