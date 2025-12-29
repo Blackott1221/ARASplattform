@@ -3252,6 +3252,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         contactContext,
         templateId: templateId || null,
         templateScenario: templateScenario || null,
+        userId,  // For loading knowledge digest (user data sources)
         userContext: {
           userName: user.firstName || user.username,
           company: user.company || undefined,

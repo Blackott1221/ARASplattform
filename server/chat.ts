@@ -4,6 +4,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { db } from "./db";
 import { chatMessages, chatSessions, users } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
+import { getKnowledgeDigest } from "./knowledge/context-builder";
 
 // Extend express-session types
 declare module "express-session" {
@@ -69,7 +70,7 @@ const PLATFORM_KNOWLEDGE = {
 
 // 🧠 ULTRA-INTELLIGENT SYSTEM PROMPT
 // Full access to all user data, platform knowledge, and psychological profile
-const getSystemPrompt = (user: any, userDataSources?: any[]) => {
+const getSystemPrompt = (user: any, knowledgeDigest?: string) => {
   const aiProfile = user.aiProfile || {};
   
   // Extract ALL profile data
@@ -89,13 +90,8 @@ const getSystemPrompt = (user: any, userDataSources?: any[]) => {
   const painPoints = aiProfile.painPoints?.join(', ') || 'Noch nicht analysiert';
   const chatSummary = aiProfile.chatInsightsSummary || 'Noch keine Chat-Analyse durchgeführt';
   
-  // Data Sources
-  let dataSourcesList = 'Keine Datenquellen hinzugefügt';
-  let dataSourcesCount = 0;
-  if (userDataSources && userDataSources.length > 0) {
-    dataSourcesCount = userDataSources.length;
-    dataSourcesList = userDataSources.map(ds => `- ${ds.name} (${ds.type}): ${ds.url || ds.content?.substring(0, 50) || 'N/A'}`).join('\n');
-  }
+  // Knowledge Digest (from centralized context builder)
+  const knowledgeSection = knowledgeDigest || '📁 USER SOURCES: Keine Datenquellen hinzugefügt';
   
   // Platform Knowledge
   const pricing = `FREE: ${PLATFORM_KNOWLEDGE.pricing.free.price} (${PLATFORM_KNOWLEDGE.pricing.free.aiMessages} Nachrichten) | PRO: ${PLATFORM_KNOWLEDGE.pricing.pro.price} (${PLATFORM_KNOWLEDGE.pricing.pro.aiMessages} Nachrichten) | ENTERPRISE: ${PLATFORM_KNOWLEDGE.pricing.enterprise.price} (Unlimited)`;
@@ -147,8 +143,7 @@ Du bist NICHT ChatGPT, Claude oder OpenAI - du bist ARAS AI®!
 💬 CHAT-INSIGHTS:
   ${chatSummary}
 
-📁 DATENQUELLEN (${dataSourcesCount}):
-${dataSourcesList}
+${knowledgeSection}
 
 ══════════════════════════════════════
 🏢 ARAS AI PLATFORM KNOWLEDGE
@@ -268,8 +263,11 @@ router.post("/chat/messages", async (req: Request, res: Response) => {
       content: msg.message,
     }));
 
-    // Generate enhanced system prompt with full user context
-    const enhancedSystemPrompt = getSystemPrompt(user);
+    // Load knowledge digest (user data sources + AI profile in budgeted format)
+    const knowledgeDigest = await getKnowledgeDigest(userId, 'space');
+    
+    // Generate enhanced system prompt with full user context + knowledge
+    const enhancedSystemPrompt = getSystemPrompt(user, knowledgeDigest);
 
     console.log(`[CHAT] 💬 ${user.firstName} (${user.company}) | Session: ${currentSessionId}`);
     console.log(`[CHAT] 📊 Context: ${contextMessages.length} messages | Profile enriched: ${user.profileEnriched}`);

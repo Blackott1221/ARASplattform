@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { logger } from '../logger';
+import { getKnowledgeDigest } from '../knowledge/context-builder';
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || '');
 
@@ -88,6 +89,7 @@ interface ValidationInput {
   contactContext?: ContactContext;
   templateId?: string | null;
   templateScenario?: string | null;
+  userId?: string;  // For loading knowledge digest
   userContext: {
     userName: string;
     company?: string;
@@ -227,6 +229,23 @@ export async function validateAndEnhancePrompt(input: ValidationInput): Promise<
     if (aiProfile.chatInsightsSummary) {
       userContextString += `\n\n**KI-LERNERGEBNISSE:**
 ${aiProfile.chatInsightsSummary}`;
+    }
+
+    // 📁 Load and inject knowledge digest (user data sources) - budgeted for POWER
+    if (input.userId) {
+      try {
+        const knowledgeDigest = await getKnowledgeDigest(input.userId, 'power');
+        if (knowledgeDigest && knowledgeDigest.length > 0) {
+          userContextString += `\n\n${knowledgeDigest}`;
+          logger.info('[PROMPT-VALIDATOR] 📁 Knowledge digest injected', { 
+            userId: input.userId, 
+            digestLength: knowledgeDigest.length 
+          });
+        }
+      } catch (err) {
+        logger.warn('[PROMPT-VALIDATOR] ⚠️ Failed to load knowledge digest:', err);
+        // Continue without knowledge digest - graceful degradation
+      }
     }
 
     let answersContext = '';
