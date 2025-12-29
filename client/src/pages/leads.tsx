@@ -109,6 +109,15 @@ export default function Leads() {
 
   // Handle add data source
   const handleAddDataSource = async () => {
+    // Debug logging
+    console.log('ADD_SOURCE_CLICK', {
+      type: newDataSource.type,
+      title: newDataSource.title,
+      textLen: newDataSource.content?.length || 0,
+      url: newDataSource.url,
+      hasFile: !!selectedFile
+    });
+
     // Validation
     if (newDataSource.type === 'text' && !newDataSource.content.trim()) {
       toast({ title: 'Error', description: 'Please enter text content', variant: 'destructive' });
@@ -133,38 +142,43 @@ export default function Leads() {
         formData.append('file', selectedFile);
         if (newDataSource.title) formData.append('title', newDataSource.title);
 
+        console.log('ADD_SOURCE_REQUEST', 'file upload', { fileName: selectedFile.name });
         response = await fetch('/api/user/data-sources/upload', {
           method: 'POST',
           credentials: 'include',
           body: formData,
         });
       } else {
+        const payload = {
+          type: newDataSource.type,
+          title: newDataSource.title || undefined,
+          contentText: newDataSource.type === 'text' ? newDataSource.content : undefined,
+          url: newDataSource.type === 'url' ? newDataSource.url : undefined,
+        };
+        console.log('ADD_SOURCE_REQUEST', 'json', payload);
         response = await fetch('/api/user/data-sources', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({
-            type: newDataSource.type,
-            title: newDataSource.title || undefined,
-            contentText: newDataSource.type === 'text' ? newDataSource.content : undefined,
-            url: newDataSource.type === 'url' ? newDataSource.url : undefined,
-          }),
+          body: JSON.stringify(payload),
         });
       }
 
       const data = await response.json();
+      console.log('ADD_SOURCE_RESPONSE', response.status, data);
 
       if (!response.ok || !data.success) {
         throw new Error(data.message || 'Failed to add data source');
       }
 
       toast({ title: 'Success', description: 'Data source added!' });
+      queryClient.invalidateQueries({ queryKey: ['/api/user/data-sources'] });
       refetchDataSources();
       setShowAddDataDialog(false);
       setNewDataSource({ type: 'text', title: '', content: '', url: '' });
       setSelectedFile(null);
     } catch (error: any) {
-      console.error('Failed to add data source:', error);
+      console.error('ADD_SOURCE_ERROR', error);
       toast({ title: 'Error', description: error.message || 'Failed to add data source', variant: 'destructive' });
     } finally {
       setIsAddingSource(false);

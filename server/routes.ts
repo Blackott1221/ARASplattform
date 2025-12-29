@@ -308,6 +308,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========================================
+  // USER DATA SOURCES API (Knowledge Base)
+  // ========================================
+
+  // GET all data sources for user
+  app.get('/api/user/data-sources', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const result = await client`
+        SELECT * FROM user_data_sources 
+        WHERE user_id = ${userId} 
+        ORDER BY created_at DESC
+      `;
+      res.json({ success: true, dataSources: result });
+    } catch (error: any) {
+      logger.error('❌ Error fetching data sources:', error);
+      // If table doesn't exist, return empty array
+      if (error.code === '42P01') {
+        res.json({ success: true, dataSources: [] });
+      } else {
+        res.status(500).json({ success: false, message: 'Failed to fetch data sources' });
+      }
+    }
+  });
+
+  // POST new data source (text or url)
+  app.post('/api/user/data-sources', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const { type, title, contentText, url } = req.body;
+
+      logger.info(`📥 Adding data source: type=${type}, title=${title}, userId=${userId}`);
+
+      // Validate
+      if (!type || !['text', 'url'].includes(type)) {
+        return res.status(400).json({ success: false, message: 'Invalid type. Must be text or url.' });
+      }
+      if (type === 'text' && !contentText) {
+        return res.status(400).json({ success: false, message: 'Text content is required.' });
+      }
+      if (type === 'url' && !url) {
+        return res.status(400).json({ success: false, message: 'URL is required.' });
+      }
+
+      // Ensure table exists
+      await client`
+        CREATE TABLE IF NOT EXISTS user_data_sources (
+          id SERIAL PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          type TEXT NOT NULL CHECK (type IN ('text', 'url', 'file')),
+          title TEXT,
+          status TEXT DEFAULT 'active' CHECK (status IN ('pending', 'processing', 'active', 'failed')),
+          content_text TEXT,
+          url TEXT,
+          file_name TEXT,
+          file_mime TEXT,
+          file_size INTEGER,
+          file_storage_key TEXT,
+          error_message TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `;
+
+      // Insert
+      const [newSource] = await client`
+        INSERT INTO user_data_sources (user_id, type, title, content_text, url, status)
+        VALUES (${userId}, ${type}, ${title || null}, ${contentText || null}, ${url || null}, 'active')
+        RETURNING *
+      `;
+
+      logger.info(`✅ Data source created: id=${newSource.id}`);
+      res.json({ success: true, dataSource: newSource });
+    } catch (error: any) {
+      logger.error('❌ Error creating data source:', error);
+      res.status(500).json({ success: false, message: error.message || 'Failed to create data source' });
+    }
+  });
+
+  // POST file upload
+  app.post('/api/user/data-sources/upload', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      
+      // For now, return not implemented - file uploads need multer middleware
+      logger.warn('⚠️ File upload attempted but not fully implemented');
+      res.status(501).json({ success: false, message: 'File upload not yet implemented. Please use Text or URL.' });
+    } catch (error: any) {
+      logger.error('❌ Error uploading file:', error);
+      res.status(500).json({ success: false, message: 'Failed to upload file' });
+    }
+  });
+
+  // DELETE data source
+  app.delete('/api/user/data-sources/:id', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const sourceId = parseInt(req.params.id);
+
+      if (isNaN(sourceId)) {
+        return res.status(400).json({ success: false, message: 'Invalid source ID' });
+      }
+
+      const result = await client`
+        DELETE FROM user_data_sources 
+        WHERE id = ${sourceId} AND user_id = ${userId}
+        RETURNING id
+      `;
+
+      if (result.length === 0) {
+        return res.status(404).json({ success: false, message: 'Data source not found' });
+      }
+
+      logger.info(`🗑️ Data source deleted: id=${sourceId}`);
+      res.json({ success: true, message: 'Data source deleted' });
+    } catch (error: any) {
+      logger.error('❌ Error deleting data source:', error);
+      res.status(500).json({ success: false, message: 'Failed to delete data source' });
+    }
+  });
+
   // Leads routes
   app.get('/api/leads', requireAuth, async (req: any, res) => {
     try {
