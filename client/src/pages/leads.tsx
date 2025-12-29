@@ -97,7 +97,11 @@ export default function Leads() {
 
   const dataSources = dataSourcesResponse?.dataSources || [];
 
-  // subscriptionData is handled by app.tsx
+  // Fetch subscription data for usage stats display
+  const { data: subscriptionData } = useQuery<SubscriptionResponse>({
+    queryKey: ['/api/user/subscription'],
+    enabled: !!user && !authLoading,
+  });
 
   // Mutation to update AI profile (business intelligence)
   const updateAiProfileMutation = useMutation({
