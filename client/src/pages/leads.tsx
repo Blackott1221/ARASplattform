@@ -31,12 +31,22 @@ if (!document.querySelector(`link[href="${fontLink.href}"]`)) {
   document.head.appendChild(fontLink);
 }
 
+// Data Source type from API
 interface DataSource {
-  id: string;
-  type: 'document' | 'url' | 'api' | 'custom';
-  name: string;
-  content: string;
-  status: 'active' | 'pending' | 'inactive';
+  id: number;
+  userId: string;
+  type: 'file' | 'text' | 'url';
+  title: string | null;
+  status: 'pending' | 'processing' | 'active' | 'failed';
+  contentText: string | null;
+  url: string | null;
+  fileName: string | null;
+  fileMime: string | null;
+  fileSize: number | null;
+  fileStorageKey: string | null;
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export default function Leads() {
@@ -52,12 +62,23 @@ export default function Leads() {
   const [marketIntel, setMarketIntel] = useState<any>(null);
   const [growthOpportunities, setGrowthOpportunities] = useState<any[]>([]);
   const [riskAnalysis, setRiskAnalysis] = useState<any>(null);
-  const [newDataSource, setNewDataSource] = useState({ type: '', name: '', content: '' });
-  const [dataSources, setDataSources] = useState<DataSource[]>([
-    { id: '1', type: 'document', name: 'Company Research', content: 'AI-generierte Analyse', status: 'active' },
-    { id: '2', type: 'url', name: 'Website Data', content: 'www.' + (typeof window !== 'undefined' ? window.location.hostname : 'aras-ai.com'), status: 'active' },
-    { id: '3', type: 'api', name: 'Business Goals', content: 'KPIs & Objectives', status: 'active' }
-  ]);
+  const [newDataSource, setNewDataSource] = useState({ type: 'text' as 'text' | 'url' | 'file', title: '', content: '', url: '' });
+  const [isAddingSource, setIsAddingSource] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  
+  // Knowledge Digest Preview State
+  const [showDigestPreview, setShowDigestPreview] = useState(false);
+  const [digestPreview, setDigestPreview] = useState<{ digest: string; meta: { sourceCount: number; charCount: number; mode: string } } | null>(null);
+  const [isLoadingDigest, setIsLoadingDigest] = useState(false);
+  const [digestMode, setDigestMode] = useState<'space' | 'power'>('space');
+
+  // Fetch data sources from API
+  const { data: dataSourcesResponse, isLoading: isLoadingDataSources, refetch: refetchDataSources } = useQuery<{ success: boolean; dataSources: DataSource[] }>({
+    queryKey: ['/api/user/data-sources'],
+    enabled: !!user && !authLoading,
+  });
+
+  const dataSources = dataSourcesResponse?.dataSources || [];
   
   // Edit States
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -440,36 +461,135 @@ Gib mir jetzt eine KRASSE 4-5 Satz Zusammenfassung die ${userProfile.firstName} 
   };
 
   const handleAddDataSource = async () => {
-    if (!newDataSource.name || !newDataSource.content) {
-      toast({ 
-        title: 'Error', 
-        description: 'Please fill all fields', 
-        variant: 'destructive' 
-      });
+    // Validation based on type
+    if (newDataSource.type === 'text' && !newDataSource.content) {
+      toast({ title: 'Error', description: 'Please enter text content', variant: 'destructive' });
+      return;
+    }
+    if (newDataSource.type === 'url' && !newDataSource.url) {
+      toast({ title: 'Error', description: 'Please enter a URL', variant: 'destructive' });
+      return;
+    }
+    if (newDataSource.type === 'file' && !selectedFile) {
+      toast({ title: 'Error', description: 'Please select a file', variant: 'destructive' });
       return;
     }
 
-    const newSource: DataSource = {
-      id: Date.now().toString(),
-      type: (newDataSource.type as DataSource['type']) || 'custom',
-      name: newDataSource.name,
-      content: newDataSource.content,
-      status: 'pending'
-    };
+    setIsAddingSource(true);
 
-    setDataSources([...dataSources, newSource]);
-    toast({ 
-      title: '✅ Success', 
-      description: 'Data source added and being integrated into your AI' 
-    });
-    setShowAddDataDialog(false);
-    setNewDataSource({ type: '', name: '', content: '' });
-    generateAISummary();
+    try {
+      let response: Response;
+
+      if (newDataSource.type === 'file' && selectedFile) {
+        // File upload
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        if (newDataSource.title) {
+          formData.append('title', newDataSource.title);
+        }
+
+        response = await fetch('/api/user/data-sources/upload', {
+          method: 'POST',
+          credentials: 'include',
+          body: formData,
+        });
+      } else {
+        // Text or URL
+        response = await fetch('/api/user/data-sources', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            type: newDataSource.type,
+            title: newDataSource.title || undefined,
+            contentText: newDataSource.type === 'text' ? newDataSource.content : undefined,
+            url: newDataSource.type === 'url' ? newDataSource.url : undefined,
+          }),
+        });
+      }
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to add data source');
+      }
+
+      toast({ 
+        title: '✅ Success', 
+        description: 'Data source added to your knowledge base!' 
+      });
+      
+      // Refetch data sources
+      refetchDataSources();
+      
+      // Reset form
+      setShowAddDataDialog(false);
+      setNewDataSource({ type: 'text', title: '', content: '', url: '' });
+      setSelectedFile(null);
+    } catch (error: any) {
+      console.error('Failed to add data source:', error);
+      toast({ 
+        title: '❌ Error', 
+        description: error.message || 'Failed to add data source', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsAddingSource(false);
+    }
+  };
+
+  // Delete data source
+  const handleDeleteDataSource = async (id: number) => {
+    try {
+      const response = await fetch(`/api/user/data-sources/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Failed to delete data source');
+      }
+
+      toast({ title: '✅ Deleted', description: 'Data source removed' });
+      refetchDataSources();
+    } catch (error: any) {
+      console.error('Failed to delete data source:', error);
+      toast({ 
+        title: '❌ Error', 
+        description: error.message || 'Failed to delete data source', 
+        variant: 'destructive' 
+      });
+    }
   };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: '✅ Copied!', description: 'Copied to clipboard' });
+  };
+
+  // 🔍 Fetch Knowledge Digest Preview
+  const fetchDigestPreview = async (mode: 'space' | 'power') => {
+    setIsLoadingDigest(true);
+    setDigestMode(mode);
+    try {
+      const response = await fetch(`/api/user/knowledge-digest?mode=${mode}`, {
+        credentials: 'include',
+      });
+      const data = await response.json();
+      if (data.success) {
+        setDigestPreview({ digest: data.digest, meta: data.meta });
+        setShowDigestPreview(true);
+      } else {
+        toast({ title: '❌ Error', description: 'Failed to load digest preview', variant: 'destructive' });
+      }
+    } catch (error) {
+      console.error('Failed to fetch digest:', error);
+      toast({ title: '❌ Error', description: 'Failed to load digest preview', variant: 'destructive' });
+    } finally {
+      setIsLoadingDigest(false);
+    }
   };
 
   const openDetailModal = (item: any) => {
@@ -1207,28 +1327,39 @@ Gib mir jetzt eine KRASSE 4-5 Satz Zusammenfassung die ${userProfile.firstName} 
                       >
                         <div className="p-6">
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            {dataSources.map((source, idx) => (
+                            {isLoadingDataSources ? (
+                              <div className="col-span-4 flex items-center justify-center py-8">
+                                <div className="w-8 h-8 border-2 border-[#FE9100] border-t-transparent rounded-full animate-spin" />
+                              </div>
+                            ) : dataSources.length === 0 ? (
+                              <div className="col-span-4 text-center py-8 text-gray-500">
+                                <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                <p>No data sources yet. Add your first one!</p>
+                              </div>
+                            ) : dataSources.map((source, idx) => (
                               <motion.div
                                 key={source.id}
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
-                                transition={{ delay: 1.1 + idx * 0.05 }}
-                                whileHover={{ scale: 1.05, y: -5 }}
+                                transition={{ delay: 0.1 + idx * 0.05 }}
+                                whileHover={{ scale: 1.02, y: -3 }}
                                 className={`relative group/source bg-gradient-to-br ${
-                                  source.type === 'document' ? 'from-[#FE9100]/10 to-[#a34e00]/10 border-[#FE9100]/30' :
+                                  source.type === 'file' ? 'from-[#FE9100]/10 to-[#a34e00]/10 border-[#FE9100]/30' :
                                   source.type === 'url' ? 'from-purple-600/10 to-purple-900/10 border-purple-600/30' :
-                                  source.type === 'api' ? 'from-blue-600/10 to-blue-900/10 border-blue-600/30' :
-                                  'from-green-600/10 to-green-900/10 border-green-600/30'
+                                  'from-blue-600/10 to-blue-900/10 border-blue-600/30'
                                 } border rounded-xl p-5 cursor-pointer hover:border-opacity-50 transition-all`}
                               >
                                 <div className="flex flex-col h-full">
-                                  {source.type === 'document' ? <FileText className="w-10 h-10 text-[#FE9100] mb-3" /> :
+                                  {source.type === 'file' ? <FileText className="w-10 h-10 text-[#FE9100] mb-3" /> :
                                    source.type === 'url' ? <Globe className="w-10 h-10 text-purple-400 mb-3" /> :
-                                   source.type === 'api' ? <Server className="w-10 h-10 text-blue-400 mb-3" /> :
-                                   <span className="text-5xl mb-3">💾</span>
+                                   <FileText className="w-10 h-10 text-blue-400 mb-3" />
                                   }
-                                  <h3 className="text-sm font-bold text-white mb-1">{source.name}</h3>
-                                  <p className="text-xs text-gray-400 flex-1 line-clamp-2">{source.content}</p>
+                                  <h3 className="text-sm font-bold text-white mb-1 line-clamp-1">{source.title || source.fileName || 'Untitled'}</h3>
+                                  <p className="text-xs text-gray-400 flex-1 line-clamp-2">
+                                    {source.type === 'url' ? source.url : 
+                                     source.type === 'file' ? `${source.fileName} (${Math.round((source.fileSize || 0) / 1024)}KB)` :
+                                     source.contentText?.substring(0, 100) || 'Text content'}
+                                  </p>
                                   <div className="mt-3 flex items-center justify-between">
                                     <div className="flex items-center gap-2">
                                       {source.status === 'active' ? (
@@ -1236,24 +1367,31 @@ Gib mir jetzt eine KRASSE 4-5 Satz Zusammenfassung die ${userProfile.firstName} 
                                           <CheckCircle2 className="w-3 h-3 text-green-400" />
                                           <span className="text-xs text-green-400">Active</span>
                                         </>
-                                      ) : source.status === 'pending' ? (
+                                      ) : source.status === 'pending' || source.status === 'processing' ? (
                                         <>
                                           <Clock className="w-3 h-3 text-yellow-400 animate-pulse" />
                                           <span className="text-xs text-yellow-400">Processing...</span>
                                         </>
+                                      ) : source.status === 'failed' ? (
+                                        <>
+                                          <XCircle className="w-3 h-3 text-red-400" />
+                                          <span className="text-xs text-red-400">Failed</span>
+                                        </>
                                       ) : (
                                         <>
                                           <XCircle className="w-3 h-3 text-gray-400" />
-                                          <span className="text-xs text-gray-400">Inactive</span>
+                                          <span className="text-xs text-gray-400">Unknown</span>
                                         </>
                                       )}
                                     </div>
                                     <motion.button
                                       whileHover={{ scale: 1.2 }}
                                       whileTap={{ scale: 0.9 }}
-                                      className="opacity-0 group-hover/source:opacity-100 w-6 h-6 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"
+                                      onClick={(e) => { e.stopPropagation(); handleDeleteDataSource(source.id); }}
+                                      className="opacity-0 group-hover/source:opacity-100 w-6 h-6 rounded bg-red-500/20 hover:bg-red-500/40 flex items-center justify-center transition-all"
+                                      title="Delete"
                                     >
-                                      <Eye className="w-3 h-3 text-white" />
+                                      <X className="w-3 h-3 text-red-400" />
                                     </motion.button>
                                   </div>
                                 </div>
@@ -1272,6 +1410,72 @@ Gib mir jetzt eine KRASSE 4-5 Satz Zusammenfassung die ${userProfile.firstName} 
                               <Plus className="w-12 h-12 text-gray-500 mb-3" />
                               <p className="text-sm text-gray-500 font-medium">New Source</p>
                             </motion.div>
+                          </div>
+
+                          {/* 🔍 Knowledge Digest Preview */}
+                          <div className="mt-6 pt-6 border-t border-white/10">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Preview: What ARAS Sees</h3>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => fetchDigestPreview('space')}
+                                  disabled={isLoadingDigest}
+                                  className="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-all disabled:opacity-50 flex items-center gap-1.5"
+                                >
+                                  {isLoadingDigest && digestMode === 'space' ? (
+                                    <div className="w-3 h-3 border border-blue-400 border-t-transparent rounded-full animate-spin" />
+                                  ) : (
+                                    <Eye className="w-3 h-3" />
+                                  )}
+                                  SPACE
+                                </button>
+                                <button
+                                  onClick={() => fetchDigestPreview('power')}
+                                  disabled={isLoadingDigest}
+                                  className="px-3 py-1.5 text-xs font-medium rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-all disabled:opacity-50 flex items-center gap-1.5"
+                                >
+                                  {isLoadingDigest && digestMode === 'power' ? (
+                                    <div className="w-3 h-3 border border-purple-400 border-t-transparent rounded-full animate-spin" />
+                                  ) : (
+                                    <Eye className="w-3 h-3" />
+                                  )}
+                                  POWER
+                                </button>
+                              </div>
+                            </div>
+
+                            <AnimatePresence>
+                              {showDigestPreview && digestPreview && (
+                                <motion.div
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: 'auto' }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  className="overflow-hidden"
+                                >
+                                  <div className="relative bg-black/40 border border-white/10 rounded-xl p-4">
+                                    <div className="flex items-center justify-between mb-3">
+                                      <div className="flex items-center gap-3">
+                                        <span className={`px-2 py-0.5 text-xs font-medium rounded ${digestPreview.meta.mode === 'space' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'}`}>
+                                          {digestPreview.meta.mode.toUpperCase()}
+                                        </span>
+                                        <span className="text-xs text-gray-500">
+                                          {digestPreview.meta.sourceCount} sources • {digestPreview.meta.charCount} chars
+                                        </span>
+                                      </div>
+                                      <button
+                                        onClick={() => setShowDigestPreview(false)}
+                                        className="w-6 h-6 rounded bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all"
+                                      >
+                                        <X className="w-3 h-3 text-gray-400" />
+                                      </button>
+                                    </div>
+                                    <pre className="text-xs text-gray-300 font-mono whitespace-pre-wrap max-h-[300px] overflow-y-auto custom-scrollbar leading-relaxed">
+                                      {digestPreview.digest || 'No knowledge context available.'}
+                                    </pre>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
                           </div>
                         </div>
                       </motion.div>
@@ -1299,53 +1503,121 @@ Gib mir jetzt eine KRASSE 4-5 Satz Zusammenfassung die ${userProfile.firstName} 
           <div className="space-y-5 mt-6">
             <div>
               <label className="text-sm font-bold text-gray-300 mb-2 block">Type</label>
-              <select 
-                value={newDataSource.type}
-                onChange={(e) => setNewDataSource({...newDataSource, type: e.target.value})}
-                className="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-[#FE9100] focus:outline-none transition-all"
-              >
-                <option value="" className="bg-black">Select Type</option>
-                <option value="document" className="bg-black">Document</option>
-                <option value="url" className="bg-black">Website URL</option>
-                <option value="api" className="bg-black">API Endpoint</option>
-                <option value="custom" className="bg-black">Custom Data</option>
-              </select>
+              <div className="grid grid-cols-3 gap-3">
+                {(['text', 'url', 'file'] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => { setNewDataSource({...newDataSource, type: t}); setSelectedFile(null); }}
+                    className={`p-4 rounded-xl border transition-all flex flex-col items-center gap-2 ${
+                      newDataSource.type === t 
+                        ? 'bg-[#FE9100]/20 border-[#FE9100] text-white' 
+                        : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/30'
+                    }`}
+                  >
+                    {t === 'text' && <FileText className="w-6 h-6" />}
+                    {t === 'url' && <Globe className="w-6 h-6" />}
+                    {t === 'file' && <Upload className="w-6 h-6" />}
+                    <span className="text-sm font-medium capitalize">{t === 'file' ? 'File Upload' : t}</span>
+                  </button>
+                ))}
+              </div>
             </div>
             
             <div>
-              <label className="text-sm font-bold text-gray-300 mb-2 block">Name</label>
+              <label className="text-sm font-bold text-gray-300 mb-2 block">Title (optional)</label>
               <Input
-                value={newDataSource.name}
-                onChange={(e) => setNewDataSource({...newDataSource, name: e.target.value})}
+                value={newDataSource.title}
+                onChange={(e) => setNewDataSource({...newDataSource, title: e.target.value})}
                 placeholder="e.g. Product Catalog 2025"
                 className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 rounded-xl py-3"
               />
             </div>
             
-            <div>
-              <label className="text-sm font-bold text-gray-300 mb-2 block">Content / URL</label>
-              <Textarea
-                value={newDataSource.content}
-                onChange={(e) => setNewDataSource({...newDataSource, content: e.target.value})}
-                placeholder="Paste your data here or provide a URL..."
-                className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 min-h-[120px] rounded-xl"
-              />
-            </div>
+            {newDataSource.type === 'text' && (
+              <div>
+                <label className="text-sm font-bold text-gray-300 mb-2 block">Text Content</label>
+                <Textarea
+                  value={newDataSource.content}
+                  onChange={(e) => setNewDataSource({...newDataSource, content: e.target.value})}
+                  placeholder="Paste your text content here..."
+                  className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 min-h-[150px] rounded-xl"
+                />
+                <p className="text-xs text-gray-500 mt-1">{newDataSource.content.length} / 50,000 characters</p>
+              </div>
+            )}
+
+            {newDataSource.type === 'url' && (
+              <div>
+                <label className="text-sm font-bold text-gray-300 mb-2 block">URL</label>
+                <Input
+                  value={newDataSource.url}
+                  onChange={(e) => setNewDataSource({...newDataSource, url: e.target.value})}
+                  placeholder="https://example.com/page"
+                  className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 rounded-xl py-3"
+                />
+              </div>
+            )}
+
+            {newDataSource.type === 'file' && (
+              <div>
+                <label className="text-sm font-bold text-gray-300 mb-2 block">File (PDF, TXT, DOC, DOCX - max 25MB)</label>
+                <div 
+                  className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${
+                    selectedFile ? 'border-[#FE9100] bg-[#FE9100]/10' : 'border-white/20 hover:border-white/40'
+                  }`}
+                >
+                  <input
+                    type="file"
+                    accept=".pdf,.txt,.doc,.docx"
+                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                    className="hidden"
+                    id="file-upload"
+                  />
+                  <label htmlFor="file-upload" className="cursor-pointer">
+                    {selectedFile ? (
+                      <div className="flex items-center justify-center gap-3">
+                        <FileText className="w-8 h-8 text-[#FE9100]" />
+                        <div className="text-left">
+                          <p className="text-white font-medium">{selectedFile.name}</p>
+                          <p className="text-xs text-gray-400">{Math.round(selectedFile.size / 1024)} KB</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <Upload className="w-10 h-10 text-gray-500 mx-auto mb-3" />
+                        <p className="text-gray-400">Click to select a file</p>
+                      </>
+                    )}
+                  </label>
+                </div>
+              </div>
+            )}
             
             <div className="flex justify-end gap-3 pt-4">
               <Button
                 variant="outline"
-                onClick={() => setShowAddDataDialog(false)}
+                onClick={() => { setShowAddDataDialog(false); setSelectedFile(null); }}
                 className="border-white/20 text-white hover:bg-white/10 rounded-xl"
+                disabled={isAddingSource}
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleAddDataSource}
-                className="bg-gradient-to-r from-[#FE9100] to-[#a34e00] hover:from-[#FE9100]/90 hover:to-[#a34e00]/90 rounded-xl"
+                disabled={isAddingSource}
+                className="bg-gradient-to-r from-[#FE9100] to-[#a34e00] hover:from-[#FE9100]/90 hover:to-[#a34e00]/90 rounded-xl disabled:opacity-50"
               >
-                <Upload className="w-4 h-4 mr-2" />
-                Add Source
+                {isAddingSource ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Add Source
+                  </>
+                )}
               </Button>
             </div>
           </div>
