@@ -53,9 +53,10 @@ async function probeEndpoint(
 }
 
 /**
- * Define all settings capabilities
+ * Define all settings capabilities - grouped by section
  */
 export const SETTINGS_CAPABILITIES: Capability[] = [
+  // === KONTO ===
   {
     key: 'subscription',
     label: 'Abonnement',
@@ -68,21 +69,117 @@ export const SETTINGS_CAPABILITIES: Capability[] = [
     label: 'Profil',
     description: 'Benutzerdaten bearbeiten',
     critical: true,
-    test: () => probeEndpoint('/api/user/subscription'), // Uses same auth check
+    test: () => probeEndpoint('/api/user/subscription'),
   },
+  {
+    key: 'usage',
+    label: 'Nutzung',
+    description: 'Verbrauch und Limits',
+    test: () => probeEndpoint('/api/user/usage'),
+  },
+  // === SICHERHEIT ===
   {
     key: 'password',
     label: 'Passwort',
     description: 'Passwort ändern',
-    test: () => probeEndpoint('/api/user/subscription'), // Uses same auth check
+    test: () => probeEndpoint('/api/user/subscription'),
   },
   {
     key: 'deleteAccount',
     label: 'Account löschen',
     description: 'Account permanent entfernen',
-    test: () => probeEndpoint('/api/user/subscription'), // Uses same auth check
+    test: () => probeEndpoint('/api/user/subscription'),
+  },
+  // === DATEN & WISSEN ===
+  {
+    key: 'dataSources',
+    label: 'Datenquellen',
+    description: 'Wissensbasis verwalten',
+    test: () => probeEndpoint('/api/user/data-sources'),
+  },
+  {
+    key: 'knowledgeHealth',
+    label: 'Wissens-Status',
+    description: 'Knowledge System Health',
+    test: () => probeEndpoint('/api/user/knowledge/health'),
+  },
+  // === DIAGNOSE ===
+  {
+    key: 'knowledgeDigest',
+    label: 'Knowledge Digest',
+    description: 'AI-Kontext Vorschau',
+    test: () => probeEndpoint('/api/user/knowledge/digest?mode=space'),
+  },
+  {
+    key: 'profileContext',
+    label: 'Profil-Kontext',
+    description: 'AI Profildaten',
+    test: () => probeEndpoint('/api/user/profile-context'),
   },
 ];
+
+/**
+ * Section definitions for UI grouping
+ */
+export interface SettingsSection {
+  id: string;
+  label: string;
+  description: string;
+  icon: string;
+  capabilities: string[];
+}
+
+export const SETTINGS_SECTIONS: SettingsSection[] = [
+  {
+    id: 'account',
+    label: 'Konto',
+    description: 'Profil, Plan & Nutzung',
+    icon: 'User',
+    capabilities: ['subscription', 'profile', 'usage'],
+  },
+  {
+    id: 'security',
+    label: 'Sicherheit',
+    description: 'Passwort & Zugriff',
+    icon: 'Shield',
+    capabilities: ['password', 'deleteAccount'],
+  },
+  {
+    id: 'data',
+    label: 'Daten & Wissen',
+    description: 'Wissensbasis & Quellen',
+    icon: 'Database',
+    capabilities: ['dataSources', 'knowledgeHealth'],
+  },
+  {
+    id: 'diagnose',
+    label: 'Diagnose',
+    description: 'Debug & Transparenz',
+    icon: 'Activity',
+    capabilities: ['knowledgeDigest', 'profileContext'],
+  },
+];
+
+/**
+ * Check if a section has any available capabilities
+ */
+export function isSectionAvailable(
+  capabilities: Record<string, boolean>,
+  section: SettingsSection
+): boolean {
+  return section.capabilities.some((cap) => capabilities[cap] === true);
+}
+
+/**
+ * Get available sections only
+ */
+export function getAvailableSections(
+  capabilities: Record<string, boolean>
+): SettingsSection[] {
+  return SETTINGS_SECTIONS.filter((section) =>
+    isSectionAvailable(capabilities, section)
+  );
+}
 
 /**
  * Load cached capabilities from sessionStorage

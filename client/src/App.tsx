@@ -31,7 +31,7 @@ import Campaigns from "@/pages/campaigns";
 import Contacts from '@/pages/contacts'; // DIRECT IMPORT - NO LAZY! (FULL VERSION)
 import Calendar from '@/pages/calendar'; // DIRECT IMPORT - NO LAZY! (FULL VERSION)
 import Billing from "@/pages/billing";
-import Settings from "@/pages/settings";
+// Settings loaded via AppPage lazy import
 import AuthPage from "@/pages/auth-page";
 import ArasMailingPage from "@/pages/aras-mailing";
 import AppPage from "@/pages/app";
@@ -200,8 +200,8 @@ function Router() {
           <Route path="/app/calendar" component={Calendar} />
           <Route path="/billing" component={Billing} />
           <Route path="/app/billing" component={Billing} />
-          <Route path="/settings" component={Settings} />
-          <Route path="/app/settings" component={Settings} />
+          <Route path="/settings" component={AppPage} />
+          <Route path="/app/settings" component={AppPage} />
           <Route path="/aras-mailing" component={ArasMailingPage} />
           <Route path="/app/aras-mailing" component={ArasMailingPage} />
           

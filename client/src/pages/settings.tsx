@@ -3,12 +3,18 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
-import { probeCapabilities, isCapabilityAvailable } from '@/lib/capabilities/settingsCapabilities';
+import { 
+  probeCapabilities, 
+  isCapabilityAvailable,
+  getAvailableSections,
+  SETTINGS_SECTIONS,
+  type SettingsSection,
+} from '@/lib/capabilities/settingsCapabilities';
 import type { SubscriptionResponse } from '@shared/schema';
 import { 
-  User, Shield, Trash2, Key, ChevronRight, 
-  CheckCircle, AlertCircle, Loader2, RefreshCw,
-  Zap, Clock, MessageSquare
+  User, Shield, Database, Activity, Trash2, Key, ChevronRight, 
+  CheckCircle, AlertCircle, Loader2, RefreshCw, ExternalLink,
+  Zap, Clock, MessageSquare, Phone, FileText, Eye
 } from 'lucide-react';
 
 // ARAS CI Colors
@@ -18,8 +24,10 @@ const CI = {
   goldDark: '#A34E00',
 };
 
-// Section type
-type SectionType = 'account' | 'security';
+// Icon map for sections
+const SECTION_ICONS: Record<string, React.ElementType> = {
+  User, Shield, Database, Activity,
+};
 
 // Error Boundary Fallback
 function SettingsErrorFallback({ onRetry }: { onRetry: () => void }) {
@@ -51,13 +59,25 @@ function SettingsErrorFallback({ onRetry }: { onRetry: () => void }) {
 function SettingsSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
-      <div className="h-8 w-48 rounded-lg bg-white/5" />
-      <div className="h-4 w-64 rounded bg-white/5" />
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="h-10 w-56 rounded-lg bg-white/5" />
+          <div className="h-4 w-80 rounded bg-white/5 mt-3" />
+        </div>
+        <div className="flex gap-2">
+          <div className="h-8 w-20 rounded-full bg-white/5" />
+          <div className="h-8 w-32 rounded-full bg-white/5" />
+        </div>
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-8">
-        <div className="h-12 rounded-xl bg-white/5" />
+        <div className="space-y-2">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="h-14 rounded-xl bg-white/5" />
+          ))}
+        </div>
         <div className="lg:col-span-3 space-y-4">
-          <div className="h-32 rounded-2xl bg-white/5" />
-          <div className="h-48 rounded-2xl bg-white/5" />
+          <div className="h-40 rounded-2xl bg-white/5" />
+          <div className="h-56 rounded-2xl bg-white/5" />
         </div>
       </div>
     </div>
@@ -69,20 +89,23 @@ function GlassPanel({
   children, 
   className = '',
   hover = true,
+  danger = false,
 }: { 
   children: React.ReactNode; 
   className?: string;
   hover?: boolean;
+  danger?: boolean;
 }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={hover ? { scale: 1.005, boxShadow: `0 0 30px ${CI.orange}15` } : undefined}
+      transition={{ duration: 0.2 }}
+      whileHover={hover ? { scale: 1.002, boxShadow: `0 0 30px ${danger ? 'rgba(239,68,68,0.15)' : `${CI.orange}15`}` } : undefined}
       className={`p-6 rounded-2xl transition-all ${className}`}
       style={{
         background: 'rgba(0,0,0,0.55)',
-        border: `1px solid ${CI.orange}20`,
+        border: `1px solid ${danger ? 'rgba(239,68,68,0.3)' : `${CI.orange}20`}`,
         backdropFilter: 'blur(20px)',
       }}
     >
@@ -93,63 +116,44 @@ function GlassPanel({
 
 // Section Navigation Item
 function NavItem({ 
-  icon: Icon, 
-  label, 
+  section,
   active, 
   onClick 
 }: { 
-  icon: React.ElementType; 
-  label: string; 
+  section: SettingsSection;
   active: boolean; 
   onClick: () => void;
 }) {
+  const Icon = SECTION_ICONS[section.icon] || User;
+  
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all"
+      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-left transition-all group"
       style={{
         background: active ? `${CI.orange}15` : 'transparent',
         borderLeft: active ? `3px solid ${CI.orange}` : '3px solid transparent',
-        color: active ? CI.orange : CI.goldLight,
       }}
     >
-      <Icon className="w-5 h-5 flex-shrink-0" />
-      <span className="font-medium text-sm">{label}</span>
-      {active && <ChevronRight className="w-4 h-4 ml-auto" />}
-    </button>
-  );
-}
-
-// Toggle Switch
-function Toggle({ 
-  checked, 
-  onChange, 
-  disabled = false 
-}: { 
-  checked: boolean; 
-  onChange: (value: boolean) => void; 
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => !disabled && onChange(!checked)}
-      disabled={disabled}
-      className="relative w-12 h-7 rounded-full transition-all"
-      style={{
-        background: checked 
-          ? `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})` 
-          : 'rgba(255,255,255,0.1)',
-        opacity: disabled ? 0.5 : 1,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-      }}
-    >
-      <motion.div
-        animate={{ x: checked ? 22 : 2 }}
-        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-        className="absolute top-1 w-5 h-5 rounded-full bg-white"
-        style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
+      <Icon 
+        className="w-5 h-5 flex-shrink-0 transition-colors" 
+        style={{ color: active ? CI.orange : `${CI.goldLight}80` }}
       />
+      <div className="flex-1 min-w-0">
+        <span 
+          className="block font-medium text-sm truncate"
+          style={{ color: active ? CI.orange : CI.goldLight }}
+        >
+          {section.label}
+        </span>
+        <span 
+          className="block text-xs truncate"
+          style={{ color: `${CI.goldLight}50` }}
+        >
+          {section.description}
+        </span>
+      </div>
+      {active && <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: CI.orange }} />}
     </button>
   );
 }
@@ -182,15 +186,38 @@ function InputField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
-        className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none transition-all disabled:opacity-50"
+        className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none focus:ring-2 transition-all disabled:opacity-50"
         style={{
           background: 'rgba(255,255,255,0.05)',
           border: `1px solid ${CI.orange}20`,
         }}
       />
       {helper && (
-        <p className="text-xs mt-1" style={{ color: `${CI.goldLight}60` }}>{helper}</p>
+        <p className="text-xs mt-1.5" style={{ color: `${CI.goldLight}60` }}>{helper}</p>
       )}
+    </div>
+  );
+}
+
+// Stat Card
+function StatCard({ icon: Icon, label, value, color }: { 
+  icon: React.ElementType; 
+  label: string; 
+  value: string; 
+  color: string;
+}) {
+  return (
+    <div 
+      className="p-4 rounded-xl"
+      style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${CI.orange}10` }}
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className="w-4 h-4" style={{ color }} />
+        <span className="text-xs" style={{ color: `${CI.goldLight}60` }}>{label}</span>
+      </div>
+      <p className="text-lg font-bold font-['Orbitron']" style={{ color }}>
+        {value}
+      </p>
     </div>
   );
 }
@@ -201,14 +228,18 @@ export default function SettingsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [activeSection, setActiveSection] = useState<SectionType>('account');
+  const [activeSection, setActiveSection] = useState('account');
   const [capabilities, setCapabilities] = useState<Record<string, boolean>>({});
   const [capabilitiesLoading, setCapabilitiesLoading] = useState(true);
   const [capabilitiesError, setCapabilitiesError] = useState(false);
+  const [availableSections, setAvailableSections] = useState<SettingsSection[]>([]);
 
   // Dialogs
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showDiagnoseModal, setShowDiagnoseModal] = useState(false);
+  const [diagnoseData, setDiagnoseData] = useState<any>(null);
+  const [diagnoseLoading, setDiagnoseLoading] = useState(false);
 
   // Form States
   const [profileForm, setProfileForm] = useState({
@@ -231,6 +262,18 @@ export default function SettingsPage() {
     enabled: !!user && !authLoading,
   });
 
+  // Fetch usage stats
+  const { data: usageStats } = useQuery<any>({
+    queryKey: ['/api/user/usage'],
+    enabled: !!user && !authLoading && isCapabilityAvailable(capabilities, 'usage'),
+  });
+
+  // Fetch data sources count
+  const { data: dataSources } = useQuery<any>({
+    queryKey: ['/api/user/data-sources'],
+    enabled: !!user && !authLoading && isCapabilityAvailable(capabilities, 'dataSources'),
+  });
+
   // Probe capabilities on mount
   useEffect(() => {
     async function loadCapabilities() {
@@ -239,6 +282,11 @@ export default function SettingsPage() {
         setCapabilitiesError(false);
         const results = await probeCapabilities();
         setCapabilities(results);
+        const sections = getAvailableSections(results);
+        setAvailableSections(sections);
+        if (sections.length > 0 && !sections.find(s => s.id === activeSection)) {
+          setActiveSection(sections[0].id);
+        }
       } catch {
         setCapabilitiesError(true);
       } finally {
@@ -346,6 +394,7 @@ export default function SettingsPage() {
     try {
       const results = await probeCapabilities();
       setCapabilities(results);
+      setAvailableSections(getAvailableSections(results));
     } catch {
       setCapabilitiesError(true);
     } finally {
@@ -353,11 +402,38 @@ export default function SettingsPage() {
     }
   }, []);
 
+  // Load diagnose data
+  const loadDiagnoseData = async () => {
+    setDiagnoseLoading(true);
+    try {
+      const [profileContext, knowledgeHealth] = await Promise.all([
+        fetch('/api/user/profile-context', { credentials: 'include' }).then(r => r.ok ? r.json() : null),
+        fetch('/api/user/knowledge/health', { credentials: 'include' }).then(r => r.ok ? r.json() : null),
+      ]);
+      setDiagnoseData({
+        profileContext,
+        knowledgeHealth,
+        user: {
+          id: (user as any)?.id,
+          email: (user as any)?.email,
+          plan: subscription?.plan,
+          status: subscription?.status,
+        },
+        timestamp: new Date().toISOString(),
+      });
+      setShowDiagnoseModal(true);
+    } catch (err) {
+      toast({ title: '❌ Fehler', description: 'Diagnose konnte nicht geladen werden', variant: 'destructive' });
+    } finally {
+      setDiagnoseLoading(false);
+    }
+  };
+
   // Loading state
   if (authLoading || capabilitiesLoading) {
     return (
       <div className="h-full overflow-y-auto p-4 sm:p-6 lg:p-8">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <SettingsSkeleton />
         </div>
       </div>
@@ -368,31 +444,20 @@ export default function SettingsPage() {
   if (capabilitiesError) {
     return (
       <div className="h-full overflow-y-auto p-4 sm:p-6 lg:p-8">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <SettingsErrorFallback onRetry={retryCapabilities} />
         </div>
       </div>
     );
   }
 
-  // Check if core capabilities available
-  const hasSubscription = isCapabilityAvailable(capabilities, 'subscription');
-  const hasProfile = isCapabilityAvailable(capabilities, 'profile');
-  const hasPassword = isCapabilityAvailable(capabilities, 'password');
-  const hasDeleteAccount = isCapabilityAvailable(capabilities, 'deleteAccount');
-
-  // Available sections
-  const sections = [
-    { id: 'account' as SectionType, icon: User, label: 'Konto', available: hasSubscription || hasProfile },
-    { id: 'security' as SectionType, icon: Shield, label: 'Sicherheit', available: hasPassword || hasDeleteAccount },
-  ].filter(s => s.available);
-
   // Last sync time
   const lastSync = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  const planLabel = subscription?.plan?.toUpperCase() || 'FREE';
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8 pb-32">
+      <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 pb-32">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -413,16 +478,27 @@ export default function SettingsPage() {
                 Einstellungen
               </h1>
               <p className="text-sm mt-2" style={{ color: `${CI.goldLight}80` }}>
-                Kontrolle, Zugriff, Sicherheit – alles an einem Ort.
+                Kontrolle, Sicherheit, Integrationen – alles an einem Ort.
               </p>
             </div>
-            <div className="flex items-center gap-2 text-xs" style={{ color: `${CI.goldLight}60` }}>
-              <span className="flex items-center gap-1">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span 
+                className="px-3 py-1.5 rounded-full text-xs font-bold"
+                style={{ 
+                  background: `${CI.orange}20`, 
+                  color: CI.orange,
+                  border: `1px solid ${CI.orange}40`,
+                }}
+              >
+                {planLabel}
+              </span>
+              <span className="flex items-center gap-1.5 text-xs" style={{ color: `${CI.goldLight}60` }}>
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                 LIVE
               </span>
-              <span>•</span>
-              <span>Synchronisiert: {lastSync}</span>
+              <span className="text-xs" style={{ color: `${CI.goldLight}50` }}>
+                Sync: {lastSync}
+              </span>
             </div>
           </div>
         </motion.div>
@@ -431,44 +507,53 @@ export default function SettingsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Sidebar Navigation - Desktop */}
           <div className="hidden lg:block">
-            <GlassPanel hover={false} className="sticky top-4">
+            <div 
+              className="sticky top-4 p-4 rounded-2xl"
+              style={{
+                background: 'rgba(0,0,0,0.55)',
+                border: `1px solid ${CI.orange}20`,
+                backdropFilter: 'blur(20px)',
+              }}
+            >
               <nav className="space-y-1">
-                {sections.map(section => (
+                {availableSections.map(section => (
                   <NavItem
                     key={section.id}
-                    icon={section.icon}
-                    label={section.label}
+                    section={section}
                     active={activeSection === section.id}
                     onClick={() => setActiveSection(section.id)}
                   />
                 ))}
               </nav>
-            </GlassPanel>
+            </div>
           </div>
 
           {/* Mobile Navigation */}
-          <div className="lg:hidden flex gap-2 overflow-x-auto pb-2">
-            {sections.map(section => (
-              <button
-                key={section.id}
-                onClick={() => setActiveSection(section.id)}
-                className="flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap text-sm font-medium transition-all"
-                style={{
-                  background: activeSection === section.id 
-                    ? `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})` 
-                    : 'rgba(255,255,255,0.05)',
-                  color: activeSection === section.id ? '#000' : CI.goldLight,
-                  border: `1px solid ${activeSection === section.id ? 'transparent' : `${CI.orange}30`}`,
-                }}
-              >
-                <section.icon className="w-4 h-4" />
-                {section.label}
-              </button>
-            ))}
+          <div className="lg:hidden flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
+            {availableSections.map(section => {
+              const Icon = SECTION_ICONS[section.icon] || User;
+              return (
+                <button
+                  key={section.id}
+                  onClick={() => setActiveSection(section.id)}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-full whitespace-nowrap text-sm font-medium transition-all flex-shrink-0"
+                  style={{
+                    background: activeSection === section.id 
+                      ? `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})` 
+                      : 'rgba(255,255,255,0.05)',
+                    color: activeSection === section.id ? '#000' : CI.goldLight,
+                    border: `1px solid ${activeSection === section.id ? 'transparent' : `${CI.orange}30`}`,
+                  }}
+                >
+                  <Icon className="w-4 h-4" />
+                  {section.label}
+                </button>
+              );
+            })}
           </div>
 
           {/* Content Area */}
-          <div className="lg:col-span-3 space-y-6">
+          <div className="lg:col-span-3 space-y-6 min-h-0">
             <AnimatePresence mode="wait">
               {/* ACCOUNT SECTION */}
               {activeSection === 'account' && (
@@ -480,7 +565,7 @@ export default function SettingsPage() {
                   className="space-y-6"
                 >
                   {/* Subscription Card */}
-                  {hasSubscription && (
+                  {isCapabilityAvailable(capabilities, 'subscription') && (
                     <GlassPanel>
                       <div className="flex items-center gap-3 mb-6">
                         <div 
@@ -499,46 +584,36 @@ export default function SettingsPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                        {[
-                          { 
-                            icon: CheckCircle, 
-                            label: 'Status', 
-                            value: subscription?.status === 'active' ? 'Aktiv' : 'Trial',
-                            color: subscription?.status === 'active' ? '#22c55e' : CI.orange,
-                          },
-                          { 
-                            icon: Zap, 
-                            label: 'Plan', 
-                            value: subscription?.plan?.toUpperCase() || 'FREE',
-                            color: CI.orange,
-                          },
-                          { 
-                            icon: MessageSquare, 
-                            label: 'AI Nachrichten', 
-                            value: `${subscription?.aiMessagesUsed || 0} / ${subscription?.aiMessagesLimit || '∞'}`,
-                            color: CI.goldLight,
-                          },
-                        ].map((stat) => (
-                          <div 
-                            key={stat.label}
-                            className="p-4 rounded-xl"
-                            style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${CI.orange}10` }}
-                          >
-                            <div className="flex items-center gap-2 mb-2">
-                              <stat.icon className="w-4 h-4" style={{ color: stat.color }} />
-                              <span className="text-xs" style={{ color: `${CI.goldLight}60` }}>{stat.label}</span>
-                            </div>
-                            <p className="text-lg font-bold font-['Orbitron']" style={{ color: stat.color }}>
-                              {stat.value}
-                            </p>
-                          </div>
-                        ))}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                        <StatCard 
+                          icon={CheckCircle} 
+                          label="Status" 
+                          value={subscription?.status === 'active' ? 'Aktiv' : 'Trial'}
+                          color={subscription?.status === 'active' ? '#22c55e' : CI.orange}
+                        />
+                        <StatCard 
+                          icon={Zap} 
+                          label="Plan" 
+                          value={planLabel}
+                          color={CI.orange}
+                        />
+                        <StatCard 
+                          icon={MessageSquare} 
+                          label="AI Nachrichten" 
+                          value={`${usageStats?.ai_messages_used || subscription?.aiMessagesUsed || 0}`}
+                          color={CI.goldLight}
+                        />
+                        <StatCard 
+                          icon={Phone} 
+                          label="Voice Calls" 
+                          value={`${usageStats?.voice_calls_used || 0}`}
+                          color={CI.goldLight}
+                        />
                       </div>
 
                       <button
                         onClick={() => window.location.href = '/app/billing'}
-                        className="w-full py-3 rounded-xl font-bold text-sm transition-all hover:scale-[1.02]"
+                        className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-sm transition-all hover:scale-[1.02]"
                         style={{
                           background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
                           color: '#000',
@@ -550,7 +625,7 @@ export default function SettingsPage() {
                   )}
 
                   {/* Profile Card */}
-                  {hasProfile && (
+                  {isCapabilityAvailable(capabilities, 'profile') && (
                     <GlassPanel>
                       <div className="flex items-center gap-3 mb-6">
                         <div 
@@ -630,40 +705,6 @@ export default function SettingsPage() {
                       )}
                     </GlassPanel>
                   )}
-
-                  {/* Account Info Card */}
-                  <GlassPanel>
-                    <div className="flex items-center gap-3 mb-4">
-                      <div 
-                        className="w-10 h-10 rounded-xl flex items-center justify-center"
-                        style={{ background: `${CI.orange}20` }}
-                      >
-                        <Clock className="w-5 h-5" style={{ color: CI.orange }} />
-                      </div>
-                      <div>
-                        <h2 className="text-lg font-bold font-['Orbitron']" style={{ color: CI.goldLight }}>
-                          Kontoinformationen
-                        </h2>
-                        <p className="text-xs" style={{ color: `${CI.goldLight}60` }}>
-                          Was ARAS AI über dein Konto weiß
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-                      {[
-                        { label: 'User ID', value: (user as any)?.id?.slice(0, 8) + '...' || '—' },
-                        { label: 'Email', value: (user as any)?.email || '—' },
-                        { label: 'Plan', value: subscription?.plan || 'free' },
-                        { label: 'Status', value: subscription?.status || 'trial' },
-                      ].map(item => (
-                        <div key={item.label}>
-                          <p className="text-xs mb-1" style={{ color: `${CI.goldLight}60` }}>{item.label}</p>
-                          <p className="font-mono text-xs" style={{ color: CI.goldLight }}>{item.value}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </GlassPanel>
                 </motion.div>
               )}
 
@@ -677,7 +718,7 @@ export default function SettingsPage() {
                   className="space-y-6"
                 >
                   {/* Password Card */}
-                  {hasPassword && (
+                  {isCapabilityAvailable(capabilities, 'password') && (
                     <GlassPanel>
                       <div className="flex items-center gap-3 mb-4">
                         <div 
@@ -710,12 +751,12 @@ export default function SettingsPage() {
                   )}
 
                   {/* Delete Account Card */}
-                  {hasDeleteAccount && (
-                    <GlassPanel className="!border-red-500/30">
+                  {isCapabilityAvailable(capabilities, 'deleteAccount') && (
+                    <GlassPanel danger>
                       <div className="flex items-center gap-3 mb-4">
                         <div 
                           className="w-10 h-10 rounded-xl flex items-center justify-center"
-                          style={{ background: 'rgba(255,0,0,0.1)' }}
+                          style={{ background: 'rgba(239,68,68,0.15)' }}
                         >
                           <Trash2 className="w-5 h-5 text-red-500" />
                         </div>
@@ -745,6 +786,182 @@ export default function SettingsPage() {
                       </button>
                     </GlassPanel>
                   )}
+                </motion.div>
+              )}
+
+              {/* DATA SECTION */}
+              {activeSection === 'data' && (
+                <motion.div
+                  key="data"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  {/* Data Sources Card */}
+                  {isCapabilityAvailable(capabilities, 'dataSources') && (
+                    <GlassPanel>
+                      <div className="flex items-center gap-3 mb-4">
+                        <div 
+                          className="w-10 h-10 rounded-xl flex items-center justify-center"
+                          style={{ background: `${CI.orange}20` }}
+                        >
+                          <FileText className="w-5 h-5" style={{ color: CI.orange }} />
+                        </div>
+                        <div className="flex-1">
+                          <h2 className="text-lg font-bold font-['Orbitron']" style={{ color: CI.goldLight }}>
+                            Datenquellen
+                          </h2>
+                          <p className="text-xs" style={{ color: `${CI.goldLight}60` }}>
+                            Deine Wissensbasis für ARAS AI
+                          </p>
+                        </div>
+                        <div 
+                          className="px-3 py-1 rounded-full text-sm font-bold"
+                          style={{ background: `${CI.orange}20`, color: CI.orange }}
+                        >
+                          {Array.isArray(dataSources) ? dataSources.length : 0} Quellen
+                        </div>
+                      </div>
+
+                      <p className="text-sm mb-4" style={{ color: `${CI.goldLight}80` }}>
+                        Verwalte die Informationen, die ARAS AI über dein Unternehmen kennt.
+                      </p>
+
+                      <button
+                        onClick={() => window.location.href = '/app/space'}
+                        className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:scale-[1.02]"
+                        style={{
+                          background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
+                          color: '#000',
+                        }}
+                      >
+                        <Database className="w-4 h-4" />
+                        Wissen verwalten
+                      </button>
+                    </GlassPanel>
+                  )}
+
+                  {/* Account Info Card */}
+                  <GlassPanel>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div 
+                        className="w-10 h-10 rounded-xl flex items-center justify-center"
+                        style={{ background: `${CI.orange}20` }}
+                      >
+                        <Clock className="w-5 h-5" style={{ color: CI.orange }} />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-bold font-['Orbitron']" style={{ color: CI.goldLight }}>
+                          Kontoinformationen
+                        </h2>
+                        <p className="text-xs" style={{ color: `${CI.goldLight}60` }}>
+                          Was ARAS AI über dein Konto weiß
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                      {[
+                        { label: 'User ID', value: (user as any)?.id?.slice(0, 8) + '...' || '—' },
+                        { label: 'Email', value: (user as any)?.email || '—' },
+                        { label: 'Plan', value: subscription?.plan || 'free' },
+                        { label: 'Status', value: subscription?.status || 'trial' },
+                      ].map(item => (
+                        <div key={item.label}>
+                          <p className="text-xs mb-1" style={{ color: `${CI.goldLight}60` }}>{item.label}</p>
+                          <p className="font-mono text-xs truncate" style={{ color: CI.goldLight }}>{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </GlassPanel>
+                </motion.div>
+              )}
+
+              {/* DIAGNOSE SECTION */}
+              {activeSection === 'diagnose' && (
+                <motion.div
+                  key="diagnose"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  <GlassPanel>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div 
+                        className="w-10 h-10 rounded-xl flex items-center justify-center"
+                        style={{ background: `${CI.orange}20` }}
+                      >
+                        <Activity className="w-5 h-5" style={{ color: CI.orange }} />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-bold font-['Orbitron']" style={{ color: CI.goldLight }}>
+                          Diagnose & Transparenz
+                        </h2>
+                        <p className="text-xs" style={{ color: `${CI.goldLight}60` }}>
+                          Debug-Informationen für Support
+                        </p>
+                      </div>
+                    </div>
+
+                    <p className="text-sm mb-6" style={{ color: `${CI.goldLight}80` }}>
+                      Zeige alle Daten, die ARAS AI über dein Konto gespeichert hat.
+                    </p>
+
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        onClick={loadDiagnoseData}
+                        disabled={diagnoseLoading}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all hover:scale-[1.02] disabled:opacity-50"
+                        style={{
+                          background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
+                          color: '#000',
+                        }}
+                      >
+                        {diagnoseLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                        Diagnose anzeigen
+                      </button>
+
+                      {isCapabilityAvailable(capabilities, 'knowledgeDigest') && (
+                        <a
+                          href="/api/user/knowledge/digest?mode=space"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all hover:scale-[1.02]"
+                          style={{
+                            background: 'rgba(255,255,255,0.05)',
+                            color: CI.goldLight,
+                            border: `1px solid ${CI.orange}30`,
+                          }}
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          Knowledge Digest (Space)
+                        </a>
+                      )}
+
+                      {isCapabilityAvailable(capabilities, 'knowledgeHealth') && (
+                        <a
+                          href="/api/user/knowledge/health"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all hover:scale-[1.02]"
+                          style={{
+                            background: 'rgba(255,255,255,0.05)',
+                            color: CI.goldLight,
+                            border: `1px solid ${CI.orange}30`,
+                          }}
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          Knowledge Health
+                        </a>
+                      )}
+                    </div>
+                  </GlassPanel>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -887,6 +1104,62 @@ export default function SettingsPage() {
                   }}
                 >
                   Abbrechen
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Diagnose Modal */}
+      <AnimatePresence>
+        {showDiagnoseModal && diagnoseData && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)' }}
+            onClick={() => setShowDiagnoseModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 30 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 30 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-2xl max-h-[80vh] overflow-hidden rounded-2xl flex flex-col"
+              style={{
+                background: 'rgba(0,0,0,0.95)',
+                border: `2px solid ${CI.orange}`,
+                boxShadow: `0 0 40px ${CI.orange}40`,
+              }}
+            >
+              <div className="p-6 border-b" style={{ borderColor: `${CI.orange}30` }}>
+                <h2 className="text-xl font-bold font-['Orbitron']" style={{ color: CI.goldLight }}>
+                  Diagnose-Daten
+                </h2>
+                <p className="text-xs mt-1" style={{ color: `${CI.goldLight}60` }}>
+                  Read-only • Für Support-Zwecke
+                </p>
+              </div>
+              <div className="flex-1 overflow-auto p-6">
+                <pre 
+                  className="text-xs font-mono whitespace-pre-wrap break-all"
+                  style={{ color: CI.goldLight }}
+                >
+                  {JSON.stringify(diagnoseData, null, 2)}
+                </pre>
+              </div>
+              <div className="p-4 border-t" style={{ borderColor: `${CI.orange}30` }}>
+                <button
+                  onClick={() => setShowDiagnoseModal(false)}
+                  className="w-full py-3 rounded-xl font-bold text-sm"
+                  style={{
+                    background: 'rgba(255,255,255,0.1)',
+                    color: CI.goldLight,
+                  }}
+                >
+                  Schließen
                 </button>
               </div>
             </motion.div>
