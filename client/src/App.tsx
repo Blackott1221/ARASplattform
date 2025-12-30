@@ -111,10 +111,11 @@ const VideoBackground = memo(() => {
           opacity: 1
         }}
       />
-      {/* 50% dark overlay + subtle vignette for better text readability */}
-      <div className="absolute inset-0 bg-black/50" />
+      {/* Dark overlay + gradient for better text readability */}
+      <div className="pointer-events-none absolute inset-0 bg-black/50" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/35 via-black/55 to-black/75" />
       <div 
-        className="absolute inset-0" 
+        className="pointer-events-none absolute inset-0" 
         style={{
           background: 'radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.3) 100%)'
         }}
