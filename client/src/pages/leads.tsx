@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
+import React, { useState, useEffect, useRef, Component, ErrorInfo, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,7 +9,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { ChevronDown, ChevronRight, Database, Brain, Sparkles, FileText, Link, Upload } from 'lucide-react';
+import { 
+  Database, Brain, Sparkles, FileText, Link2, Upload, X, Copy, Trash2, 
+  ChevronDown, ChevronRight, Search, Filter, Eye, User, Building2, 
+  Mail, Calendar, Zap, MessageSquare, Phone, Crown, ExternalLink,
+  Check, AlertCircle, RefreshCw, Settings, MoreHorizontal
+} from 'lucide-react';
 import type { User as UserType, SubscriptionResponse } from '@shared/schema';
 import '@/styles/animations.css';
 
@@ -32,17 +37,22 @@ class LeadsErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
     if (this.state.hasError) {
       return (
         <div className="flex-1 flex items-center justify-center p-8">
-          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 max-w-md text-center">
-            <h2 className="text-lg font-semibold text-red-400 mb-2">Fehler aufgetreten</h2>
-            <p className="text-sm text-gray-400 mb-4">
+          <div className="bg-black/60 backdrop-blur-2xl border border-red-500/30 rounded-[22px] p-8 max-w-md text-center shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_20px_60px_rgba(0,0,0,0.55)]">
+            <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-red-500/20 to-red-600/10 flex items-center justify-center">
+              <AlertCircle className="w-7 h-7 text-red-400" />
+            </div>
+            <h2 className="text-xl font-semibold text-white mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+              Fehler aufgetreten
+            </h2>
+            <p className="text-sm text-white/60 mb-4">
               Die Wissensdatenbank konnte nicht geladen werden.
             </p>
-            <pre className="text-xs text-red-300 bg-black/40 p-3 rounded-lg overflow-auto max-h-[100px] mb-4">
+            <pre className="text-xs text-red-300/80 bg-black/40 p-3 rounded-xl border border-red-500/20 overflow-auto max-h-[100px] mb-5 text-left">
               {this.state.error?.message || 'Unbekannter Fehler'}
             </pre>
             <Button
               onClick={() => window.location.reload()}
-              className="bg-[#FE9100] hover:bg-[#FE9100]/80 text-white"
+              className="bg-gradient-to-r from-[#ff6a00] to-[#ff8533] hover:from-[#ff6a00]/90 hover:to-[#ff8533]/90 text-white font-medium px-6 rounded-xl"
             >
               Seite neu laden
             </Button>
@@ -96,17 +106,35 @@ interface DataSource {
 }
 
 function LeadsContent() {
+  // === STATE (preserved from original) ===
   const [showAddDataDialog, setShowAddDataDialog] = useState(false);
   const [newDataSource, setNewDataSource] = useState({ type: 'text' as 'text' | 'url' | 'file', title: '', content: '', url: '' });
   const [isAddingSource, setIsAddingSource] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [addSourceError, setAddSourceError] = useState<string | null>(null); // Persistent error display
+  const [addSourceError, setAddSourceError] = useState<string | null>(null);
   const [isEditingBusiness, setIsEditingBusiness] = useState(false);
   const [editedBusiness, setEditedBusiness] = useState<any>({});
+  const [biSaveError, setBiSaveError] = useState<string | null>(null);
+  const [biSaveSuccess, setBiSaveSuccess] = useState(false);
+  
+  // NEW: UI State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'text' | 'url' | 'file'>('all');
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'title'>('newest');
+  const [selectedSource, setSelectedSource] = useState<DataSource | null>(null);
+  const [showDevDetails, setShowDevDetails] = useState(false);
+  const [copiedContext, setCopiedContext] = useState(false);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const [hasMounted, setHasMounted] = useState(false);
   
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Mount animation trigger
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   // Fetch data sources from API
   const { data: dataSourcesResponse, isLoading: isLoadingDataSources, refetch: refetchDataSources } = useQuery<{ success: boolean; dataSources: DataSource[] }>({
@@ -163,8 +191,12 @@ function LeadsContent() {
       refetchDigest();
       toast({ title: 'Gespeichert', description: 'Business Intelligence aktualisiert.' });
       setIsEditingBusiness(false);
+      setBiSaveError(null);
+      setBiSaveSuccess(true);
+      setTimeout(() => setBiSaveSuccess(false), 3000);
     },
     onError: (error: any) => {
+      setBiSaveError(error.message || 'Speichern fehlgeschlagen');
       toast({ title: 'Fehler', description: error.message, variant: 'destructive' });
     }
   });
@@ -186,6 +218,8 @@ function LeadsContent() {
 
   // Save business intelligence
   const saveBusinessIntelligence = () => {
+    setBiSaveError(null);
+    setBiSaveSuccess(false);
     const updates = {
       companyDescription: editedBusiness.companyDescription,
       targetAudience: editedBusiness.targetAudience,
@@ -194,6 +228,32 @@ function LeadsContent() {
       services: editedBusiness.services,
     };
     updateAiProfileMutation.mutate(updates);
+  };
+  
+  // Filter and sort data sources
+  const filteredSources = dataSources
+    .filter(s => filterType === 'all' || s.type === filterType)
+    .filter(s => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return (s.title?.toLowerCase().includes(q)) || 
+             (s.contentText?.toLowerCase().includes(q)) ||
+             (s.url?.toLowerCase().includes(q));
+    })
+    .sort((a, b) => {
+      if (sortOrder === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      if (sortOrder === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      return (a.title || '').localeCompare(b.title || '');
+    });
+  
+  // Copy context to clipboard
+  const copyContextToClipboard = async () => {
+    if (digestData?.digest) {
+      await navigator.clipboard.writeText(digestData.digest);
+      setCopiedContext(true);
+      toast({ title: 'Kopiert', description: 'Kontext in Zwischenablage kopiert.' });
+      setTimeout(() => setCopiedContext(false), 2000);
+    }
   };
 
   // Handle add data source
@@ -298,292 +358,766 @@ function LeadsContent() {
   // Loading state
   if (authLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[#FE9100] border-t-transparent rounded-full animate-spin" />
+      <div className="flex-1 flex items-center justify-center bg-[#050508]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-2 border-[#ff6a00] border-t-transparent rounded-full animate-spin" />
+          <span className="text-white/60 text-sm">Wissensdatenbank laden...</span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="relative flex-1 min-h-0 overflow-y-auto">
-      <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="relative flex-1 min-h-0 overflow-y-auto bg-gradient-to-b from-[#050508] via-[#080810] to-[#0a0a12]">
+      {/* Matrix Data Stream Background */}
+      <div 
+        className="fixed inset-0 pointer-events-none opacity-[0.04] z-0"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ff6a00' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          animation: 'arasMatrixDrift 45s linear infinite'
+        }}
+      />
+      
+      <div className="relative z-10 p-6 lg:p-8 max-w-[1280px] mx-auto space-y-8">
         
-        {/* Header - ARAS CI with Orbitron + Animated Gradient */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff6a00] to-[#e9d7c4] flex items-center justify-center">
-              <Database className="w-5 h-5 text-black" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold aras-headline-gradient" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                Wissensdatenbank
-              </h1>
-              <p className="text-sm text-gray-400 mt-0.5">Verwalte deine KI-Datenquellen und Business Intelligence</p>
-            </div>
-          </div>
-          <div className="text-right text-xs text-gray-500">
-            <div>{format(new Date(), 'dd. MMM yyyy', { locale: de })}</div>
-            <div className="text-gray-400">{format(new Date(), 'HH:mm')}</div>
-          </div>
-        </div>
-
-        {/* Stats Row - Dark Glass Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-black/45 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-lg">
-            <div className="text-xs text-gray-400 mb-1">Datenquellen</div>
-            <div className="text-xl font-bold text-white">{dataSources.length}</div>
-          </div>
-          <div className="bg-black/45 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-lg">
-            <div className="text-xs text-gray-400 mb-1">KI-Nachrichten</div>
-            <div className="text-xl font-bold text-white">
-              {subscriptionData?.aiMessagesUsed || 0} / {subscriptionData?.aiMessagesLimit || 100}
-            </div>
-          </div>
-          <div className="bg-black/45 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-lg">
-            <div className="text-xs text-gray-400 mb-1">Anrufe</div>
-            <div className="text-xl font-bold text-white">
-              {subscriptionData?.voiceCallsUsed || 0} / {subscriptionData?.voiceCallsLimit || 50}
-            </div>
-          </div>
-          <div className="bg-black/45 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-lg">
-            <div className="text-xs text-gray-400 mb-1">Plan</div>
-            <div className="text-xl font-bold text-[#ff6a00]">{subscriptionData?.plan?.toUpperCase() || 'FREE'}</div>
-          </div>
-        </div>
-
-        {/* Two Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* ═══════════════════════════════════════════════════════════════════
+            SECTION A: HERO HEADER
+        ═══════════════════════════════════════════════════════════════════ */}
+        <motion.div 
+          ref={heroRef}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="relative"
+        >
+          {/* Scanline effect on mount */}
+          {hasMounted && (
+            <motion.div
+              initial={{ left: '-100%' }}
+              animate={{ left: '100%' }}
+              transition={{ duration: 0.8, ease: 'easeOut' }}
+              className="absolute inset-y-0 w-32 bg-gradient-to-r from-transparent via-[#ff6a00]/20 to-transparent pointer-events-none z-20"
+              style={{ filter: 'blur(8px)' }}
+            />
+          )}
           
-          {/* Data Sources - Dark Glass Card */}
-          <div className="bg-black/45 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-lg">
-            <div className="p-4 border-b border-white/10 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-[#ff6a00]" />
-                <h2 className="text-base font-semibold text-white">Datenquellen</h2>
-              </div>
-              <Button
-                type="button"
-                onClick={() => setShowAddDataDialog(true)}
-                size="sm"
-                className="bg-[#FE9100] hover:bg-[#FE9100]/80 text-white text-xs h-8 px-3"
-              >
-                + Hinzufügen
-              </Button>
-            </div>
-            <div className="p-4 space-y-2 max-h-[400px] overflow-y-auto">
-              {isLoadingDataSources ? (
-                <div className="text-center py-8 text-gray-500">Laden...</div>
-              ) : dataSources.length === 0 ? (
-                <div className="text-center py-8 text-gray-500 text-sm">
-                  Noch keine Datenquellen. Füge deine erste hinzu!
+          <div className="flex items-start justify-between gap-6 flex-wrap">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#ff6a00] to-[#e9d7c4] flex items-center justify-center shadow-[0_0_30px_rgba(255,106,0,0.3)]">
+                  <Database className="w-7 h-7 text-black" />
                 </div>
-              ) : (
-                dataSources.map((source) => (
-                  <div
-                    key={source.id}
-                    className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/5 hover:border-white/10 transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs px-2 py-0.5 rounded bg-white/10 text-gray-300 uppercase">
-                          {source.type}
-                        </span>
-                        <span className={`text-xs px-2 py-0.5 rounded ${
-                          source.status === 'active' ? 'bg-green-500/20 text-green-400' :
-                          source.status === 'failed' ? 'bg-red-500/20 text-red-400' :
-                          'bg-yellow-500/20 text-yellow-400'
-                        }`}>
-                          {source.status}
-                        </span>
-                      </div>
-                      <div className="text-sm text-white mt-1 truncate">
-                        {source.title || source.fileName || source.url || 'Ohne Titel'}
-                      </div>
-                      <div className="text-xs text-gray-500 mt-0.5">
-                        {safeDateLabel(source.createdAt)}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteDataSource(source.id)}
-                      className="ml-2 p-2 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))
-              )}
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#050508] flex items-center justify-center">
+                  <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+                </div>
+              </div>
+              <div>
+                <h1 
+                  className="text-3xl lg:text-4xl font-bold aras-headline-gradient tracking-tight" 
+                  style={{ fontFamily: 'Orbitron, sans-serif' }}
+                >
+                  Wissensdatenbank
+                </h1>
+                <p className="text-sm text-white/50 mt-1">
+                  Verwalte deine KI-Datenquellen und Business Intelligence
+                </p>
+              </div>
+            </div>
+            
+            {/* Status Chips */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-xs text-white/70 font-medium">LIVE</span>
+              </div>
+              <div className="px-3 py-1.5 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full">
+                <span className="text-xs text-white/50">Aktualisiert: </span>
+                <span className="text-xs text-white/70">{format(new Date(), 'HH:mm', { locale: de })}</span>
+              </div>
+              <div className="px-3 py-1.5 bg-black/40 backdrop-blur-xl border border-[#ff6a00]/30 rounded-full">
+                <span className="text-xs text-[#ff6a00] font-medium uppercase">{digestMode}</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* ═══════════════════════════════════════════════════════════════════
+            SECTION B: KPI ROW
+        ═══════════════════════════════════════════════════════════════════ */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+        >
+          {/* Datenquellen */}
+          <div className="group bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-[20px] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_20px_50px_rgba(0,0,0,0.4)] hover:border-white/[0.12] transition-all duration-300">
+            <div className="flex items-center justify-between mb-3">
+              <Database className="w-5 h-5 text-[#ff6a00]" />
+              <span className="text-[10px] text-white/40 uppercase tracking-wider">Quellen</span>
+            </div>
+            <div className="text-3xl font-bold text-white mb-1" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+              {dataSources.length}
+            </div>
+            <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-[#ff6a00] to-[#e9d7c4] rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(dataSources.length * 10, 100)}%` }}
+              />
+            </div>
+          </div>
+          
+          {/* KI-Nachrichten */}
+          <div className="group bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-[20px] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_20px_50px_rgba(0,0,0,0.4)] hover:border-white/[0.12] transition-all duration-300">
+            <div className="flex items-center justify-between mb-3">
+              <MessageSquare className="w-5 h-5 text-[#ff6a00]" />
+              <span className="text-[10px] text-white/40 uppercase tracking-wider">Nachrichten</span>
+            </div>
+            <div className="text-3xl font-bold text-white mb-1" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+              {subscriptionData?.aiMessagesUsed || 0}
+              <span className="text-lg text-white/40 font-normal">/{subscriptionData?.aiMessagesLimit || 100}</span>
+            </div>
+            <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-[#ff6a00] to-[#e9d7c4] rounded-full transition-all duration-500"
+                style={{ width: `${((subscriptionData?.aiMessagesUsed || 0) / (subscriptionData?.aiMessagesLimit || 100)) * 100}%` }}
+              />
+            </div>
+          </div>
+          
+          {/* Anrufe */}
+          <div className="group bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-[20px] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_20px_50px_rgba(0,0,0,0.4)] hover:border-white/[0.12] transition-all duration-300">
+            <div className="flex items-center justify-between mb-3">
+              <Phone className="w-5 h-5 text-[#ff6a00]" />
+              <span className="text-[10px] text-white/40 uppercase tracking-wider">Anrufe</span>
+            </div>
+            <div className="text-3xl font-bold text-white mb-1" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+              {subscriptionData?.voiceCallsUsed || 0}
+              <span className="text-lg text-white/40 font-normal">/{subscriptionData?.voiceCallsLimit || 50}</span>
+            </div>
+            <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-[#ff6a00] to-[#e9d7c4] rounded-full transition-all duration-500"
+                style={{ width: `${((subscriptionData?.voiceCallsUsed || 0) / (subscriptionData?.voiceCallsLimit || 50)) * 100}%` }}
+              />
+            </div>
+          </div>
+          
+          {/* Plan */}
+          <div className="group bg-black/40 backdrop-blur-xl border border-[#ff6a00]/20 rounded-[20px] p-5 shadow-[0_0_0_1px_rgba(255,106,0,0.1),0_20px_50px_rgba(0,0,0,0.4)] hover:border-[#ff6a00]/30 transition-all duration-300">
+            <div className="flex items-center justify-between mb-3">
+              <Crown className="w-5 h-5 text-[#ff6a00]" />
+              <span className="text-[10px] text-white/40 uppercase tracking-wider">Plan</span>
+            </div>
+            <div className="text-3xl font-bold text-[#ff6a00] mb-1" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+              {subscriptionData?.plan?.toUpperCase() || 'FREE'}
+            </div>
+            <div className="text-xs text-white/40">Aktives Abonnement</div>
+          </div>
+        </motion.div>
+
+        {/* ═══════════════════════════════════════════════════════════════════
+            SECTION C: "ALLES ÜBER DICH" - Profile + Business Intelligence
+        ═══════════════════════════════════════════════════════════════════ */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="space-y-6"
+        >
+          {/* Profile Card */}
+          <div className="bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-[22px] p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_20px_50px_rgba(0,0,0,0.4)]">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff6a00]/20 to-[#e9d7c4]/10 flex items-center justify-center">
+                <User className="w-5 h-5 text-[#ff6a00]" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>Profil</h2>
+                <p className="text-xs text-white/40">Deine Kontoinformationen</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-1">
+                <div className="text-[11px] text-white/40 uppercase tracking-wider">Name</div>
+                <div className="text-sm text-white/90 font-medium">{userProfile.fullName || userProfile.username || 'Noch nicht hinterlegt'}</div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-[11px] text-white/40 uppercase tracking-wider">E-Mail</div>
+                <div className="text-sm text-white/90 font-medium truncate">{userProfile.email || 'Noch nicht hinterlegt'}</div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-[11px] text-white/40 uppercase tracking-wider">Unternehmen</div>
+                <div className="text-sm text-white/90 font-medium">{userProfile.company || 'Noch nicht hinterlegt'}</div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-[11px] text-white/40 uppercase tracking-wider">Mitglied seit</div>
+                <div className="text-sm text-white/90 font-medium">{safeFormatDate(userProfile.createdAt, 'dd.MM.yyyy')}</div>
+              </div>
             </div>
           </div>
 
-          {/* Business Intelligence - Dark Glass Card */}
-          <div className="bg-black/45 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-lg">
-            <div className="p-4 border-b border-white/10 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Brain className="w-4 h-4 text-[#ff6a00]" />
-                <h2 className="text-base font-semibold text-white">Business Intelligence</h2>
+          {/* Business Intelligence Card */}
+          <div className="bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-[22px] overflow-hidden shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_20px_50px_rgba(0,0,0,0.4)]">
+            <div className="p-6 border-b border-white/[0.06] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff6a00]/20 to-[#e9d7c4]/10 flex items-center justify-center">
+                  <Brain className="w-5 h-5 text-[#ff6a00]" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>Business Intelligence</h2>
+                  <p className="text-xs text-white/40">Informationen über dein Unternehmen</p>
+                </div>
               </div>
               {!isEditingBusiness ? (
                 <Button
                   type="button"
                   onClick={startEditingBusiness}
-                  size="sm"
-                  variant="outline"
-                  className="text-xs h-8 px-3 border-white/20 text-gray-300 hover:bg-white/10"
+                  className="bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 text-xs h-9 px-4 rounded-xl"
                 >
+                  <Settings className="w-3.5 h-3.5 mr-2" />
                   Bearbeiten
                 </Button>
               ) : (
                 <div className="flex gap-2">
                   <Button
                     type="button"
-                    onClick={() => setIsEditingBusiness(false)}
-                    size="sm"
-                    variant="outline"
-                    className="text-xs h-8 px-3 border-white/20 text-gray-300 hover:bg-white/10"
+                    onClick={() => { setIsEditingBusiness(false); setBiSaveError(null); }}
+                    className="bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 text-xs h-9 px-4 rounded-xl"
                   >
                     Abbrechen
                   </Button>
                   <Button
                     type="button"
                     onClick={saveBusinessIntelligence}
-                    size="sm"
-                    className="bg-[#FE9100] hover:bg-[#FE9100]/80 text-white text-xs h-8 px-3"
                     disabled={updateAiProfileMutation.isPending}
+                    className="bg-gradient-to-r from-[#ff6a00] to-[#ff8533] hover:from-[#ff6a00]/90 hover:to-[#ff8533]/90 text-white text-xs h-9 px-4 rounded-xl font-medium"
                   >
-                    {updateAiProfileMutation.isPending ? 'Speichern...' : 'Speichern'}
+                    {updateAiProfileMutation.isPending ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 mr-2 animate-spin" />
+                        Speichern...
+                      </>
+                    ) : biSaveSuccess ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 mr-2" />
+                        Gespeichert
+                      </>
+                    ) : (
+                      'Speichern'
+                    )}
                   </Button>
                 </div>
               )}
             </div>
-            <div className="p-4 space-y-4 max-h-[400px] overflow-y-auto">
+            
+            {/* Persistent BI Save Error */}
+            {biSaveError && (
+              <div className="mx-6 mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-3">
+                <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm text-red-400 font-medium">Speichern fehlgeschlagen</p>
+                  <p className="text-xs text-red-400/70 mt-0.5">{biSaveError}</p>
+                </div>
+                <button type="button" onClick={() => setBiSaveError(null)} className="text-red-400/60 hover:text-red-400">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+            
+            <div className="p-6">
               {isEditingBusiness ? (
-                <>
-                  <div>
-                    <label className="text-xs text-gray-400 mb-1 block">Unternehmensbeschreibung</label>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                  <div className="lg:col-span-2">
+                    <label className="text-[11px] text-white/50 uppercase tracking-wider mb-2 block">Unternehmensbeschreibung</label>
                     <Textarea
                       value={editedBusiness.companyDescription}
                       onChange={(e) => setEditedBusiness({...editedBusiness, companyDescription: e.target.value})}
-                      className="bg-white/5 border-white/10 text-white text-sm min-h-[80px]"
+                      className="bg-black/40 border-white/10 text-white text-sm min-h-[100px] rounded-xl focus:border-[#ff6a00]/50 focus:ring-[#ff6a00]/20"
                       placeholder="Beschreibe dein Unternehmen..."
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 mb-1 block">Zielgruppe</label>
+                    <label className="text-[11px] text-white/50 uppercase tracking-wider mb-2 block">Zielgruppe</label>
                     <Input
                       value={editedBusiness.targetAudience}
                       onChange={(e) => setEditedBusiness({...editedBusiness, targetAudience: e.target.value})}
-                      className="bg-white/5 border-white/10 text-white text-sm"
+                      className="bg-black/40 border-white/10 text-white text-sm rounded-xl focus:border-[#ff6a00]/50 focus:ring-[#ff6a00]/20"
                       placeholder="Wer sind deine Kunden?"
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 mb-1 block">Keywords (kommagetrennt)</label>
+                    <label className="text-[11px] text-white/50 uppercase tracking-wider mb-2 block">Dienstleistungen</label>
+                    <Input
+                      value={editedBusiness.services}
+                      onChange={(e) => setEditedBusiness({...editedBusiness, services: e.target.value})}
+                      className="bg-black/40 border-white/10 text-white text-sm rounded-xl focus:border-[#ff6a00]/50 focus:ring-[#ff6a00]/20"
+                      placeholder="Welche Dienstleistungen bietest du an?"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] text-white/50 uppercase tracking-wider mb-2 block">Keywords (kommagetrennt)</label>
                     <Input
                       value={editedBusiness.effectiveKeywords}
                       onChange={(e) => setEditedBusiness({...editedBusiness, effectiveKeywords: e.target.value})}
-                      className="bg-white/5 border-white/10 text-white text-sm"
+                      className="bg-black/40 border-white/10 text-white text-sm rounded-xl focus:border-[#ff6a00]/50 focus:ring-[#ff6a00]/20"
                       placeholder="Keyword1, Keyword2, ..."
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 mb-1 block">Wettbewerber (kommagetrennt)</label>
+                    <label className="text-[11px] text-white/50 uppercase tracking-wider mb-2 block">Wettbewerber (kommagetrennt)</label>
                     <Input
                       value={editedBusiness.competitors}
                       onChange={(e) => setEditedBusiness({...editedBusiness, competitors: e.target.value})}
-                      className="bg-white/5 border-white/10 text-white text-sm"
+                      className="bg-black/40 border-white/10 text-white text-sm rounded-xl focus:border-[#ff6a00]/50 focus:ring-[#ff6a00]/20"
                       placeholder="Wettbewerber1, Wettbewerber2, ..."
                     />
                   </div>
-                  <div>
-                    <label className="text-xs text-gray-400 mb-1 block">Dienstleistungen</label>
-                    <Textarea
-                      value={editedBusiness.services}
-                      onChange={(e) => setEditedBusiness({...editedBusiness, services: e.target.value})}
-                      className="bg-white/5 border-white/10 text-white text-sm min-h-[60px]"
-                      placeholder="Welche Dienstleistungen bietest du an?"
-                    />
-                  </div>
-                </>
+                </div>
               ) : (
-                <>
-                  <InfoRow label="Unternehmen" value={aiProfile.companyDescription || 'Nicht gesetzt'} />
-                  <InfoRow label="Zielgruppe" value={aiProfile.targetAudience || 'Nicht gesetzt'} />
-                  <InfoRow label="Keywords" value={Array.isArray(aiProfile.effectiveKeywords) ? aiProfile.effectiveKeywords.join(', ') : 'Nicht gesetzt'} />
-                  <InfoRow label="Wettbewerber" value={Array.isArray(aiProfile.competitors) ? aiProfile.competitors.join(', ') : 'Nicht gesetzt'} />
-                  <InfoRow label="Dienstleistungen" value={aiProfile.services || 'Nicht gesetzt'} />
-                </>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                  <div className="lg:col-span-2 p-4 bg-white/[0.02] rounded-xl border border-white/[0.04]">
+                    <div className="text-[11px] text-white/40 uppercase tracking-wider mb-2">Unternehmensbeschreibung</div>
+                    <div className="text-sm text-white/80 leading-relaxed">
+                      {aiProfile.companyDescription || <span className="text-white/40 italic">Noch nicht hinterlegt</span>}
+                    </div>
+                  </div>
+                  <div className="p-4 bg-white/[0.02] rounded-xl border border-white/[0.04]">
+                    <div className="text-[11px] text-white/40 uppercase tracking-wider mb-2">Zielgruppe</div>
+                    <div className="text-sm text-white/80">{aiProfile.targetAudience || <span className="text-white/40 italic">Noch nicht hinterlegt</span>}</div>
+                  </div>
+                  <div className="p-4 bg-white/[0.02] rounded-xl border border-white/[0.04]">
+                    <div className="text-[11px] text-white/40 uppercase tracking-wider mb-2">Dienstleistungen</div>
+                    <div className="text-sm text-white/80">{aiProfile.services || <span className="text-white/40 italic">Noch nicht hinterlegt</span>}</div>
+                  </div>
+                  <div className="p-4 bg-white/[0.02] rounded-xl border border-white/[0.04]">
+                    <div className="text-[11px] text-white/40 uppercase tracking-wider mb-2">Keywords</div>
+                    <div className="flex flex-wrap gap-2">
+                      {Array.isArray(aiProfile.effectiveKeywords) && aiProfile.effectiveKeywords.length > 0 ? (
+                        aiProfile.effectiveKeywords.map((kw: string, i: number) => (
+                          <span key={i} className="px-2.5 py-1 bg-[#ff6a00]/10 border border-[#ff6a00]/20 rounded-lg text-xs text-[#ff6a00]">
+                            {kw}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-sm text-white/40 italic">Noch nicht hinterlegt</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="p-4 bg-white/[0.02] rounded-xl border border-white/[0.04]">
+                    <div className="text-[11px] text-white/40 uppercase tracking-wider mb-2">Wettbewerber</div>
+                    <div className="flex flex-wrap gap-2">
+                      {Array.isArray(aiProfile.competitors) && aiProfile.competitors.length > 0 ? (
+                        aiProfile.competitors.map((comp: string, i: number) => (
+                          <span key={i} className="px-2.5 py-1 bg-white/5 border border-white/10 rounded-lg text-xs text-white/70">
+                            {comp}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-sm text-white/40 italic">Noch nicht hinterlegt</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Profile Info - Dark Glass Card */}
-        <div className="bg-black/45 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-lg">
-          <h2 className="text-base font-semibold text-white mb-4 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[#ff6a00]" />
-            Profil
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <InfoRow label="Name" value={userProfile.fullName || userProfile.username || 'Unbekannt'} />
-            <InfoRow label="E-Mail" value={userProfile.email || 'Nicht gesetzt'} />
-            <InfoRow label="Unternehmen" value={userProfile.company || 'Nicht gesetzt'} />
-            <InfoRow label="Mitglied seit" value={safeFormatDate(userProfile.createdAt, 'dd.MM.yyyy')} />
-          </div>
-        </div>
-
-        {/* Knowledge Context Preview (SPACE/POWER) - Dark Glass Card */}
-        <div className="bg-black/45 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-lg">
-          <div className="p-4 border-b border-white/10 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#ff6a00]/20 to-[#e9d7c4]/20 flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-[#ff6a00]" />
+        {/* ═══════════════════════════════════════════════════════════════════
+            SECTION D: DATA SOURCES - Database Style
+        ═══════════════════════════════════════════════════════════════════ */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-[22px] overflow-hidden shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_20px_50px_rgba(0,0,0,0.4)]"
+        >
+          {/* Header */}
+          <div className="p-6 border-b border-white/[0.06]">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff6a00]/20 to-[#e9d7c4]/10 flex items-center justify-center">
+                  <FileText className="w-5 h-5 text-[#ff6a00]" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>Datenquellen</h2>
+                  <p className="text-xs text-white/40">{dataSources.length} Quellen gespeichert</p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-base font-semibold text-white">Kontext-Vorschau</h2>
-                <p className="text-xs text-gray-500 mt-0.5">Was ARAS AI über dich weiß</p>
-              </div>
+              <Button
+                type="button"
+                onClick={() => setShowAddDataDialog(true)}
+                className="bg-gradient-to-r from-[#ff6a00] to-[#ff8533] hover:from-[#ff6a00]/90 hover:to-[#ff8533]/90 text-white text-xs h-9 px-4 rounded-xl font-medium"
+              >
+                <Zap className="w-3.5 h-3.5 mr-2" />
+                Hinzufügen
+              </Button>
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setDigestMode('space')}
-                className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                  digestMode === 'space' ? 'bg-[#FE9100] text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                }`}
+            
+            {/* Toolbar */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Quellen durchsuchen..."
+                  className="pl-10 bg-black/40 border-white/10 text-white text-sm rounded-xl h-9 focus:border-[#ff6a00]/50"
+                />
+              </div>
+              <div className="flex gap-2">
+                {(['all', 'text', 'url', 'file'] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setFilterType(type)}
+                    disabled={type === 'file'}
+                    className={`px-3 py-1.5 text-xs rounded-lg transition-all ${
+                      filterType === type 
+                        ? 'bg-[#ff6a00] text-white' 
+                        : type === 'file'
+                          ? 'bg-white/5 text-white/30 cursor-not-allowed'
+                          : 'bg-white/5 text-white/60 hover:bg-white/10'
+                    }`}
+                  >
+                    {type === 'all' ? 'Alle' : type === 'file' ? 'Datei ⏳' : type.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as 'newest' | 'oldest' | 'title')}
+                className="bg-black/40 border border-white/10 text-white/70 text-xs rounded-lg h-9 px-3 focus:border-[#ff6a00]/50"
               >
-                SPACE
-              </button>
-              <button
-                onClick={() => setDigestMode('power')}
-                className={`px-3 py-1 text-xs rounded-md transition-colors ${
-                  digestMode === 'power' ? 'bg-[#FE9100] text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                }`}
-              >
-                POWER
-              </button>
+                <option value="newest">Neueste</option>
+                <option value="oldest">Älteste</option>
+                <option value="title">Titel A-Z</option>
+              </select>
             </div>
           </div>
-          <div className="p-4">
-            {/* Debug Stats Row */}
-            <div className="flex flex-wrap items-center gap-4 mb-3 text-xs text-gray-400">
-              <span>Quellen: <span className="text-white font-medium">{digestData?.sourceCount ?? 0}</span></span>
-              <span>Zeichen: <span className="text-white font-medium">{digestData?.charCount ?? 0}</span></span>
-              <span>Modus: <span className="text-[#ff6a00] font-medium uppercase">{digestMode}</span></span>
-              {digestData?.truncated && <span className="text-yellow-500">(gekürzt)</span>}
-            </div>
-            {/* Sources Debug Info */}
-            {(digestData as any)?.sourcesDebug && (
-              <div className="mb-3 p-2 bg-black/30 rounded-lg border border-white/5 text-xs">
-                <div className="text-gray-500 mb-1">Debug: raw={((digestData as any).sourcesDebug?.rawCount) ?? '?'} mapped={((digestData as any).sourcesDebug?.mappedCount) ?? '?'} filtered={((digestData as any).sourcesDebug?.filteredCount) ?? '?'}</div>
-                <div className="text-gray-400">IDs: {((digestData as any).sourcesDebug?.ids || []).join(', ') || 'keine'}</div>
+          
+          {/* Sources List */}
+          <div className="max-h-[420px] overflow-y-auto">
+            {isLoadingDataSources ? (
+              <div className="flex flex-col items-center justify-center py-16">
+                <div className="w-8 h-8 border-2 border-[#ff6a00] border-t-transparent rounded-full animate-spin mb-3" />
+                <span className="text-sm text-white/40">Quellen laden...</span>
+              </div>
+            ) : filteredSources.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16">
+                <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-4">
+                  <Database className="w-8 h-8 text-white/20" />
+                </div>
+                <p className="text-white/60 text-sm mb-1">
+                  {searchQuery ? 'Keine Ergebnisse gefunden' : 'Noch keine Datenquellen'}
+                </p>
+                <p className="text-white/40 text-xs">
+                  {searchQuery ? 'Versuche einen anderen Suchbegriff' : 'Füge deine erste Quelle hinzu!'}
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-white/[0.04]">
+                {filteredSources.map((source) => (
+                  <div
+                    key={source.id}
+                    className="group p-4 hover:bg-white/[0.02] transition-all cursor-pointer"
+                    onClick={() => setSelectedSource(source)}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                        source.type === 'text' ? 'bg-blue-500/10' : 'bg-green-500/10'
+                      }`}>
+                        {source.type === 'text' ? (
+                          <FileText className="w-5 h-5 text-blue-400" />
+                        ) : (
+                          <Link2 className="w-5 h-5 text-green-400" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`text-[10px] px-2 py-0.5 rounded-md uppercase font-medium ${
+                            source.type === 'text' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'
+                          }`}>
+                            {source.type}
+                          </span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-md ${
+                            source.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' :
+                            source.status === 'failed' ? 'bg-red-500/20 text-red-400' :
+                            'bg-yellow-500/20 text-yellow-400'
+                          }`}>
+                            {source.status === 'active' ? 'Aktiv' : source.status === 'failed' ? 'Fehler' : 'Verarbeitung'}
+                          </span>
+                        </div>
+                        <div className="text-sm text-white/90 font-medium truncate mb-1">
+                          {source.title || source.fileName || source.url || 'Ohne Titel'}
+                        </div>
+                        <div className="text-xs text-white/40 line-clamp-2">
+                          {source.contentText?.slice(0, 150) || source.url || 'Kein Inhalt'}
+                        </div>
+                        <div className="text-[11px] text-white/30 mt-2">
+                          {safeDateLabel(source.createdAt)}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setSelectedSource(source); }}
+                          className="p-2 text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleDeleteDataSource(source.id); }}
+                          className="p-2 text-white/40 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
-            <pre className="bg-black/40 border border-white/5 rounded-lg p-3 text-xs text-gray-300 font-mono overflow-x-auto max-h-[200px] overflow-y-auto whitespace-pre-wrap">
-              {digestData?.digest || 'Lade Kontext...'}
-            </pre>
           </div>
-        </div>
+        </motion.div>
+
+        {/* ═══════════════════════════════════════════════════════════════════
+            SECTION F: CONTEXT PREVIEW - Showpiece
+        ═══════════════════════════════════════════════════════════════════ */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-[22px] overflow-hidden shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_20px_50px_rgba(0,0,0,0.4)]"
+        >
+          <div className="p-6 border-b border-white/[0.06]">
+            <div className="flex items-start justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff6a00]/30 to-[#e9d7c4]/20 flex items-center justify-center shadow-[0_0_20px_rgba(255,106,0,0.2)]">
+                  <Sparkles className="w-5 h-5 text-[#ff6a00]" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>Kontext-Vorschau</h2>
+                  <p className="text-xs text-white/40">Was ARAS AI über dich weiß</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 flex-wrap">
+                {/* Mode Toggle */}
+                <div className="flex bg-black/40 border border-white/10 rounded-xl p-1">
+                  <button
+                    type="button"
+                    onClick={() => setDigestMode('space')}
+                    className={`px-4 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                      digestMode === 'space' 
+                        ? 'bg-[#ff6a00] text-white shadow-lg' 
+                        : 'text-white/50 hover:text-white/70'
+                    }`}
+                  >
+                    SPACE
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDigestMode('power')}
+                    className={`px-4 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                      digestMode === 'power' 
+                        ? 'bg-[#ff6a00] text-white shadow-lg' 
+                        : 'text-white/50 hover:text-white/70'
+                    }`}
+                  >
+                    POWER
+                  </button>
+                </div>
+                <Button
+                  type="button"
+                  onClick={copyContextToClipboard}
+                  className="bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 text-xs h-9 px-4 rounded-xl"
+                >
+                  {copiedContext ? <Check className="w-3.5 h-3.5 mr-2" /> : <Copy className="w-3.5 h-3.5 mr-2" />}
+                  {copiedContext ? 'Kopiert!' : 'Exportieren'}
+                </Button>
+                <a
+                  href="/app/space"
+                  className="inline-flex items-center bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 text-xs h-9 px-4 rounded-xl transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 mr-2" />
+                  Testen in SPACE
+                </a>
+              </div>
+            </div>
+            
+            {/* Meta Stats */}
+            <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-white/[0.04]">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[#ff6a00]" />
+                <span className="text-xs text-white/50">Quellen:</span>
+                <span className="text-xs text-white font-medium">{digestData?.sourceCount ?? 0}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[#e9d7c4]" />
+                <span className="text-xs text-white/50">Zeichen:</span>
+                <span className="text-xs text-white font-medium">{digestData?.charCount?.toLocaleString() ?? 0}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span className="text-xs text-white/50">Modus:</span>
+                <span className="text-xs text-[#ff6a00] font-medium uppercase">{digestMode}</span>
+              </div>
+              {digestData?.truncated && (
+                <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-md">Gekürzt</span>
+              )}
+            </div>
+          </div>
+          
+          {/* Developer Details (Collapsible) */}
+          <details className="group">
+            <summary 
+              className="px-6 py-3 bg-black/20 border-b border-white/[0.04] cursor-pointer text-xs text-white/40 hover:text-white/60 transition-colors flex items-center gap-2"
+              onClick={(e) => { e.preventDefault(); setShowDevDetails(!showDevDetails); }}
+            >
+              <ChevronRight className={`w-3.5 h-3.5 transition-transform ${showDevDetails ? 'rotate-90' : ''}`} />
+              Developer Details
+            </summary>
+            {showDevDetails && (digestData as any)?.sourcesDebug && (
+              <div className="px-6 py-3 bg-black/20 border-b border-white/[0.04] text-xs font-mono">
+                <div className="text-white/40">
+                  raw={((digestData as any).sourcesDebug?.rawCount) ?? '?'} | 
+                  mapped={((digestData as any).sourcesDebug?.mappedCount) ?? '?'} | 
+                  filtered={((digestData as any).sourcesDebug?.filteredCount) ?? '?'}
+                </div>
+                <div className="text-white/30 mt-1">
+                  IDs: {((digestData as any).sourcesDebug?.ids || []).join(', ') || 'keine'}
+                </div>
+              </div>
+            )}
+          </details>
+          
+          {/* Context Panel */}
+          <div className="p-6">
+            <div className="relative">
+              {/* Neon Spine */}
+              <div className="absolute left-0 top-0 bottom-0 w-1 rounded-full bg-gradient-to-b from-[#ff6a00] via-[#e9d7c4] to-[#ff6a00]/50 opacity-60" />
+              
+              <AnimatePresence mode="wait">
+                <motion.pre
+                  key={digestMode}
+                  initial={{ opacity: 0, filter: 'blur(4px)' }}
+                  animate={{ opacity: 1, filter: 'blur(0px)' }}
+                  exit={{ opacity: 0, filter: 'blur(4px)' }}
+                  transition={{ duration: 0.15 }}
+                  className="ml-5 bg-black/30 border border-white/[0.04] rounded-xl p-5 text-sm text-white/80 font-mono overflow-x-auto max-h-[300px] overflow-y-auto whitespace-pre-wrap leading-relaxed"
+                  style={{ tabSize: 2 }}
+                >
+                  {digestData?.digest || 'Lade Kontext...'}
+                </motion.pre>
+              </AnimatePresence>
+            </div>
+          </div>
+        </motion.div>
       </div>
+      
+      {/* Source Detail Drawer */}
+      <AnimatePresence>
+        {selectedSource && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+              onClick={() => setSelectedSource(null)}
+            />
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="fixed right-0 top-0 bottom-0 w-full max-w-[480px] bg-[#0a0a12] border-l border-white/10 z-50 flex flex-col"
+            >
+              <div className="p-6 border-b border-white/[0.06] flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                  Quelle Details
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setSelectedSource(null)}
+                  className="p-2 text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-6 space-y-5">
+                <div>
+                  <div className="text-[11px] text-white/40 uppercase tracking-wider mb-2">Titel</div>
+                  <div className="text-white/90">{selectedSource.title || 'Ohne Titel'}</div>
+                </div>
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <div className="text-[11px] text-white/40 uppercase tracking-wider mb-2">Typ</div>
+                    <span className={`text-xs px-2.5 py-1 rounded-lg ${
+                      selectedSource.type === 'text' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'
+                    }`}>
+                      {selectedSource.type.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-[11px] text-white/40 uppercase tracking-wider mb-2">Status</div>
+                    <span className={`text-xs px-2.5 py-1 rounded-lg ${
+                      selectedSource.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-yellow-500/20 text-yellow-400'
+                    }`}>
+                      {selectedSource.status === 'active' ? 'Aktiv' : selectedSource.status}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[11px] text-white/40 uppercase tracking-wider mb-2">Erstellt am</div>
+                  <div className="text-white/70 text-sm">{safeFormatDate(selectedSource.createdAt, 'dd.MM.yyyy HH:mm')}</div>
+                </div>
+                {selectedSource.url && (
+                  <div>
+                    <div className="text-[11px] text-white/40 uppercase tracking-wider mb-2">URL</div>
+                    <a href={selectedSource.url} target="_blank" rel="noopener noreferrer" className="text-[#ff6a00] text-sm hover:underline break-all">
+                      {selectedSource.url}
+                    </a>
+                  </div>
+                )}
+                <div>
+                  <div className="text-[11px] text-white/40 uppercase tracking-wider mb-2">Inhalt</div>
+                  <pre className="bg-black/40 border border-white/[0.06] rounded-xl p-4 text-sm text-white/70 font-mono overflow-x-auto max-h-[300px] overflow-y-auto whitespace-pre-wrap">
+                    {selectedSource.contentText || 'Kein Inhalt verfügbar'}
+                  </pre>
+                </div>
+              </div>
+              <div className="p-6 border-t border-white/[0.06] flex gap-3">
+                <Button
+                  type="button"
+                  onClick={async () => {
+                    if (selectedSource.contentText) {
+                      await navigator.clipboard.writeText(selectedSource.contentText);
+                      toast({ title: 'Kopiert', description: 'Inhalt in Zwischenablage kopiert.' });
+                    }
+                  }}
+                  className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 text-sm h-10 rounded-xl"
+                >
+                  <Copy className="w-4 h-4 mr-2" />
+                  Kopieren
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    handleDeleteDataSource(selectedSource.id);
+                    setSelectedSource(null);
+                  }}
+                  className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-sm h-10 px-4 rounded-xl"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Löschen
+                </Button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Add Data Source Dialog */}
       <Dialog open={showAddDataDialog} onOpenChange={(open) => { setShowAddDataDialog(open); if (open) setAddSourceError(null); }}>

@@ -1,5 +1,23 @@
 /* Clean Background Animation - Single Layer */
 
+/* Matrix Data Stream Animation for Knowledge Base */
+@keyframes arasMatrixDrift {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-60px);
+  }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .aras-matrix-bg,
+  [style*="arasMatrixDrift"] {
+    animation: none !important;
+  }
+}
+
 /* ARAS Headline Gradient Animation - Orange to Gold to White */
 @keyframes arasHeadlineGradient {
   0% {
