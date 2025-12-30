@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, Component, ErrorInfo, ReactNode } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Component, ErrorInfo, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
@@ -13,10 +13,34 @@ import {
   Database, Brain, Sparkles, FileText, Link2, Upload, X, Copy, Trash2, 
   ChevronDown, ChevronRight, Search, Filter, Eye, User, Building2, 
   Mail, Calendar, Zap, MessageSquare, Phone, Crown, ExternalLink,
-  Check, AlertCircle, RefreshCw, Settings, MoreHorizontal
+  Check, AlertCircle, RefreshCw, Settings, MoreHorizontal, Activity,
+  Signal, Cpu, HardDrive, Layers
 } from 'lucide-react';
 import type { User as UserType, SubscriptionResponse } from '@shared/schema';
 import '@/styles/animations.css';
+
+// Animated counter hook for KPI numbers
+function useAnimatedCounter(end: number, duration: number = 600) {
+  const [count, setCount] = useState(0);
+  const [hasAnimated, setHasAnimated] = useState(false);
+  
+  useEffect(() => {
+    if (hasAnimated || end === 0) return;
+    setHasAnimated(true);
+    
+    const startTime = Date.now();
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+      setCount(Math.round(end * eased));
+      if (progress < 1) requestAnimationFrame(animate);
+    };
+    requestAnimationFrame(animate);
+  }, [end, duration, hasAnimated]);
+  
+  return count;
+}
 
 // ErrorBoundary to prevent black screen crashes
 class LeadsErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
@@ -355,30 +379,88 @@ function LeadsContent() {
     }
   };
 
+  // Animated KPI counters
+  const animatedSources = useAnimatedCounter(dataSources.length);
+  const animatedMessages = useAnimatedCounter(subscriptionData?.aiMessagesUsed || 0);
+  const animatedCalls = useAnimatedCounter(subscriptionData?.voiceCallsUsed || 0);
+  
+  // Data pulse animation state
+  const [showDataPulse, setShowDataPulse] = useState(false);
+  
+  // Trigger data pulse periodically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setShowDataPulse(true);
+      setTimeout(() => setShowDataPulse(false), 800);
+    }, 12000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Loading state
   if (authLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-[#050508]">
+      <div className="absolute inset-0 flex items-center justify-center bg-[#050508]">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-2 border-[#ff6a00] border-t-transparent rounded-full animate-spin" />
-          <span className="text-white/60 text-sm">Wissensdatenbank laden...</span>
+          <span className="text-white/60 text-sm">Memory Vault laden...</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="relative flex-1 min-h-0 overflow-y-auto bg-gradient-to-b from-[#050508] via-[#080810] to-[#0a0a12]">
-      {/* Matrix Data Stream Background */}
+    <div className="absolute inset-0 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-[#050508] via-[#080810] to-[#0a0a12]">
+      {/* ═══════════════════════════════════════════════════════════════════
+          FIXED BACKGROUND LAYERS - Never affect scroll
+      ═══════════════════════════════════════════════════════════════════ */}
+      
+      {/* Matrix Data Grid Background */}
       <div 
-        className="fixed inset-0 pointer-events-none opacity-[0.04] z-0"
+        className="fixed inset-0 pointer-events-none z-0 opacity-[0.06]"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ff6a00' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          backgroundImage: `
+            linear-gradient(rgba(255,106,0,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,106,0,0.03) 1px, transparent 1px),
+            url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ff6a00' fill-opacity='0.15'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")
+          `,
+          backgroundSize: '40px 40px, 40px 40px, 60px 60px',
           animation: 'arasMatrixDrift 45s linear infinite'
         }}
       />
       
-      <div className="relative z-10 p-6 lg:p-8 max-w-[1280px] mx-auto space-y-8">
+      {/* Neural Particle Field */}
+      <div 
+        className="fixed inset-0 pointer-events-none z-0"
+        style={{
+          background: `
+            radial-gradient(circle 800px at 10% 20%, rgba(255,106,0,0.04) 0%, transparent 50%),
+            radial-gradient(circle 600px at 90% 80%, rgba(233,215,196,0.03) 0%, transparent 50%),
+            radial-gradient(circle 400px at 50% 50%, rgba(255,106,0,0.02) 0%, transparent 50%)
+          `,
+          animation: 'arasNeuralPulse 30s ease-in-out infinite'
+        }}
+      />
+      
+      {/* Data Pulse Effect */}
+      <AnimatePresence>
+        {showDataPulse && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1.2 }}
+            exit={{ opacity: 0, scale: 1.5 }}
+            transition={{ duration: 0.8 }}
+            className="fixed inset-0 pointer-events-none z-0"
+            style={{
+              background: 'radial-gradient(circle at 50% 30%, rgba(255,106,0,0.08) 0%, transparent 50%)'
+            }}
+          />
+        )}
+      </AnimatePresence>
+      
+      {/* ═══════════════════════════════════════════════════════════════════
+          SCROLLABLE CONTENT - pb-40 ensures bottom padding for widgets
+      ═══════════════════════════════════════════════════════════════════ */}
+      <div className="relative z-10 p-6 lg:p-8 pb-40 max-w-[1400px] mx-auto space-y-8">
         
         {/* ═══════════════════════════════════════════════════════════════════
             SECTION A: HERO HEADER
@@ -451,68 +533,94 @@ function LeadsContent() {
           className="grid grid-cols-2 lg:grid-cols-4 gap-4"
         >
           {/* Datenquellen */}
-          <div className="group bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-[20px] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_20px_50px_rgba(0,0,0,0.4)] hover:border-white/[0.12] transition-all duration-300">
-            <div className="flex items-center justify-between mb-3">
-              <Database className="w-5 h-5 text-[#ff6a00]" />
-              <span className="text-[10px] text-white/40 uppercase tracking-wider">Quellen</span>
-            </div>
-            <div className="text-3xl font-bold text-white mb-1" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-              {dataSources.length}
-            </div>
-            <div className="h-1 bg-white/10 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-[#ff6a00] to-[#e9d7c4] rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(dataSources.length * 10, 100)}%` }}
-              />
+          <div className="group relative bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-[20px] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_20px_50px_rgba(0,0,0,0.4)] hover:border-[#ff6a00]/30 hover:shadow-[0_0_30px_rgba(255,106,0,0.1)] transition-all duration-300 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#ff6a00]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#ff6a00]/20 to-[#ff6a00]/5 flex items-center justify-center">
+                  <Database className="w-4.5 h-4.5 text-[#ff6a00]" />
+                </div>
+                <span className="text-[10px] text-white/40 uppercase tracking-wider font-medium">Quellen</span>
+              </div>
+              <div className="text-3xl font-bold text-white mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                {animatedSources}
+              </div>
+              <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.min(dataSources.length * 10, 100)}%` }}
+                  transition={{ duration: 0.8, delay: 0.2 }}
+                  className="h-full bg-gradient-to-r from-[#ff6a00] to-[#e9d7c4] rounded-full"
+                />
+              </div>
             </div>
           </div>
           
           {/* KI-Nachrichten */}
-          <div className="group bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-[20px] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_20px_50px_rgba(0,0,0,0.4)] hover:border-white/[0.12] transition-all duration-300">
-            <div className="flex items-center justify-between mb-3">
-              <MessageSquare className="w-5 h-5 text-[#ff6a00]" />
-              <span className="text-[10px] text-white/40 uppercase tracking-wider">Nachrichten</span>
-            </div>
-            <div className="text-3xl font-bold text-white mb-1" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-              {subscriptionData?.aiMessagesUsed || 0}
-              <span className="text-lg text-white/40 font-normal">/{subscriptionData?.aiMessagesLimit || 100}</span>
-            </div>
-            <div className="h-1 bg-white/10 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-[#ff6a00] to-[#e9d7c4] rounded-full transition-all duration-500"
-                style={{ width: `${((subscriptionData?.aiMessagesUsed || 0) / (subscriptionData?.aiMessagesLimit || 100)) * 100}%` }}
-              />
+          <div className="group relative bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-[20px] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_20px_50px_rgba(0,0,0,0.4)] hover:border-[#ff6a00]/30 hover:shadow-[0_0_30px_rgba(255,106,0,0.1)] transition-all duration-300 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#ff6a00]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#ff6a00]/20 to-[#ff6a00]/5 flex items-center justify-center">
+                  <MessageSquare className="w-4.5 h-4.5 text-[#ff6a00]" />
+                </div>
+                <span className="text-[10px] text-white/40 uppercase tracking-wider font-medium">Nachrichten</span>
+              </div>
+              <div className="text-3xl font-bold text-white mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                {animatedMessages}
+                <span className="text-lg text-white/40 font-normal">/{subscriptionData?.aiMessagesLimit || 100}</span>
+              </div>
+              <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${((subscriptionData?.aiMessagesUsed || 0) / (subscriptionData?.aiMessagesLimit || 100)) * 100}%` }}
+                  transition={{ duration: 0.8, delay: 0.3 }}
+                  className="h-full bg-gradient-to-r from-[#ff6a00] to-[#e9d7c4] rounded-full"
+                />
+              </div>
             </div>
           </div>
           
           {/* Anrufe */}
-          <div className="group bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-[20px] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_20px_50px_rgba(0,0,0,0.4)] hover:border-white/[0.12] transition-all duration-300">
-            <div className="flex items-center justify-between mb-3">
-              <Phone className="w-5 h-5 text-[#ff6a00]" />
-              <span className="text-[10px] text-white/40 uppercase tracking-wider">Anrufe</span>
-            </div>
-            <div className="text-3xl font-bold text-white mb-1" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-              {subscriptionData?.voiceCallsUsed || 0}
-              <span className="text-lg text-white/40 font-normal">/{subscriptionData?.voiceCallsLimit || 50}</span>
-            </div>
-            <div className="h-1 bg-white/10 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-[#ff6a00] to-[#e9d7c4] rounded-full transition-all duration-500"
-                style={{ width: `${((subscriptionData?.voiceCallsUsed || 0) / (subscriptionData?.voiceCallsLimit || 50)) * 100}%` }}
-              />
+          <div className="group relative bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-[20px] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_20px_50px_rgba(0,0,0,0.4)] hover:border-[#ff6a00]/30 hover:shadow-[0_0_30px_rgba(255,106,0,0.1)] transition-all duration-300 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#ff6a00]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#ff6a00]/20 to-[#ff6a00]/5 flex items-center justify-center">
+                  <Phone className="w-4.5 h-4.5 text-[#ff6a00]" />
+                </div>
+                <span className="text-[10px] text-white/40 uppercase tracking-wider font-medium">Anrufe</span>
+              </div>
+              <div className="text-3xl font-bold text-white mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                {animatedCalls}
+                <span className="text-lg text-white/40 font-normal">/{subscriptionData?.voiceCallsLimit || 50}</span>
+              </div>
+              <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${((subscriptionData?.voiceCallsUsed || 0) / (subscriptionData?.voiceCallsLimit || 50)) * 100}%` }}
+                  transition={{ duration: 0.8, delay: 0.4 }}
+                  className="h-full bg-gradient-to-r from-[#ff6a00] to-[#e9d7c4] rounded-full"
+                />
+              </div>
             </div>
           </div>
           
           {/* Plan */}
-          <div className="group bg-black/40 backdrop-blur-xl border border-[#ff6a00]/20 rounded-[20px] p-5 shadow-[0_0_0_1px_rgba(255,106,0,0.1),0_20px_50px_rgba(0,0,0,0.4)] hover:border-[#ff6a00]/30 transition-all duration-300">
-            <div className="flex items-center justify-between mb-3">
-              <Crown className="w-5 h-5 text-[#ff6a00]" />
-              <span className="text-[10px] text-white/40 uppercase tracking-wider">Plan</span>
+          <div className="group relative bg-black/40 backdrop-blur-xl border border-[#ff6a00]/20 rounded-[20px] p-5 shadow-[0_0_0_1px_rgba(255,106,0,0.1),0_20px_50px_rgba(0,0,0,0.4)] hover:border-[#ff6a00]/40 hover:shadow-[0_0_40px_rgba(255,106,0,0.15)] transition-all duration-300 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#ff6a00]/10 to-transparent" />
+            <div className="relative">
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#ff6a00]/30 to-[#e9d7c4]/20 flex items-center justify-center">
+                  <Crown className="w-4.5 h-4.5 text-[#ff6a00]" />
+                </div>
+                <span className="text-[10px] text-[#ff6a00]/60 uppercase tracking-wider font-medium">Plan</span>
+              </div>
+              <div className="text-3xl font-bold text-[#ff6a00] mb-1" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                {subscriptionData?.plan?.toUpperCase() || 'FREE'}
+              </div>
+              <div className="text-xs text-white/50">Aktives Abonnement</div>
             </div>
-            <div className="text-3xl font-bold text-[#ff6a00] mb-1" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-              {subscriptionData?.plan?.toUpperCase() || 'FREE'}
-            </div>
-            <div className="text-xs text-white/40">Aktives Abonnement</div>
           </div>
         </motion.div>
 
@@ -883,47 +991,62 @@ function LeadsContent() {
         </motion.div>
 
         {/* ═══════════════════════════════════════════════════════════════════
-            SECTION F: CONTEXT PREVIEW - Showpiece
+            SECTION F: CONTEXT PREVIEW - "ARAS BRAIN" Showpiece
         ═══════════════════════════════════════════════════════════════════ */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
-          className="bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-[22px] overflow-hidden shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_20px_50px_rgba(0,0,0,0.4)]"
+          className="relative bg-black/40 backdrop-blur-xl border border-[#ff6a00]/20 rounded-[22px] overflow-hidden shadow-[0_0_0_1px_rgba(255,106,0,0.1),0_20px_60px_rgba(0,0,0,0.5),0_0_80px_rgba(255,106,0,0.05)]"
         >
-          <div className="p-6 border-b border-white/[0.06]">
+          {/* Animated border glow */}
+          <div className="absolute inset-0 rounded-[22px] opacity-30" style={{
+            background: 'linear-gradient(90deg, transparent, rgba(255,106,0,0.3), transparent)',
+            backgroundSize: '200% 100%',
+            animation: 'arasShimmer 3s ease-in-out infinite'
+          }} />
+          
+          <div className="relative p-6 border-b border-white/[0.06]">
             <div className="flex items-start justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff6a00]/30 to-[#e9d7c4]/20 flex items-center justify-center shadow-[0_0_20px_rgba(255,106,0,0.2)]">
-                  <Sparkles className="w-5 h-5 text-[#ff6a00]" />
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#ff6a00] to-[#e9d7c4] flex items-center justify-center shadow-[0_0_30px_rgba(255,106,0,0.4)]">
+                    <Brain className="w-6 h-6 text-black" />
+                  </div>
+                  {/* Pulse ring */}
+                  <div className="absolute inset-0 rounded-2xl border-2 border-[#ff6a00]/50 animate-ping opacity-20" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>Kontext-Vorschau</h2>
-                  <p className="text-xs text-white/40">Was ARAS AI über dich weiß</p>
+                  <h2 className="text-xl font-bold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                    Kontext-Vorschau
+                  </h2>
+                  <p className="text-sm text-white/50">Was ARAS AI über dich weiß</p>
                 </div>
               </div>
               <div className="flex items-center gap-3 flex-wrap">
-                {/* Mode Toggle */}
-                <div className="flex bg-black/40 border border-white/10 rounded-xl p-1">
+                {/* Premium Mode Toggle */}
+                <div className="flex bg-black/60 border border-white/10 rounded-xl p-1 shadow-lg">
                   <button
                     type="button"
                     onClick={() => setDigestMode('space')}
-                    className={`px-4 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                    className={`relative px-5 py-2 text-xs font-bold rounded-lg transition-all ${
                       digestMode === 'space' 
-                        ? 'bg-[#ff6a00] text-white shadow-lg' 
+                        ? 'bg-gradient-to-r from-[#ff6a00] to-[#ff8533] text-white shadow-[0_0_20px_rgba(255,106,0,0.4)]' 
                         : 'text-white/50 hover:text-white/70'
                     }`}
+                    style={{ fontFamily: 'Orbitron, sans-serif' }}
                   >
                     SPACE
                   </button>
                   <button
                     type="button"
                     onClick={() => setDigestMode('power')}
-                    className={`px-4 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                    className={`relative px-5 py-2 text-xs font-bold rounded-lg transition-all ${
                       digestMode === 'power' 
-                        ? 'bg-[#ff6a00] text-white shadow-lg' 
+                        ? 'bg-gradient-to-r from-[#ff6a00] to-[#ff8533] text-white shadow-[0_0_20px_rgba(255,106,0,0.4)]' 
                         : 'text-white/50 hover:text-white/70'
                     }`}
+                    style={{ fontFamily: 'Orbitron, sans-serif' }}
                   >
                     POWER
                   </button>
@@ -931,85 +1054,157 @@ function LeadsContent() {
                 <Button
                   type="button"
                   onClick={copyContextToClipboard}
-                  className="bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 text-xs h-9 px-4 rounded-xl"
+                  className="bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 text-xs h-10 px-4 rounded-xl"
                 >
-                  {copiedContext ? <Check className="w-3.5 h-3.5 mr-2" /> : <Copy className="w-3.5 h-3.5 mr-2" />}
+                  {copiedContext ? <Check className="w-4 h-4 mr-2 text-green-400" /> : <Copy className="w-4 h-4 mr-2" />}
                   {copiedContext ? 'Kopiert!' : 'Exportieren'}
                 </Button>
                 <a
                   href="/app/space"
-                  className="inline-flex items-center bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 text-xs h-9 px-4 rounded-xl transition-colors"
+                  className="inline-flex items-center bg-gradient-to-r from-[#ff6a00]/20 to-[#ff6a00]/10 hover:from-[#ff6a00]/30 hover:to-[#ff6a00]/20 border border-[#ff6a00]/30 text-[#ff6a00] text-xs h-10 px-4 rounded-xl transition-all font-medium"
                 >
-                  <ExternalLink className="w-3.5 h-3.5 mr-2" />
-                  Testen in SPACE
+                  <Zap className="w-4 h-4 mr-2" />
+                  Testen
                 </a>
               </div>
             </div>
-            
-            {/* Meta Stats */}
-            <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-white/[0.04]">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[#ff6a00]" />
-                <span className="text-xs text-white/50">Quellen:</span>
-                <span className="text-xs text-white font-medium">{digestData?.sourceCount ?? 0}</span>
+          </div>
+          
+          {/* Memory Density Visualization */}
+          <div className="px-6 py-4 bg-black/20 border-b border-white/[0.04]">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              {/* Index Status */}
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <Signal className="w-4 h-4 text-emerald-400" />
+                  <span className="text-xs text-white/50">Index:</span>
+                  <span className="text-xs text-emerald-400 font-medium">synchron</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-[#ff6a00]" />
+                  <span className="text-xs text-white/50">Quellen:</span>
+                  <span className="text-xs text-white font-bold">{digestData?.sourceCount ?? 0} aktiv</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <HardDrive className="w-4 h-4 text-[#e9d7c4]" />
+                  <span className="text-xs text-white/50">Kontext:</span>
+                  <span className="text-xs text-white font-bold">{(digestData?.charCount ?? 0).toLocaleString()} Zeichen</span>
+                </div>
               </div>
+              
+              {/* Memory Density Heatmap */}
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[#e9d7c4]" />
-                <span className="text-xs text-white/50">Zeichen:</span>
-                <span className="text-xs text-white font-medium">{digestData?.charCount?.toLocaleString() ?? 0}</span>
+                <span className="text-[10px] text-white/40 uppercase tracking-wider">Kontextdichte</span>
+                <div className="flex gap-0.5">
+                  {Array.from({ length: 24 }).map((_, i) => {
+                    const density = Math.min((digestData?.charCount ?? 0) / 50000, 1);
+                    const threshold = i / 24;
+                    const isActive = density > threshold;
+                    const intensity = isActive ? Math.min((density - threshold) * 24, 1) : 0;
+                    return (
+                      <div
+                        key={i}
+                        className="w-1.5 h-4 rounded-sm transition-all duration-300"
+                        style={{
+                          backgroundColor: isActive 
+                            ? `rgba(255, 106, 0, ${0.3 + intensity * 0.7})` 
+                            : 'rgba(255,255,255,0.1)',
+                          boxShadow: isActive && intensity > 0.5 
+                            ? `0 0 ${4 + intensity * 4}px rgba(255,106,0,${intensity * 0.5})` 
+                            : 'none'
+                        }}
+                      />
+                    );
+                  })}
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span className="text-xs text-white/50">Modus:</span>
-                <span className="text-xs text-[#ff6a00] font-medium uppercase">{digestMode}</span>
-              </div>
-              {digestData?.truncated && (
-                <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-md">Gekürzt</span>
-              )}
             </div>
+            
+            {digestData?.truncated && (
+              <div className="mt-3 px-3 py-1.5 bg-yellow-500/10 border border-yellow-500/20 rounded-lg inline-flex items-center gap-2">
+                <AlertCircle className="w-3.5 h-3.5 text-yellow-400" />
+                <span className="text-xs text-yellow-400">Kontext wurde für optimale Performance gekürzt</span>
+              </div>
+            )}
           </div>
           
           {/* Developer Details (Collapsible) */}
-          <details className="group">
-            <summary 
-              className="px-6 py-3 bg-black/20 border-b border-white/[0.04] cursor-pointer text-xs text-white/40 hover:text-white/60 transition-colors flex items-center gap-2"
-              onClick={(e) => { e.preventDefault(); setShowDevDetails(!showDevDetails); }}
+          <div className="border-b border-white/[0.04]">
+            <button
+              type="button"
+              onClick={() => setShowDevDetails(!showDevDetails)}
+              className="w-full px-6 py-3 bg-black/20 cursor-pointer text-xs text-white/40 hover:text-white/60 transition-colors flex items-center gap-2"
             >
               <ChevronRight className={`w-3.5 h-3.5 transition-transform ${showDevDetails ? 'rotate-90' : ''}`} />
-              Developer Details
-            </summary>
-            {showDevDetails && (digestData as any)?.sourcesDebug && (
-              <div className="px-6 py-3 bg-black/20 border-b border-white/[0.04] text-xs font-mono">
-                <div className="text-white/40">
-                  raw={((digestData as any).sourcesDebug?.rawCount) ?? '?'} | 
-                  mapped={((digestData as any).sourcesDebug?.mappedCount) ?? '?'} | 
-                  filtered={((digestData as any).sourcesDebug?.filteredCount) ?? '?'}
-                </div>
-                <div className="text-white/30 mt-1">
-                  IDs: {((digestData as any).sourcesDebug?.ids || []).join(', ') || 'keine'}
-                </div>
-              </div>
-            )}
-          </details>
+              <Cpu className="w-3.5 h-3.5" />
+              Entwicklerdetails
+            </button>
+            <AnimatePresence>
+              {showDevDetails && (digestData as any)?.sourcesDebug && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="px-6 py-3 bg-black/30 text-xs font-mono border-t border-white/[0.04]">
+                    <div className="text-white/40">
+                      raw={((digestData as any).sourcesDebug?.rawCount) ?? '?'} | 
+                      mapped={((digestData as any).sourcesDebug?.mappedCount) ?? '?'} | 
+                      filtered={((digestData as any).sourcesDebug?.filteredCount) ?? '?'}
+                    </div>
+                    <div className="text-white/30 mt-1">
+                      IDs: {((digestData as any).sourcesDebug?.ids || []).join(', ') || 'keine'}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
           
-          {/* Context Panel */}
+          {/* Context Panel - Terminal Glass */}
           <div className="p-6">
             <div className="relative">
-              {/* Neon Spine */}
-              <div className="absolute left-0 top-0 bottom-0 w-1 rounded-full bg-gradient-to-b from-[#ff6a00] via-[#e9d7c4] to-[#ff6a00]/50 opacity-60" />
+              {/* Animated Neon Spine */}
+              <motion.div 
+                className="absolute left-0 top-0 bottom-0 w-1 rounded-full"
+                style={{
+                  background: 'linear-gradient(180deg, #ff6a00, #e9d7c4, #ff6a00)',
+                  backgroundSize: '100% 200%'
+                }}
+                animate={{
+                  backgroundPosition: ['0% 0%', '0% 100%', '0% 0%'],
+                  boxShadow: [
+                    '0 0 10px rgba(255,106,0,0.5)',
+                    '0 0 20px rgba(255,106,0,0.8)',
+                    '0 0 10px rgba(255,106,0,0.5)'
+                  ]
+                }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+              />
               
               <AnimatePresence mode="wait">
-                <motion.pre
+                <motion.div
                   key={digestMode}
-                  initial={{ opacity: 0, filter: 'blur(4px)' }}
-                  animate={{ opacity: 1, filter: 'blur(0px)' }}
-                  exit={{ opacity: 0, filter: 'blur(4px)' }}
-                  transition={{ duration: 0.15 }}
-                  className="ml-5 bg-black/30 border border-white/[0.04] rounded-xl p-5 text-sm text-white/80 font-mono overflow-x-auto max-h-[300px] overflow-y-auto whitespace-pre-wrap leading-relaxed"
-                  style={{ tabSize: 2 }}
+                  initial={{ opacity: 0, filter: 'blur(8px)', x: -10 }}
+                  animate={{ opacity: 1, filter: 'blur(0px)', x: 0 }}
+                  exit={{ opacity: 0, filter: 'blur(8px)', x: 10 }}
+                  transition={{ duration: 0.2 }}
+                  className="ml-5"
                 >
-                  {digestData?.digest || 'Lade Kontext...'}
-                </motion.pre>
+                  {/* Scanline on mode change */}
+                  <motion.div
+                    initial={{ top: 0 }}
+                    animate={{ top: '100%' }}
+                    transition={{ duration: 0.3 }}
+                    className="absolute left-5 right-0 h-px bg-gradient-to-r from-[#ff6a00] to-transparent opacity-60"
+                    style={{ pointerEvents: 'none' }}
+                  />
+                  
+                  <pre className="bg-black/50 border border-white/[0.06] rounded-xl p-5 text-sm text-white/80 font-mono overflow-x-auto max-h-[400px] overflow-y-auto whitespace-pre-wrap leading-relaxed shadow-inner">
+                    {digestData?.digest || 'Lade Kontext...'}
+                  </pre>
+                </motion.div>
               </AnimatePresence>
             </div>
           </div>
