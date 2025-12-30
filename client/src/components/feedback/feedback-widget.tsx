@@ -281,56 +281,29 @@ export function FeedbackWidget() {
 
   return (
     <>
-      {/* Floating Support Dock - Auto-collapsible */}
+      {/* Floating Support Dock - Tab pinned right, Panel slides */}
       <AnimatePresence>
         {!isOpen && (
           <motion.div
-            initial={{ opacity: 0, x: 100 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 100 }}
-            className="fixed z-40 flex items-end gap-2"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed z-[9999] pointer-events-none flex items-end"
             style={{
               bottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)',
-              right: '0',
+              right: 'calc(env(safe-area-inset-right, 0px) + 10px)',
             }}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             onFocus={handleMouseEnter}
             onBlur={handleMouseLeave}
           >
-            {/* Collapse/Expand Tab */}
-            <motion.button
-              type="button"
-              onClick={toggleDock}
-              aria-expanded={!isDockCollapsed}
-              aria-label={isDockCollapsed ? 'Support-Buttons einblenden' : 'Support-Buttons ausblenden'}
-              className="flex items-center justify-center w-10 h-10 rounded-l-xl transition-all duration-300"
+            {/* Panel - slides in/out */}
+            <div
+              className="flex flex-col gap-3 mr-2 transition-all duration-300 ease-out pointer-events-auto"
               style={{
-                background: 'rgba(0,0,0,0.8)',
-                border: `2px solid ${CI.orange}40`,
-                borderRight: 'none',
-                backdropFilter: 'blur(10px)',
-              }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              {isDockCollapsed ? (
-                <ChevronLeft className="w-5 h-5" style={{ color: CI.orange }} />
-              ) : (
-                <ChevronRight className="w-5 h-5" style={{ color: CI.orange }} />
-              )}
-            </motion.button>
-            
-            {/* Buttons Container */}
-            <motion.div
-              initial={false}
-              animate={{
-                x: isDockCollapsed ? 200 : 0,
+                transform: isDockCollapsed ? 'translateX(calc(100% + 60px))' : 'translateX(0)',
                 opacity: isDockCollapsed ? 0 : 1,
-              }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
-              className="flex flex-col gap-3 pr-4 sm:pr-8"
-              style={{
                 pointerEvents: isDockCollapsed ? 'none' : 'auto',
               }}
             >
@@ -380,7 +353,28 @@ export function FeedbackWidget() {
                   💬 Alpha Feedback
                 </span>
               </motion.button>
-            </motion.div>
+            </div>
+            
+            {/* Tab - ALWAYS pinned right, never moves */}
+            <button
+              type="button"
+              onClick={toggleDock}
+              aria-expanded={!isDockCollapsed}
+              aria-label={isDockCollapsed ? 'Support-Buttons einblenden' : 'Support-Buttons ausblenden'}
+              className="flex items-center justify-center w-11 h-11 rounded-full transition-all duration-200 pointer-events-auto flex-shrink-0"
+              style={{
+                background: 'rgba(0,0,0,0.85)',
+                border: `2px solid ${CI.orange}60`,
+                backdropFilter: 'blur(10px)',
+                boxShadow: `0 0 20px ${CI.orange}30`,
+              }}
+            >
+              {isDockCollapsed ? (
+                <ChevronLeft className="w-5 h-5" style={{ color: CI.orange }} />
+              ) : (
+                <ChevronRight className="w-5 h-5" style={{ color: CI.orange }} />
+              )}
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
