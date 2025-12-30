@@ -661,7 +661,7 @@ export function ChatInterface() {
               </motion.div>
 
               <motion.h1 
-                className="text-7xl font-bold mb-6 relative"
+                className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-4 sm:mb-6 relative"
                 style={{ fontFamily: 'Orbitron, sans-serif' }}
                 initial={{ scale: 0.95 }}
                 animate={{ scale: 1 }}
@@ -703,11 +703,11 @@ export function ChatInterface() {
                 initial={{ opacity: 0 }} 
                 animate={{ opacity: 1 }} 
                 transition={{ delay: 0.3 }}
-                className="flex items-center justify-center space-x-2 text-base text-gray-500 mb-12"
+                className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:space-x-2 text-sm sm:text-base text-gray-500 mb-8 sm:mb-12"
               >
                 <span>erledigt für dich:</span>
                 <span 
-                  className="font-medium min-w-[200px] text-left"
+                  className="font-medium min-w-[160px] sm:min-w-[200px] text-center sm:text-left"
                   style={{
                     background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
                     backgroundSize: '200% auto',
@@ -730,7 +730,7 @@ export function ChatInterface() {
                 initial={{ opacity: 0 }} 
                 animate={{ opacity: 1 }} 
                 transition={{ delay: 0.5 }}
-                className="flex justify-center gap-4 mb-12"
+                className="flex flex-col sm:flex-row justify-center items-center gap-3 sm:gap-4 mb-8 sm:mb-12 px-4"
               >
                 {SUGGESTED_PROMPTS.map((prompt, index) => (
                   <motion.div
@@ -763,7 +763,7 @@ export function ChatInterface() {
                       }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => prompt.isCall ? setShowCallModal(true) : handleSendMessage(prompt.text)}
-                      className="relative px-6 py-3.5 rounded-xl text-white text-sm font-semibold transition-all flex items-center gap-3"
+                      className="relative px-4 sm:px-6 py-3 sm:py-3.5 rounded-xl text-white text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-center"
                       style={{
                         fontFamily: 'Orbitron, sans-serif',
                         background: 'rgba(10, 10, 10, 0.6)',
@@ -785,7 +785,7 @@ export function ChatInterface() {
             </motion.div>
 
             {/* EINGABEFELD - ORIGINAL BEIBEHALTEN */}
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }} className="w-full max-w-3xl">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }} className="w-full max-w-3xl px-3 sm:px-0">
               {uploadedFiles.length > 0 && (
                 <div className="mb-3 space-y-2">
                   {uploadedFiles.map((file, index) => (

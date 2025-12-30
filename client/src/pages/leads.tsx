@@ -460,7 +460,7 @@ function LeadsContent() {
       {/* ═══════════════════════════════════════════════════════════════════
           SCROLLABLE CONTENT - pb-40 ensures bottom padding for widgets
       ═══════════════════════════════════════════════════════════════════ */}
-      <div className="relative z-10 p-6 lg:p-8 pb-40 max-w-[1400px] mx-auto space-y-8">
+      <div className="relative z-10 px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 pb-32 sm:pb-40 w-full max-w-[1400px] mx-auto space-y-4 sm:space-y-6 lg:space-y-8">
         
         {/* ═══════════════════════════════════════════════════════════════════
             SECTION A: HERO HEADER
@@ -495,7 +495,7 @@ function LeadsContent() {
               </div>
               <div>
                 <h1 
-                  className="text-3xl lg:text-4xl font-bold aras-headline-gradient tracking-tight" 
+                  className="text-2xl sm:text-3xl lg:text-4xl font-bold aras-headline-gradient tracking-tight" 
                   style={{ fontFamily: 'Orbitron, sans-serif' }}
                 >
                   Wissensdatenbank
@@ -530,7 +530,7 @@ function LeadsContent() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
-          className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
         >
           {/* Datenquellen */}
           <div className="group relative bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-[20px] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_20px_50px_rgba(0,0,0,0.4)] hover:border-[#ff6a00]/30 hover:shadow-[0_0_30px_rgba(255,106,0,0.1)] transition-all duration-300 overflow-hidden">

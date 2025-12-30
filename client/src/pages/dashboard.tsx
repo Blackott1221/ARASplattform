@@ -27,7 +27,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-black p-6">
+    <div className="h-full overflow-y-auto bg-black px-3 sm:px-4 md:px-6 py-4 sm:py-6 pb-32 sm:pb-24">
       <DashboardContent user={user as User} />
     </div>
   );

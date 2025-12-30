@@ -107,12 +107,18 @@ const VideoBackground = memo(() => {
         style={{
           transform: 'scale(1.0)',
           transformOrigin: 'center center',
-          filter: 'contrast(1.3) brightness(1.1) saturate(1.2) blur(0px)',
+          filter: 'contrast(1.1) brightness(0.7) saturate(0.9)',
           opacity: 1
         }}
       />
-      {/* 30% dark overlay - video DEUTLICH visible */}
-      <div className="absolute inset-0 bg-black/30"></div>
+      {/* 50% dark overlay + subtle vignette for better text readability */}
+      <div className="absolute inset-0 bg-black/50" />
+      <div 
+        className="absolute inset-0" 
+        style={{
+          background: 'radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.3) 100%)'
+        }}
+      />
     </div>
   );
 });
