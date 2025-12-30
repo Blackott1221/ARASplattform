@@ -662,8 +662,8 @@ export default function Power() {
           isVisible={true}
         />
 
-        <div className="flex-1 overflow-y-auto premium-scroll">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden premium-scroll">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6">
             
             {/* 🎯 HERO-ZONE */}
             <motion.div
@@ -697,14 +697,14 @@ export default function Power() {
             </motion.div>
 
             {/* 🎯 2-SPALTEN-GRID */}
-            <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-4 sm:gap-6 pb-32 sm:pb-24">
               
               {/* ============ LINKE SPALTE: SETUP + CHAT ============ */}
               <motion.div
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1 }}
-                className="flex flex-col gap-4"
+                className="flex flex-col gap-4 min-w-0"
               >
                 {/* Setup Card */}
                 <div

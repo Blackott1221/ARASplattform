@@ -620,9 +620,9 @@ export function ChatInterface() {
         </div>
       )}
 
-      <div ref={messagesContainerRef} className={`flex-1 overflow-y-auto relative z-10 aras-scroll ${!hasMessages ? 'flex items-center justify-center' : 'px-6 pt-4 pb-8 space-y-4'}`}>
+      <div ref={messagesContainerRef} className={`flex-1 overflow-y-auto relative z-10 aras-scroll ${!hasMessages ? 'flex items-center justify-center' : 'px-3 sm:px-6 pt-4 pb-32 sm:pb-24 space-y-4'}`}>
         {!hasMessages ? (
-          <div className="w-full flex flex-col items-center px-6">
+          <div className="w-full flex flex-col items-center px-3 sm:px-6">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center mb-8 w-full max-w-3xl">
               
               <motion.div

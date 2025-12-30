@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { useMutation } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import html2canvas from 'html2canvas';
 
 // ARAS CI Colors
@@ -11,6 +12,10 @@ const CI = {
   goldLight: '#E9D7C4',
   goldDark: '#A34E00',
 };
+
+// Auto-collapse timing
+const AUTO_COLLAPSE_DELAY = 4000; // 4 seconds
+const IDLE_COLLAPSE_DELAY = 10000; // 10 seconds after interaction
 
 type FeedbackType = 'feedback' | 'bug';
 
@@ -48,6 +53,69 @@ export function FeedbackWidget() {
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  
+  // Auto-collapse dock state
+  const [isDockCollapsed, setIsDockCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('aras_support_collapsed') === 'true';
+    }
+    return false;
+  });
+  const [isHovering, setIsHovering] = useState(false);
+  const collapseTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Persist collapse state
+  useEffect(() => {
+    localStorage.setItem('aras_support_collapsed', isDockCollapsed.toString());
+  }, [isDockCollapsed]);
+  
+  // Auto-collapse after delay (only on initial load if not already collapsed)
+  useEffect(() => {
+    if (!isDockCollapsed && !isHovering && !isOpen) {
+      collapseTimerRef.current = setTimeout(() => {
+        setIsDockCollapsed(true);
+      }, AUTO_COLLAPSE_DELAY);
+    }
+    return () => {
+      if (collapseTimerRef.current) {
+        clearTimeout(collapseTimerRef.current);
+      }
+    };
+  }, []);
+  
+  // Reset collapse timer on interaction
+  const resetCollapseTimer = useCallback(() => {
+    if (collapseTimerRef.current) {
+      clearTimeout(collapseTimerRef.current);
+    }
+    if (!isHovering && !isOpen) {
+      collapseTimerRef.current = setTimeout(() => {
+        setIsDockCollapsed(true);
+      }, IDLE_COLLAPSE_DELAY);
+    }
+  }, [isHovering, isOpen]);
+  
+  // Handle hover/focus to pause auto-collapse
+  const handleMouseEnter = () => {
+    setIsHovering(true);
+    if (collapseTimerRef.current) {
+      clearTimeout(collapseTimerRef.current);
+    }
+  };
+  
+  const handleMouseLeave = () => {
+    setIsHovering(false);
+    resetCollapseTimer();
+  };
+  
+  // Toggle dock visibility
+  const toggleDock = () => {
+    setIsDockCollapsed(!isDockCollapsed);
+    if (isDockCollapsed) {
+      // Expanding - reset timer
+      resetCollapseTimer();
+    }
+  };
 
   // Typing animations for titles
   const feedbackTitle = useTypingAnimation(type === 'feedback' ? 'Feedback teilen' : 'Bug melden', 50);
@@ -213,63 +281,107 @@ export function FeedbackWidget() {
 
   return (
     <>
-      {/* Live-Chat Button - WhatsApp */}
+      {/* Floating Support Dock - Auto-collapsible */}
       <AnimatePresence>
         {!isOpen && (
-          <motion.a
-            href="https://chat.whatsapp.com/GWx5JKr4RDfGduidjkzZfj?mode=hqrc"
-            target="_blank"
-            rel="noopener noreferrer"
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            className="fixed bottom-44 right-8 z-40 px-6 py-3 rounded-full font-bold text-sm font-['Orbitron'] shadow-2xl"
+          <motion.div
+            initial={{ opacity: 0, x: 100 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 100 }}
+            className="fixed z-40 flex items-end gap-2"
             style={{
-              background: 'transparent',
-              border: '3px solid',
-              borderImageSlice: 1,
-              animation: 'border-flow-green 3s linear infinite, glow-green 2s ease-in-out infinite',
-              display: 'inline-block',
-              textDecoration: 'none',
+              bottom: 'calc(env(safe-area-inset-bottom, 0px) + 96px)',
+              right: '0',
             }}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+            onFocus={handleMouseEnter}
+            onBlur={handleMouseLeave}
           >
-            <span style={{ 
-              animation: 'text-flow-green 3s linear infinite',
-              display: 'inline-block',
-            }}>
-              💚 Live-Chat
-            </span>
-          </motion.a>
-        )}
-      </AnimatePresence>
+            {/* Collapse/Expand Tab */}
+            <motion.button
+              type="button"
+              onClick={toggleDock}
+              aria-expanded={!isDockCollapsed}
+              aria-label={isDockCollapsed ? 'Support-Buttons einblenden' : 'Support-Buttons ausblenden'}
+              className="flex items-center justify-center w-10 h-10 rounded-l-xl transition-all duration-300"
+              style={{
+                background: 'rgba(0,0,0,0.8)',
+                border: `2px solid ${CI.orange}40`,
+                borderRight: 'none',
+                backdropFilter: 'blur(10px)',
+              }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              {isDockCollapsed ? (
+                <ChevronLeft className="w-5 h-5" style={{ color: CI.orange }} />
+              ) : (
+                <ChevronRight className="w-5 h-5" style={{ color: CI.orange }} />
+              )}
+            </motion.button>
+            
+            {/* Buttons Container */}
+            <motion.div
+              initial={false}
+              animate={{
+                x: isDockCollapsed ? 200 : 0,
+                opacity: isDockCollapsed ? 0 : 1,
+              }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+              className="flex flex-col gap-3 pr-4 sm:pr-8"
+              style={{
+                pointerEvents: isDockCollapsed ? 'none' : 'auto',
+              }}
+            >
+              {/* Live-Chat Button - WhatsApp */}
+              <motion.a
+                href="https://chat.whatsapp.com/GWx5JKr4RDfGduidjkzZfj?mode=hqrc"
+                target="_blank"
+                rel="noopener noreferrer"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="px-4 sm:px-6 py-2.5 sm:py-3 rounded-full font-bold text-xs sm:text-sm font-['Orbitron'] shadow-2xl whitespace-nowrap"
+                style={{
+                  background: 'transparent',
+                  border: '3px solid',
+                  borderImageSlice: 1,
+                  animation: 'border-flow-green 3s linear infinite, glow-green 2s ease-in-out infinite',
+                  display: 'inline-block',
+                  textDecoration: 'none',
+                }}
+              >
+                <span style={{ 
+                  animation: 'text-flow-green 3s linear infinite',
+                  display: 'inline-block',
+                }}>
+                  💚 Live-Chat
+                </span>
+              </motion.a>
 
-      {/* Floating Button - REDESIGNED */}
-      <AnimatePresence>
-        {!isOpen && (
-          <motion.button
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={() => setIsOpen(true)}
-            className="fixed bottom-24 right-8 z-40 px-6 py-3 rounded-full font-bold text-sm font-['Orbitron'] shadow-2xl"
-            style={{
-              background: 'transparent',
-              border: '3px solid',
-              borderImageSlice: 1,
-              animation: 'border-flow 3s linear infinite, text-flow 3s linear infinite, glow-orange 2s ease-in-out infinite',
-            }}
-          >
-            <span style={{ 
-              animation: 'text-flow 3s linear infinite',
-              display: 'inline-block',
-            }}>
-              💬 Alpha Feedback
-            </span>
-          </motion.button>
+              {/* Alpha Feedback Button */}
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setIsOpen(true)}
+                className="px-4 sm:px-6 py-2.5 sm:py-3 rounded-full font-bold text-xs sm:text-sm font-['Orbitron'] shadow-2xl whitespace-nowrap"
+                style={{
+                  background: 'transparent',
+                  border: '3px solid',
+                  borderImageSlice: 1,
+                  animation: 'border-flow 3s linear infinite, text-flow 3s linear infinite, glow-orange 2s ease-in-out infinite',
+                }}
+              >
+                <span style={{ 
+                  animation: 'text-flow 3s linear infinite',
+                  display: 'inline-block',
+                }}>
+                  💬 Alpha Feedback
+                </span>
+              </motion.button>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 
