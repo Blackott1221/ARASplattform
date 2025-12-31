@@ -7,9 +7,12 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { PowerResultCard } from '@/components/power/power-result-card';
 
 // ═══════════════════════════════════════════════════════════════
-// SAFE HELPERS (prevent crashes from null/undefined)
+// SAFE HELPERS V7 (prevent crashes from null/undefined)
 // ═══════════════════════════════════════════════════════════════
 const safeArray = <T,>(x: T[] | null | undefined): T[] => Array.isArray(x) ? x : [];
+const safeObj = <T extends object>(x: T | null | undefined): T => (x && typeof x === 'object' ? x : {} as T);
+const safeString = (x: unknown): string => typeof x === 'string' ? x : '';
+const safeNumber = (x: unknown): number | null => typeof x === 'number' && Number.isFinite(x) ? x : null;
 const safeJson = async (res: Response): Promise<any> => {
   try { return await res.json(); } catch { return {}; }
 };
@@ -29,20 +32,28 @@ const setDoneAction = (id: string, done: boolean) => {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// DESIGN TOKENS (2026 Mission Control V5)
+// DESIGN TOKENS V7 (2026 Mission Control+ with Matrix Tech Layer)
 // ═══════════════════════════════════════════════════════════════
 const DT = {
+  // Premium Futuristic Layer
   orange: '#ff6a00',
   gold: '#e9d7c4',
   goldDark: '#a34e00',
-  panelBg: 'rgba(0,0,0,0.35)',
+  panelBg: 'rgba(0,0,0,0.34)',
   panelBgHover: 'rgba(0,0,0,0.45)',
-  panelBorder: 'rgba(255,255,255,0.08)',
-  panelBorderHover: 'rgba(255,255,255,0.14)',
+  panelBorder: 'rgba(255,255,255,0.10)',
+  panelBorderHover: 'rgba(255,255,255,0.16)',
   glow: '0 0 0 1px rgba(255,106,0,0.18), 0 0 22px rgba(255,106,0,0.10)',
   glowSubtle: '0 0 12px rgba(255,106,0,0.08)',
   rowBg: 'rgba(255,255,255,0.02)',
   rowBgHover: 'rgba(255,255,255,0.05)',
+  textDim: 'rgba(255,255,255,0.70)',
+  // Matrix Tech Layer
+  matrixBg: 'rgba(0,12,8,0.85)',
+  matrixBorder: 'rgba(0,255,136,0.12)',
+  matrixText: 'rgba(0,255,136,0.85)',
+  matrixTextDim: 'rgba(0,255,136,0.50)',
+  matrixAccent: '#00ff88',
 };
 
 const ANIM = {
@@ -51,8 +62,8 @@ const ANIM = {
   stagger: 0.03,
 };
 
-// CSS Keyframes for shimmer animation (injected once)
-const shimmerCSS = `
+// CSS Keyframes for shimmer + matrix scanline animation (injected once)
+const v7CSS = `
 @keyframes shimmer {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(200%); }
@@ -61,11 +72,44 @@ const shimmerCSS = `
   0% { background-position: -200% center; }
   100% { background-position: 200% center; }
 }
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+.matrix-panel {
+  position: relative;
+  overflow: hidden;
+}
+.matrix-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: 
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,255,136,0.015) 2px,
+      rgba(0,255,136,0.015) 4px
+    );
+  pointer-events: none;
+  z-index: 1;
+}
+.matrix-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,255,136,0.03), transparent 8px, transparent 92%, rgba(0,255,136,0.03));
+  animation: scanline 8s linear infinite;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.4;
+}
 `;
-if (typeof document !== 'undefined' && !document.getElementById('aras-shimmer-css')) {
+if (typeof document !== 'undefined' && !document.getElementById('aras-v7-css')) {
   const style = document.createElement('style');
-  style.id = 'aras-shimmer-css';
-  style.textContent = shimmerCSS;
+  style.id = 'aras-v7-css';
+  style.textContent = v7CSS;
   document.head.appendChild(style);
 }
 
@@ -171,6 +215,28 @@ interface ActionItem {
   rawId: string | number;
 }
 
+// Data source from /api/user/data-sources
+interface DataSource {
+  id: number;
+  user_id: string;
+  type: 'text' | 'url' | 'file';
+  title?: string;
+  status: string;
+  content_text?: string;
+  url?: string;
+  file_name?: string;
+  file_size?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// Normalized data sources response
+interface DataSourcesResponse {
+  success: boolean;
+  count: number;
+  dataSources: DataSource[];
+}
+
 export function DashboardContent({ user }: DashboardContentProps) {
   const [selectedItem, setSelectedItem] = useState<ActivityItem | null>(null);
   const [selectedDetails, setSelectedDetails] = useState<any>(null);
@@ -247,6 +313,39 @@ export function DashboardContent({ user }: DashboardContentProps) {
     },
     staleTime: 30000,
   });
+
+  // V7: Fetch data sources for Data Sources panel (Matrix Tech)
+  const { data: dataSourcesData, isLoading: dataSourcesLoading, isError: dataSourcesError, refetch: refetchDataSources } = useQuery<DataSourcesResponse>({
+    queryKey: ['dashboard-data-sources'],
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/user/data-sources', { credentials: 'include' });
+        if (!res.ok) return { success: false, count: 0, dataSources: [] };
+        const data = await safeJson(res);
+        return {
+          success: data.success ?? false,
+          count: safeNumber(data.count) ?? 0,
+          dataSources: safeArray(data.dataSources),
+        };
+      } catch (err) {
+        console.error('[Dashboard] Failed to fetch data sources:', err);
+        return { success: false, count: 0, dataSources: [] };
+      }
+    },
+    staleTime: 60000,
+  });
+
+  // V7: Compute data sources stats
+  const dataSourcesStats = useMemo(() => {
+    const sources = safeArray(dataSourcesData?.dataSources);
+    const byType: Record<string, number> = {};
+    let totalChars = 0;
+    sources.forEach(s => {
+      byType[s.type] = (byType[s.type] || 0) + 1;
+      if (s.content_text) totalChars += s.content_text.length;
+    });
+    return { total: sources.length, byType, totalChars };
+  }, [dataSourcesData]);
 
   // Set persistent error if fetch fails
   useEffect(() => {
@@ -499,6 +598,75 @@ export function DashboardContent({ user }: DashboardContentProps) {
     const filled = fields.filter(f => f && (typeof f !== 'number' || f > 0)).length;
     return { filled, total: fields.length };
   }, [profileContext]);
+
+  // V7: Today Agenda - combine calls today + calendar events today
+  const todayAgenda = useMemo(() => {
+    const items: { time: string; title: string; label: 'CALL' | 'CALENDAR'; secondary?: string; rawId?: string | number; type?: 'call' | 'calendar' }[] = [];
+    
+    // Calls today
+    callActivities.filter(c => isToday(new Date(c.timestamp))).forEach(call => {
+      const time = format(new Date(call.timestamp), 'HH:mm');
+      items.push({
+        time,
+        title: call.title,
+        label: 'CALL',
+        secondary: call.summaryShort || (call.status === 'pending' ? 'Wird verarbeitet' : call.status === 'ready' ? 'Abgeschlossen' : ''),
+        rawId: call.id,
+        type: 'call',
+      });
+    });
+    
+    // Calendar events today
+    const today = format(new Date(), 'yyyy-MM-dd');
+    safeArray(calendarEvents).filter(e => e.date === today || e.date?.startsWith(today)).forEach(event => {
+      items.push({
+        time: event.startTime || '—',
+        title: event.title,
+        label: 'CALENDAR',
+        secondary: event.location || '',
+        type: 'calendar',
+      });
+    });
+    
+    // Sort by time
+    items.sort((a, b) => a.time.localeCompare(b.time));
+    return items;
+  }, [callActivities, calendarEvents]);
+
+  // V7: Follow-up Queue - items that need attention
+  const followUpQueue = useMemo(() => {
+    const items: ActivityItem[] = [];
+    
+    // Failed items first
+    [...safeArray(callActivities), ...safeArray(chatActivities)]
+      .filter(i => i.status === 'failed')
+      .forEach(i => items.push(i));
+    
+    // Pending/missing summaries
+    [...safeArray(callActivities), ...safeArray(chatActivities)]
+      .filter(i => i.status === 'pending' && !items.find(x => x.id === i.id))
+      .forEach(i => items.push(i));
+    
+    // Items with nextStep (newest first, limit 5)
+    const withActions = actionItems.filter(a => !a.done).slice(0, 3);
+    withActions.forEach(a => {
+      const existing = [...safeArray(callActivities), ...safeArray(chatActivities)].find(i => 
+        (a.source.type === 'call' && i.type === 'call' && i.id === a.rawId) ||
+        (a.source.type === 'space' && i.type === 'space' && i.id === a.rawId)
+      );
+      if (existing && !items.find(x => x.id === existing.id)) {
+        items.push(existing);
+      }
+    });
+    
+    return items.slice(0, 5);
+  }, [callActivities, chatActivities, actionItems]);
+
+  // V7: Feed status for readiness panel
+  const feedStatus = useMemo(() => {
+    if (isCallError || isChatError) return 'DEGRADED';
+    return 'OK';
+  }, [isCallError, isChatError]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -988,7 +1156,7 @@ Status: ${persistentError.status || 'N/A'}`}
                 ) : calendarEvents.length === 0 ? (
                   <div className="text-center py-4">
                     <p className="text-xs text-neutral-500 mb-1">Keine Termine</p>
-                    <p className="text-[10px] text-neutral-600 mb-3">Termine werden aus Calls automatisch erstellt</p>
+                    <p className="text-[10px] text-neutral-600 mb-3">Kalender zeigt verbundene Termine</p>
                     <a 
                       href="/app/kalender"
                       className="inline-block text-[11px] font-medium px-3 py-1.5 rounded-lg transition-colors hover:bg-white/[0.06]"
@@ -1027,11 +1195,145 @@ Status: ${persistentError.status || 'N/A'}`}
               </div>
             </motion.div>
 
-            {/* Quick Actions */}
+            {/* V7: Today Agenda / Timeline Panel */}
             <motion.div
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: ANIM.duration, delay: 0.35 }}
+              className="rounded-2xl overflow-hidden"
+              style={{ background: DT.panelBg, backdropFilter: 'blur(20px)', border: `1px solid ${DT.panelBorder}` }}
+            >
+              <div className="p-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500">
+                  Heute
+                </h3>
+              </div>
+              <div className="p-3">
+                {todayAgenda.length === 0 ? (
+                  <p className="text-xs text-neutral-600 text-center py-4">Heute keine Aktivitäten</p>
+                ) : (
+                  <div className="space-y-2">
+                    {todayAgenda.slice(0, 6).map((item, idx) => (
+                      <div 
+                        key={idx}
+                        className="flex items-start gap-3 p-2 rounded-lg"
+                        style={{ background: 'rgba(255,255,255,0.02)' }}
+                      >
+                        <span className="text-[11px] font-mono text-neutral-500 w-10 flex-shrink-0">{item.time}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span 
+                              className="text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded font-medium"
+                              style={{ 
+                                background: item.label === 'CALL' ? 'rgba(255,106,0,0.15)' : 'rgba(99,102,241,0.15)',
+                                color: item.label === 'CALL' ? DT.orange : '#818cf8'
+                              }}
+                            >
+                              {item.label}
+                            </span>
+                            <p className="text-xs text-neutral-300 truncate">{item.title}</p>
+                          </div>
+                          {item.secondary && (
+                            <p className="text-[10px] text-neutral-600 mt-0.5 truncate">{item.secondary}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+
+            {/* V7: Data Sources Panel (Matrix Tech) */}
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: ANIM.duration, delay: 0.4 }}
+              className="matrix-panel rounded-2xl overflow-hidden"
+              style={{ background: DT.matrixBg, border: `1px solid ${DT.matrixBorder}` }}
+            >
+              <div className="p-4 border-b relative z-10" style={{ borderColor: 'rgba(0,255,136,0.08)' }}>
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] font-mono" style={{ color: DT.matrixTextDim }}>
+                  Data Sources / Inventory
+                </h3>
+              </div>
+              <div className="p-4 relative z-10 font-mono text-[11px]" style={{ color: DT.matrixText }}>
+                {dataSourcesLoading ? (
+                  <div className="space-y-1.5">
+                    <div className="h-3 rounded animate-pulse w-3/4" style={{ background: 'rgba(0,255,136,0.1)' }} />
+                    <div className="h-3 rounded animate-pulse w-1/2" style={{ background: 'rgba(0,255,136,0.08)' }} />
+                  </div>
+                ) : dataSourcesError ? (
+                  <div>
+                    <p style={{ color: '#ef4444' }}>FETCH_ERROR</p>
+                    <button onClick={() => refetchDataSources()} className="mt-2 text-[10px] hover:underline" style={{ color: DT.matrixTextDim }}>
+                      Erneut laden
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <p>SOURCES_TOTAL: <span style={{ color: dataSourcesStats.total > 0 ? DT.matrixAccent : DT.matrixTextDim }}>{dataSourcesStats.total}</span></p>
+                    {Object.entries(dataSourcesStats.byType).map(([type, count]) => (
+                      <p key={type}>TYPE_{type.toUpperCase()}: {count}</p>
+                    ))}
+                    {dataSourcesStats.totalChars > 0 && (
+                      <p>CHAR_TOTAL: {dataSourcesStats.totalChars.toLocaleString()}</p>
+                    )}
+                    {dataSourcesStats.total === 0 && (
+                      <a href="/app/leads" className="block mt-3 text-[10px] hover:underline" style={{ color: DT.matrixTextDim }}>
+                        Quellen verbinden
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+
+            {/* V7: Readiness / Health Panel (Matrix Tech) */}
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: ANIM.duration, delay: 0.45 }}
+              className="matrix-panel rounded-2xl overflow-hidden"
+              style={{ background: DT.matrixBg, border: `1px solid ${DT.matrixBorder}` }}
+            >
+              <div className="p-4 border-b relative z-10" style={{ borderColor: 'rgba(0,255,136,0.08)' }}>
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] font-mono" style={{ color: DT.matrixTextDim }}>
+                  System Readiness
+                </h3>
+              </div>
+              <div className="p-4 relative z-10 font-mono text-[11px]" style={{ color: DT.matrixText }}>
+                <div className="space-y-1">
+                  <p>
+                    PROFILE: <span style={{ color: (profileCompleteness?.filled ?? 0) >= 7 ? DT.matrixAccent : DT.orange }}>
+                      {profileCompleteness ? `${profileCompleteness.filled}/${profileCompleteness.total}` : '—'}
+                    </span>
+                    {profileCompleteness && profileCompleteness.filled < 7 && (
+                      <a href="/app/leads" className="ml-2 text-[9px] hover:underline" style={{ color: DT.matrixTextDim }}>FIX</a>
+                    )}
+                  </p>
+                  <p>
+                    SOURCES: <span style={{ color: dataSourcesStats.total > 0 ? DT.matrixAccent : DT.orange }}>{dataSourcesStats.total}</span>
+                    {dataSourcesStats.total === 0 && (
+                      <a href="/app/leads" className="ml-2 text-[9px] hover:underline" style={{ color: DT.matrixTextDim }}>FIX</a>
+                    )}
+                  </p>
+                  <p>
+                    SUMMARIES_PENDING: <span style={{ color: stats.pendingCount > 0 ? DT.orange : DT.matrixAccent }}>{stats.pendingCount}</span>
+                    {stats.pendingCount > 0 && <span className="ml-2 text-[9px]" style={{ color: DT.matrixTextDim }}>AUTO</span>}
+                  </p>
+                  <p>
+                    FEED_STATUS: <span style={{ color: feedStatus === 'OK' ? DT.matrixAccent : '#ef4444' }}>{feedStatus}</span>
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Quick Actions */}
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: ANIM.duration, delay: 0.5 }}
               className="rounded-2xl overflow-hidden"
               style={{ background: DT.panelBg, backdropFilter: 'blur(20px)', border: `1px solid ${DT.panelBorder}` }}
             >
@@ -1053,6 +1355,13 @@ Status: ${persistentError.status || 'N/A'}`}
                   style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${DT.panelBorder}`, color: DT.gold }}
                 >
                   Space öffnen
+                </a>
+                <a 
+                  href="/app/leads"
+                  className="block w-full py-2.5 px-4 rounded-xl text-[12px] font-medium text-center transition-all hover:bg-white/[0.04]"
+                  style={{ color: '#888' }}
+                >
+                  Wissensdatenbank
                 </a>
               </div>
             </motion.div>
