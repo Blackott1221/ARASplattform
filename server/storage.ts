@@ -87,6 +87,8 @@ export interface IStorage {
   getActiveSession(userId: string): Promise<ChatSession | undefined>;
   setActiveSession(userId: string, sessionId: number): Promise<void>;
   archiveSession(sessionId: number): Promise<void>;
+  updateChatSessionMetadata(sessionId: number, metadata: any): Promise<void>;
+  getChatSessionById(sessionId: number): Promise<ChatSession | undefined>;
   
   // Chat message operations
   getChatMessages(userId: string, sessionId?: number): Promise<ChatMessage[]>;
@@ -396,6 +398,21 @@ export class DatabaseStorage implements IStorage {
       .update(chatSessions)
       .set({ title, updatedAt: new Date() })
       .where(eq(chatSessions.id, sessionId));
+  }
+
+  async updateChatSessionMetadata(sessionId: number, metadata: any): Promise<void> {
+    await db
+      .update(chatSessions)
+      .set({ metadata, updatedAt: new Date() })
+      .where(eq(chatSessions.id, sessionId));
+  }
+
+  async getChatSessionById(sessionId: number): Promise<ChatSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(chatSessions)
+      .where(eq(chatSessions.id, sessionId));
+    return session;
   }
 
   async archiveSession(sessionId: number): Promise<void> {

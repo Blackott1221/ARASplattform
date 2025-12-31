@@ -71,7 +71,10 @@ interface ChatSession {
   createdAt: string;
   updatedAt: string;
   isActive: boolean;
-  status: string;
+  messageCount?: number;
+  lastMessageAt?: string | null;
+  summaryStatus: 'missing' | 'pending' | 'ready' | 'failed';
+  summaryShort?: string | null;
 }
 
 interface PersistentError {
@@ -149,16 +152,20 @@ export function DashboardContent({ user }: DashboardContentProps) {
     }))
   , [callLogs]);
 
-  // Map chat sessions to ActivityItems
+  // Map chat sessions to ActivityItems (with real summary status)
   const chatActivities: ActivityItem[] = useMemo(() => 
     chatSessions.map(session => ({
       type: 'space' as ActivityType,
       id: session.id,
       title: session.title || 'Unbenannter Chat',
-      timestamp: session.updatedAt || session.createdAt,
-      status: 'ready' as const,
-      summaryShort: undefined,
-      meta: {},
+      timestamp: session.lastMessageAt || session.updatedAt || session.createdAt,
+      status: session.summaryStatus === 'ready' ? 'ready' :
+              session.summaryStatus === 'pending' ? 'pending' :
+              session.summaryStatus === 'failed' ? 'failed' : 'completed',
+      summaryShort: session.summaryShort || undefined,
+      meta: {
+        messageCount: session.messageCount,
+      },
       raw: session,
     }))
   , [chatSessions]);
@@ -285,23 +292,31 @@ export function DashboardContent({ user }: DashboardContentProps) {
     setSelectedDetails(null);
   };
 
-  // Calculate stats from all activities
+  // Calculate stats from all activities (REAL DATA ONLY - no fake KPIs)
   const stats = useMemo(() => {
     const sevenDaysAgo = subDays(new Date(), 7);
     
+    // Calls today - always real
     const callsToday = callActivities.filter(c => isToday(new Date(c.timestamp))).length;
+    
+    // Success rate - only show if we have at least 3 calls in last 7 days
     const callsLast7Days = callActivities.filter(c => isAfter(new Date(c.timestamp), sevenDaysAgo));
     const completedLast7Days = callsLast7Days.filter(c => c.status === 'ready' || c.status === 'completed').length;
-    const successRate = callsLast7Days.length > 0 ? Math.round((completedLast7Days / callsLast7Days.length) * 100) : 0;
+    // Only calculate if we have meaningful data (min 3 calls)
+    const successRate = callsLast7Days.length >= 3 ? Math.round((completedLast7Days / callsLast7Days.length) * 100) : null;
     
-    const durations = callsLast7Days.filter(c => c.meta?.durationSec).map(c => c.meta!.durationSec!);
-    const avgDuration = durations.length > 0 ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : null;
+    // Average duration - only show if we have at least 2 calls with duration
+    const durations = callsLast7Days.filter(c => c.meta?.durationSec && c.meta.durationSec > 0).map(c => c.meta!.durationSec!);
+    const avgDuration = durations.length >= 2 ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : null;
     
+    // Pending count - always real
     const pendingCount = allActivities.filter(i => i.status === 'pending').length;
-    const totalActivities = allActivities.length;
+    
+    // Space sessions count
+    const spaceSessions = chatActivities.length;
 
-    return { callsToday, successRate, avgDuration, pendingCount, totalActivities };
-  }, [callActivities, allActivities]);
+    return { callsToday, successRate, avgDuration, pendingCount, spaceSessions };
+  }, [callActivities, chatActivities, allActivities]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -405,7 +420,7 @@ Status: ${persistentError.status || 'N/A'}`}
           )}
         </AnimatePresence>
 
-        {/* OVERVIEW TILES - 4 Mini Cards */}
+        {/* OVERVIEW TILES - 4 Mini Cards (REAL DATA ONLY) */}
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
@@ -413,8 +428,16 @@ Status: ${persistentError.status || 'N/A'}`}
           className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
         >
           <StatTile label="Anrufe heute" value={stats.callsToday} />
-          <StatTile label="Erfolgsquote (7T)" value={`${stats.successRate}%`} />
-          <StatTile label="Ø Dauer (7T)" value={stats.avgDuration ? formatDuration(stats.avgDuration) : '—'} />
+          <StatTile 
+            label="Erfolgsquote (7T)" 
+            value={stats.successRate !== null ? `${stats.successRate}%` : '—'} 
+            hint={stats.successRate === null ? 'Nicht verfügbar (min. 3 Calls nötig)' : undefined}
+          />
+          <StatTile 
+            label="Ø Dauer (7T)" 
+            value={stats.avgDuration ? formatDuration(stats.avgDuration) : '—'} 
+            hint={!stats.avgDuration ? 'Nicht verfügbar (Daten fehlen)' : undefined}
+          />
           <StatTile label="Ausstehend" value={stats.pendingCount} highlight={stats.pendingCount > 0} />
         </motion.div>
 
@@ -540,18 +563,29 @@ Status: ${persistentError.status || 'N/A'}`}
                                   {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true, locale: de })}
                                 </span>
                               </div>
-                              {/* Summary line */}
+                              {/* Summary line - type-specific handling */}
                               {item.summaryShort ? (
                                 <p className="text-xs text-neutral-400 truncate mt-0.5 line-clamp-2">{item.summaryShort}</p>
                               ) : item.status === 'pending' ? (
-                                <div className="mt-0.5">
-                                  <p className="text-xs text-neutral-500 italic">Zusammenfassung wird erstellt...</p>
-                                  <p className="text-[10px] text-neutral-600">Aktualisiert automatisch</p>
+                                <div className="mt-0.5 flex items-center gap-2">
+                                  <div className="h-2 w-16 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                                    <div className="h-full w-8 rounded-full animate-pulse" style={{ background: `linear-gradient(90deg, transparent, ${DT.orange}40, transparent)`, animation: 'shimmer 1.5s infinite' }} />
+                                  </div>
+                                  <p className="text-[10px] text-neutral-500">Aktualisiert automatisch</p>
                                 </div>
                               ) : item.status === 'failed' ? (
-                                <p className="text-xs text-red-400/60 mt-0.5">Fehlgeschlagen</p>
-                              ) : item.type === 'space' ? (
-                                <p className="text-xs text-neutral-500 mt-0.5">Chat Session</p>
+                                <p className="text-xs text-red-400/60 mt-0.5">Zusammenfassung fehlgeschlagen</p>
+                              ) : item.type === 'space' && item.status === 'completed' ? (
+                                <p className="text-xs text-neutral-500 mt-0.5">
+                                  {item.meta?.messageCount ? `${item.meta.messageCount} Nachrichten` : 'Chat Session'}
+                                </p>
+                              ) : item.type === 'call' && !item.summaryShort ? (
+                                <div className="mt-0.5 flex items-center gap-2">
+                                  <div className="h-2 w-16 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                                    <div className="h-full w-8 rounded-full animate-pulse" style={{ background: `linear-gradient(90deg, transparent, ${DT.orange}40, transparent)`, animation: 'shimmer 1.5s infinite' }} />
+                                  </div>
+                                  <p className="text-[10px] text-neutral-500">Aktualisiert automatisch</p>
+                                </div>
                               ) : null}
                             </div>
                             
@@ -734,6 +768,7 @@ Status: ${persistentError.status || 'N/A'}`}
                           <ChatSessionDetails 
                             session={selectedDetails} 
                             onClose={handleCloseDrawer}
+                            onRefresh={() => selectedItem && handleOpenDetails(selectedItem)}
                           />
                         )}
                       </motion.div>
@@ -774,11 +809,13 @@ Status: ${persistentError.status || 'N/A'}`}
 // HELPER COMPONENTS (No Icons)
 // ═══════════════════════════════════════════════════════════════
 
-function StatTile({ label, value, highlight = false }: { label: string; value: string | number; highlight?: boolean }) {
+function StatTile({ label, value, highlight = false, hint }: { label: string; value: string | number; highlight?: boolean; hint?: string }) {
+  const isUnavailable = value === '—';
+  
   return (
     <motion.div
       whileHover={{ y: -1 }}
-      className="rounded-2xl p-4 transition-all"
+      className="rounded-2xl p-4 transition-all group relative"
       style={{ 
         background: highlight ? 'rgba(255,106,0,0.08)' : 'rgba(0,0,0,0.25)',
         border: `1px solid ${highlight ? 'rgba(255,106,0,0.25)' : 'rgba(255,255,255,0.10)'}`,
@@ -787,27 +824,69 @@ function StatTile({ label, value, highlight = false }: { label: string; value: s
     >
       <div 
         className="text-2xl sm:text-3xl font-bold mb-1 tabular-nums"
-        style={{ color: highlight ? DT.orange : '#fff' }}
+        style={{ color: isUnavailable ? '#666' : (highlight ? DT.orange : '#fff') }}
       >
         {value}
       </div>
       <div className="text-[10px] sm:text-[11px] uppercase tracking-wide text-neutral-500">
         {label}
       </div>
+      {/* Hint tooltip on hover */}
+      {hint && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 rounded-[8px] text-[10px] text-neutral-400 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" style={{ background: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)' }}>
+          {hint}
+        </div>
+      )}
     </motion.div>
   );
 }
 
-// Chat Session Details Component (for Space drawer)
-function ChatSessionDetails({ session, onClose }: { session: any; onClose: () => void }) {
+// Chat Session Details Component (for Space drawer) - with real summaries
+function ChatSessionDetails({ session, onClose, onRefresh }: { session: any; onClose: () => void; onRefresh: () => void }) {
   const [copied, setCopied] = useState(false);
+  const [triggeringSummary, setTriggeringSummary] = useState(false);
   
-  const handleCopyTranscript = () => {
-    if (!session.messages?.length) return;
-    const text = session.messages.map((m: any) => `${m.role === 'assistant' ? 'ARAS' : 'Du'}: ${m.content}`).join('\n\n');
+  const handleCopyAll = () => {
+    let text = '';
+    
+    // Add summary if ready
+    if (session.summaryStatus === 'ready' && session.summaryFull) {
+      text += `ZUSAMMENFASSUNG:\n${session.summaryFull.outcome}\n\n`;
+      if (session.summaryFull.bulletPoints?.length) {
+        text += `WICHTIGE PUNKTE:\n${session.summaryFull.bulletPoints.map((b: string) => `- ${b}`).join('\n')}\n\n`;
+      }
+      text += `NÄCHSTER SCHRITT:\n${session.summaryFull.nextStep}\n\n`;
+      if (session.summaryFull.tags?.length) {
+        text += `TAGS: ${session.summaryFull.tags.join(', ')}\n\n`;
+      }
+      text += '---\n\n';
+    }
+    
+    // Add messages
+    if (session.messages?.length) {
+      text += 'VERLAUF:\n';
+      text += session.messages.slice(-20).map((m: any) => `${m.role === 'assistant' ? 'ARAS' : 'Du'}: ${m.content}`).join('\n\n');
+    }
+    
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleTriggerSummary = async () => {
+    setTriggeringSummary(true);
+    try {
+      await fetch(`/api/chat/session/${session.id}/summarize`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      // Refresh to get pending status
+      setTimeout(onRefresh, 500);
+    } catch (err) {
+      console.error('Failed to trigger summary:', err);
+    } finally {
+      setTriggeringSummary(false);
+    }
   };
 
   return (
@@ -820,6 +899,93 @@ function ChatSessionDetails({ session, onClose }: { session: any; onClose: () =>
         </p>
       </div>
 
+      {/* Summary Section */}
+      <div className="space-y-3">
+        <h4 className="text-[11px] font-bold uppercase tracking-[0.1em] text-neutral-500">
+          Zusammenfassung
+        </h4>
+        
+        {session.summaryStatus === 'ready' && session.summaryFull ? (
+          <div className="p-4 rounded-[14px] space-y-4" style={{ background: 'rgba(255,106,0,0.05)', border: '1px solid rgba(255,106,0,0.15)' }}>
+            {/* Outcome */}
+            <p className="text-sm font-medium" style={{ color: DT.gold }}>{session.summaryFull.outcome}</p>
+            
+            {/* Bullet Points */}
+            {session.summaryFull.bulletPoints?.length > 0 && (
+              <ul className="space-y-1.5">
+                {session.summaryFull.bulletPoints.map((point: string, idx: number) => (
+                  <li key={idx} className="text-xs text-neutral-300 flex items-start gap-2">
+                    <span className="w-1 h-1 rounded-full mt-1.5 flex-shrink-0" style={{ background: DT.orange }} />
+                    {point}
+                  </li>
+                ))}
+              </ul>
+            )}
+            
+            {/* Next Step */}
+            <div className="pt-2 border-t border-white/[0.06]">
+              <p className="text-[10px] uppercase tracking-wide text-neutral-500 mb-1">Nächster Schritt</p>
+              <p className="text-xs text-neutral-300">{session.summaryFull.nextStep}</p>
+            </div>
+            
+            {/* Tags */}
+            {session.summaryFull.tags?.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-2">
+                {session.summaryFull.tags.map((tag: string, idx: number) => (
+                  <span 
+                    key={idx}
+                    className="px-2 py-0.5 rounded-full text-[10px] font-medium"
+                    style={{ background: 'rgba(255,106,0,0.12)', color: DT.orange }}
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : session.summaryStatus === 'pending' ? (
+          <div className="p-4 rounded-[14px] text-center" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div className="h-2 w-24 mx-auto rounded-full overflow-hidden mb-2" style={{ background: 'rgba(255,255,255,0.06)' }}>
+              <div className="h-full w-12 rounded-full" style={{ background: `linear-gradient(90deg, transparent, ${DT.orange}50, transparent)`, animation: 'shimmer 1.5s infinite' }} />
+            </div>
+            <p className="text-xs text-neutral-500">Zusammenfassung wird erstellt...</p>
+            <p className="text-[10px] text-neutral-600 mt-1">Aktualisiert automatisch</p>
+          </div>
+        ) : session.summaryStatus === 'failed' ? (
+          <div className="p-4 rounded-[14px]" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+            <p className="text-xs text-red-400 mb-2">Zusammenfassung fehlgeschlagen</p>
+            {session.summaryError && (
+              <p className="text-[10px] text-red-300/60 mb-3">{session.summaryError}</p>
+            )}
+            <button
+              onClick={handleTriggerSummary}
+              disabled={triggeringSummary}
+              className="text-xs font-medium px-3 py-1.5 rounded-[10px] transition-colors disabled:opacity-50"
+              style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.25)' }}
+            >
+              {triggeringSummary ? 'Wird gestartet...' : 'Erneut versuchen'}
+            </button>
+          </div>
+        ) : (
+          <div className="p-4 rounded-[14px] text-center" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <p className="text-xs text-neutral-500 mb-3">Keine Zusammenfassung vorhanden</p>
+            <button
+              onClick={handleTriggerSummary}
+              disabled={triggeringSummary}
+              className="text-xs font-medium px-4 py-2 rounded-[10px] transition-all hover:translate-y-[-1px] disabled:opacity-50"
+              style={{ 
+                background: 'transparent', 
+                color: DT.orange, 
+                border: `1px solid ${DT.orange}40`,
+                boxShadow: '0 0 12px rgba(255,106,0,0.1)'
+              }}
+            >
+              {triggeringSummary ? 'Wird gestartet...' : 'Zusammenfassung erstellen'}
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Messages */}
       {session.messages?.length > 0 && (
         <div className="space-y-3">
@@ -828,7 +994,7 @@ function ChatSessionDetails({ session, onClose }: { session: any; onClose: () =>
               Verlauf
             </h4>
             <button
-              onClick={handleCopyTranscript}
+              onClick={handleCopyAll}
               className="text-[11px] font-medium px-2 py-1 rounded-[8px] transition-colors"
               style={{ color: copied ? '#22c55e' : DT.gold, background: 'rgba(255,255,255,0.04)' }}
             >
@@ -837,7 +1003,7 @@ function ChatSessionDetails({ session, onClose }: { session: any; onClose: () =>
           </div>
           
           <div 
-            className="max-h-[400px] overflow-y-auto space-y-3 p-3 rounded-[12px]"
+            className="max-h-[300px] overflow-y-auto space-y-3 p-3 rounded-[12px]"
             style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.05)' }}
           >
             {session.messages.slice(-20).map((msg: any, idx: number) => (
@@ -861,9 +1027,9 @@ function ChatSessionDetails({ session, onClose }: { session: any; onClose: () =>
         </div>
       )}
 
-      {/* Open in Space CTA */}
+      {/* Open in Space CTA - CORRECT DEEP LINK */}
       <a
-        href="/app"
+        href="/app/space"
         className="block w-full py-3 px-4 rounded-[14px] text-sm font-medium text-center transition-all hover:translate-y-[-1px]"
         style={{ background: `linear-gradient(135deg, ${DT.orange}, ${DT.goldDark})`, color: '#000' }}
       >

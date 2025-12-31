@@ -1558,20 +1558,29 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       }
     }
   });
-  // GET /api/user/chat-sessions - List all chat sessions for dashboard
+  // GET /api/user/chat-sessions - List all chat sessions for dashboard (with summary fields)
   app.get('/api/user/chat-sessions', requireAuth, async (req: any, res) => {
     try {
       const userId = req.session.userId;
       const sessions = await storage.getChatSessions(userId);
       
-      // Format for dashboard activity feed
-      const formattedSessions = sessions.map((s: any) => ({
-        id: s.id,
-        title: s.title || 'Unbenannter Chat',
-        createdAt: s.createdAt,
-        updatedAt: s.updatedAt,
-        isActive: s.isActive,
-        status: 'ready', // Chat sessions are always ready (no pending summary)
+      // Get message counts for each session
+      const formattedSessions = await Promise.all(sessions.map(async (s: any) => {
+        const messages = await storage.getChatMessagesBySession(s.id);
+        const spaceSummary = s.metadata?.spaceSummary;
+        
+        return {
+          id: s.id,
+          title: s.title || 'Unbenannter Chat',
+          createdAt: s.createdAt,
+          updatedAt: s.updatedAt,
+          isActive: s.isActive,
+          messageCount: messages.length,
+          lastMessageAt: messages.length > 0 ? messages[messages.length - 1].timestamp : null,
+          // Summary fields (real data only)
+          summaryStatus: spaceSummary?.status || 'missing',
+          summaryShort: spaceSummary?.short || null,
+        };
       }));
       
       res.json(formattedSessions);
@@ -1581,27 +1590,39 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     }
   });
 
-  // GET /api/chat/session/:id - Get chat session details for drawer
+  // GET /api/chat/session/:id - Get chat session details for drawer (with full summary)
   app.get('/api/chat/session/:id', requireAuth, async (req: any, res) => {
     try {
       const sessionId = parseInt(req.params.id);
       const messages = await storage.getChatMessagesBySession(sessionId);
       
-      // Get session info
-      const userId = req.session.userId;
-      const sessions = await storage.getChatSessions(userId);
-      const session = sessions.find((s: any) => s.id === sessionId);
+      // Get session info with metadata
+      const session = await storage.getChatSessionById(sessionId);
       
       if (!session) {
         return res.status(404).json({ message: 'Session not found' });
       }
+      
+      // Verify ownership
+      const userId = req.session.userId;
+      if (session.userId !== userId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      const spaceSummary = (session as any).metadata?.spaceSummary;
       
       res.json({
         id: session.id,
         title: session.title,
         createdAt: session.createdAt,
         updatedAt: session.updatedAt,
-        status: 'ready',
+        // Summary fields
+        summaryStatus: spaceSummary?.status || 'missing',
+        summaryShort: spaceSummary?.short || null,
+        summaryFull: spaceSummary?.full || null,
+        summaryUpdatedAt: spaceSummary?.updatedAt || null,
+        summaryError: spaceSummary?.error || null,
+        // Messages
         messages: messages.map((m: any) => ({
           id: m.id,
           role: m.isAi ? 'assistant' : 'user',
@@ -1613,6 +1634,62 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     } catch (error) {
       logger.error('Error fetching chat session details:', error);
       res.status(500).json({ message: 'Failed to fetch chat session details' });
+    }
+  });
+
+  // POST /api/chat/session/:id/summarize - Trigger summary generation (non-blocking)
+  app.post('/api/chat/session/:id/summarize', requireAuth, async (req: any, res) => {
+    try {
+      const sessionId = parseInt(req.params.id);
+      const userId = req.session.userId;
+      
+      // Get session and verify ownership
+      const session = await storage.getChatSessionById(sessionId);
+      
+      if (!session) {
+        return res.status(404).json({ message: 'Session not found' });
+      }
+      
+      if (session.userId !== userId) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      
+      const spaceSummary = (session as any).metadata?.spaceSummary;
+      
+      // If already pending, return current status
+      if (spaceSummary?.status === 'pending') {
+        return res.json({ status: 'pending', message: 'Summary wird bereits erstellt' });
+      }
+      
+      // If ready and recent (within 5 min), return ready
+      if (spaceSummary?.status === 'ready' && spaceSummary?.updatedAt) {
+        const updatedAt = new Date(spaceSummary.updatedAt);
+        const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+        if (updatedAt > fiveMinAgo) {
+          return res.json({ status: 'ready', message: 'Summary bereits vorhanden' });
+        }
+      }
+      
+      // Set to pending and start async job
+      await storage.updateChatSessionMetadata(sessionId, {
+        spaceSummary: {
+          status: 'pending',
+          updatedAt: new Date().toISOString()
+        }
+      });
+      
+      // Fire-and-forget: start summarization in background
+      const { summarizeSpaceSession } = await import('./voice/space-summarizer');
+      setImmediate(() => {
+        summarizeSpaceSession(sessionId).catch(err => {
+          logger.error('Background summarization failed:', err);
+        });
+      });
+      
+      res.json({ status: 'pending', message: 'Summary wird erstellt' });
+    } catch (error) {
+      logger.error('Error triggering summary:', error);
+      res.status(500).json({ message: 'Failed to trigger summary' });
     }
   });
 

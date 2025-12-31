@@ -217,6 +217,21 @@ export const chatSessions = pgTable("chat_sessions", {
   userId: varchar("user_id").notNull().references(() => users.id),
   title: varchar("title").default("New Chat"),
   isActive: boolean("is_active").default(true),
+  metadata: jsonb("metadata").$type<{
+    spaceSummary?: {
+      status: 'pending' | 'ready' | 'failed';
+      short?: string;
+      full?: {
+        outcome: string;
+        bulletPoints: string[];
+        nextStep: string;
+        sentiment: string;
+        tags: string[];
+      };
+      updatedAt?: string;
+      error?: string;
+    };
+  }>(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
