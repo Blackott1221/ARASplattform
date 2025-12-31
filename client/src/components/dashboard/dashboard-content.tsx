@@ -7,23 +7,45 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { PowerResultCard } from '@/components/power/power-result-card';
 
 // ═══════════════════════════════════════════════════════════════
-// DESIGN TOKENS (2026 Mission Control)
+// DESIGN TOKENS (2026 Mission Control V5)
 // ═══════════════════════════════════════════════════════════════
 const DT = {
   orange: '#ff6a00',
   gold: '#e9d7c4',
   goldDark: '#a34e00',
-  panelBg: 'rgba(0,0,0,0.30)',
-  panelBorder: 'rgba(255,255,255,0.10)',
+  panelBg: 'rgba(0,0,0,0.35)',
+  panelBgHover: 'rgba(0,0,0,0.45)',
+  panelBorder: 'rgba(255,255,255,0.08)',
+  panelBorderHover: 'rgba(255,255,255,0.14)',
   glow: '0 0 0 1px rgba(255,106,0,0.18), 0 0 22px rgba(255,106,0,0.10)',
   glowSubtle: '0 0 12px rgba(255,106,0,0.08)',
+  rowBg: 'rgba(255,255,255,0.02)',
+  rowBgHover: 'rgba(255,255,255,0.05)',
 };
 
 const ANIM = {
-  duration: 0.22,
+  duration: 0.24,
   easing: [0.22, 1, 0.36, 1] as const,
-  stagger: 0.04,
+  stagger: 0.03,
 };
+
+// CSS Keyframes for shimmer animation (injected once)
+const shimmerCSS = `
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+@keyframes sheen {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+`;
+if (typeof document !== 'undefined' && !document.getElementById('aras-shimmer-css')) {
+  const style = document.createElement('style');
+  style.id = 'aras-shimmer-css';
+  style.textContent = shimmerCSS;
+  document.head.appendChild(style);
+}
 
 // ═══════════════════════════════════════════════════════════════
 // UNIFIED ACTIVITY MODEL
@@ -331,35 +353,49 @@ export function DashboardContent({ user }: DashboardContentProps) {
     <div className="flex-1 min-h-0">
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6 space-y-6">
 
-        {/* HEADER - Gradient Title */}
+        {/* HEADER - Mission Control V5 */}
         <motion.div
-          initial={{ opacity: 0, y: -6 }}
+          initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: ANIM.duration }}
+          className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4"
         >
-          <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500 mb-1">
-            CONTROL CENTER
-          </p>
-          <h1 
-            className="text-2xl sm:text-3xl font-black font-['Orbitron'] tracking-wide inline-block relative"
-            style={{ 
-              background: `linear-gradient(90deg, ${DT.orange}, #ffb15a, ${DT.gold})`,
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.25em] text-neutral-600 mb-2 font-medium">
+              ARAS AI
+            </p>
+            <h1 
+              className="text-2xl sm:text-3xl font-black font-['Orbitron'] tracking-wide inline-block relative"
+              style={{ 
+                background: `linear-gradient(90deg, ${DT.orange}, #ffb15a, ${DT.gold}, #ffb15a, ${DT.orange})`,
+                backgroundSize: '200% auto',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                animation: 'sheen 10s linear infinite',
+              }}
+            >
+              MISSION CONTROL
+              <motion.span
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="absolute -bottom-1.5 left-0 right-0 h-[2px] origin-left"
+                style={{ background: `linear-gradient(90deg, ${DT.orange}, ${DT.gold}50, transparent)` }}
+              />
+            </h1>
+            <p className="text-[13px] text-neutral-500 mt-2">
+              Anrufe &amp; Space-Aktivität in Echtzeit
+            </p>
+          </div>
+          
+          {/* Status Pill */}
+          <div 
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full self-start sm:self-auto"
+            style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)' }}
           >
-            Dashboard
-            <motion.span
-              initial={{ scaleX: 0 }}
-              animate={{ scaleX: 1 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="absolute -bottom-1 left-0 right-0 h-[2px] origin-left"
-              style={{ background: `linear-gradient(90deg, ${DT.orange}, ${DT.gold}40, transparent)` }}
-            />
-          </h1>
-          <p className="text-sm text-neutral-400 mt-2">
-            Willkommen zurück, {user.firstName}
-          </p>
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500/80" />
+            <span className="text-[11px] text-green-400/90 font-medium uppercase tracking-wide">Bereit</span>
+          </div>
         </motion.div>
 
         {/* PERSISTENT ERROR PANEL */}
@@ -452,69 +488,89 @@ Status: ${persistentError.status || 'N/A'}`}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: ANIM.duration, delay: 0.15 }}
-              className="rounded-3xl p-5"
+              className="rounded-2xl overflow-hidden"
               style={{ background: DT.panelBg, backdropFilter: 'blur(20px)', border: `1px solid ${DT.panelBorder}` }}
             >
-              {/* Header + Filter Bar */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                <h3 className="text-[11px] font-bold uppercase tracking-[0.15em]" style={{ color: DT.gold }}>
-                  Aktivität
-                </h3>
-                
-                {/* Filter Tabs */}
-                <div className="flex items-center gap-1 p-1 rounded-[12px]" style={{ background: 'rgba(255,255,255,0.03)' }}>
-                  {(['all', 'call', 'space'] as const).map(filter => (
-                    <button
-                      key={filter}
-                      onClick={() => setActiveFilter(filter)}
-                      className={`px-3 py-1.5 rounded-[10px] text-[11px] font-medium uppercase tracking-wide transition-all ${
-                        activeFilter === filter 
-                          ? 'text-white' 
-                          : 'text-neutral-500 hover:text-neutral-300'
-                      }`}
-                      style={activeFilter === filter ? { 
-                        background: 'rgba(255,106,0,0.15)', 
-                        border: '1px solid rgba(255,106,0,0.3)',
-                        boxShadow: '0 0 8px rgba(255,106,0,0.15)'
-                      } : { border: '1px solid transparent' }}
-                    >
-                      {filter === 'all' ? 'Alles' : filter === 'call' ? 'Calls' : 'Space'}
-                    </button>
-                  ))}
+              {/* Control Strip - Filter + Search */}
+              <div className="p-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  {/* Filter Tabs */}
+                  <div className="flex items-center gap-1 p-0.5 rounded-[10px]" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                    {(['all', 'call', 'space'] as const).map(filter => (
+                      <button
+                        key={filter}
+                        onClick={() => setActiveFilter(filter)}
+                        aria-pressed={activeFilter === filter}
+                        className={`px-4 py-2 rounded-[8px] text-[11px] font-semibold uppercase tracking-wider transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50 ${
+                          activeFilter === filter 
+                            ? 'text-white' 
+                            : 'text-neutral-500 hover:text-neutral-300'
+                        }`}
+                        style={activeFilter === filter ? { 
+                          background: `linear-gradient(135deg, rgba(255,106,0,0.2), rgba(255,106,0,0.08))`, 
+                          boxShadow: '0 0 12px rgba(255,106,0,0.12), inset 0 0 0 1px rgba(255,106,0,0.25)'
+                        } : {}}
+                      >
+                        {filter === 'all' ? 'Alles' : filter === 'call' ? 'Calls' : 'Space'}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Search Input */}
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      placeholder="Suchen (Titel, Tags, Zusammenfassung)"
+                      className="w-full px-4 py-2 rounded-[10px] text-[13px] focus:outline-none transition-all placeholder:text-neutral-600"
+                      style={{ 
+                        background: 'rgba(255,255,255,0.03)', 
+                        border: `1px solid ${DT.panelBorder}`, 
+                        color: '#fff'
+                      }}
+                      onFocus={e => e.target.style.borderColor = 'rgba(255,106,0,0.3)'}
+                      onBlur={e => e.target.style.borderColor = DT.panelBorder}
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white text-[11px] font-medium transition-colors px-1.5 py-0.5 rounded hover:bg-white/[0.06]"
+                      >
+                        Löschen
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-
-              {/* Search Input */}
-              <div className="relative mb-4">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Suchen nach Kontakt, Thema, Tag..."
-                  className="w-full px-4 py-2.5 rounded-[12px] text-sm focus:outline-none focus:ring-1 focus:ring-orange-500/30 transition-all"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${DT.panelBorder}`, color: DT.gold }}
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white text-xs font-medium transition-colors"
-                  >
-                    x
-                  </button>
-                )}
-              </div>
+              
+              {/* Feed Content */}
+              <div className="p-4">
               
               {/* Activity List */}
               {allActivities.length === 0 ? (
-                <div className="text-center py-12 text-neutral-500">
-                  <p className="text-sm mb-2">Noch keine Aktivität</p>
-                  <a 
-                    href="/app/power" 
-                    className="text-xs font-medium hover:underline transition-colors"
-                    style={{ color: DT.orange }}
-                  >
-                    Starte deinen ersten Call
-                  </a>
+                <div className="text-center py-16">
+                  <p className="text-sm text-neutral-400 mb-4">Noch keine Aktivität</p>
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <a 
+                      href="/app/power"
+                      className="px-5 py-2.5 rounded-xl text-[13px] font-medium transition-all hover:translate-y-[-1px]"
+                      style={{ 
+                        background: `linear-gradient(135deg, ${DT.orange}, ${DT.goldDark})`, 
+                        color: '#000',
+                        boxShadow: '0 4px 20px rgba(255,106,0,0.2)'
+                      }}
+                    >
+                      Ersten Anruf starten
+                    </a>
+                    <a 
+                      href="/app/space"
+                      className="px-5 py-2.5 rounded-xl text-[13px] font-medium transition-all hover:bg-white/[0.06]"
+                      style={{ border: `1px solid ${DT.panelBorder}`, color: DT.gold }}
+                    >
+                      Space öffnen
+                    </a>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -525,73 +581,87 @@ Status: ${persistentError.status || 'N/A'}`}
                         {group.label}
                       </p>
                       
-                      {/* Group Items */}
-                      <div className="space-y-1">
+                      {/* Group Items - Premium List Rows */}
+                      <div className="space-y-1.5">
                         {group.items.map((item, idx) => (
                           <motion.button
                             key={`${item.type}-${item.id}`}
-                            initial={{ opacity: 0, x: -4 }}
+                            initial={{ opacity: 0, x: -6 }}
                             animate={{ opacity: 1, x: 0 }}
+                            whileHover={{ y: -1, x: 2 }}
                             transition={{ duration: ANIM.duration, delay: idx * ANIM.stagger }}
                             onClick={() => handleOpenDetails(item)}
-                            className="w-full flex items-center gap-3 py-3 px-3 -mx-3 rounded-[12px] transition-all hover:bg-white/[0.04] focus:outline-none text-left group"
-                            style={{ borderRight: '2px solid transparent' }}
-                            onMouseEnter={e => (e.currentTarget.style.borderRightColor = `${DT.orange}50`)}
-                            onMouseLeave={e => (e.currentTarget.style.borderRightColor = 'transparent')}
+                            aria-label={`${item.type === 'call' ? 'Anruf' : 'Space Session'}: ${item.title}`}
+                            className="w-full flex items-center gap-3 py-3 px-4 rounded-xl transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 text-left group"
+                            style={{ 
+                              background: DT.rowBg,
+                              border: `1px solid transparent`
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.background = DT.rowBgHover;
+                              e.currentTarget.style.borderColor = 'rgba(255,106,0,0.15)';
+                              e.currentTarget.style.boxShadow = '0 0 20px rgba(255,106,0,0.06)';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.background = DT.rowBg;
+                              e.currentTarget.style.borderColor = 'transparent';
+                              e.currentTarget.style.boxShadow = 'none';
+                            }}
                           >
-                            {/* Type indicator + Status dot */}
-                            <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                            {/* Status dot + Type indicator */}
+                            <div className="flex flex-col items-center gap-1.5 flex-shrink-0 w-5">
                               <div 
-                                className={`w-2 h-2 rounded-full ${
-                                  item.status === 'ready' || item.status === 'completed' ? 'bg-green-500/70' : 
-                                  item.status === 'failed' ? 'bg-red-500/70' : 
-                                  item.status === 'pending' ? 'bg-amber-500/70' :
-                                  'bg-blue-500/70'
+                                className={`w-2 h-2 rounded-full transition-all ${
+                                  item.status === 'ready' || item.status === 'completed' ? 'bg-green-500/80' : 
+                                  item.status === 'failed' ? 'bg-red-500/80' : 
+                                  item.status === 'pending' ? 'bg-amber-500/80' :
+                                  'bg-blue-500/80'
                                 }`} 
+                                style={{ boxShadow: item.status === 'pending' ? '0 0 8px rgba(245,158,11,0.4)' : undefined }}
                               />
-                              <span className="text-[9px] uppercase tracking-wide text-neutral-600">
-                                {item.type === 'call' ? 'C' : 'S'}
+                              <span className="text-[8px] uppercase tracking-wider text-neutral-600 font-medium">
+                                {item.type === 'call' ? 'CALL' : 'SPACE'}
                               </span>
                             </div>
                             
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
-                                <p className="text-sm truncate font-medium group-hover:text-white transition-colors" style={{ color: DT.gold }}>
+                                <p className="text-[13px] truncate font-medium group-hover:text-white transition-colors" style={{ color: DT.gold }}>
                                   {item.title}
                                 </p>
-                                <span className="text-[10px] text-neutral-500 flex-shrink-0">
+                                <span className="text-[10px] text-neutral-600 flex-shrink-0">
                                   {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true, locale: de })}
                                 </span>
                               </div>
-                              {/* Summary line - type-specific handling */}
+                              {/* Summary line - clean shimmer */}
                               {item.summaryShort ? (
-                                <p className="text-xs text-neutral-400 truncate mt-0.5 line-clamp-2">{item.summaryShort}</p>
+                                <p className="text-xs text-neutral-400 truncate mt-1">{item.summaryShort}</p>
                               ) : item.status === 'pending' ? (
-                                <div className="mt-0.5 flex items-center gap-2">
-                                  <div className="h-2 w-16 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                                    <div className="h-full w-8 rounded-full animate-pulse" style={{ background: `linear-gradient(90deg, transparent, ${DT.orange}40, transparent)`, animation: 'shimmer 1.5s infinite' }} />
+                                <div className="mt-1 flex items-center gap-2">
+                                  <div className="h-1 w-20 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                                    <div className="h-full w-10 rounded-full" style={{ background: `linear-gradient(90deg, transparent, ${DT.orange}30, transparent)`, animation: 'shimmer 2s ease-in-out infinite' }} />
                                   </div>
-                                  <p className="text-[10px] text-neutral-500">Aktualisiert automatisch</p>
+                                  <p className="text-[10px] text-neutral-600">Wird aktualisiert</p>
                                 </div>
                               ) : item.status === 'failed' ? (
-                                <p className="text-xs text-red-400/60 mt-0.5">Zusammenfassung fehlgeschlagen</p>
+                                <p className="text-[11px] text-red-400/70 mt-1">Fehlgeschlagen</p>
                               ) : item.type === 'space' && item.status === 'completed' ? (
-                                <p className="text-xs text-neutral-500 mt-0.5">
-                                  {item.meta?.messageCount ? `${item.meta.messageCount} Nachrichten` : 'Chat Session'}
+                                <p className="text-[11px] text-neutral-500 mt-1">
+                                  {item.meta?.messageCount ? `${item.meta.messageCount} Nachrichten` : 'Session'}
                                 </p>
                               ) : item.type === 'call' && !item.summaryShort ? (
-                                <div className="mt-0.5 flex items-center gap-2">
-                                  <div className="h-2 w-16 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                                    <div className="h-full w-8 rounded-full animate-pulse" style={{ background: `linear-gradient(90deg, transparent, ${DT.orange}40, transparent)`, animation: 'shimmer 1.5s infinite' }} />
+                                <div className="mt-1 flex items-center gap-2">
+                                  <div className="h-1 w-20 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                                    <div className="h-full w-10 rounded-full" style={{ background: `linear-gradient(90deg, transparent, ${DT.orange}30, transparent)`, animation: 'shimmer 2s ease-in-out infinite' }} />
                                   </div>
-                                  <p className="text-[10px] text-neutral-500">Aktualisiert automatisch</p>
+                                  <p className="text-[10px] text-neutral-600">Wird aktualisiert</p>
                                 </div>
                               ) : null}
                             </div>
                             
-                            {/* Meta (duration for calls) */}
-                            <span className="text-[11px] text-neutral-500 tabular-nums flex-shrink-0">
-                              {item.meta?.durationSec ? formatDuration(item.meta.durationSec) : '—'}
+                            {/* Meta (duration/count) */}
+                            <span className="text-[11px] text-neutral-500 tabular-nums flex-shrink-0 font-medium">
+                              {item.meta?.durationSec ? formatDuration(item.meta.durationSec) : item.meta?.messageCount ? `${item.meta.messageCount}` : ''}
                             </span>
                           </motion.button>
                         ))}
@@ -600,125 +670,123 @@ Status: ${persistentError.status || 'N/A'}`}
                   ))}
                 </div>
               )}
+              </div>
             </motion.div>
           </div>
 
           {/* RIGHT COLUMN: col-span-4 */}
-          <div className="lg:col-span-4 space-y-5">
+          <div className="lg:col-span-4 space-y-4">
 
-            {/* Status / Setup Hints */}
+            {/* Quick Actions - V5 Premium */}
             <motion.div
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: ANIM.duration, delay: 0.2 }}
-              className="rounded-3xl p-5"
+              className="rounded-2xl overflow-hidden"
               style={{ background: DT.panelBg, backdropFilter: 'blur(20px)', border: `1px solid ${DT.panelBorder}` }}
             >
-              <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] mb-4" style={{ color: DT.gold }}>
-                Status
-              </h3>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 p-3 rounded-[12px]" style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)' }}>
-                  <div className="w-2 h-2 rounded-full bg-green-500/70" />
-                  <span className="text-sm text-green-400">System bereit</span>
-                </div>
-                <div className="p-3 rounded-[12px]" style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${DT.panelBorder}` }}>
-                  <p className="text-xs text-neutral-400 mb-2">
-                    Profil vervollständigen für bessere Calls
-                  </p>
-                  <a 
-                    href="/app/leads" 
-                    className="text-xs font-medium hover:underline"
-                    style={{ color: DT.orange }}
-                  >
-                    Zur Wissensdatenbank
-                  </a>
-                </div>
+              <div className="p-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500">
+                  Schnellaktionen
+                </h3>
               </div>
-            </motion.div>
-
-            {/* Quick Actions */}
-            <motion.div
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: ANIM.duration, delay: 0.25 }}
-              className="rounded-3xl p-5"
-              style={{ background: DT.panelBg, backdropFilter: 'blur(20px)', border: `1px solid ${DT.panelBorder}` }}
-            >
-              <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] mb-4" style={{ color: DT.gold }}>
-                Schnellaktionen
-              </h3>
-              <div className="space-y-2">
+              <div className="p-4 space-y-2">
                 <a 
                   href="/app/power"
-                  className="block w-full py-3 px-4 rounded-[14px] text-sm font-medium text-center transition-all hover:translate-y-[-1px]"
-                  style={{ background: `linear-gradient(135deg, ${DT.orange}, ${DT.goldDark})`, color: '#000' }}
+                  className="block w-full py-3 px-4 rounded-xl text-[13px] font-semibold text-center transition-all hover:translate-y-[-1px] hover:shadow-lg"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${DT.orange}, ${DT.goldDark})`, 
+                    color: '#000',
+                    boxShadow: '0 4px 20px rgba(255,106,0,0.15)'
+                  }}
                 >
                   Anruf starten
                 </a>
                 <a 
-                  href="/app/contacts"
-                  className="block w-full py-3 px-4 rounded-[14px] text-sm font-medium text-center transition-colors hover:bg-white/[0.06]"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${DT.panelBorder}`, color: DT.gold }}
+                  href="/app/space"
+                  className="block w-full py-3 px-4 rounded-xl text-[13px] font-medium text-center transition-all hover:bg-white/[0.06]"
+                  style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${DT.panelBorder}`, color: DT.gold }}
                 >
-                  Kontakte
+                  Space öffnen
+                </a>
+                <a 
+                  href="/app/leads"
+                  className="block w-full py-3 px-4 rounded-xl text-[13px] font-medium text-center transition-all hover:bg-white/[0.06]"
+                  style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${DT.panelBorder}`, color: '#888' }}
+                >
+                  Wissensdatenbank
                 </a>
               </div>
+            </motion.div>
+
+            {/* Info Hint */}
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: ANIM.duration, delay: 0.25 }}
+              className="rounded-2xl p-4"
+              style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${DT.panelBorder}` }}
+            >
+              <p className="text-[11px] text-neutral-500 leading-relaxed">
+                Vervollständige dein Profil in der Wissensdatenbank für präzisere Anrufe und bessere Zusammenfassungen.
+              </p>
             </motion.div>
           </div>
         </div>
 
-        {/* UNIFIED DETAILS DRAWER */}
+        {/* UNIFIED DETAILS DRAWER - V5 Premium */}
         <AnimatePresence>
           {selectedItem && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
+              transition={{ duration: 0.2 }}
               className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end"
-              style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)' }}
+              style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}
               onClick={handleCloseDrawer}
             >
               <motion.div
-                initial={{ x: '100%', opacity: 0.5 }}
+                initial={{ x: '100%', opacity: 0.8 }}
                 animate={{ x: 0, opacity: 1 }}
-                exit={{ x: '100%', opacity: 0.5 }}
-                transition={{ duration: 0.3, ease: ANIM.easing }}
-                className="w-full sm:w-[460px] sm:max-w-[90vw] h-[85vh] sm:h-full sm:max-h-screen overflow-hidden rounded-t-[24px] sm:rounded-none flex flex-col"
-                style={{ background: 'rgba(8,8,8,0.98)', borderLeft: `1px solid ${DT.panelBorder}` }}
+                exit={{ x: '100%', opacity: 0.8 }}
+                transition={{ duration: 0.24, ease: ANIM.easing }}
+                className="w-full sm:w-[480px] sm:max-w-[92vw] h-[88vh] sm:h-full sm:max-h-screen overflow-hidden rounded-t-3xl sm:rounded-none flex flex-col"
+                style={{ background: 'rgba(12,12,12,0.98)', borderLeft: `1px solid ${DT.panelBorder}` }}
                 onClick={e => e.stopPropagation()}
               >
-                {/* Drawer Header */}
+                {/* Drawer Header - V5 */}
                 <motion.div 
                   initial={{ opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1, duration: 0.2 }}
-                  className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"
+                  transition={{ delay: 0.08, duration: 0.2 }}
+                  className="flex items-center justify-between px-5 py-4 border-b"
+                  style={{ borderColor: 'rgba(255,255,255,0.06)' }}
                 >
-                  <h3 
-                    className="text-base font-bold uppercase tracking-wide"
-                    style={{ 
-                      background: `linear-gradient(90deg, ${DT.orange}, ${DT.gold})`,
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent'
-                    }}
-                  >
-                    {selectedItem.type === 'call' ? 'Anrufdetails' : 'Chat Session'}
-                  </h3>
-                  <div className="flex items-center gap-2">
+                  <div>
+                    <p className="text-[9px] uppercase tracking-[0.2em] text-neutral-600 mb-0.5">
+                      {selectedItem.type === 'call' ? 'ANRUF' : 'SPACE'}
+                    </p>
+                    <h3 
+                      className="text-sm font-bold"
+                      style={{ color: DT.gold }}
+                    >
+                      {selectedItem.title}
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-1">
                     <button
                       onClick={() => selectedItem && handleOpenDetails(selectedItem)}
                       disabled={loadingDetails}
-                      className="text-xs font-medium px-3 py-1.5 rounded-[10px] hover:bg-white/[0.06] transition-colors disabled:opacity-50"
+                      className="text-[11px] font-medium px-3 py-1.5 rounded-lg hover:bg-white/[0.06] transition-colors disabled:opacity-50"
                       style={{ color: DT.gold }}
                     >
                       {loadingDetails ? 'Lädt...' : 'Aktualisieren'}
                     </button>
                     <button
                       onClick={handleCloseDrawer}
-                      className="text-xs font-medium px-3 py-1.5 rounded-[10px] hover:bg-white/[0.06] transition-colors"
-                      style={{ color: '#888' }}
+                      className="text-[11px] font-medium px-3 py-1.5 rounded-lg hover:bg-white/[0.06] transition-colors"
+                      style={{ color: '#666' }}
                     >
                       Schließen
                     </button>
@@ -814,29 +882,48 @@ function StatTile({ label, value, highlight = false, hint }: { label: string; va
   
   return (
     <motion.div
-      whileHover={{ y: -1 }}
-      className="rounded-2xl p-4 transition-all group relative"
+      whileHover={{ y: -2, scale: 1.01 }}
+      transition={{ duration: 0.15 }}
+      className="rounded-2xl overflow-hidden transition-all group relative"
       style={{ 
-        background: highlight ? 'rgba(255,106,0,0.08)' : 'rgba(0,0,0,0.25)',
-        border: `1px solid ${highlight ? 'rgba(255,106,0,0.25)' : 'rgba(255,255,255,0.10)'}`,
-        backdropFilter: 'blur(12px)'
+        background: DT.panelBg,
+        border: `1px solid ${DT.panelBorder}`,
+        backdropFilter: 'blur(16px)'
       }}
     >
+      {/* Top accent line */}
       <div 
-        className="text-2xl sm:text-3xl font-bold mb-1 tabular-nums"
-        style={{ color: isUnavailable ? '#666' : (highlight ? DT.orange : '#fff') }}
-      >
-        {value}
-      </div>
-      <div className="text-[10px] sm:text-[11px] uppercase tracking-wide text-neutral-500">
-        {label}
-      </div>
-      {/* Hint tooltip on hover */}
-      {hint && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 rounded-[8px] text-[10px] text-neutral-400 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" style={{ background: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)' }}>
-          {hint}
+        className="h-[2px] w-full"
+        style={{ 
+          background: highlight 
+            ? `linear-gradient(90deg, ${DT.orange}, ${DT.gold})` 
+            : isUnavailable 
+              ? 'rgba(255,255,255,0.06)' 
+              : `linear-gradient(90deg, ${DT.orange}60, ${DT.gold}40)`
+        }}
+      />
+      
+      <div className="p-4">
+        <div 
+          className="text-2xl sm:text-3xl font-bold mb-1 tabular-nums"
+          style={{ color: isUnavailable ? '#555' : (highlight ? DT.orange : '#fff') }}
+        >
+          {value}
         </div>
-      )}
+        <div className="text-[10px] sm:text-[11px] uppercase tracking-wide text-neutral-500">
+          {label}
+        </div>
+        {/* Unavailable hint inline */}
+        {isUnavailable && hint && (
+          <p className="text-[9px] text-neutral-600 mt-1">{hint}</p>
+        )}
+      </div>
+      
+      {/* Hover glow effect */}
+      <div 
+        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none rounded-2xl"
+        style={{ boxShadow: highlight ? DT.glow : '0 0 20px rgba(255,255,255,0.03)' }}
+      />
     </motion.div>
   );
 }
