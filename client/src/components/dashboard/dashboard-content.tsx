@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { formatDistanceToNow, isToday, isYesterday, subDays, isAfter } from 'date-fns';
+import { formatDistanceToNow, isToday, isYesterday, subDays, isAfter, format, addDays } from 'date-fns';
 import { de } from 'date-fns/locale';
 import type { User } from '@shared/schema';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
@@ -12,6 +12,20 @@ import { PowerResultCard } from '@/components/power/power-result-card';
 const safeArray = <T,>(x: T[] | null | undefined): T[] => Array.isArray(x) ? x : [];
 const safeJson = async (res: Response): Promise<any> => {
   try { return await res.json(); } catch { return {}; }
+};
+
+// LocalStorage key for done actions
+const DONE_ACTIONS_KEY = 'aras_done_actions_v1';
+const getDoneActions = (): Set<string> => {
+  try {
+    const stored = localStorage.getItem(DONE_ACTIONS_KEY);
+    return new Set(stored ? JSON.parse(stored) : []);
+  } catch { return new Set(); }
+};
+const setDoneAction = (id: string, done: boolean) => {
+  const current = getDoneActions();
+  if (done) current.add(id); else current.delete(id);
+  localStorage.setItem(DONE_ACTIONS_KEY, JSON.stringify([...current]));
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -114,6 +128,49 @@ interface PersistentError {
   status?: number;
 }
 
+// Profile context from /api/user/profile-context
+interface ProfileContext {
+  id: number;
+  name: string;
+  firstName?: string;
+  lastName?: string;
+  company?: string;
+  website?: string;
+  industry?: string;
+  jobRole?: string;
+  phone?: string;
+  aiProfile?: {
+    companyDescription?: string;
+    targetAudience?: string;
+    effectiveKeywords?: string[];
+    competitors?: string[];
+    services?: string;
+    products?: string[];
+    ceoName?: string;
+    employeeCount?: string;
+  };
+}
+
+// Calendar event from /api/calendar/events
+interface CalendarEvent {
+  id: string;
+  title: string;
+  date: string;
+  startTime?: string;
+  endTime?: string;
+  location?: string;
+  description?: string;
+}
+
+// Action item extracted from nextStep fields
+interface ActionItem {
+  id: string;
+  title: string;
+  source: { type: 'call' | 'space'; name: string; timestamp: string };
+  done: boolean;
+  rawId: string | number;
+}
+
 export function DashboardContent({ user }: DashboardContentProps) {
   const [selectedItem, setSelectedItem] = useState<ActivityItem | null>(null);
   const [selectedDetails, setSelectedDetails] = useState<any>(null);
@@ -122,6 +179,7 @@ export function DashboardContent({ user }: DashboardContentProps) {
   const [expandedError, setExpandedError] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'call' | 'space'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [doneActions, setDoneActionsState] = useState<Set<string>>(getDoneActions);
   const summaryPollRef = useRef<NodeJS.Timeout | null>(null);
   const drawerPollRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -154,6 +212,40 @@ export function DashboardContent({ user }: DashboardContentProps) {
       }
     },
     staleTime: 10000,
+  });
+
+  // V6: Fetch profile context for Business Snapshot
+  const { data: profileContext, isLoading: profileLoading, isError: profileError } = useQuery<ProfileContext>({
+    queryKey: ['dashboard-profile-context'],
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/user/profile-context', { credentials: 'include' });
+        if (!res.ok) return null;
+        return await res.json();
+      } catch (err) {
+        console.error('[Dashboard] Failed to fetch profile context:', err);
+        return null;
+      }
+    },
+    staleTime: 60000,
+  });
+
+  // V6: Fetch calendar events for Calendar Preview (next 7 days)
+  const { data: calendarEvents = [], isLoading: calendarLoading, isError: calendarError } = useQuery<CalendarEvent[]>({
+    queryKey: ['dashboard-calendar-events'],
+    queryFn: async () => {
+      try {
+        const start = format(new Date(), 'yyyy-MM-dd');
+        const end = format(addDays(new Date(), 7), 'yyyy-MM-dd');
+        const res = await fetch(`/api/calendar/events?start=${start}&end=${end}`, { credentials: 'include' });
+        if (!res.ok) return [];
+        return safeArray(await res.json());
+      } catch (err) {
+        console.error('[Dashboard] Failed to fetch calendar events:', err);
+        return [];
+      }
+    },
+    staleTime: 30000,
   });
 
   // Set persistent error if fetch fails
@@ -335,6 +427,9 @@ export function DashboardContent({ user }: DashboardContentProps) {
     // Calls today - always real
     const callsToday = callActivities.filter(c => isToday(new Date(c.timestamp))).length;
     
+    // Space today - always real
+    const spaceToday = chatActivities.filter(c => isToday(new Date(c.timestamp))).length;
+    
     // Success rate - only show if we have at least 3 calls in last 7 days
     const callsLast7Days = callActivities.filter(c => isAfter(new Date(c.timestamp), sevenDaysAgo));
     const completedLast7Days = callsLast7Days.filter(c => c.status === 'ready' || c.status === 'completed').length;
@@ -347,12 +442,63 @@ export function DashboardContent({ user }: DashboardContentProps) {
     
     // Pending count - always real
     const pendingCount = allActivities.filter(i => i.status === 'pending').length;
-    
-    // Space sessions count
-    const spaceSessions = chatActivities.length;
 
-    return { callsToday, successRate, avgDuration, pendingCount, spaceSessions };
+    return { callsToday, spaceToday, successRate, avgDuration, pendingCount };
   }, [callActivities, chatActivities, allActivities]);
+
+  // V6: Extract action items from nextStep fields in call summaries
+  const actionItems: ActionItem[] = useMemo(() => {
+    const items: ActionItem[] = [];
+    const done = doneActions;
+    
+    // From calls with summary.nextStep
+    callLogs.forEach(call => {
+      const nextStep = call.summary?.nextStep;
+      if (nextStep && nextStep.trim().length > 5) {
+        const id = `call-${call.id}`;
+        items.push({
+          id,
+          title: nextStep.length > 140 ? nextStep.substring(0, 137) + '...' : nextStep,
+          source: { type: 'call', name: call.contactName || call.phoneNumber, timestamp: call.createdAt },
+          done: done.has(id),
+          rawId: call.id,
+        });
+      }
+    });
+    
+    // Sort by timestamp (newest first) and take top 10
+    items.sort((a, b) => new Date(b.source.timestamp).getTime() - new Date(a.source.timestamp).getTime());
+    return items.slice(0, 10);
+  }, [callLogs, doneActions]);
+
+  // Toggle action done state
+  const toggleActionDone = useCallback((id: string) => {
+    setDoneActionsState(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      setDoneAction(id, next.has(id));
+      return next;
+    });
+  }, []);
+
+  // Profile completeness calculation (REAL - count filled fields)
+  const profileCompleteness = useMemo(() => {
+    if (!profileContext) return null;
+    const fields = [
+      profileContext.company,
+      profileContext.industry,
+      profileContext.website,
+      profileContext.phone,
+      profileContext.aiProfile?.companyDescription,
+      profileContext.aiProfile?.targetAudience,
+      profileContext.aiProfile?.services,
+      profileContext.aiProfile?.effectiveKeywords?.length,
+      profileContext.aiProfile?.competitors?.length,
+      profileContext.aiProfile?.products?.length,
+    ];
+    const filled = fields.filter(f => f && (typeof f !== 'number' || f > 0)).length;
+    return { filled, total: fields.length };
+  }, [profileContext]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -477,16 +623,12 @@ Status: ${persistentError.status || 'N/A'}`}
           transition={{ duration: ANIM.duration, delay: 0.1 }}
           className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
         >
-          <StatTile label="Anrufe heute" value={stats.callsToday} />
-          <StatTile 
-            label="Erfolgsquote (7T)" 
-            value={stats.successRate !== null ? `${stats.successRate}%` : '—'} 
-            hint={stats.successRate === null ? 'Nicht verfügbar (min. 3 Calls nötig)' : undefined}
-          />
+          <StatTile label="Calls heute" value={stats.callsToday} />
+          <StatTile label="Space heute" value={stats.spaceToday} />
           <StatTile 
             label="Ø Dauer (7T)" 
             value={stats.avgDuration ? formatDuration(stats.avgDuration) : '—'} 
-            hint={!stats.avgDuration ? 'Nicht verfügbar (Daten fehlen)' : undefined}
+            hint={!stats.avgDuration ? 'Min. 2 Calls nötig' : undefined}
           />
           <StatTile label="Ausstehend" value={stats.pendingCount} highlight={stats.pendingCount > 0} />
         </motion.div>
@@ -691,7 +833,7 @@ Status: ${persistentError.status || 'N/A'}`}
           {/* RIGHT COLUMN: col-span-4 */}
           <div className="lg:col-span-4 space-y-4">
 
-            {/* Quick Actions - V5 Premium */}
+            {/* V6: Business Snapshot Panel */}
             <motion.div
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
@@ -700,10 +842,199 @@ Status: ${persistentError.status || 'N/A'}`}
               style={{ background: DT.panelBg, backdropFilter: 'blur(20px)', border: `1px solid ${DT.panelBorder}` }}
             >
               <div className="p-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500">
+                    Business Snapshot
+                  </h3>
+                  {profileCompleteness && (
+                    <span className="text-[10px] font-medium" style={{ color: profileCompleteness.filled >= 7 ? '#22c55e' : DT.orange }}>
+                      {profileCompleteness.filled}/{profileCompleteness.total}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="p-4">
+                {profileLoading ? (
+                  <div className="space-y-2">
+                    <div className="h-3 bg-neutral-800/50 rounded animate-pulse w-3/4" />
+                    <div className="h-3 bg-neutral-800/30 rounded animate-pulse w-1/2" />
+                  </div>
+                ) : profileError || !profileContext ? (
+                  <div className="text-center py-4">
+                    <p className="text-xs text-neutral-500 mb-3">Profil nicht verfügbar</p>
+                    <a href="/app/leads" className="text-[11px] font-medium px-3 py-1.5 rounded-lg transition-colors hover:bg-white/[0.06]" style={{ color: DT.orange }}>
+                      Zur Wissensdatenbank
+                    </a>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {/* Company / Name */}
+                    <div>
+                      <p className="text-sm font-semibold" style={{ color: DT.gold }}>
+                        {profileContext.company || profileContext.name || 'Unbenannt'}
+                      </p>
+                      {profileContext.industry && (
+                        <p className="text-[11px] text-neutral-500 mt-0.5">{profileContext.industry}</p>
+                      )}
+                    </div>
+                    
+                    {/* AI Profile fields */}
+                    {profileContext.aiProfile?.companyDescription && (
+                      <p className="text-xs text-neutral-400 line-clamp-2">
+                        {profileContext.aiProfile.companyDescription}
+                      </p>
+                    )}
+                    
+                    {profileContext.aiProfile?.targetAudience && (
+                      <div>
+                        <p className="text-[9px] uppercase tracking-wide text-neutral-600 mb-0.5">Zielgruppe</p>
+                        <p className="text-[11px] text-neutral-400">{profileContext.aiProfile.targetAudience}</p>
+                      </div>
+                    )}
+                    
+                    {/* Completeness hint */}
+                    {profileCompleteness && profileCompleteness.filled < 7 && (
+                      <a 
+                        href="/app/leads"
+                        className="block w-full py-2.5 px-3 rounded-xl text-[11px] font-medium text-center transition-all hover:bg-white/[0.06] mt-2"
+                        style={{ border: `1px solid ${DT.orange}30`, color: DT.orange }}
+                      >
+                        Profil vervollständigen
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+
+            {/* V6: Action Inbox Panel */}
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: ANIM.duration, delay: 0.25 }}
+              className="rounded-2xl overflow-hidden"
+              style={{ background: DT.panelBg, backdropFilter: 'blur(20px)', border: `1px solid ${DT.panelBorder}` }}
+            >
+              <div className="p-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500">
+                    Action Inbox
+                  </h3>
+                  <span className="text-[10px] text-neutral-600">
+                    {actionItems.filter(a => !a.done).length} offen
+                  </span>
+                </div>
+              </div>
+              <div className="p-3">
+                {actionItems.length === 0 ? (
+                  <div className="text-center py-6">
+                    <p className="text-xs text-neutral-500 mb-1">Keine Aufgaben</p>
+                    <p className="text-[10px] text-neutral-600">Aufgaben werden aus Anruf-Zusammenfassungen erstellt</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 max-h-[240px] overflow-y-auto">
+                    {actionItems.map(action => (
+                      <div 
+                        key={action.id}
+                        className={`p-3 rounded-xl transition-all ${action.done ? 'opacity-50' : ''}`}
+                        style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${DT.panelBorder}` }}
+                      >
+                        <div className="flex items-start gap-2">
+                          <button
+                            onClick={() => toggleActionDone(action.id)}
+                            className="mt-0.5 w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-all"
+                            style={{ 
+                              borderColor: action.done ? '#22c55e' : 'rgba(255,255,255,0.2)',
+                              background: action.done ? 'rgba(34,197,94,0.15)' : 'transparent'
+                            }}
+                          >
+                            {action.done && <div className="w-2 h-2 rounded-sm bg-green-500" />}
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-xs leading-relaxed ${action.done ? 'line-through text-neutral-600' : 'text-neutral-300'}`}>
+                              {action.title}
+                            </p>
+                            <p className="text-[9px] text-neutral-600 mt-1">
+                              <span className="uppercase tracking-wide">{action.source.type}</span> · {action.source.name}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+
+            {/* V6: Calendar Preview Panel */}
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: ANIM.duration, delay: 0.3 }}
+              className="rounded-2xl overflow-hidden"
+              style={{ background: DT.panelBg, backdropFilter: 'blur(20px)', border: `1px solid ${DT.panelBorder}` }}
+            >
+              <div className="p-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                 <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500">
-                  Schnellaktionen
+                  Kalender (7 Tage)
                 </h3>
               </div>
+              <div className="p-4">
+                {calendarLoading ? (
+                  <div className="space-y-2">
+                    <div className="h-3 bg-neutral-800/50 rounded animate-pulse w-full" />
+                    <div className="h-3 bg-neutral-800/30 rounded animate-pulse w-3/4" />
+                  </div>
+                ) : calendarEvents.length === 0 ? (
+                  <div className="text-center py-4">
+                    <p className="text-xs text-neutral-500 mb-1">Keine Termine</p>
+                    <p className="text-[10px] text-neutral-600 mb-3">Termine werden aus Calls automatisch erstellt</p>
+                    <a 
+                      href="/app/kalender"
+                      className="inline-block text-[11px] font-medium px-3 py-1.5 rounded-lg transition-colors hover:bg-white/[0.06]"
+                      style={{ color: DT.gold, border: `1px solid ${DT.panelBorder}` }}
+                    >
+                      Kalender öffnen
+                    </a>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {calendarEvents.slice(0, 5).map(event => (
+                      <div 
+                        key={event.id}
+                        className="p-2.5 rounded-xl"
+                        style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${DT.panelBorder}` }}
+                      >
+                        <p className="text-xs font-medium text-neutral-300 truncate">{event.title}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] text-neutral-500">
+                            {format(new Date(event.date), 'dd.MM', { locale: de })}
+                          </span>
+                          {event.startTime && (
+                            <span className="text-[10px] text-neutral-600">{event.startTime}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    <a 
+                      href="/app/kalender"
+                      className="block text-center text-[11px] font-medium py-2 text-neutral-500 hover:text-neutral-300 transition-colors"
+                    >
+                      Alle anzeigen
+                    </a>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+
+            {/* Quick Actions */}
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: ANIM.duration, delay: 0.35 }}
+              className="rounded-2xl overflow-hidden"
+              style={{ background: DT.panelBg, backdropFilter: 'blur(20px)', border: `1px solid ${DT.panelBorder}` }}
+            >
               <div className="p-4 space-y-2">
                 <a 
                   href="/app/power"
@@ -723,27 +1054,7 @@ Status: ${persistentError.status || 'N/A'}`}
                 >
                   Space öffnen
                 </a>
-                <a 
-                  href="/app/leads"
-                  className="block w-full py-3 px-4 rounded-xl text-[13px] font-medium text-center transition-all hover:bg-white/[0.06]"
-                  style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${DT.panelBorder}`, color: '#888' }}
-                >
-                  Wissensdatenbank
-                </a>
               </div>
-            </motion.div>
-
-            {/* Info Hint */}
-            <motion.div
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: ANIM.duration, delay: 0.25 }}
-              className="rounded-2xl p-4"
-              style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${DT.panelBorder}` }}
-            >
-              <p className="text-[11px] text-neutral-500 leading-relaxed">
-                Vervollständige dein Profil in der Wissensdatenbank für präzisere Anrufe und bessere Zusammenfassungen.
-              </p>
             </motion.div>
           </div>
         </div>
