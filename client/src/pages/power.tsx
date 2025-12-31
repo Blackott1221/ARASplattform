@@ -182,7 +182,7 @@ function PowerContent() {
   const [selectedContactId, setSelectedContactId] = useState<number | null>(null);
 
   // Call state
-  const [callStatus, setCallStatus] = useState<'idle' | 'processing' | 'ringing' | 'connected' | 'ended'>('idle');
+  const [callStatus, setCallStatus] = useState<'idle' | 'processing' | 'ringing' | 'connected' | 'ended' | 'error'>('idle');
   const [callDuration, setCallDuration] = useState(0);
   const [result, setResult] = useState<any>(null);
   const [callSummary, setCallSummary] = useState<any>(null);
@@ -545,6 +545,36 @@ function PowerContent() {
     setPreflightChecks([]);
   };
 
+  // Refresh call details (for transcript/recording that may be processing)
+  const handleRefreshCallDetails = async () => {
+    if (!result?.callId && !result?.id) return;
+    
+    const callId = result.callId || result.id;
+    try {
+      const response = await fetch(`/api/aras-voice/call-details/${callId}`, { credentials: 'include' });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const callDetails = await response.json();
+      
+      // Update result with fresh data
+      setResult({
+        ...result,
+        transcript: callDetails.transcript,
+        recordingUrl: callDetails.recordingUrl,
+        duration: callDetails.duration || result.duration,
+      });
+      
+      if (callDetails.summary) {
+        setCallSummary(callDetails.summary);
+      }
+      
+      toast({ title: 'Aktualisiert', description: 'Call-Details wurden neu geladen' });
+    } catch (err: any) {
+      toast({ title: 'Fehler', description: 'Details konnten nicht geladen werden', variant: 'destructive' });
+    }
+  };
+
   // Cleanup timer on unmount
   useEffect(() => {
     return () => clearCallTimer();
@@ -882,6 +912,7 @@ Time: ${persistentError.timestamp}`}
                   result={result}
                   summary={callSummary}
                   onNewCall={handleNewCall}
+                  onRefresh={handleRefreshCallDetails}
                 />
               </motion.div>
             )}

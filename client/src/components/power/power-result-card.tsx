@@ -1,11 +1,110 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { Copy, Download, RefreshCw, Loader2, CheckCircle, User, Bot } from 'lucide-react';
 
 const CI = {
   goldLight: '#E9D7C4',
   orange: '#FE9100',
   goldDark: '#A34E00'
 };
+
+// ═══════════════════════════════════════════════════════════════
+// TRANSCRIPT NORMALIZER - Handles all possible formats robustly
+// ═══════════════════════════════════════════════════════════════
+interface TranscriptMessage {
+  role: 'user' | 'agent' | 'system';
+  text: string;
+  ts?: number;
+}
+
+interface NormalizedTranscript {
+  text: string;                    // Always a clean string
+  messages: TranscriptMessage[];   // Parsed messages if available
+  isProcessing: boolean;           // True if transcript not yet ready
+}
+
+function normalizeTranscript(raw: any): NormalizedTranscript {
+  // Case 0: null/undefined/empty
+  if (!raw || (typeof raw === 'string' && raw.trim() === '')) {
+    return { text: '', messages: [], isProcessing: true };
+  }
+
+  // Case 1: Already a clean string
+  if (typeof raw === 'string') {
+    // Try to parse as JSON first (might be JSON string)
+    try {
+      const parsed = JSON.parse(raw);
+      return normalizeTranscript(parsed); // Recurse with parsed object
+    } catch {
+      // Not JSON, it's a plain string - clean it up
+      const cleaned = raw.trim();
+      if (cleaned.length < 10) {
+        return { text: cleaned, messages: [], isProcessing: true };
+      }
+      return { text: cleaned, messages: [], isProcessing: false };
+    }
+  }
+
+  // Case 2: Array of messages/segments
+  if (Array.isArray(raw)) {
+    const messages: TranscriptMessage[] = [];
+    const textParts: string[] = [];
+
+    for (const item of raw) {
+      if (typeof item === 'string') {
+        textParts.push(item);
+        continue;
+      }
+      
+      // Handle various message formats from different APIs
+      const role = item.role || item.speaker || item.type || 'system';
+      const text = item.message || item.text || item.content || item.transcript || '';
+      
+      if (text && typeof text === 'string' && text.trim()) {
+        const normalizedRole = 
+          role === 'assistant' || role === 'agent' || role === 'ai' || role === 'bot' ? 'agent' :
+          role === 'user' || role === 'human' || role === 'customer' ? 'user' : 'system';
+        
+        messages.push({ role: normalizedRole as any, text: text.trim(), ts: item.timestamp || item.ts });
+        
+        const label = normalizedRole === 'agent' ? 'ARAS' : normalizedRole === 'user' ? 'Kunde' : 'System';
+        textParts.push(`[${label}]: ${text.trim()}`);
+      }
+    }
+
+    const finalText = textParts.join('\n\n');
+    return {
+      text: finalText,
+      messages,
+      isProcessing: finalText.length < 10
+    };
+  }
+
+  // Case 3: Object with transcript/messages property
+  if (typeof raw === 'object') {
+    // Check common property names
+    const nested = raw.transcript || raw.messages || raw.segments || raw.turns || raw.conversation;
+    if (nested) {
+      return normalizeTranscript(nested);
+    }
+    
+    // Single message object
+    if (raw.text || raw.message || raw.content) {
+      const text = raw.text || raw.message || raw.content;
+      return { text: String(text), messages: [], isProcessing: false };
+    }
+    
+    // Fallback: stringify but mark as potentially processing
+    try {
+      const str = JSON.stringify(raw, null, 2);
+      return { text: str, messages: [], isProcessing: true };
+    } catch {
+      return { text: '[Transkript konnte nicht gelesen werden]', messages: [], isProcessing: true };
+    }
+  }
+
+  return { text: '', messages: [], isProcessing: true };
+}
 
 interface CallSummary {
   outcome: string;
@@ -17,9 +116,10 @@ interface CallSummary {
 
 interface PowerResultCardProps {
   result: {
-    id?: string;
+    id?: string | number;
+    callId?: string | number;
     recordingUrl?: string | null;
-    transcript?: string | null;
+    transcript?: any;  // Can be string, array, object - we normalize it
     duration?: number | null;
     phoneNumber?: string;
     contactName?: string;
@@ -27,6 +127,7 @@ interface PowerResultCardProps {
   summary?: CallSummary | null;
   linkedContact?: { id: number; name: string; company?: string } | null;
   onNewCall: () => void;
+  onRefresh?: () => void;  // NEW: For refreshing call details
   onLinkToContact?: (phoneNumber: string, contactName?: string) => void;
   onSaveAsNewContact?: (phoneNumber: string, contactName?: string) => void;
 }
@@ -36,12 +137,74 @@ export function PowerResultCard({
   summary,
   linkedContact,
   onNewCall,
+  onRefresh,
   onLinkToContact,
   onSaveAsNewContact
 }: PowerResultCardProps) {
   const [audioError, setAudioError] = useState(false);
+  const [downloadingAudio, setDownloadingAudio] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  // Normalize transcript once
+  const normalizedTranscript = useMemo(() => 
+    normalizeTranscript(result?.transcript), 
+    [result?.transcript]
+  );
 
   if (!result) return null;
+
+  // Copy transcript to clipboard
+  const handleCopyTranscript = async () => {
+    if (!normalizedTranscript.text) return;
+    try {
+      await navigator.clipboard.writeText(normalizedTranscript.text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Copy failed:', err);
+    }
+  };
+
+  // Download recording as file
+  const handleDownloadRecording = async () => {
+    if (!result.recordingUrl) return;
+    
+    setDownloadingAudio(true);
+    setDownloadError(null);
+    
+    try {
+      // Fetch the audio as blob
+      const response = await fetch(result.recordingUrl, { credentials: 'include' });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      
+      // Generate filename
+      const callId = result.id || result.callId || 'unknown';
+      const date = new Date().toISOString().split('T')[0];
+      const ext = blob.type.includes('wav') ? 'wav' : 'mp3';
+      a.download = `ARAS_CALL_${callId}_${date}.${ext}`;
+      
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error('Download failed:', err);
+      setDownloadError(err.message || 'Download fehlgeschlagen');
+    } finally {
+      setDownloadingAudio(false);
+    }
+  };
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -108,7 +271,7 @@ export function PowerResultCard({
           )}
         </motion.div>
 
-        {/* 🎤 Audio Recording */}
+        {/* 🎤 Audio Recording with Download */}
         {result.recordingUrl ? (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -130,9 +293,29 @@ export function PowerResultCard({
             />
             <div className="flex items-center justify-between text-[11px] text-neutral-400 mb-2">
               <span>Aufzeichnung des Gesprächs</span>
-              {result.duration != null && (
-                <span>{formatDuration(result.duration)}</span>
-              )}
+              <div className="flex items-center gap-2">
+                {result.duration != null && (
+                  <span>{formatDuration(result.duration)}</span>
+                )}
+                {/* Download Button */}
+                <button
+                  onClick={handleDownloadRecording}
+                  disabled={downloadingAudio}
+                  className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all hover:scale-105 disabled:opacity-50"
+                  style={{
+                    background: 'rgba(254,145,0,0.15)',
+                    border: '1px solid rgba(254,145,0,0.3)',
+                    color: CI.orange
+                  }}
+                >
+                  {downloadingAudio ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Download className="w-3 h-3" />
+                  )}
+                  {downloadingAudio ? 'Lädt...' : 'Download'}
+                </button>
+              </div>
             </div>
             <audio
               controls
@@ -150,9 +333,14 @@ export function PowerResultCard({
                 Die Aufzeichnung konnte nicht geladen werden. Versuche es später erneut oder überprüfe deine Verbindung.
               </p>
             )}
-            {!audioError && (
+            {downloadError && (
+              <p className="mt-2 text-[10px] text-red-400">
+                Download-Fehler: {downloadError}
+              </p>
+            )}
+            {!audioError && !downloadError && (
               <p className="mt-1 text-[10px] text-neutral-500">
-                Falls die Aufzeichnung nicht lädt, versuche es später erneut.
+                Klicke "Download" um die Aufnahme als Datei zu speichern.
               </p>
             )}
           </motion.div>
@@ -300,38 +488,130 @@ export function PowerResultCard({
           </p>
         )}
 
-        {/* 📄 Transkript */}
-        {result.transcript && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="rounded-xl p-4"
-            style={{
-              background: 'rgba(0,0,0,0.25)',
-              border: '1px solid rgba(255,255,255,0.06)'
+        {/* 📄 Transkript - Normalized & with Actions */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="rounded-xl p-4"
+          style={{
+            background: 'rgba(0,0,0,0.25)',
+            border: '1px solid rgba(255,255,255,0.06)'
+          }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-semibold" style={{ color: CI.goldLight }}>
+              Transkript
+            </span>
+            <div className="flex items-center gap-2">
+              {/* Refresh Button */}
+              {onRefresh && (
+                <button
+                  onClick={onRefresh}
+                  className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all hover:scale-105"
+                  style={{
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    color: '#9ca3af'
+                  }}
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  Aktualisieren
+                </button>
+              )}
+              {/* Copy Button */}
+              {normalizedTranscript.text && (
+                <button
+                  onClick={handleCopyTranscript}
+                  className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all hover:scale-105"
+                  style={{
+                    background: copied ? 'rgba(34,197,94,0.15)' : 'rgba(254,145,0,0.15)',
+                    border: copied ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(254,145,0,0.3)',
+                    color: copied ? '#4ade80' : CI.orange
+                  }}
+                >
+                  {copied ? (
+                    <><CheckCircle className="w-3 h-3" /> Kopiert!</>
+                  ) : (
+                    <><Copy className="w-3 h-3" /> Kopieren</>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+          
+          <div 
+            className="p-4 rounded-xl overflow-y-auto"
+            style={{ 
+              background: 'rgba(0,0,0,0.3)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              maxHeight: '350px'
             }}
           >
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-sm font-semibold" style={{ color: CI.goldLight }}>
-                Transkript
-              </span>
-            </div>
-            
-            <div 
-              className="p-4 rounded-xl overflow-y-auto"
-              style={{ 
-                background: 'rgba(0,0,0,0.3)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                maxHeight: '300px'
-              }}
-            >
+            {normalizedTranscript.isProcessing && !normalizedTranscript.text ? (
+              <div className="flex items-center gap-3 text-neutral-400">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-xs">Transkript wird verarbeitet...</span>
+              </div>
+            ) : normalizedTranscript.messages.length > 0 ? (
+              /* Chat-style rendering for messages */
+              <div className="space-y-3">
+                {normalizedTranscript.messages.map((msg, idx) => (
+                  <div 
+                    key={idx} 
+                    className={`flex gap-2 ${msg.role === 'agent' ? '' : 'flex-row-reverse'}`}
+                  >
+                    <div 
+                      className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center"
+                      style={{
+                        background: msg.role === 'agent' 
+                          ? 'linear-gradient(135deg, rgba(254,145,0,0.3), rgba(163,78,0,0.3))' 
+                          : 'rgba(255,255,255,0.1)',
+                        border: msg.role === 'agent' 
+                          ? '1px solid rgba(254,145,0,0.4)' 
+                          : '1px solid rgba(255,255,255,0.15)'
+                      }}
+                    >
+                      {msg.role === 'agent' ? (
+                        <Bot className="w-3 h-3" style={{ color: CI.orange }} />
+                      ) : (
+                        <User className="w-3 h-3 text-neutral-400" />
+                      )}
+                    </div>
+                    <div 
+                      className={`flex-1 px-3 py-2 rounded-xl text-xs leading-relaxed ${
+                        msg.role === 'agent' ? 'text-right' : ''
+                      }`}
+                      style={{
+                        background: msg.role === 'agent' 
+                          ? 'rgba(254,145,0,0.08)' 
+                          : 'rgba(255,255,255,0.05)',
+                        border: msg.role === 'agent' 
+                          ? '1px solid rgba(254,145,0,0.15)' 
+                          : '1px solid rgba(255,255,255,0.08)',
+                        color: msg.role === 'agent' ? CI.goldLight : '#d1d5db'
+                      }}
+                    >
+                      <div className="text-[9px] uppercase tracking-wider mb-1 opacity-60">
+                        {msg.role === 'agent' ? 'ARAS' : 'Kunde'}
+                      </div>
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : normalizedTranscript.text ? (
+              /* Plain text rendering */
               <pre className="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap font-sans">
-                {result.transcript}
+                {normalizedTranscript.text}
               </pre>
-            </div>
-          </motion.div>
-        )}
+            ) : (
+              <p className="text-xs text-neutral-500">
+                Kein Transkript verfügbar. Klicke "Aktualisieren" um es erneut zu laden.
+              </p>
+            )}
+          </div>
+        </motion.div>
 
         {/* 📇 Contact Verknüpfung */}
         {result.phoneNumber && (
