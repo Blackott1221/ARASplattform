@@ -10,7 +10,7 @@ import { PowerResultCard } from '@/components/power/power-result-card';
 import { ContactAutoSuggest } from '@/components/power/contact-auto-suggest';
 
 // ═══════════════════════════════════════════════════════════════
-// DESIGN TOKENS (2026 Control Room - No Icons)
+// DESIGN TOKENS (2026 Control Room - Premium Micro-UX)
 // ═══════════════════════════════════════════════════════════════
 const DT = {
   // Colors
@@ -23,6 +23,16 @@ const DT = {
   // Glow
   glow: '0 0 0 1px rgba(255,106,0,0.18), 0 0 22px rgba(255,106,0,0.10)',
   glowSubtle: '0 0 12px rgba(255,106,0,0.08)',
+  glowAmbient: '0 0 40px rgba(255,106,0,0.12), inset 0 0 30px rgba(255,106,0,0.03)',
+  // Spacing rhythm
+  space: { xs: 12, sm: 16, md: 24, lg: 32 },
+};
+
+// Animation constants (expensive, subtle feel)
+const ANIM = {
+  duration: 0.22,
+  easing: [0.22, 1, 0.36, 1] as const,
+  stagger: 0.04,
 };
 
 // Legacy CI alias for backward compat
@@ -129,7 +139,7 @@ interface PersistentError {
 // HELPER COMPONENTS (No Icons - Pure CSS)
 // ═══════════════════════════════════════════════════════════════
 
-// Status Dot - CSS only circle with color
+// Status Dot - CSS only circle with color + transition
 function StatusDot({ status }: { status: 'pending' | 'pass' | 'warn' | 'fail' }) {
   const colors = {
     pending: { bg: 'rgba(156,163,175,0.3)', border: 'rgba(156,163,175,0.5)' },
@@ -139,43 +149,108 @@ function StatusDot({ status }: { status: 'pending' | 'pass' | 'warn' | 'fail' })
   };
   const c = colors[status];
   return (
-    <span 
+    <motion.span 
+      initial={{ scale: 0.8, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ duration: ANIM.duration, ease: ANIM.easing }}
       className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${status === 'pending' ? 'animate-pulse' : ''}`}
       style={{ background: c.bg, border: `1.5px solid ${c.border}` }}
     />
   );
 }
 
-function PreflightCheckItem({ check }: { check: PreflightCheck }) {
-  const showFixButton = check.fixLink && (check.status === 'fail' || check.status === 'warn');
+// Skeleton row for loading state
+function PreflightSkeleton() {
   return (
-    <div 
-      className="flex flex-col sm:flex-row sm:items-center gap-2 py-3 px-3 -mx-3 rounded-xl transition-all hover:bg-white/[0.03] group"
-      style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
-    >
-      <div className="flex items-center gap-3 flex-1 min-w-0">
-        <StatusDot status={check.status} />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium" style={{ color: DT.gold }}>{check.label}</p>
-          {check.details && (
-            <p className="text-xs text-neutral-500 truncate mt-0.5">{check.details}</p>
-          )}
+    <div className="space-y-3">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="flex items-center gap-3 py-3 px-3 animate-pulse">
+          <div className="w-2.5 h-2.5 rounded-full bg-neutral-700/50" />
+          <div className="flex-1 space-y-1.5">
+            <div className="h-3.5 bg-neutral-700/30 rounded w-24" />
+            <div className="h-2.5 bg-neutral-800/30 rounded w-40" />
+          </div>
         </div>
-      </div>
-      {showFixButton && (
-        <a
-          href={check.fixLink}
-          className="text-xs font-semibold px-3 py-1.5 rounded-[10px] transition-all hover:scale-[1.03] self-start sm:self-center"
-          style={{ 
-            background: check.status === 'fail' ? 'rgba(255,106,0,0.12)' : 'rgba(251,191,36,0.10)',
-            color: check.status === 'fail' ? DT.orange : '#fbbf24',
-            border: `1px solid ${check.status === 'fail' ? 'rgba(255,106,0,0.25)' : 'rgba(251,191,36,0.25)'}`
-          }}
-        >
-          Jetzt beheben
-        </a>
-      )}
+      ))}
     </div>
+  );
+}
+
+function PreflightCheckItem({ check, index = 0 }: { check: PreflightCheck; index?: number }) {
+  const [showDetails, setShowDetails] = useState(false);
+  const showFixButton = check.fixLink && (check.status === 'fail' || check.status === 'warn');
+  const hasAccent = check.status === 'fail' || check.status === 'warn';
+  
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: ANIM.duration, ease: ANIM.easing, delay: index * ANIM.stagger }}
+      className="relative"
+    >
+      {/* Left accent line for warn/fail */}
+      {hasAccent && (
+        <motion.div
+          initial={{ scaleY: 0 }}
+          animate={{ scaleY: 1 }}
+          transition={{ duration: 0.3, ease: ANIM.easing }}
+          className="absolute left-0 top-2 bottom-2 w-[2px] rounded-full origin-top"
+          style={{ background: check.status === 'fail' ? '#ef4444' : '#fbbf24' }}
+        />
+      )}
+      <div 
+        className={`flex flex-col sm:flex-row sm:items-center gap-2 py-3 px-3 rounded-xl transition-all duration-200 hover:bg-white/[0.03] group ${hasAccent ? 'ml-2' : '-mx-3'}`}
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+      >
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <StatusDot status={check.status} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium" style={{ color: DT.gold }}>{check.label}</p>
+            {check.details && !showDetails && (
+              <p className="text-xs text-neutral-500 truncate mt-0.5">{check.details}</p>
+            )}
+            {/* Expandable details */}
+            <AnimatePresence>
+              {showDetails && check.details && (
+                <motion.p
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="text-xs text-neutral-400 mt-1 leading-relaxed"
+                >
+                  {check.details}
+                </motion.p>
+              )}
+            </AnimatePresence>
+            {check.details && (
+              <button
+                onClick={() => setShowDetails(!showDetails)}
+                className="text-[10px] text-neutral-500 hover:text-neutral-400 mt-1 transition-colors"
+              >
+                {showDetails ? '− Weniger' : '+ Warum?'}
+              </button>
+            )}
+          </div>
+        </div>
+        {showFixButton && (
+          <motion.a
+            href={check.fixLink}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.98 }}
+            className="text-xs font-semibold px-3 py-1.5 rounded-[10px] self-start sm:self-center"
+            style={{ 
+              background: check.status === 'fail' ? 'rgba(255,106,0,0.12)' : 'rgba(251,191,36,0.10)',
+              color: check.status === 'fail' ? DT.orange : '#fbbf24',
+              border: `1px solid ${check.status === 'fail' ? 'rgba(255,106,0,0.25)' : 'rgba(251,191,36,0.25)'}`,
+              animation: check.status === 'fail' ? 'pulse-subtle 2s ease-in-out infinite' : 'none'
+            }}
+          >
+            Jetzt beheben
+          </motion.a>
+        )}
+      </div>
+    </motion.div>
   );
 }
 
@@ -190,16 +265,20 @@ function StatusPill({ status }: { status: string }) {
   };
   const c = config[status] || config.idle;
   return (
-    <span 
-      className="px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-[0.08em] font-['Orbitron']"
+    <motion.span
+      key={status}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: ANIM.duration, ease: ANIM.easing }}
+      className="px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-[0.08em] font-['Orbitron'] transition-all duration-300"
       style={{ color: c.color, background: c.bg, border: `1px solid ${c.color}25`, boxShadow: c.glow || 'none' }}
     >
       {c.label}
-    </span>
+    </motion.span>
   );
 }
 
-// Visual Stepper (no logic, just display)
+// Visual Stepper with smooth transitions
 function StepIndicator({ currentStep }: { currentStep: number }) {
   const steps = [
     { num: 1, label: 'Systemcheck' },
@@ -208,48 +287,65 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
     { num: 4, label: 'Ergebnis' },
   ];
   return (
-    <div className="flex items-center justify-between gap-2 mb-6">
+    <motion.div 
+      initial={{ opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: ANIM.duration, ease: ANIM.easing, delay: 0.1 }}
+      className="flex items-center justify-between gap-2 mb-6"
+    >
       {steps.map((step, idx) => {
         const isActive = step.num === currentStep;
         const isCompleted = step.num < currentStep;
         return (
           <div key={step.num} className="flex-1 flex flex-col items-center">
             <div className="flex items-center w-full">
-              <div 
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                  isActive ? 'scale-110' : ''
-                }`}
+              <motion.div
+                animate={{
+                  scale: isActive ? 1.1 : 1,
+                  boxShadow: isActive ? DT.glow : 'none'
+                }}
+                transition={{ duration: 0.25, ease: ANIM.easing }}
+                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
                 style={{
                   background: isActive ? `linear-gradient(135deg, ${DT.orange}, ${DT.goldDark})` : 
                              isCompleted ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.05)',
                   border: isActive ? 'none' : isCompleted ? '1px solid rgba(34,197,94,0.4)' : `1px solid ${DT.panelBorder}`,
                   color: isActive ? '#000' : isCompleted ? '#4ade80' : '#666',
-                  boxShadow: isActive ? DT.glow : 'none'
                 }}
               >
                 {step.num}
-              </div>
+              </motion.div>
               {idx < steps.length - 1 && (
-                <div 
-                  className="flex-1 h-px mx-2"
-                  style={{ 
-                    background: isCompleted ? 'rgba(34,197,94,0.4)' : 
-                               isActive ? `linear-gradient(90deg, ${DT.orange}60, transparent)` : 
-                               'rgba(255,255,255,0.08)' 
-                  }}
-                />
+                <div className="flex-1 h-px mx-2 relative overflow-hidden">
+                  <div 
+                    className="absolute inset-0 transition-all duration-500"
+                    style={{ 
+                      background: 'rgba(255,255,255,0.08)',
+                    }}
+                  />
+                  <motion.div
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: isCompleted ? 1 : isActive ? 0.5 : 0 }}
+                    transition={{ duration: 0.4, ease: ANIM.easing }}
+                    className="absolute inset-0 origin-left"
+                    style={{ 
+                      background: isCompleted ? 'rgba(34,197,94,0.5)' : `linear-gradient(90deg, ${DT.orange}, transparent)`
+                    }}
+                  />
+                </div>
               )}
             </div>
-            <span 
+            <motion.span
+              animate={{ color: isActive ? DT.gold : '#666' }}
+              transition={{ duration: 0.2 }}
               className="text-[10px] mt-1.5 font-medium tracking-wide hidden sm:block"
-              style={{ color: isActive ? DT.gold : '#666' }}
             >
               {step.label}
-            </span>
+            </motion.span>
           </div>
         );
       })}
-    </div>
+    </motion.div>
   );
 }
 
@@ -822,14 +918,27 @@ function PowerContent() {
     <div className="h-full flex-1 min-h-0 overflow-y-auto">
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-8 space-y-6">
 
-        {/* TOP HEADER - Ultra Clean */}
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500 mb-1">
+        {/* TOP HEADER - Ultra Clean with Animated Underline */}
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+          className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4"
+        >
+          <div className="relative">
+            <motion.p 
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: ANIM.duration, delay: 0.05 }}
+              className="text-[11px] uppercase tracking-[0.2em] text-neutral-500 mb-1"
+            >
               POWER / EINZELANRUF
-            </p>
-            <h1 
-              className="text-3xl sm:text-4xl font-black font-['Orbitron'] tracking-wide"
+            </motion.p>
+            <motion.h1 
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: ANIM.duration, delay: 0.1 }}
+              className="text-3xl sm:text-4xl font-black font-['Orbitron'] tracking-wide relative inline-block"
               style={{ 
                 background: 'linear-gradient(90deg, #ff6a00, #ffb15a, #e9d7c4)',
                 WebkitBackgroundClip: 'text',
@@ -837,10 +946,20 @@ function PowerContent() {
               }}
             >
               POWER
-            </h1>
+              {/* Animated underline sweep */}
+              <motion.span
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{ duration: 0.6, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                className="absolute -bottom-1 left-0 right-0 h-[2px] origin-left"
+                style={{ 
+                  background: `linear-gradient(90deg, ${DT.orange}, ${DT.gold}40, transparent)`,
+                }}
+              />
+            </motion.h1>
           </div>
           <StatusPill status={callStatus} />
-        </div>
+        </motion.div>
 
         {/* STEP INDICATOR */}
         <StepIndicator currentStep={currentStep} />
@@ -910,24 +1029,35 @@ Time: ${persistentError.timestamp}`}
           {/* LEFT COLUMN: col-span-7 */}
           <div className="lg:col-span-7 space-y-5">
 
-            {/* Preflight Checks Panel - Glass Card */}
-            <div 
+            {/* Preflight Checks Panel - Glass Card with Skeleton */}
+            <motion.div 
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: ANIM.duration, ease: ANIM.easing, delay: 0.15 }}
               className="rounded-[20px] p-5"
               style={{ background: DT.panelBg, border: `1px solid ${DT.panelBorder}` }}
             >
               <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] mb-4" style={{ color: DT.gold }}>
                 Systemprüfung
               </h3>
-              {preflightChecks.length > 0 ? (
+              {isLoading && preflightChecks.length === 0 ? (
+                <PreflightSkeleton />
+              ) : preflightChecks.length > 0 ? (
                 <div>
-                  {preflightChecks.map(check => (
-                    <PreflightCheckItem key={check.id} check={check} />
+                  {preflightChecks.map((check, idx) => (
+                    <PreflightCheckItem key={check.id} check={check} index={idx} />
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-neutral-500">Gib Telefonnummer und Nachricht ein, um die Prüfung zu starten.</p>
+                <motion.p 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-sm text-neutral-500"
+                >
+                  Gib Telefonnummer und Nachricht ein, um die Prüfung zu starten.
+                </motion.p>
               )}
-            </div>
+            </motion.div>
 
             {/* Input Form - Ultra Clean */}
             <div 
@@ -1059,28 +1189,72 @@ Time: ${persistentError.timestamp}`}
               </motion.div>
             )}
 
-            {/* Active Call Status - Clean, No Icons */}
-            {(callStatus === 'ringing' || callStatus === 'connected') && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.97 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="rounded-[20px] p-6 text-center"
-                style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)' }}
-              >
-                <div 
-                  className="w-14 h-14 mx-auto mb-4 rounded-full flex items-center justify-center animate-pulse"
-                  style={{ background: 'rgba(34,197,94,0.15)', border: '2px solid rgba(34,197,94,0.4)' }}
+            {/* Active Call Status - Premium with Ambient Glow */}
+            <AnimatePresence mode="wait">
+              {(callStatus === 'ringing' || callStatus === 'connected') && (
+                <motion.div
+                  key="call-status"
+                  initial={{ opacity: 0, scale: 0.97, y: 6 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.97, y: -6 }}
+                  transition={{ duration: ANIM.duration, ease: ANIM.easing }}
+                  className="rounded-[20px] p-6 text-center relative overflow-hidden"
+                  style={{ 
+                    background: 'rgba(34,197,94,0.06)', 
+                    border: '1px solid rgba(34,197,94,0.20)',
+                    boxShadow: callStatus === 'connected' ? '0 0 60px rgba(34,197,94,0.12), inset 0 0 40px rgba(34,197,94,0.04)' : 'none'
+                  }}
                 >
-                  <div className="w-4 h-4 rounded-full bg-green-400" />
-                </div>
-                <p className="text-base font-bold text-green-400 mb-1 uppercase tracking-wide">
-                  {callStatus === 'ringing' ? 'Verbindet...' : 'Anruf läuft'}
-                </p>
-                {callStatus === 'connected' && (
-                  <p className="text-sm text-green-300/60 font-mono">{formatDuration(callDuration)}</p>
-                )}
-              </motion.div>
-            )}
+                  {/* Ambient glow background for connected state */}
+                  {callStatus === 'connected' && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="absolute inset-0 pointer-events-none"
+                      style={{
+                        background: 'radial-gradient(ellipse at center, rgba(34,197,94,0.08) 0%, transparent 70%)'
+                      }}
+                    />
+                  )}
+                  <div className="relative">
+                    <motion.div 
+                      animate={{ scale: [1, 1.05, 1] }}
+                      transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                      className="w-14 h-14 mx-auto mb-4 rounded-full flex items-center justify-center"
+                      style={{ 
+                        background: 'rgba(34,197,94,0.12)', 
+                        border: '2px solid rgba(34,197,94,0.35)',
+                        boxShadow: '0 0 20px rgba(34,197,94,0.2)'
+                      }}
+                    >
+                      <motion.div 
+                        animate={{ scale: [1, 1.2, 1] }}
+                        transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                        className="w-4 h-4 rounded-full bg-green-400" 
+                      />
+                    </motion.div>
+                    <motion.p 
+                      key={callStatus}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="text-base font-bold text-green-400 mb-1 uppercase tracking-wide"
+                    >
+                      {callStatus === 'ringing' ? 'Verbindet...' : 'Anruf läuft'}
+                    </motion.p>
+                    {callStatus === 'connected' && (
+                      <motion.p 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="text-sm text-green-300/60 font-mono tabular-nums"
+                      >
+                        {formatDuration(callDuration)}
+                      </motion.p>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Call Result */}
             {callStatus === 'ended' && result && (
@@ -1144,64 +1318,91 @@ Time: ${persistentError.timestamp}`}
           </div>
         </div>
 
-        {/* CONTACT PICKER MODAL - No Icons */}
+        {/* CONTACT PICKER MODAL - Premium Slide-in */}
         <AnimatePresence>
           {showContactPicker && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
               className="fixed inset-0 z-50 flex items-center justify-center p-4"
-              style={{ background: 'rgba(0,0,0,0.85)' }}
+              style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)' }}
               onClick={() => setShowContactPicker(false)}
             >
               <motion.div
-                initial={{ scale: 0.97 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0.97 }}
-                className="w-full max-w-md rounded-[20px] p-5"
+                initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                transition={{ duration: ANIM.duration, ease: ANIM.easing }}
+                className="w-full max-w-md rounded-[20px] overflow-hidden"
                 style={{ background: 'rgba(12,12,12,0.98)', border: `1px solid ${DT.panelBorder}` }}
                 onClick={e => e.stopPropagation()}
               >
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-base font-bold" style={{ color: DT.gold }}>Kontakt auswählen</h3>
-                  <button 
-                    onClick={() => setShowContactPicker(false)}
-                    className="text-xs font-medium text-neutral-500 hover:text-white transition-colors px-2 py-1"
+                {/* Sticky header */}
+                <div className="sticky top-0 z-10 p-5 pb-0" style={{ background: 'rgba(12,12,12,0.98)' }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-base font-bold" style={{ color: DT.gold }}>Kontakt auswählen</h3>
+                    <button 
+                      onClick={() => setShowContactPicker(false)}
+                      className="text-xs font-medium text-neutral-500 hover:text-white transition-colors px-3 py-1.5 rounded-[8px] hover:bg-white/[0.05]"
+                    >
+                      Schließen
+                    </button>
+                  </div>
+                  {/* Sticky search input */}
+                  <input
+                    type="text"
+                    value={contactSearchQuery}
+                    onChange={e => setContactSearchQuery(e.target.value)}
+                    placeholder="Suchen..."
+                    autoFocus
+                    className="w-full px-4 py-3 rounded-[12px] mb-4 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all"
+                    style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${DT.panelBorder}`, color: DT.gold }}
+                  />
+                </div>
+                {/* Scrollable list */}
+                <div className="px-5 max-h-64 overflow-y-auto">
+                  <div className="space-y-1 pb-2">
+                    {filteredContacts.map((contact: any, idx: number) => (
+                      <motion.button
+                        key={contact.id}
+                        initial={{ opacity: 0, x: -4 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.15, delay: idx * 0.02 }}
+                        onClick={() => handleSelectContact(contact)}
+                        className="w-full text-left px-3 py-3 rounded-[10px] hover:bg-white/[0.05] transition-all group"
+                        style={{ borderLeft: '2px solid transparent' }}
+                        whileHover={{ borderLeftColor: `${DT.orange}60` }}
+                      >
+                        <p className="text-sm font-medium group-hover:text-white transition-colors" style={{ color: DT.gold }}>{contact.company || contact.firstName}</p>
+                        <p className="text-xs text-neutral-500">{contact.phone}</p>
+                      </motion.button>
+                    ))}
+                    {filteredContacts.length === 0 && (
+                      <p className="text-center text-sm text-neutral-500 py-6">Keine Kontakte gefunden</p>
+                    )}
+                  </div>
+                </div>
+                {/* Footer actions */}
+                <div className="p-5 pt-3 flex gap-3">
+                  <motion.button
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    onClick={() => { setShowContactPicker(false); setShowNewContactModal(true); }}
+                    className="flex-1 py-3 rounded-[12px] text-sm font-medium"
+                    style={{ background: 'rgba(255,106,0,0.12)', color: DT.orange, border: '1px solid rgba(255,106,0,0.25)' }}
                   >
-                    Schließen
+                    + Neuen Kontakt
+                  </motion.button>
+                  <button
+                    onClick={() => setShowContactPicker(false)}
+                    className="px-5 py-3 rounded-[12px] text-sm font-medium hover:bg-white/[0.05] transition-colors"
+                    style={{ color: '#888' }}
+                  >
+                    Abbrechen
                   </button>
                 </div>
-                <input
-                  type="text"
-                  value={contactSearchQuery}
-                  onChange={e => setContactSearchQuery(e.target.value)}
-                  placeholder="Suchen..."
-                  className="w-full px-4 py-2.5 rounded-[12px] mb-4 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500/30"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${DT.panelBorder}`, color: DT.gold }}
-                />
-                <div className="max-h-64 overflow-y-auto space-y-1">
-                  {filteredContacts.map((contact: any) => (
-                    <button
-                      key={contact.id}
-                      onClick={() => handleSelectContact(contact)}
-                      className="w-full text-left px-3 py-2.5 rounded-[10px] hover:bg-white/[0.04] transition-colors"
-                    >
-                      <p className="text-sm font-medium" style={{ color: DT.gold }}>{contact.company || contact.firstName}</p>
-                      <p className="text-xs text-neutral-500">{contact.phone}</p>
-                    </button>
-                  ))}
-                  {filteredContacts.length === 0 && (
-                    <p className="text-center text-sm text-neutral-500 py-4">Keine Kontakte gefunden</p>
-                  )}
-                </div>
-                <button
-                  onClick={() => { setShowContactPicker(false); setShowNewContactModal(true); }}
-                  className="w-full mt-4 py-2.5 rounded-[12px] text-sm font-medium transition-all hover:scale-[1.01]"
-                  style={{ background: 'rgba(255,106,0,0.12)', color: DT.orange, border: '1px solid rgba(255,106,0,0.25)' }}
-                >
-                  + Neuen Kontakt anlegen
-                </button>
               </motion.div>
             </motion.div>
           )}
@@ -1273,28 +1474,34 @@ Time: ${persistentError.timestamp}`}
           )}
         </AnimatePresence>
 
-        {/* CALL DETAILS DRAWER - Premium Glass, No Icons */}
+        {/* CALL DETAILS DRAWER - Premium with Smooth Open */}
         <AnimatePresence>
           {selectedCallId && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
               className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end"
-              style={{ background: 'rgba(0,0,0,0.8)' }}
+              style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)' }}
               onClick={handleCloseDrawer}
             >
               <motion.div
-                initial={{ x: '100%', opacity: 0 }}
+                initial={{ x: '100%', opacity: 0.5 }}
                 animate={{ x: 0, opacity: 1 }}
-                exit={{ x: '100%', opacity: 0 }}
-                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                className="w-full sm:w-[440px] sm:max-w-[90vw] h-[85vh] sm:h-full sm:max-h-screen overflow-hidden rounded-t-[24px] sm:rounded-none flex flex-col"
+                exit={{ x: '100%', opacity: 0.5 }}
+                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                className="w-full sm:w-[460px] sm:max-w-[90vw] h-[85vh] sm:h-full sm:max-h-screen overflow-hidden rounded-t-[24px] sm:rounded-none flex flex-col"
                 style={{ background: 'rgba(8,8,8,0.98)', borderLeft: `1px solid ${DT.panelBorder}` }}
                 onClick={e => e.stopPropagation()}
               >
-                {/* Drawer Header - Text Buttons Only */}
-                <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.08]">
+                {/* Drawer Header - Premium Gradient Title */}
+                <motion.div 
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1, duration: 0.2 }}
+                  className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"
+                >
                   <h3 
                     className="text-base font-bold uppercase tracking-wide"
                     style={{ 
@@ -1305,66 +1512,95 @@ Time: ${persistentError.timestamp}`}
                   >
                     Anrufdetails
                   </h3>
-                  <div className="flex items-center gap-3">
-                    <button
+                  <div className="flex items-center gap-2">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={handleRefreshDrawerDetails}
                       disabled={loadingCallDetails}
                       className="text-xs font-medium px-3 py-1.5 rounded-[10px] hover:bg-white/[0.06] transition-colors disabled:opacity-50"
                       style={{ color: DT.gold }}
                     >
                       {loadingCallDetails ? 'Lädt...' : 'Aktualisieren'}
-                    </button>
-                    <button
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={handleCloseDrawer}
                       className="text-xs font-medium px-3 py-1.5 rounded-[10px] hover:bg-white/[0.06] transition-colors"
                       style={{ color: '#888' }}
                     >
                       Schließen
-                    </button>
+                    </motion.button>
                   </div>
-                </div>
+                </motion.div>
                 
-                {/* Drawer Content */}
+                {/* Drawer Content with smooth scroll */}
                 <div className="flex-1 min-h-0 overflow-y-auto p-5">
-                  {loadingCallDetails ? (
-                    <div className="flex flex-col items-center justify-center h-40 gap-3">
-                      <div 
-                        className="w-10 h-10 rounded-full border-2 border-t-transparent animate-spin"
-                        style={{ borderColor: `${DT.orange}40`, borderTopColor: 'transparent' }}
-                      />
-                      <p className="text-xs text-neutral-500">Lade Details...</p>
-                    </div>
-                  ) : selectedCallDetails ? (
-                    <PowerResultCard
-                      result={{
-                        id: selectedCallDetails.id,
-                        callId: selectedCallDetails.id,
-                        recordingUrl: selectedCallDetails.recordingUrl,
-                        transcript: selectedCallDetails.transcript,
-                        duration: selectedCallDetails.durationSeconds ?? selectedCallDetails.duration,
-                        phoneNumber: selectedCallDetails.phoneNumber,
-                        contactName: selectedCallDetails.metadata?.contactName
-                      }}
-                      summary={selectedCallDetails.summary}
-                      onNewCall={handleCloseDrawer}
-                      onRefresh={handleRefreshDrawerDetails}
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-40 text-neutral-500">
-                      <div className="w-12 h-12 rounded-full border-2 border-red-500/30 flex items-center justify-center mb-3">
-                        <div className="w-6 h-0.5 bg-red-500/50 rotate-45 absolute" />
-                        <div className="w-6 h-0.5 bg-red-500/50 -rotate-45 absolute" />
-                      </div>
-                      <p className="text-sm">Details konnten nicht geladen werden</p>
-                      <button
-                        onClick={handleRefreshDrawerDetails}
-                        className="mt-3 text-xs px-4 py-2 rounded-[10px] font-medium transition-all hover:scale-[1.02]"
-                        style={{ background: 'rgba(255,106,0,0.12)', color: DT.orange, border: '1px solid rgba(255,106,0,0.25)' }}
+                  <AnimatePresence mode="wait">
+                    {loadingCallDetails ? (
+                      <motion.div 
+                        key="loading"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex flex-col items-center justify-center h-40 gap-3"
                       >
-                        Erneut versuchen
-                      </button>
-                    </div>
-                  )}
+                        {/* Shimmer loading effect */}
+                        <div className="space-y-4 w-full">
+                          <div className="h-4 bg-neutral-800/50 rounded animate-pulse w-3/4" />
+                          <div className="h-3 bg-neutral-800/30 rounded animate-pulse w-full" />
+                          <div className="h-3 bg-neutral-800/30 rounded animate-pulse w-5/6" />
+                          <div className="h-20 bg-neutral-800/20 rounded-[12px] animate-pulse w-full mt-4" />
+                        </div>
+                      </motion.div>
+                    ) : selectedCallDetails ? (
+                      <motion.div
+                        key="content"
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: ANIM.duration }}
+                      >
+                        <PowerResultCard
+                          result={{
+                            id: selectedCallDetails.id,
+                            callId: selectedCallDetails.id,
+                            recordingUrl: selectedCallDetails.recordingUrl,
+                            transcript: selectedCallDetails.transcript,
+                            duration: selectedCallDetails.durationSeconds ?? selectedCallDetails.duration,
+                            phoneNumber: selectedCallDetails.phoneNumber,
+                            contactName: selectedCallDetails.metadata?.contactName
+                          }}
+                          summary={selectedCallDetails.summary}
+                          onNewCall={handleCloseDrawer}
+                          onRefresh={handleRefreshDrawerDetails}
+                        />
+                      </motion.div>
+                    ) : (
+                      <motion.div 
+                        key="error"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="flex flex-col items-center justify-center h-40 text-neutral-500"
+                      >
+                        <div className="w-12 h-12 rounded-full border-2 border-red-500/30 flex items-center justify-center mb-3 relative">
+                          <div className="w-6 h-0.5 bg-red-500/50 rotate-45 absolute" />
+                          <div className="w-6 h-0.5 bg-red-500/50 -rotate-45 absolute" />
+                        </div>
+                        <p className="text-sm">Details konnten nicht geladen werden</p>
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={handleRefreshDrawerDetails}
+                          className="mt-3 text-xs px-4 py-2 rounded-[10px] font-medium"
+                          style={{ background: 'rgba(255,106,0,0.12)', color: DT.orange, border: '1px solid rgba(255,106,0,0.25)' }}
+                        >
+                          Erneut versuchen
+                        </motion.button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </motion.div>
             </motion.div>
