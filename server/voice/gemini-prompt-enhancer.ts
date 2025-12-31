@@ -2,6 +2,35 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { logger } from '../logger';
 import { getKnowledgeDigest } from '../knowledge/context-builder';
 
+// ═══════════════════════════════════════════════════════════════
+// SAFE STRING LIST NORMALIZER - Handles any input type robustly
+// ═══════════════════════════════════════════════════════════════
+function normalizeStringList(v: unknown): string[] {
+  if (!v) return [];
+  if (Array.isArray(v)) return v.map(x => String(x).trim()).filter(Boolean);
+  if (typeof v === 'string') {
+    const s = v.trim();
+    // Check if it's a JSON array/object as string
+    if ((s.startsWith('[') && s.endsWith(']')) || (s.startsWith('{') && s.endsWith('}'))) {
+      try {
+        const parsed = JSON.parse(s);
+        return normalizeStringList(parsed);
+      } catch { /* ignore parse errors */ }
+    }
+    // Fallback: split by comma/newline/semicolon
+    return s.split(/[,;\n]/g).map(x => x.trim()).filter(Boolean);
+  }
+  if (typeof v === 'object' && v !== null) {
+    return Object.values(v).map(x => String(x).trim()).filter(Boolean);
+  }
+  return [String(v).trim()].filter(Boolean);
+}
+
+function safeJoin(v: unknown, separator = ', '): string {
+  const list = normalizeStringList(v);
+  return list.length > 0 ? list.join(separator) : '';
+}
+
 // Interface für die Rohdaten vom Formular
 export interface CallInput {
   contactName: string;    // "Justin Schwarzott"
@@ -119,8 +148,8 @@ export async function enhanceCallWithGemini(
       userWebsite: context.website,
       userRole: context.jobRole,
       companyDescription: aiProfile.companyDescription,
-      companyProducts: aiProfile.products?.join(', '),
-      companyServices: aiProfile.services?.join(', '),
+      companyProducts: safeJoin(aiProfile.products),
+      companyServices: safeJoin(aiProfile.services),
       companyValueProp: aiProfile.valueProp,
       userPersonality: aiProfile.personalityType,
       communicationStyle: aiProfile.communicationTone || aiProfile.brandVoice
@@ -145,8 +174,8 @@ export async function enhanceCallWithGemini(
       userWebsite: context.website,
       userRole: context.jobRole,
       companyDescription: aiProfile.companyDescription,
-      companyProducts: aiProfile.products?.join(', '),
-      companyServices: aiProfile.services?.join(', '),
+      companyProducts: safeJoin(aiProfile.products),
+      companyServices: safeJoin(aiProfile.services),
       companyValueProp: aiProfile.valueProp,
       userPersonality: aiProfile.personalityType,
       communicationStyle: aiProfile.communicationTone || aiProfile.brandVoice

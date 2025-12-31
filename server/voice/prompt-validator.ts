@@ -4,6 +4,15 @@ import { getKnowledgeDigest } from '../knowledge/context-builder';
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || '');
 
+// Safe join helper - handles any input type
+function safeJoin(v: unknown, separator = ', '): string {
+  if (!v) return '';
+  if (Array.isArray(v)) return v.map(x => String(x).trim()).filter(Boolean).join(separator);
+  if (typeof v === 'string') return v.trim();
+  if (typeof v === 'object') return Object.values(v).map(x => String(x).trim()).filter(Boolean).join(separator);
+  return String(v).trim();
+}
+
 // 🔥 ARAS CORE SYSTEM-PROMPT
 const ARAS_CORE_SYSTEM_PROMPT = `Du bist ARAS Core – das interne, firmeneigene Large Language Model der ARAS AI Plattform.
 
@@ -180,8 +189,8 @@ export async function validateAndEnhancePrompt(input: ValidationInput): Promise<
 - Beschreibung: ${aiProfile.companyDescription}`;
     }
     
-    if (aiProfile.products && aiProfile.products.length > 0) {
-      userContextString += `\n- Produkte/Services: ${aiProfile.products.join(', ')}`;
+    if (aiProfile.products && (Array.isArray(aiProfile.products) ? aiProfile.products.length > 0 : aiProfile.products)) {
+      userContextString += `\n- Produkte/Services: ${safeJoin(aiProfile.products)}`;
     }
     
     if (aiProfile.targetAudience) {
@@ -192,8 +201,8 @@ export async function validateAndEnhancePrompt(input: ValidationInput): Promise<
       userContextString += `\n- Value Proposition: ${aiProfile.valueProp}`;
     }
     
-    if (aiProfile.uniqueSellingPoints && aiProfile.uniqueSellingPoints.length > 0) {
-      userContextString += `\n- USPs: ${aiProfile.uniqueSellingPoints.join(', ')}`;
+    if (aiProfile.uniqueSellingPoints && (Array.isArray(aiProfile.uniqueSellingPoints) ? aiProfile.uniqueSellingPoints.length > 0 : aiProfile.uniqueSellingPoints)) {
+      userContextString += `\n- USPs: ${safeJoin(aiProfile.uniqueSellingPoints)}`;
     }
 
     if (aiProfile.personalityType || aiProfile.communicationTone || aiProfile.decisionMakingStyle) {
