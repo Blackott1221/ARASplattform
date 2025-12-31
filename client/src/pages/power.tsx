@@ -191,6 +191,7 @@ function PowerContent() {
   // Call state
   const [callStatus, setCallStatus] = useState<'idle' | 'processing' | 'ringing' | 'connected' | 'ended' | 'error'>('idle');
   const [callDuration, setCallDuration] = useState(0);
+  const [finalElapsedSeconds, setFinalElapsedSeconds] = useState<number | null>(null); // Frozen timer value at call end
   const [result, setResult] = useState<any>(null);
   const [callSummary, setCallSummary] = useState<any>(null);
 
@@ -496,13 +497,18 @@ function PowerContent() {
         if (backendStatus === 'completed' || backendStatus === 'ended' || backendStatus === 'failed' || backendStatus === 'no-answer' || (hasTranscript && hasAudio)) {
           clearInterval(pollInterval);
           clearCallTimer();
+          // Freeze timer value BEFORE clearing
+          const frozenElapsed = callDuration > 0 ? callDuration : null;
+          setFinalElapsedSeconds(frozenElapsed);
           setCallStatus('ended');
+          // Best-available duration: server durationSeconds > server duration > client timer
+          const bestDuration = callDetails.durationSeconds ?? callDetails.duration ?? frozenElapsed ?? null;
           setResult({
             success: backendStatus === 'completed' || backendStatus === 'ended',
             callId: callDetails.id,
             transcript: callDetails.transcript,
             recordingUrl: callDetails.recordingUrl,
-            duration: callDetails.duration || callDuration,
+            duration: bestDuration,
             phoneNumber: callDetails.phoneNumber,
             contactName: callDetails.contactName
           });
@@ -516,12 +522,14 @@ function PowerContent() {
         if (attempts >= maxAttempts) {
           clearInterval(pollInterval);
           clearCallTimer();
+          const frozenElapsed = callDuration > 0 ? callDuration : null;
+          setFinalElapsedSeconds(frozenElapsed);
           setCallStatus('ended');
           setResult({
             success: true,
             callId: callDetails.callId,
             transcript: 'Anruf wurde durchgeführt. Details werden verarbeitet.',
-            duration: callDuration
+            duration: frozenElapsed
           });
         }
       } catch {
@@ -539,8 +547,10 @@ function PowerContent() {
       clearInterval(pollInterval);
       clearCallTimer();
       if (callStatus !== 'ended') {
+        const frozenElapsed = callDuration > 0 ? callDuration : null;
+        setFinalElapsedSeconds(frozenElapsed);
         setCallStatus('ended');
-        setResult({ success: true, transcript: 'Anruf beendet. Details werden verarbeitet.', duration: callDuration });
+        setResult({ success: true, transcript: 'Anruf beendet. Details werden verarbeitet.', duration: frozenElapsed });
       }
     }, 150000);
   };
@@ -558,6 +568,7 @@ function PowerContent() {
     setCallSummary(null);
     setCallStatus('idle');
     setCallDuration(0);
+    setFinalElapsedSeconds(null); // Reset frozen timer
     setShowReview(false);
     setShowChatFlow(false);
     setEnhancedPrompt('');
@@ -581,12 +592,15 @@ function PowerContent() {
       }
       const callDetails = await response.json();
       
+      // Best-available duration: server durationSeconds > server duration > current result > frozen timer
+      const bestDuration = callDetails.durationSeconds ?? callDetails.duration ?? result.duration ?? finalElapsedSeconds ?? null;
+      
       // Update result with fresh data
       setResult({
         ...result,
         transcript: callDetails.transcript,
         recordingUrl: callDetails.recordingUrl,
-        duration: callDetails.duration || result.duration,
+        duration: bestDuration,
       });
       
       if (callDetails.summary) {
@@ -1212,7 +1226,7 @@ Time: ${persistentError.timestamp}`}
                         callId: selectedCallDetails.id,
                         recordingUrl: selectedCallDetails.recordingUrl,
                         transcript: selectedCallDetails.transcript,
-                        duration: selectedCallDetails.duration,
+                        duration: selectedCallDetails.durationSeconds ?? selectedCallDetails.duration,
                         phoneNumber: selectedCallDetails.phoneNumber,
                         contactName: selectedCallDetails.metadata?.contactName
                       }}

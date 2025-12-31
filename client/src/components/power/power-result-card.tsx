@@ -215,9 +215,19 @@ export function PowerResultCard({
     }
   };
 
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
+  // Format duration with client-side normalization (handles ms vs sec if server missed it)
+  const formatDuration = (rawSeconds: number) => {
+    // Client-side safety: if >= 10000, likely ms not seconds
+    const seconds = rawSeconds >= 10000 ? Math.round(rawSeconds / 1000) : Math.round(rawSeconds);
+    if (seconds < 0) return '—';
+    
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')} Std`;
+    }
     return `${mins}:${secs.toString().padStart(2, '0')} Min`;
   };
 

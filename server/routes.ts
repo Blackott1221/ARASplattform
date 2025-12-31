@@ -3417,6 +3417,19 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         }
       }
       
+      // Normalize duration to seconds (handles ms vs sec ambiguity)
+      // Heuristic: if rawDuration >= 10000, assume ms (10000sec = 2.7h, unlikely for a call)
+      const normalizeDurationSeconds = (rawDuration: any): number | null => {
+        if (rawDuration == null) return null;
+        const num = typeof rawDuration === 'string' ? parseFloat(rawDuration) : rawDuration;
+        if (typeof num !== 'number' || isNaN(num) || num < 0) return null;
+        // If >= 10000, assume milliseconds → convert to seconds
+        if (num >= 10000) return Math.round(num / 1000);
+        return Math.round(num);
+      };
+      
+      const durationSeconds = normalizeDurationSeconds(finalCallData.duration);
+      
       const responseData = {
         success: true,
         id: finalCallData.id,
@@ -3426,7 +3439,8 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         transcriptText: transcriptText,               // NEW: Always string
         transcriptParseFailed: transcriptParseFailed, // NEW: Flag if parsing failed
         recordingUrl: finalCallData.recordingUrl,
-        duration: finalCallData.duration,
+        duration: finalCallData.duration,             // Original (backward compat)
+        durationSeconds: durationSeconds,             // NEW: Normalized to seconds
         metadata: finalCallData.metadata,
         createdAt: finalCallData.createdAt,
         summary: callSummary
@@ -3438,7 +3452,9 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         transcriptTextLength: transcriptText.length,
         hasRecording: !!responseData.recordingUrl,
         status: responseData.status,
-        hasSummary: !!callSummary
+        hasSummary: !!callSummary,
+        duration: finalCallData.duration,
+        durationSeconds: durationSeconds
       });
       
       res.json(responseData);
