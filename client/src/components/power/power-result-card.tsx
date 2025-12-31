@@ -166,34 +166,43 @@ export function PowerResultCard({
     }
   };
 
-  // Download recording as file
+  // Download recording via SAFE server endpoint (always same-origin, no CORS issues)
   const handleDownloadRecording = async () => {
-    if (!result.recordingUrl) return;
+    const callId = result.id || result.callId;
+    if (!callId) {
+      setDownloadError('Keine Call-ID verfügbar');
+      return;
+    }
     
     setDownloadingAudio(true);
     setDownloadError(null);
     
     try {
-      // Fetch the audio as blob
-      const response = await fetch(result.recordingUrl, { credentials: 'include' });
+      // Use safe download endpoint - server handles CORS/auth/proxy
+      const response = await fetch(`/api/aras-voice/call-recording/${callId}/download`, { 
+        credentials: 'include' 
+      });
       
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.details || `HTTP ${response.status}`);
       }
       
       const blob = await response.blob();
       
-      // Create download link
+      // Get filename from Content-Disposition header or generate
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `ARAS_CALL_${callId}.mp3`;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="(.+)"/);
+        if (match) filename = match[1];
+      }
+      
+      // Trigger download
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      
-      // Generate filename
-      const callId = result.id || result.callId || 'unknown';
-      const date = new Date().toISOString().split('T')[0];
-      const ext = blob.type.includes('wav') ? 'wav' : 'mp3';
-      a.download = `ARAS_CALL_${callId}_${date}.${ext}`;
-      
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -272,7 +281,7 @@ export function PowerResultCard({
         </motion.div>
 
         {/* 🎤 Audio Recording with Download */}
-        {result.recordingUrl ? (
+        {(result.recordingUrl || result.id || result.callId) ? (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -317,17 +326,23 @@ export function PowerResultCard({
                 </button>
               </div>
             </div>
-            <audio
-              controls
-              className="w-full"
-              src={result.recordingUrl}
-              style={{
-                height: '40px',
-                borderRadius: '8px',
-                filter: 'invert(0.85)'
-              }}
-              onError={() => setAudioError(true)}
-            />
+            {result.recordingUrl ? (
+              <audio
+                controls
+                className="w-full"
+                src={result.recordingUrl}
+                style={{
+                  height: '40px',
+                  borderRadius: '8px',
+                  filter: 'invert(0.85)'
+                }}
+                onError={() => setAudioError(true)}
+              />
+            ) : (
+              <p className="text-[10px] text-neutral-500 py-2">
+                Audio-Player nicht verfügbar. Nutze den Download-Button.
+              </p>
+            )}
             {audioError && (
               <p className="mt-2 text-[10px] text-red-400">
                 Die Aufzeichnung konnte nicht geladen werden. Versuche es später erneut oder überprüfe deine Verbindung.

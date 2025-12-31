@@ -3361,21 +3361,68 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         }
       }
       
+      // Normalize transcript to guaranteed string for API consistency
+      let transcriptText = '';
+      let transcriptParseFailed = false;
+      const rawTranscript = finalCallData.transcript;
+      
+      if (rawTranscript) {
+        if (typeof rawTranscript === 'string') {
+          // Already cleaned by earlier logic, or plain string
+          transcriptText = rawTranscript;
+        } else if (Array.isArray(rawTranscript)) {
+          // Array of messages - join with role labels
+          try {
+            transcriptText = rawTranscript
+              .filter((t: any) => t.message || t.text || t.content)
+              .map((t: any) => {
+                const role = t.role === 'agent' || t.role === 'assistant' ? 'ARAS AI' : 'Kunde';
+                const msg = t.message || t.text || t.content || '';
+                return `${role}: ${String(msg).trim()}`;
+              })
+              .join('\n\n');
+          } catch {
+            transcriptText = JSON.stringify(rawTranscript);
+            transcriptParseFailed = true;
+          }
+        } else if (typeof rawTranscript === 'object') {
+          // Object - check for nested transcript or stringify
+          try {
+            const nested = (rawTranscript as any).transcript || (rawTranscript as any).messages || (rawTranscript as any).text;
+            if (nested && typeof nested === 'string') {
+              transcriptText = nested;
+            } else if (Array.isArray(nested)) {
+              transcriptText = nested.map((t: any) => String(t.message || t.text || t)).join('\n\n');
+            } else {
+              transcriptText = JSON.stringify(rawTranscript);
+              transcriptParseFailed = true;
+            }
+          } catch {
+            transcriptText = '';
+            transcriptParseFailed = true;
+          }
+        }
+      }
+      
       const responseData = {
         success: true,
         id: finalCallData.id,
         phoneNumber: finalCallData.phoneNumber,
         status: finalCallData.status,
-        transcript: finalCallData.transcript,
+        transcript: finalCallData.transcript,         // Original (backward compat)
+        transcriptText: transcriptText,               // NEW: Always string
+        transcriptParseFailed: transcriptParseFailed, // NEW: Flag if parsing failed
         recordingUrl: finalCallData.recordingUrl,
         duration: finalCallData.duration,
         metadata: finalCallData.metadata,
         createdAt: finalCallData.createdAt,
-        summary: callSummary // 🔥 NEU: Summary in Response
+        summary: callSummary
       };
       
       logger.info('[CALL-DETAILS] ✅ Sending response to frontend', {
         hasTranscript: !!responseData.transcript,
+        hasTranscriptText: !!transcriptText,
+        transcriptTextLength: transcriptText.length,
         hasRecording: !!responseData.recordingUrl,
         status: responseData.status,
         hasSummary: !!callSummary
@@ -3475,6 +3522,101 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       res.status(500).json({ 
         error: 'Failed to stream audio' 
       });
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // SAFE RECORDING DOWNLOAD - Always works (proxy for CORS, proper headers)
+  // ═══════════════════════════════════════════════════════════════
+  app.get('/api/aras-voice/call-recording/:callId/download', requireAuth, async (req: any, res) => {
+    try {
+      const { callId } = req.params;
+      const userId = req.session.userId;
+      
+      logger.info('[RECORDING-DOWNLOAD] 📥 Download request:', { callId, userId });
+      
+      // Get call log from database
+      const callLog = await storage.getCallLog(callId);
+      if (!callLog) {
+        logger.warn('[RECORDING-DOWNLOAD] ❌ Call not found:', callId);
+        return res.status(404).json({ error: 'Call not found' });
+      }
+      
+      // AuthZ: only owner can download
+      if (callLog.userId !== userId) {
+        logger.warn('[RECORDING-DOWNLOAD] ⛔ Unauthorized:', { callId, requestUserId: userId, ownerId: callLog.userId });
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+      
+      // Determine audio source
+      let audioBuffer: Buffer | null = null;
+      let contentType = 'audio/mpeg';
+      
+      // Priority 1: Use conversationId (retellCallId) to fetch from ElevenLabs
+      if (callLog.retellCallId) {
+        logger.info('[RECORDING-DOWNLOAD] 🔄 Fetching from ElevenLabs:', callLog.retellCallId);
+        try {
+          const audioResponse = await fetch(
+            `https://api.elevenlabs.io/v1/convai/conversations/${callLog.retellCallId}/audio`,
+            {
+              headers: {
+                'xi-api-key': process.env.ELEVENLABS_API_KEY || ''
+              }
+            }
+          );
+          
+          if (audioResponse.ok) {
+            audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
+            contentType = audioResponse.headers.get('content-type') || 'audio/mpeg';
+            logger.info('[RECORDING-DOWNLOAD] ✅ ElevenLabs audio fetched:', { size: audioBuffer.length });
+          } else {
+            logger.warn('[RECORDING-DOWNLOAD] ⚠️ ElevenLabs API error:', audioResponse.status);
+          }
+        } catch (e: any) {
+          logger.error('[RECORDING-DOWNLOAD] ❌ ElevenLabs fetch error:', e.message);
+        }
+      }
+      
+      // Priority 2: If recordingUrl is external HTTPS, proxy fetch it
+      if (!audioBuffer && callLog.recordingUrl && callLog.recordingUrl.startsWith('https://')) {
+        logger.info('[RECORDING-DOWNLOAD] 🔄 Proxying external URL:', callLog.recordingUrl);
+        try {
+          const audioResponse = await fetch(callLog.recordingUrl);
+          if (audioResponse.ok) {
+            audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
+            contentType = audioResponse.headers.get('content-type') || 'audio/mpeg';
+            logger.info('[RECORDING-DOWNLOAD] ✅ External audio fetched:', { size: audioBuffer.length });
+          }
+        } catch (e: any) {
+          logger.error('[RECORDING-DOWNLOAD] ❌ External fetch error:', e.message);
+        }
+      }
+      
+      // No audio available
+      if (!audioBuffer) {
+        logger.warn('[RECORDING-DOWNLOAD] ❌ No audio available for call:', callId);
+        return res.status(404).json({ 
+          error: 'Recording not available',
+          details: 'Audio has not been processed yet or is unavailable'
+        });
+      }
+      
+      // Generate filename
+      const date = new Date(callLog.createdAt || Date.now()).toISOString().split('T')[0];
+      const filename = `ARAS_CALL_${callId}_${date}.mp3`;
+      
+      // Set download headers
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', audioBuffer.length);
+      res.setHeader('Cache-Control', 'private, max-age=0');
+      
+      logger.info('[RECORDING-DOWNLOAD] ✅ Sending file:', { filename, size: audioBuffer.length });
+      res.send(audioBuffer);
+      
+    } catch (error: any) {
+      logger.error('[RECORDING-DOWNLOAD] ❌ Error:', { error: error.message, stack: error.stack });
+      res.status(500).json({ error: 'Failed to download recording' });
     }
   });
   
