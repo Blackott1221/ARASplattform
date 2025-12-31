@@ -1558,6 +1558,64 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       }
     }
   });
+  // GET /api/user/chat-sessions - List all chat sessions for dashboard
+  app.get('/api/user/chat-sessions', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      const sessions = await storage.getChatSessions(userId);
+      
+      // Format for dashboard activity feed
+      const formattedSessions = sessions.map((s: any) => ({
+        id: s.id,
+        title: s.title || 'Unbenannter Chat',
+        createdAt: s.createdAt,
+        updatedAt: s.updatedAt,
+        isActive: s.isActive,
+        status: 'ready', // Chat sessions are always ready (no pending summary)
+      }));
+      
+      res.json(formattedSessions);
+    } catch (error) {
+      logger.error('Error fetching chat sessions:', error);
+      res.status(500).json({ message: 'Failed to fetch chat sessions' });
+    }
+  });
+
+  // GET /api/chat/session/:id - Get chat session details for drawer
+  app.get('/api/chat/session/:id', requireAuth, async (req: any, res) => {
+    try {
+      const sessionId = parseInt(req.params.id);
+      const messages = await storage.getChatMessagesBySession(sessionId);
+      
+      // Get session info
+      const userId = req.session.userId;
+      const sessions = await storage.getChatSessions(userId);
+      const session = sessions.find((s: any) => s.id === sessionId);
+      
+      if (!session) {
+        return res.status(404).json({ message: 'Session not found' });
+      }
+      
+      res.json({
+        id: session.id,
+        title: session.title,
+        createdAt: session.createdAt,
+        updatedAt: session.updatedAt,
+        status: 'ready',
+        messages: messages.map((m: any) => ({
+          id: m.id,
+          role: m.isAi ? 'assistant' : 'user',
+          content: m.message,
+          timestamp: m.timestamp
+        })),
+        messageCount: messages.length
+      });
+    } catch (error) {
+      logger.error('Error fetching chat session details:', error);
+      res.status(500).json({ message: 'Failed to fetch chat session details' });
+    }
+  });
+
   app.post('/api/chat/sessions/new', requireAuth, async (req: any, res) => {
     try {
       const userId = req.session.userId;

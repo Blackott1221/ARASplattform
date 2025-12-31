@@ -1,13 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { formatDistanceToNow, isToday, subDays, isAfter } from 'date-fns';
+import { formatDistanceToNow, isToday, isYesterday, subDays, isAfter } from 'date-fns';
 import { de } from 'date-fns/locale';
 import type { User } from '@shared/schema';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { PowerResultCard } from '@/components/power/power-result-card';
 
 // ═══════════════════════════════════════════════════════════════
-// DESIGN TOKENS (2026 Control Center)
+// DESIGN TOKENS (2026 Mission Control)
 // ═══════════════════════════════════════════════════════════════
 const DT = {
   orange: '#ff6a00',
@@ -24,6 +24,27 @@ const ANIM = {
   easing: [0.22, 1, 0.36, 1] as const,
   stagger: 0.04,
 };
+
+// ═══════════════════════════════════════════════════════════════
+// UNIFIED ACTIVITY MODEL
+// ═══════════════════════════════════════════════════════════════
+type ActivityType = 'call' | 'space';
+
+interface ActivityItem {
+  type: ActivityType;
+  id: string | number;
+  title: string;
+  timestamp: string;
+  status: 'ready' | 'pending' | 'failed' | 'in_progress' | 'completed';
+  summaryShort?: string;
+  tags?: string[];
+  meta?: {
+    durationSec?: number;
+    phoneNumber?: string;
+    messageCount?: number;
+  };
+  raw?: any;
+}
 
 interface DashboardContentProps {
   user: User;
@@ -44,6 +65,15 @@ interface CallLog {
   metadata?: any;
 }
 
+interface ChatSession {
+  id: number;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  isActive: boolean;
+  status: string;
+}
+
 interface PersistentError {
   userMessage: string;
   technicalMessage: string;
@@ -52,16 +82,18 @@ interface PersistentError {
 }
 
 export function DashboardContent({ user }: DashboardContentProps) {
-  const [selectedCallId, setSelectedCallId] = useState<string | null>(null);
-  const [selectedCallDetails, setSelectedCallDetails] = useState<any>(null);
+  const [selectedItem, setSelectedItem] = useState<ActivityItem | null>(null);
+  const [selectedDetails, setSelectedDetails] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [persistentError, setPersistentError] = useState<PersistentError | null>(null);
   const [expandedError, setExpandedError] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'call' | 'space'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const summaryPollRef = useRef<NodeJS.Timeout | null>(null);
   const drawerPollRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Fetch call logs from correct endpoint
-  const { data: callLogs = [], refetch: refetchCallLogs, isError, error } = useQuery<CallLog[]>({
+  // Fetch call logs
+  const { data: callLogs = [], refetch: refetchCallLogs, isError: isCallError, error: callError } = useQuery<CallLog[]>({
     queryKey: ['dashboard-call-logs'],
     queryFn: async () => {
       const res = await fetch('/api/user/call-logs', { credentials: 'include' });
@@ -74,25 +106,121 @@ export function DashboardContent({ user }: DashboardContentProps) {
     staleTime: 10000,
   });
 
+  // Fetch chat sessions (Space)
+  const { data: chatSessions = [], refetch: refetchChatSessions } = useQuery<ChatSession[]>({
+    queryKey: ['dashboard-chat-sessions'],
+    queryFn: async () => {
+      const res = await fetch('/api/user/chat-sessions', { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    staleTime: 10000,
+  });
+
   // Set persistent error if fetch fails
   useEffect(() => {
-    if (isError && error) {
+    if (isCallError && callError) {
       setPersistentError({
         userMessage: 'Dashboard konnte nicht geladen werden',
-        technicalMessage: (error as any).message || 'Unbekannter Fehler',
-        endpoint: (error as any).endpoint,
-        status: (error as any).status,
+        technicalMessage: (callError as any).message || 'Unbekannter Fehler',
+        endpoint: (callError as any).endpoint,
+        status: (callError as any).status,
       });
     }
-  }, [isError, error]);
+  }, [isCallError, callError]);
 
-  // Auto-refresh when pending summaries exist
+  // Map calls to ActivityItems
+  const callActivities: ActivityItem[] = useMemo(() => 
+    callLogs.map(call => ({
+      type: 'call' as ActivityType,
+      id: call.id,
+      title: call.contactName || call.phoneNumber,
+      timestamp: call.createdAt,
+      status: call.summaryStatus === 'pending' ? 'pending' : 
+              call.status === 'completed' ? (call.summaryShort ? 'ready' : 'pending') :
+              call.status === 'failed' ? 'failed' : 'in_progress',
+      summaryShort: call.summaryShort,
+      tags: call.summary?.tags,
+      meta: {
+        durationSec: call.duration,
+        phoneNumber: call.phoneNumber,
+      },
+      raw: call,
+    }))
+  , [callLogs]);
+
+  // Map chat sessions to ActivityItems
+  const chatActivities: ActivityItem[] = useMemo(() => 
+    chatSessions.map(session => ({
+      type: 'space' as ActivityType,
+      id: session.id,
+      title: session.title || 'Unbenannter Chat',
+      timestamp: session.updatedAt || session.createdAt,
+      status: 'ready' as const,
+      summaryShort: undefined,
+      meta: {},
+      raw: session,
+    }))
+  , [chatSessions]);
+
+  // Unified activity list
+  const allActivities: ActivityItem[] = useMemo(() => {
+    let items = [...callActivities, ...chatActivities];
+    
+    // Filter by type
+    if (activeFilter !== 'all') {
+      items = items.filter(i => i.type === activeFilter);
+    }
+    
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      items = items.filter(i => 
+        i.title.toLowerCase().includes(q) ||
+        i.summaryShort?.toLowerCase().includes(q) ||
+        i.tags?.some(t => t.toLowerCase().includes(q))
+      );
+    }
+    
+    // Sort by timestamp (newest first)
+    items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    
+    return items;
+  }, [callActivities, chatActivities, activeFilter, searchQuery]);
+
+  // Group activities by date
+  const groupedActivities = useMemo(() => {
+    const groups: { label: string; items: ActivityItem[] }[] = [];
+    const today: ActivityItem[] = [];
+    const yesterday: ActivityItem[] = [];
+    const last7Days: ActivityItem[] = [];
+    const older: ActivityItem[] = [];
+    const sevenDaysAgo = subDays(new Date(), 7);
+    
+    allActivities.forEach(item => {
+      const date = new Date(item.timestamp);
+      if (isToday(date)) today.push(item);
+      else if (isYesterday(date)) yesterday.push(item);
+      else if (isAfter(date, sevenDaysAgo)) last7Days.push(item);
+      else older.push(item);
+    });
+    
+    if (today.length) groups.push({ label: 'Heute', items: today });
+    if (yesterday.length) groups.push({ label: 'Gestern', items: yesterday });
+    if (last7Days.length) groups.push({ label: 'Letzte 7 Tage', items: last7Days });
+    if (older.length) groups.push({ label: 'Älter', items: older });
+    
+    return groups;
+  }, [allActivities]);
+
+  // Global auto-refresh when pending summaries exist
   useEffect(() => {
-    const hasPending = callLogs.some(c => c.summaryStatus === 'pending' || (c.status === 'completed' && !c.summaryShort));
+    const hasPending = allActivities.some(i => i.status === 'pending');
     
     if (hasPending && !summaryPollRef.current) {
       summaryPollRef.current = setInterval(() => {
         refetchCallLogs();
+        refetchChatSessions();
       }, 6000);
     } else if (!hasPending && summaryPollRef.current) {
       clearInterval(summaryPollRef.current);
@@ -105,20 +233,17 @@ export function DashboardContent({ user }: DashboardContentProps) {
         summaryPollRef.current = null;
       }
     };
-  }, [callLogs, refetchCallLogs]);
+  }, [allActivities, refetchCallLogs, refetchChatSessions]);
 
-  // Auto-refresh drawer when viewing pending call
+  // Auto-refresh drawer when viewing pending item
   useEffect(() => {
-    const isPending = selectedCallDetails && (
-      selectedCallDetails.summaryStatus === 'pending' || 
-      (selectedCallDetails.status === 'completed' && !selectedCallDetails.summary)
-    );
+    const isPending = selectedItem?.status === 'pending';
     
-    if (isPending && selectedCallId && !drawerPollRef.current) {
+    if (isPending && selectedItem && !drawerPollRef.current) {
       drawerPollRef.current = setInterval(() => {
-        handleOpenCallDetails(selectedCallId);
+        handleOpenDetails(selectedItem);
       }, 6000);
-    } else if ((!isPending || !selectedCallId) && drawerPollRef.current) {
+    } else if ((!isPending || !selectedItem) && drawerPollRef.current) {
       clearInterval(drawerPollRef.current);
       drawerPollRef.current = null;
     }
@@ -129,47 +254,54 @@ export function DashboardContent({ user }: DashboardContentProps) {
         drawerPollRef.current = null;
       }
     };
-  }, [selectedCallDetails, selectedCallId]);
+  }, [selectedItem]);
 
-  // Open call details drawer
-  const handleOpenCallDetails = async (callId: string) => {
-    setSelectedCallId(callId);
+  // Open details drawer (generic for all types)
+  const handleOpenDetails = useCallback(async (item: ActivityItem) => {
+    setSelectedItem(item);
     setLoadingDetails(true);
     try {
-      const res = await fetch(`/api/aras-voice/call-details/${callId}`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch call details');
+      let endpoint = '';
+      if (item.type === 'call') {
+        endpoint = `/api/aras-voice/call-details/${item.id}`;
+      } else if (item.type === 'space') {
+        endpoint = `/api/chat/session/${item.id}`;
+      }
+      
+      const res = await fetch(endpoint, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch details');
       const data = await res.json();
-      setSelectedCallDetails(data);
+      setSelectedDetails(data);
     } catch (err) {
-      console.error('Failed to load call details:', err);
+      console.error('Failed to load details:', err);
+      setSelectedDetails(null);
     } finally {
       setLoadingDetails(false);
     }
-  };
+  }, []);
 
   const handleCloseDrawer = () => {
-    setSelectedCallId(null);
-    setSelectedCallDetails(null);
+    setSelectedItem(null);
+    setSelectedDetails(null);
   };
 
-  // Calculate stats from call logs
+  // Calculate stats from all activities
   const stats = useMemo(() => {
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const sevenDaysAgo = subDays(now, 7);
-
-    const callsToday = callLogs.filter(c => isToday(new Date(c.createdAt))).length;
-    const callsLast7Days = callLogs.filter(c => isAfter(new Date(c.createdAt), sevenDaysAgo));
-    const completedLast7Days = callsLast7Days.filter(c => c.status === 'completed').length;
+    const sevenDaysAgo = subDays(new Date(), 7);
+    
+    const callsToday = callActivities.filter(c => isToday(new Date(c.timestamp))).length;
+    const callsLast7Days = callActivities.filter(c => isAfter(new Date(c.timestamp), sevenDaysAgo));
+    const completedLast7Days = callsLast7Days.filter(c => c.status === 'ready' || c.status === 'completed').length;
     const successRate = callsLast7Days.length > 0 ? Math.round((completedLast7Days / callsLast7Days.length) * 100) : 0;
     
-    const durations = callsLast7Days.filter(c => c.duration).map(c => c.duration!);
+    const durations = callsLast7Days.filter(c => c.meta?.durationSec).map(c => c.meta!.durationSec!);
     const avgDuration = durations.length > 0 ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : null;
     
-    const pendingCount = callLogs.filter(c => c.summaryStatus === 'pending' || (c.status === 'completed' && !c.summaryShort)).length;
+    const pendingCount = allActivities.filter(i => i.status === 'pending').length;
+    const totalActivities = allActivities.length;
 
-    return { callsToday, successRate, avgDuration, pendingCount };
-  }, [callLogs]);
+    return { callsToday, successRate, avgDuration, pendingCount, totalActivities };
+  }, [callActivities, allActivities]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -292,7 +424,7 @@ Status: ${persistentError.status || 'N/A'}`}
           {/* LEFT COLUMN: col-span-8 */}
           <div className="lg:col-span-8 space-y-5">
 
-            {/* Call Feed */}
+            {/* Unified Activity Feed */}
             <motion.div
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
@@ -300,69 +432,137 @@ Status: ${persistentError.status || 'N/A'}`}
               className="rounded-3xl p-5"
               style={{ background: DT.panelBg, backdropFilter: 'blur(20px)', border: `1px solid ${DT.panelBorder}` }}
             >
-              <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] mb-4" style={{ color: DT.gold }}>
-                Aktivität
-              </h3>
+              {/* Header + Filter Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.15em]" style={{ color: DT.gold }}>
+                  Aktivität
+                </h3>
+                
+                {/* Filter Tabs */}
+                <div className="flex items-center gap-1 p-1 rounded-[12px]" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                  {(['all', 'call', 'space'] as const).map(filter => (
+                    <button
+                      key={filter}
+                      onClick={() => setActiveFilter(filter)}
+                      className={`px-3 py-1.5 rounded-[10px] text-[11px] font-medium uppercase tracking-wide transition-all ${
+                        activeFilter === filter 
+                          ? 'text-white' 
+                          : 'text-neutral-500 hover:text-neutral-300'
+                      }`}
+                      style={activeFilter === filter ? { 
+                        background: 'rgba(255,106,0,0.15)', 
+                        border: '1px solid rgba(255,106,0,0.3)',
+                        boxShadow: '0 0 8px rgba(255,106,0,0.15)'
+                      } : { border: '1px solid transparent' }}
+                    >
+                      {filter === 'all' ? 'Alles' : filter === 'call' ? 'Calls' : 'Space'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Search Input */}
+              <div className="relative mb-4">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Suchen nach Kontakt, Thema, Tag..."
+                  className="w-full px-4 py-2.5 rounded-[12px] text-sm focus:outline-none focus:ring-1 focus:ring-orange-500/30 transition-all"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${DT.panelBorder}`, color: DT.gold }}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white text-xs font-medium transition-colors"
+                  >
+                    x
+                  </button>
+                )}
+              </div>
               
-              {callLogs.length === 0 ? (
+              {/* Activity List */}
+              {allActivities.length === 0 ? (
                 <div className="text-center py-12 text-neutral-500">
-                  <p className="text-sm mb-2">Noch keine Anrufe</p>
+                  <p className="text-sm mb-2">Noch keine Aktivität</p>
                   <a 
                     href="/app/power" 
                     className="text-xs font-medium hover:underline transition-colors"
                     style={{ color: DT.orange }}
                   >
-                    Ersten Anruf starten
+                    Starte deinen ersten Call
                   </a>
                 </div>
               ) : (
-                <div className="space-y-1">
-                  {callLogs.slice(0, 10).map((call, idx) => (
-                    <motion.button
-                      key={call.id}
-                      initial={{ opacity: 0, x: -4 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: ANIM.duration, delay: idx * ANIM.stagger }}
-                      onClick={() => handleOpenCallDetails(call.id)}
-                      className="w-full flex items-center gap-3 py-3 px-3 -mx-3 rounded-[12px] transition-all hover:bg-white/[0.04] focus:outline-none text-left group"
-                      style={{ borderRight: '2px solid transparent' }}
-                      onMouseEnter={e => (e.currentTarget.style.borderRightColor = `${DT.orange}50`)}
-                      onMouseLeave={e => (e.currentTarget.style.borderRightColor = 'transparent')}
-                    >
-                      {/* Status dot */}
-                      <div 
-                        className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                          call.status === 'completed' ? 'bg-green-500/70' : 
-                          call.status === 'failed' ? 'bg-red-500/70' : 
-                          'bg-yellow-500/70'
-                        }`} 
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm truncate font-medium group-hover:text-white transition-colors" style={{ color: DT.gold }}>
-                            {call.contactName || call.phoneNumber}
-                          </p>
-                          <span className="text-[10px] text-neutral-500 flex-shrink-0">
-                            {formatDistanceToNow(new Date(call.createdAt), { addSuffix: true, locale: de })}
-                          </span>
-                        </div>
-                        {/* Summary line */}
-                        {call.summaryShort ? (
-                          <p className="text-xs text-neutral-400 truncate mt-0.5 line-clamp-2">{call.summaryShort}</p>
-                        ) : call.summaryStatus === 'pending' || (call.status === 'completed' && !call.summaryShort) ? (
-                          <div className="mt-0.5">
-                            <p className="text-xs text-neutral-500 italic">Zusammenfassung wird erstellt...</p>
-                            <p className="text-[10px] text-neutral-600">Aktualisiert automatisch</p>
-                          </div>
-                        ) : call.status === 'failed' ? (
-                          <p className="text-xs text-red-400/60 mt-0.5">Fehlgeschlagen</p>
-                        ) : null}
+                <div className="space-y-4">
+                  {groupedActivities.map(group => (
+                    <div key={group.label}>
+                      {/* Group Label */}
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-neutral-500 mb-2 px-1">
+                        {group.label}
+                      </p>
+                      
+                      {/* Group Items */}
+                      <div className="space-y-1">
+                        {group.items.map((item, idx) => (
+                          <motion.button
+                            key={`${item.type}-${item.id}`}
+                            initial={{ opacity: 0, x: -4 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: ANIM.duration, delay: idx * ANIM.stagger }}
+                            onClick={() => handleOpenDetails(item)}
+                            className="w-full flex items-center gap-3 py-3 px-3 -mx-3 rounded-[12px] transition-all hover:bg-white/[0.04] focus:outline-none text-left group"
+                            style={{ borderRight: '2px solid transparent' }}
+                            onMouseEnter={e => (e.currentTarget.style.borderRightColor = `${DT.orange}50`)}
+                            onMouseLeave={e => (e.currentTarget.style.borderRightColor = 'transparent')}
+                          >
+                            {/* Type indicator + Status dot */}
+                            <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                              <div 
+                                className={`w-2 h-2 rounded-full ${
+                                  item.status === 'ready' || item.status === 'completed' ? 'bg-green-500/70' : 
+                                  item.status === 'failed' ? 'bg-red-500/70' : 
+                                  item.status === 'pending' ? 'bg-amber-500/70' :
+                                  'bg-blue-500/70'
+                                }`} 
+                              />
+                              <span className="text-[9px] uppercase tracking-wide text-neutral-600">
+                                {item.type === 'call' ? 'C' : 'S'}
+                              </span>
+                            </div>
+                            
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm truncate font-medium group-hover:text-white transition-colors" style={{ color: DT.gold }}>
+                                  {item.title}
+                                </p>
+                                <span className="text-[10px] text-neutral-500 flex-shrink-0">
+                                  {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true, locale: de })}
+                                </span>
+                              </div>
+                              {/* Summary line */}
+                              {item.summaryShort ? (
+                                <p className="text-xs text-neutral-400 truncate mt-0.5 line-clamp-2">{item.summaryShort}</p>
+                              ) : item.status === 'pending' ? (
+                                <div className="mt-0.5">
+                                  <p className="text-xs text-neutral-500 italic">Zusammenfassung wird erstellt...</p>
+                                  <p className="text-[10px] text-neutral-600">Aktualisiert automatisch</p>
+                                </div>
+                              ) : item.status === 'failed' ? (
+                                <p className="text-xs text-red-400/60 mt-0.5">Fehlgeschlagen</p>
+                              ) : item.type === 'space' ? (
+                                <p className="text-xs text-neutral-500 mt-0.5">Chat Session</p>
+                              ) : null}
+                            </div>
+                            
+                            {/* Meta (duration for calls) */}
+                            <span className="text-[11px] text-neutral-500 tabular-nums flex-shrink-0">
+                              {item.meta?.durationSec ? formatDuration(item.meta.durationSec) : '—'}
+                            </span>
+                          </motion.button>
+                        ))}
                       </div>
-                      {/* Duration */}
-                      <span className="text-[11px] text-neutral-500 tabular-nums flex-shrink-0">
-                        {call.duration ? formatDuration(call.duration) : '—'}
-                      </span>
-                    </motion.button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -434,9 +634,9 @@ Status: ${persistentError.status || 'N/A'}`}
           </div>
         </div>
 
-        {/* CALL DETAILS DRAWER */}
+        {/* UNIFIED DETAILS DRAWER */}
         <AnimatePresence>
-          {selectedCallId && (
+          {selectedItem && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -470,11 +670,11 @@ Status: ${persistentError.status || 'N/A'}`}
                       WebkitTextFillColor: 'transparent'
                     }}
                   >
-                    Anrufdetails
+                    {selectedItem.type === 'call' ? 'Anrufdetails' : 'Chat Session'}
                   </h3>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => selectedCallId && handleOpenCallDetails(selectedCallId)}
+                      onClick={() => selectedItem && handleOpenDetails(selectedItem)}
                       disabled={loadingDetails}
                       className="text-xs font-medium px-3 py-1.5 rounded-[10px] hover:bg-white/[0.06] transition-colors disabled:opacity-50"
                       style={{ color: DT.gold }}
@@ -507,7 +707,7 @@ Status: ${persistentError.status || 'N/A'}`}
                         <div className="h-3 bg-neutral-800/30 rounded animate-pulse w-5/6" />
                         <div className="h-20 bg-neutral-800/20 rounded-[12px] animate-pulse w-full mt-4" />
                       </motion.div>
-                    ) : selectedCallDetails ? (
+                    ) : selectedDetails ? (
                       <motion.div
                         key="content"
                         initial={{ opacity: 0, y: 6 }}
@@ -515,20 +715,27 @@ Status: ${persistentError.status || 'N/A'}`}
                         exit={{ opacity: 0 }}
                         transition={{ duration: ANIM.duration }}
                       >
-                        <PowerResultCard
-                          result={{
-                            id: selectedCallDetails.id,
-                            callId: selectedCallDetails.id,
-                            recordingUrl: selectedCallDetails.recordingUrl,
-                            transcript: selectedCallDetails.transcript,
-                            duration: selectedCallDetails.durationSeconds ?? selectedCallDetails.duration,
-                            phoneNumber: selectedCallDetails.phoneNumber,
-                            contactName: selectedCallDetails.metadata?.contactName
-                          }}
-                          summary={selectedCallDetails.summary}
-                          onNewCall={handleCloseDrawer}
-                          onRefresh={() => selectedCallId && handleOpenCallDetails(selectedCallId)}
-                        />
+                        {selectedItem.type === 'call' ? (
+                          <PowerResultCard
+                            result={{
+                              id: selectedDetails.id,
+                              callId: selectedDetails.id,
+                              recordingUrl: selectedDetails.recordingUrl,
+                              transcript: selectedDetails.transcript,
+                              duration: selectedDetails.durationSeconds ?? selectedDetails.duration,
+                              phoneNumber: selectedDetails.phoneNumber,
+                              contactName: selectedDetails.metadata?.contactName
+                            }}
+                            summary={selectedDetails.summary}
+                            onNewCall={handleCloseDrawer}
+                            onRefresh={() => selectedItem && handleOpenDetails(selectedItem)}
+                          />
+                        ) : (
+                          <ChatSessionDetails 
+                            session={selectedDetails} 
+                            onClose={handleCloseDrawer}
+                          />
+                        )}
                       </motion.div>
                     ) : (
                       <motion.div 
@@ -543,7 +750,7 @@ Status: ${persistentError.status || 'N/A'}`}
                         </div>
                         <p className="text-sm">Details konnten nicht geladen werden</p>
                         <button
-                          onClick={() => selectedCallId && handleOpenCallDetails(selectedCallId)}
+                          onClick={() => selectedItem && handleOpenDetails(selectedItem)}
                           className="mt-3 text-xs px-4 py-2 rounded-[10px] font-medium"
                           style={{ background: 'rgba(255,106,0,0.12)', color: DT.orange, border: '1px solid rgba(255,106,0,0.25)' }}
                         >
@@ -588,5 +795,80 @@ function StatTile({ label, value, highlight = false }: { label: string; value: s
         {label}
       </div>
     </motion.div>
+  );
+}
+
+// Chat Session Details Component (for Space drawer)
+function ChatSessionDetails({ session, onClose }: { session: any; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+  
+  const handleCopyTranscript = () => {
+    if (!session.messages?.length) return;
+    const text = session.messages.map((m: any) => `${m.role === 'assistant' ? 'ARAS' : 'Du'}: ${m.content}`).join('\n\n');
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Session Info */}
+      <div className="p-4 rounded-[14px]" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <h4 className="text-sm font-semibold mb-2" style={{ color: DT.gold }}>{session.title}</h4>
+        <p className="text-xs text-neutral-500">
+          {session.messageCount || session.messages?.length || 0} Nachrichten
+        </p>
+      </div>
+
+      {/* Messages */}
+      {session.messages?.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-[11px] font-bold uppercase tracking-[0.1em] text-neutral-500">
+              Verlauf
+            </h4>
+            <button
+              onClick={handleCopyTranscript}
+              className="text-[11px] font-medium px-2 py-1 rounded-[8px] transition-colors"
+              style={{ color: copied ? '#22c55e' : DT.gold, background: 'rgba(255,255,255,0.04)' }}
+            >
+              {copied ? 'Kopiert' : 'Kopieren'}
+            </button>
+          </div>
+          
+          <div 
+            className="max-h-[400px] overflow-y-auto space-y-3 p-3 rounded-[12px]"
+            style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.05)' }}
+          >
+            {session.messages.slice(-20).map((msg: any, idx: number) => (
+              <div 
+                key={msg.id || idx}
+                className={`p-3 rounded-[10px] text-sm ${
+                  msg.role === 'assistant' 
+                    ? 'bg-orange-500/5 border border-orange-500/10' 
+                    : 'bg-white/[0.03] border border-white/[0.06]'
+                }`}
+              >
+                <p className="text-[10px] font-medium uppercase tracking-wide mb-1" style={{ color: msg.role === 'assistant' ? DT.orange : '#888' }}>
+                  {msg.role === 'assistant' ? 'ARAS' : 'Du'}
+                </p>
+                <p className="text-neutral-300 whitespace-pre-wrap text-[13px] leading-relaxed">
+                  {msg.content}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Open in Space CTA */}
+      <a
+        href="/app"
+        className="block w-full py-3 px-4 rounded-[14px] text-sm font-medium text-center transition-all hover:translate-y-[-1px]"
+        style={{ background: `linear-gradient(135deg, ${DT.orange}, ${DT.goldDark})`, color: '#000' }}
+      >
+        Im Space öffnen
+      </a>
+    </div>
   );
 }
