@@ -4,7 +4,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { db } from "./db";
 import { chatMessages, chatSessions, users } from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
-import { getKnowledgeDigest } from "./knowledge/context-builder";
+import { getKnowledgeDigest } from './knowledge/context-builder';
 
 // Extend express-session types
 declare module "express-session" {
@@ -70,7 +70,7 @@ const PLATFORM_KNOWLEDGE = {
 
 // 🧠 ULTRA-INTELLIGENT SYSTEM PROMPT
 // Full access to all user data, platform knowledge, and psychological profile
-const getSystemPrompt = (user: any, knowledgeDigest?: string) => {
+const getSystemPrompt = (user: any, userDataSources?: any[]) => {
   const aiProfile = user.aiProfile || {};
   
   // Extract ALL profile data
@@ -90,8 +90,13 @@ const getSystemPrompt = (user: any, knowledgeDigest?: string) => {
   const painPoints = aiProfile.painPoints?.join(', ') || 'Noch nicht analysiert';
   const chatSummary = aiProfile.chatInsightsSummary || 'Noch keine Chat-Analyse durchgeführt';
   
-  // Knowledge Digest (from centralized context builder)
-  const knowledgeSection = knowledgeDigest || '📁 USER SOURCES: Keine Datenquellen hinzugefügt';
+  // Data Sources
+  let dataSourcesList = 'Keine Datenquellen hinzugefügt';
+  let dataSourcesCount = 0;
+  if (userDataSources && userDataSources.length > 0) {
+    dataSourcesCount = userDataSources.length;
+    dataSourcesList = userDataSources.map(ds => `- ${ds.name} (${ds.type}): ${ds.url || ds.content?.substring(0, 50) || 'N/A'}`).join('\n');
+  }
   
   // Platform Knowledge
   const pricing = `FREE: ${PLATFORM_KNOWLEDGE.pricing.free.price} (${PLATFORM_KNOWLEDGE.pricing.free.aiMessages} Nachrichten) | PRO: ${PLATFORM_KNOWLEDGE.pricing.pro.price} (${PLATFORM_KNOWLEDGE.pricing.pro.aiMessages} Nachrichten) | ENTERPRISE: ${PLATFORM_KNOWLEDGE.pricing.enterprise.price} (Unlimited)`;
@@ -143,7 +148,8 @@ Du bist NICHT ChatGPT, Claude oder OpenAI - du bist ARAS AI®!
 💬 CHAT-INSIGHTS:
   ${chatSummary}
 
-${knowledgeSection}
+📁 DATENQUELLEN (${dataSourcesCount}):
+${dataSourcesList}
 
 ══════════════════════════════════════
 🏢 ARAS AI PLATFORM KNOWLEDGE
@@ -263,23 +269,21 @@ router.post("/chat/messages", async (req: Request, res: Response) => {
       content: msg.message,
     }));
 
-    // Load knowledge digest (user data sources + AI profile in budgeted format)
+    // 🧠 Inject Knowledge Digest from user data sources
     const knowledgeDigest = await getKnowledgeDigest(userId, 'space');
+    const digestCharCount = knowledgeDigest.length;
+    const digestSourceCount = (knowledgeDigest.match(/• \[/g) || []).length;
     
-    // 📊 Observability: Log knowledge digest injection
-    console.log('[CHAT] 📁 knowledgeDigestInjected:', {
-      userId,
-      mode: 'space',
-      sourceCount: knowledgeDigest ? (knowledgeDigest.match(/\[(?:FILE|TEXT|URL)\]/g) || []).length : 0,
-      charCount: knowledgeDigest?.length || 0
-    });
-    
-    // Generate enhanced system prompt with full user context + knowledge
-    const enhancedSystemPrompt = getSystemPrompt(user, knowledgeDigest);
+    // Generate enhanced system prompt with full user context + knowledge digest
+    const baseSystemPrompt = getSystemPrompt(user);
+    const enhancedSystemPrompt = knowledgeDigest 
+      ? `${baseSystemPrompt}\n\n${knowledgeDigest}` 
+      : baseSystemPrompt;
 
     console.log(`[CHAT] 💬 ${user.firstName} (${user.company}) | Session: ${currentSessionId}`);
     console.log(`[CHAT] 📊 Context: ${contextMessages.length} messages | Profile enriched: ${user.profileEnriched}`);
-    console.log(`[CHAT] 🔥 Using Gemini EXP-1206 (NEWEST) with LIVE DATA & GROUNDING`);
+    console.log(`[CHAT] 🧠 knowledgeDigestInjected: { userId: ${userId}, sourceCount: ${digestSourceCount}, charCount: ${digestCharCount}, first200: "${knowledgeDigest.slice(0, 200).replace(/\n/g, ' ')}" }`);
+    console.log(`[CHAT] 🔥 Using Gemini 2.5 Flash with LIVE DATA & GROUNDING`);
 
     // Build conversation history for Gemini
     const conversationHistory = contextMessages.map(msg => ({

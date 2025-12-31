@@ -10,7 +10,6 @@ import {
   subscriptionPlans,
   usageTracking,
   twilioSettings,
-  userDataSources,
   type User,
   type UpsertUser,
   type Lead,
@@ -27,8 +26,6 @@ import {
   type UsageTracking,
   type TwilioSettings,
   type InsertTwilioSettings,
-  type UserDataSource,
-  type InsertUserDataSource,
 } from "@shared/schema";
 import { db } from "./db";
 import { logger } from "./logger";
@@ -167,11 +164,8 @@ export interface IStorage {
   getCallLogByRetellId(retellCallId: string, userId: string): Promise<any>;
   getUserCallLogs(userId: string): Promise<any[]>;
   
-  // User Data Sources operations
+  // User Data Sources (Knowledge Base)
   getUserDataSources(userId: string): Promise<any[]>;
-  createUserDataSource(data: any): Promise<any>;
-  getUserDataSourceById(id: number, userId: string): Promise<any | null>;
-  deleteUserDataSource(id: number, userId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1332,6 +1326,75 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
+  // ============================================
+  // User Data Sources (Knowledge Base)
+  // ============================================
+  
+  // Helper: Convert Postgres timestamp to ISO string safely
+  private toIsoDate(value: any): string | null {
+    if (!value) return null;
+    try {
+      if (value instanceof Date) {
+        return value.toISOString();
+      }
+      if (typeof value === 'string') {
+        let iso = value.replace(' ', 'T');
+        iso = iso.replace(/\.(\d{3})\d*/, '.$1');
+        if (iso.endsWith('+00')) {
+          iso = iso.replace('+00', 'Z');
+        } else if (!iso.endsWith('Z') && !iso.match(/[+-]\d{2}:\d{2}$/)) {
+          iso += 'Z';
+        }
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return null;
+        return d.toISOString();
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  async getUserDataSources(userId: string): Promise<any[]> {
+    logger.info(`[STORAGE-DB] getUserDataSources called for userId=${userId}`);
+    try {
+      const { client } = await import('./db');
+      
+      const result = await client`
+        SELECT * FROM user_data_sources 
+        WHERE user_id = ${userId} 
+        ORDER BY created_at DESC
+        LIMIT 200
+      `;
+      
+      logger.info(`[STORAGE-DB] Found ${result.length} rows for userId=${userId}`);
+      
+      // Transform with robust column mapping
+      const transformed = result.map((row: any) => ({
+        id: row.id,
+        userId: row.user_id,
+        type: row.type,
+        title: row.title || '',
+        status: row.status || 'active',
+        // CRITICAL: Try content_text first, then content_preview, then empty
+        contentText: row.content_text ?? row.content_preview ?? '',
+        url: row.url || '',
+        fileName: row.file_name || null,
+        fileMime: row.file_mime || null,
+        fileSize: row.file_size || null,
+        fileStorageKey: row.file_storage_key || null,
+        errorMessage: row.error_message || null,
+        createdAt: this.toIsoDate(row.created_at),
+        updatedAt: this.toIsoDate(row.updated_at)
+      }));
+      
+      logger.info(`[STORAGE-DB] Transformed ${transformed.length} sources`);
+      return transformed;
+    } catch (error: any) {
+      logger.error(`[STORAGE-DB] ❌ ERROR fetching data sources for userId=${userId}:`, error.message);
+      throw error;
+    }
+  }
 }
 
 // In-memory storage class for authentication without database dependency
@@ -2221,102 +2284,103 @@ export class MemStorage implements IStorage {
     };
   }
   
-  // ============================================================================
-  // User Data Sources - Knowledge Base
-  // ============================================================================
-  
-  async getUserDataSources(userId: string): Promise<UserDataSource[]> {
+  // Helper: Convert Postgres timestamp to ISO string safely
+  private toIsoDate(value: any): string | null {
+    if (!value) return null;
     try {
-      const sources = await db
-        .select()
-        .from(userDataSources)
-        .where(eq(userDataSources.userId, userId))
-        .orderBy(desc(userDataSources.createdAt));
-      return sources;
-    } catch (error) {
-      logger.error('[DATA-SOURCES] Error fetching user data sources:', error);
-      throw error;
+      // If already a Date object
+      if (value instanceof Date) {
+        return value.toISOString();
+      }
+      // If string like "2025-12-29 22:42:15.305864+00" convert to ISO
+      if (typeof value === 'string') {
+        // Replace space with T and handle microseconds
+        let iso = value.replace(' ', 'T');
+        // Truncate microseconds to milliseconds (6 digits -> 3 digits)
+        iso = iso.replace(/\.(\d{3})\d*/, '.$1');
+        // Ensure timezone format
+        if (iso.endsWith('+00')) {
+          iso = iso.replace('+00', 'Z');
+        } else if (!iso.endsWith('Z') && !iso.match(/[+-]\d{2}:\d{2}$/)) {
+          iso += 'Z';
+        }
+        // Validate by parsing
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return null;
+        return d.toISOString();
+      }
+      return null;
+    } catch {
+      return null;
     }
   }
-  
-  async createUserDataSource(data: InsertUserDataSource): Promise<UserDataSource> {
+
+  // User Data Sources (Knowledge Base) - Query from user_data_sources table
+  async getUserDataSources(userId: string): Promise<any[]> {
+    logger.info(`[STORAGE] getUserDataSources called with userId=${userId}`);
     try {
-      const [source] = await db
-        .insert(userDataSources)
-        .values({
-          ...data,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .returning();
-      logger.info('[DATA-SOURCES] Created new data source:', { id: source.id, type: source.type, userId: source.userId });
-      return source;
-    } catch (error) {
-      logger.error('[DATA-SOURCES] Error creating data source:', error);
-      throw error;
-    }
-  }
-  
-  async getUserDataSourceById(id: number, userId: string): Promise<UserDataSource | null> {
-    try {
-      const [source] = await db
-        .select()
-        .from(userDataSources)
-        .where(and(
-          eq(userDataSources.id, id),
-          eq(userDataSources.userId, userId)
-        ));
-      return source || null;
-    } catch (error) {
-      logger.error('[DATA-SOURCES] Error fetching data source by id:', error);
-      throw error;
-    }
-  }
-  
-  async deleteUserDataSource(id: number, userId: string): Promise<boolean> {
-    try {
-      const result = await db
-        .delete(userDataSources)
-        .where(and(
-          eq(userDataSources.id, id),
-          eq(userDataSources.userId, userId)
-        ))
-        .returning();
+      const { client } = await import('./db');
       
+      // One-time schema inspection (logged once)
+      if (!(globalThis as any).__schemaLogged) {
+        (globalThis as any).__schemaLogged = true;
+        try {
+          const schema = await client`
+            SELECT column_name, data_type 
+            FROM information_schema.columns 
+            WHERE table_name = 'user_data_sources'
+            ORDER BY ordinal_position
+          `;
+          logger.info(`[STORAGE] ═══ SCHEMA user_data_sources ═══`);
+          schema.forEach((col: any) => logger.info(`  ${col.column_name}: ${col.data_type}`));
+        } catch (e) {
+          logger.warn(`[STORAGE] Schema inspection failed`);
+        }
+      }
+      
+      // Query all rows for this user
+      const result = await client`
+        SELECT * FROM user_data_sources 
+        WHERE user_id = ${userId} 
+        ORDER BY created_at DESC
+      `;
+      
+      logger.info(`[STORAGE] getUserDataSources for userId=${userId}: found ${result.length} raw rows`);
+      
+      // Log first row's actual keys for debugging
       if (result.length > 0) {
-        logger.info('[DATA-SOURCES] Deleted data source:', { id, userId });
-        return true;
+        const keys = Object.keys(result[0]);
+        logger.info(`[STORAGE] First row KEYS: ${keys.join(', ')}`);
+        logger.info(`[STORAGE] First row VALUES: id=${result[0].id} type=${result[0].type} status=${result[0].status} content_text=${result[0].content_text?.length || 'N/A'} content_preview=${result[0].content_preview?.length || 'N/A'}`);
       }
-      return false;
-    } catch (error) {
-      logger.error('[DATA-SOURCES] Error deleting data source:', error);
-      throw error;
-    }
-  }
-  
-  async updateCallLogByConversationId(conversationId: string, updates: any): Promise<void> {
-    try {
-      // Find call log by retellCallId (which stores the conversation ID)
-      const [existingLog] = await db
-        .select()
-        .from(callLogs)
-        .where(eq(callLogs.retellCallId, conversationId));
       
-      if (existingLog) {
-        await db
-          .update(callLogs)
-          .set({
-            ...updates,
-            updatedAt: new Date(),
-          })
-          .where(eq(callLogs.retellCallId, conversationId));
-        logger.info('[CALL-LOGS] Updated call log by conversation ID:', conversationId);
-      } else {
-        logger.warn('[CALL-LOGS] No call log found for conversation ID:', conversationId);
-      }
-    } catch (error) {
-      logger.error('[CALL-LOGS] Error updating call log by conversation ID:', error);
-      throw error;
+      // Transform with ROBUST column mapping (handle both content_text AND content_preview)
+      const transformed = result.map((row: any) => ({
+        id: row.id,
+        userId: row.user_id,
+        type: row.type,
+        title: row.title || '',
+        status: row.status || 'active',
+        // CRITICAL: Try content_text first, then content_preview, then empty
+        contentText: row.content_text ?? row.content_preview ?? '',
+        url: row.url || '',
+        fileName: row.file_name || null,
+        fileMime: row.file_mime || null,
+        fileSize: row.file_size || null,
+        fileStorageKey: row.file_storage_key || null,
+        errorMessage: row.error_message || null,
+        createdAt: this.toIsoDate(row.created_at),
+        updatedAt: this.toIsoDate(row.updated_at)
+      }));
+      
+      logger.info(`[STORAGE] Transformed ${transformed.length} sources. First: id=${transformed[0]?.id} contentText.length=${transformed[0]?.contentText?.length || 0}`);
+      
+      return transformed;
+    } catch (error: any) {
+      // NO SILENT CATCH - log and RETHROW so callers know something failed
+      logger.error(`[STORAGE] ❌ ERROR fetching data sources for userId=${userId}:`, error.message);
+      logger.error(`[STORAGE] Stack:`, error.stack);
+      throw error; // Rethrow - don't hide errors with empty array
     }
   }
 }

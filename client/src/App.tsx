@@ -31,7 +31,7 @@ import Campaigns from "@/pages/campaigns";
 import Contacts from '@/pages/contacts'; // DIRECT IMPORT - NO LAZY! (FULL VERSION)
 import Calendar from '@/pages/calendar'; // DIRECT IMPORT - NO LAZY! (FULL VERSION)
 import Billing from "@/pages/billing";
-import Settings from "@/pages/settings";
+// Settings loaded via AppPage lazy import
 import AuthPage from "@/pages/auth-page";
 import ArasMailingPage from "@/pages/aras-mailing";
 import AppPage from "@/pages/app";
@@ -107,12 +107,19 @@ const VideoBackground = memo(() => {
         style={{
           transform: 'scale(1.0)',
           transformOrigin: 'center center',
-          filter: 'contrast(1.3) brightness(1.1) saturate(1.2) blur(0px)',
+          filter: 'contrast(1.1) brightness(0.7) saturate(0.9)',
           opacity: 1
         }}
       />
-      {/* 30% dark overlay - video DEUTLICH visible */}
-      <div className="absolute inset-0 bg-black/30"></div>
+      {/* Dark overlay + gradient for better text readability */}
+      <div className="pointer-events-none absolute inset-0 bg-black/50" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/35 via-black/55 to-black/75" />
+      <div 
+        className="pointer-events-none absolute inset-0" 
+        style={{
+          background: 'radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.3) 100%)'
+        }}
+      />
     </div>
   );
 });
@@ -179,8 +186,8 @@ function Router() {
           <Route path="/app/power" component={Power} />
           <Route path="/voice-agents" component={VoiceAgents} />
           <Route path="/app/voice-agents" component={VoiceAgents} />
-          <Route path="/leads" component={Leads} />
-          <Route path="/app/leads" component={Leads} />
+          <Route path="/leads" component={AppPage} />
+          <Route path="/app/leads" component={AppPage} />
           <Route path="/admin" component={AdminDashboard} />
           <Route path="/admin-dashboard" component={AdminDashboard} />
           <Route path="/app/admin" component={AdminDashboard} />
@@ -193,8 +200,8 @@ function Router() {
           <Route path="/app/calendar" component={Calendar} />
           <Route path="/billing" component={Billing} />
           <Route path="/app/billing" component={Billing} />
-          <Route path="/settings" component={Settings} />
-          <Route path="/app/settings" component={Settings} />
+          <Route path="/settings" component={AppPage} />
+          <Route path="/app/settings" component={AppPage} />
           <Route path="/aras-mailing" component={ArasMailingPage} />
           <Route path="/app/aras-mailing" component={ArasMailingPage} />
           

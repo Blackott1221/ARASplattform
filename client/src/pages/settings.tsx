@@ -1,11 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sidebar } from '@/components/layout/sidebar';
-import { TopBar } from '@/components/layout/topbar';
 import { useAuth } from '@/hooks/useAuth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
-import type { User, SubscriptionResponse } from '@shared/schema';
+import { 
+  probeCapabilities, 
+  isCapabilityAvailable,
+  getAvailableSections,
+  SETTINGS_SECTIONS,
+  type SettingsSection,
+} from '@/lib/capabilities/settingsCapabilities';
+import type { SubscriptionResponse } from '@shared/schema';
+import { 
+  User, Shield, Database, Activity, Trash2, Key, ChevronRight, 
+  CheckCircle, AlertCircle, Loader2, RefreshCw, ExternalLink,
+  Zap, Clock, MessageSquare, Phone, FileText, Eye
+} from 'lucide-react';
 
 // ARAS CI Colors
 const CI = {
@@ -14,43 +24,223 @@ const CI = {
   goldDark: '#A34E00',
 };
 
-// Typing Animation Hook
-const useTypingAnimation = (text: string, speed: number = 50) => {
-  const [displayText, setDisplayText] = useState('');
-  
-  useEffect(() => {
-    let index = 0;
-    const timer = setInterval(() => {
-      if (index <= text.length) {
-        setDisplayText(text.slice(0, index));
-        index++;
-      } else {
-        clearInterval(timer);
-      }
-    }, speed);
-    
-    return () => clearInterval(timer);
-  }, [text, speed]);
-  
-  return displayText;
+// Icon map for sections
+const SECTION_ICONS: Record<string, React.ElementType> = {
+  User, Shield, Database, Activity,
 };
 
-// Tabs
-type TabType = 'account' | 'notifications' | 'security' | 'privacy';
+// Error Boundary Fallback
+function SettingsErrorFallback({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[400px] p-8">
+      <AlertCircle className="w-16 h-16 mb-4" style={{ color: CI.orange }} />
+      <h2 className="text-xl font-bold mb-2 font-['Orbitron']" style={{ color: CI.goldLight }}>
+        Einstellungen konnten nicht geladen werden
+      </h2>
+      <p className="text-sm mb-6 text-center" style={{ color: `${CI.goldLight}80` }}>
+        Bitte versuche es erneut oder kontaktiere den Support.
+      </p>
+      <button
+        onClick={onRetry}
+        className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all hover:scale-105"
+        style={{
+          background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
+          color: '#000',
+        }}
+      >
+        <RefreshCw className="w-4 h-4" />
+        Neu laden
+      </button>
+    </div>
+  );
+}
 
+// Loading Skeleton
+function SettingsSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="h-10 w-56 rounded-lg bg-white/5" />
+          <div className="h-4 w-80 rounded bg-white/5 mt-3" />
+        </div>
+        <div className="flex gap-2">
+          <div className="h-8 w-20 rounded-full bg-white/5" />
+          <div className="h-8 w-32 rounded-full bg-white/5" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-8">
+        <div className="space-y-2">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="h-14 rounded-xl bg-white/5" />
+          ))}
+        </div>
+        <div className="lg:col-span-3 space-y-4">
+          <div className="h-40 rounded-2xl bg-white/5" />
+          <div className="h-56 rounded-2xl bg-white/5" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Glass Panel Component
+function GlassPanel({ 
+  children, 
+  className = '',
+  hover = true,
+  danger = false,
+}: { 
+  children: React.ReactNode; 
+  className?: string;
+  hover?: boolean;
+  danger?: boolean;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
+      whileHover={hover ? { scale: 1.002, boxShadow: `0 0 30px ${danger ? 'rgba(239,68,68,0.15)' : `${CI.orange}15`}` } : undefined}
+      className={`p-6 rounded-2xl transition-all ${className}`}
+      style={{
+        background: 'rgba(0,0,0,0.55)',
+        border: `1px solid ${danger ? 'rgba(239,68,68,0.3)' : `${CI.orange}20`}`,
+        backdropFilter: 'blur(20px)',
+      }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+// Section Navigation Item
+function NavItem({ 
+  section,
+  active, 
+  onClick 
+}: { 
+  section: SettingsSection;
+  active: boolean; 
+  onClick: () => void;
+}) {
+  const Icon = SECTION_ICONS[section.icon] || User;
+  
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-left transition-all group"
+      style={{
+        background: active ? `${CI.orange}15` : 'transparent',
+        borderLeft: active ? `3px solid ${CI.orange}` : '3px solid transparent',
+      }}
+    >
+      <Icon 
+        className="w-5 h-5 flex-shrink-0 transition-colors" 
+        style={{ color: active ? CI.orange : `${CI.goldLight}80` }}
+      />
+      <div className="flex-1 min-w-0">
+        <span 
+          className="block font-medium text-sm truncate"
+          style={{ color: active ? CI.orange : CI.goldLight }}
+        >
+          {section.label}
+        </span>
+        <span 
+          className="block text-xs truncate"
+          style={{ color: `${CI.goldLight}50` }}
+        >
+          {section.description}
+        </span>
+      </div>
+      {active && <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: CI.orange }} />}
+    </button>
+  );
+}
+
+// Input Field
+function InputField({
+  label,
+  value,
+  onChange,
+  type = 'text',
+  required = false,
+  disabled = false,
+  helper,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+  required?: boolean;
+  disabled?: boolean;
+  helper?: string;
+}) {
+  return (
+    <div>
+      <label className="block text-xs font-bold mb-2" style={{ color: CI.goldLight }}>
+        {label} {required && <span style={{ color: CI.orange }}>*</span>}
+      </label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        className="w-full px-4 py-3 rounded-xl text-white text-sm focus:outline-none focus:ring-2 transition-all disabled:opacity-50"
+        style={{
+          background: 'rgba(255,255,255,0.05)',
+          border: `1px solid ${CI.orange}20`,
+        }}
+      />
+      {helper && (
+        <p className="text-xs mt-1.5" style={{ color: `${CI.goldLight}60` }}>{helper}</p>
+      )}
+    </div>
+  );
+}
+
+// Stat Card
+function StatCard({ icon: Icon, label, value, color }: { 
+  icon: React.ElementType; 
+  label: string; 
+  value: string; 
+  color: string;
+}) {
+  return (
+    <div 
+      className="p-4 rounded-xl"
+      style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${CI.orange}10` }}
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className="w-4 h-4" style={{ color }} />
+        <span className="text-xs" style={{ color: `${CI.goldLight}60` }}>{label}</span>
+      </div>
+      <p className="text-lg font-bold font-['Orbitron']" style={{ color }}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+// Main Settings Page
 export default function SettingsPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('account');
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  const [activeSection, setActiveSection] = useState('account');
+  const [capabilities, setCapabilities] = useState<Record<string, boolean>>({});
+  const [capabilitiesLoading, setCapabilitiesLoading] = useState(true);
+  const [capabilitiesError, setCapabilitiesError] = useState(false);
+  const [availableSections, setAvailableSections] = useState<SettingsSection[]>([]);
+
+  // Dialogs
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
-  
-  // Typing Animation for Title
-  const titleText = useTypingAnimation('Einstellungen', 100);
-  
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showDiagnoseModal, setShowDiagnoseModal] = useState(false);
+  const [diagnoseData, setDiagnoseData] = useState<any>(null);
+  const [diagnoseLoading, setDiagnoseLoading] = useState(false);
+
   // Form States
   const [profileForm, setProfileForm] = useState({
     username: '',
@@ -58,24 +248,12 @@ export default function SettingsPage() {
     firstName: '',
     lastName: '',
   });
-  
+  const [profileDirty, setProfileDirty] = useState(false);
+
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
-  });
-  
-  const [notificationSettings, setNotificationSettings] = useState({
-    emailNotifications: true,
-    campaignAlerts: true,
-    weeklyReports: false,
-    aiSuggestions: true,
-  });
-  
-  const [privacySettings, setPrivacySettings] = useState({
-    dataCollection: true,
-    analytics: true,
-    thirdPartySharing: false,
   });
 
   // Fetch subscription data
@@ -87,38 +265,54 @@ export default function SettingsPage() {
   // Fetch usage stats
   const { data: usageStats } = useQuery<any>({
     queryKey: ['/api/user/usage'],
-    enabled: !!user && !authLoading,
+    enabled: !!user && !authLoading && isCapabilityAvailable(capabilities, 'usage'),
   });
 
-  const subscriptionData = subscription || {
-    plan: 'free',
-    status: 'trial',
-    aiMessagesUsed: 0,
-    voiceCallsUsed: 0,
-    aiMessagesLimit: null,
-    voiceCallsLimit: null,
-    renewalDate: new Date().toISOString(),
-    trialMessagesUsed: 0,
-    trialEndDate: null,
-    hasPaymentMethod: false,
-    requiresPaymentSetup: false,
-    isTrialActive: false,
-    canUpgrade: true,
-  } as SubscriptionResponse;
+  // Fetch data sources count
+  const { data: dataSources } = useQuery<any>({
+    queryKey: ['/api/user/data-sources'],
+    enabled: !!user && !authLoading && isCapabilityAvailable(capabilities, 'dataSources'),
+  });
 
-  // Initialize profile form
+  // Probe capabilities on mount
+  useEffect(() => {
+    async function loadCapabilities() {
+      try {
+        setCapabilitiesLoading(true);
+        setCapabilitiesError(false);
+        const results = await probeCapabilities();
+        setCapabilities(results);
+        const sections = getAvailableSections(results);
+        setAvailableSections(sections);
+        if (sections.length > 0 && !sections.find(s => s.id === activeSection)) {
+          setActiveSection(sections[0].id);
+        }
+      } catch {
+        setCapabilitiesError(true);
+      } finally {
+        setCapabilitiesLoading(false);
+      }
+    }
+    if (user) {
+      loadCapabilities();
+    }
+  }, [user]);
+
+  // Initialize profile form from user data
   useEffect(() => {
     if (user) {
-      setProfileForm({
+      const newForm = {
         username: (user as any).username || '',
         email: (user as any).email || '',
         firstName: (user as any).firstName || '',
         lastName: (user as any).lastName || '',
-      });
+      };
+      setProfileForm(newForm);
+      setProfileDirty(false);
     }
   }, [user]);
 
-  // Update Profile Mutation
+  // Update profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data: typeof profileForm) => {
       const res = await fetch('/api/user/profile', {
@@ -129,27 +323,21 @@ export default function SettingsPage() {
       });
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.message || 'Failed to update profile');
+        throw new Error(error.message || 'Fehler beim Speichern');
       }
       return res.json();
     },
     onSuccess: () => {
-      toast({
-        title: '✅ Profil aktualisiert',
-        description: 'Deine Änderungen wurden gespeichert!',
-      });
+      toast({ title: '✅ Profil aktualisiert', description: 'Änderungen wurden gespeichert.' });
       queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      setProfileDirty(false);
     },
     onError: (error: Error) => {
-      toast({
-        title: '❌ Fehler',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast({ title: '❌ Fehler', description: error.message, variant: 'destructive' });
     },
   });
 
-  // Change Password Mutation
+  // Change password mutation
   const changePasswordMutation = useMutation({
     mutationFn: async (data: typeof passwordForm) => {
       const res = await fetch('/api/user/change-password', {
@@ -160,695 +348,622 @@ export default function SettingsPage() {
       });
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.message || 'Failed to change password');
+        throw new Error(error.message || 'Fehler beim Ändern');
       }
       return res.json();
     },
     onSuccess: () => {
-      toast({
-        title: '✅ Passwort geändert',
-        description: 'Dein Passwort wurde erfolgreich aktualisiert!',
-      });
+      toast({ title: '✅ Passwort geändert', description: 'Dein Passwort wurde aktualisiert.' });
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setShowPasswordDialog(false);
     },
     onError: (error: Error) => {
-      toast({
-        title: '❌ Fehler',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast({ title: '❌ Fehler', description: error.message, variant: 'destructive' });
     },
   });
 
-  // Delete Account Mutation
+  // Delete account mutation
   const deleteAccountMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch('/api/user/delete-account', {
         method: 'DELETE',
         credentials: 'include',
       });
-      if (!res.ok) throw new Error('Failed to delete account');
+      if (!res.ok) throw new Error('Fehler beim Löschen');
       return res.json();
     },
     onSuccess: () => {
-      toast({
-        title: '✅ Account gelöscht',
-        description: 'Dein Account wurde erfolgreich gelöscht.',
-      });
+      toast({ title: '✅ Account gelöscht', description: 'Auf Wiedersehen!' });
       window.location.href = '/';
     },
     onError: (error: Error) => {
-      toast({
-        title: '❌ Fehler',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast({ title: '❌ Fehler', description: error.message, variant: 'destructive' });
     },
   });
 
-  // Save Notifications
-  const saveNotificationsMutation = useMutation({
-    mutationFn: async (data: typeof notificationSettings) => {
-      const res = await fetch('/api/user/notification-settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error('Failed to save settings');
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: '✅ Benachrichtigungen gespeichert',
-        description: 'Deine Einstellungen wurden aktualisiert!',
-      });
-    },
-  });
+  // Handle profile form change
+  const handleProfileChange = useCallback((key: keyof typeof profileForm, value: string) => {
+    setProfileForm(prev => ({ ...prev, [key]: value }));
+    setProfileDirty(true);
+  }, []);
 
-  // Save Privacy Settings
-  const savePrivacyMutation = useMutation({
-    mutationFn: async (data: typeof privacySettings) => {
-      const res = await fetch('/api/user/privacy-settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error('Failed to save settings');
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: '✅ Datenschutz gespeichert',
-        description: 'Deine Einstellungen wurden aktualisiert!',
-      });
-    },
-  });
+  // Retry loading capabilities
+  const retryCapabilities = useCallback(async () => {
+    setCapabilitiesLoading(true);
+    setCapabilitiesError(false);
+    try {
+      const results = await probeCapabilities();
+      setCapabilities(results);
+      setAvailableSections(getAvailableSections(results));
+    } catch {
+      setCapabilitiesError(true);
+    } finally {
+      setCapabilitiesLoading(false);
+    }
+  }, []);
 
-  if (authLoading) {
+  // Load diagnose data
+  const loadDiagnoseData = async () => {
+    setDiagnoseLoading(true);
+    try {
+      const [profileContext, knowledgeHealth] = await Promise.all([
+        fetch('/api/user/profile-context', { credentials: 'include' }).then(r => r.ok ? r.json() : null),
+        fetch('/api/user/knowledge/health', { credentials: 'include' }).then(r => r.ok ? r.json() : null),
+      ]);
+      setDiagnoseData({
+        profileContext,
+        knowledgeHealth,
+        user: {
+          id: (user as any)?.id,
+          email: (user as any)?.email,
+          plan: subscription?.plan,
+          status: subscription?.status,
+        },
+        timestamp: new Date().toISOString(),
+      });
+      setShowDiagnoseModal(true);
+    } catch (err) {
+      toast({ title: '❌ Fehler', description: 'Diagnose konnte nicht geladen werden', variant: 'destructive' });
+    } finally {
+      setDiagnoseLoading(false);
+    }
+  };
+
+  // Loading state
+  if (authLoading || capabilitiesLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-black">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-          className="w-16 h-16 border-4 rounded-full"
-          style={{
-            borderColor: `${CI.orange}40`,
-            borderTopColor: CI.orange,
-          }}
-        />
+      <div className="h-full overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <div className="max-w-6xl mx-auto">
+          <SettingsSkeleton />
+        </div>
       </div>
     );
   }
 
-  const tabs = [
-    { id: 'account' as TabType, label: 'Konto' },
-    { id: 'notifications' as TabType, label: 'Benachrichtigungen' },
-    { id: 'security' as TabType, label: 'Sicherheit' },
-    { id: 'privacy' as TabType, label: 'Datenschutz' },
-  ];
+  // Error state
+  if (capabilitiesError) {
+    return (
+      <div className="h-full overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <div className="max-w-6xl mx-auto">
+          <SettingsErrorFallback onRetry={retryCapabilities} />
+        </div>
+      </div>
+    );
+  }
+
+  // Last sync time
+  const lastSync = new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+  const planLabel = subscription?.plan?.toUpperCase() || 'FREE';
 
   return (
-    <div className="flex h-screen relative overflow-hidden bg-black">
-      {/* Video Background - durchscheinend */}
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#FE9100]/5 via-transparent to-[#E9D7C4]/5" />
-      </div>
-
-      <Sidebar
-        activeSection="settings"
-        onSectionChange={(section) => window.location.href = `/app/${section}`}
-        isCollapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-      />
-
-      <div className="flex-1 flex flex-col relative overflow-hidden">
-        <TopBar
-          currentSection="settings"
-          subscriptionData={subscriptionData}
-          user={user as any}
-          isVisible={true}
-        />
-
-        <div className="flex-1 overflow-y-auto p-8">
-          <div className="max-w-6xl mx-auto">
-            {/* Animated Header */}
-            <motion.div
-              initial={{ opacity: 0, y: -30 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center mb-12"
-            >
+    <div className="h-full overflow-y-auto">
+      <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 pb-32">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
               <h1 
-                className="text-6xl font-bold mb-4 font-['Orbitron']"
+                className="text-3xl sm:text-4xl font-bold font-['Orbitron']"
                 style={{
-                  background: `linear-gradient(135deg, ${CI.goldLight}, ${CI.orange}, ${CI.goldDark})`,
+                  background: `linear-gradient(135deg, ${CI.goldLight}, ${CI.orange})`,
                   WebkitBackgroundClip: 'text',
                   backgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
-                  animation: 'gradient-shift 3s ease infinite',
                 }}
               >
-                {titleText}<motion.span animate={{ opacity: [0, 1, 0] }} transition={{ duration: 0.8, repeat: Infinity }}>|</motion.span>
+                Einstellungen
               </h1>
-              <motion.p 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1 }}
-                className="text-lg font-medium"
+              <p className="text-sm mt-2" style={{ color: `${CI.goldLight}80` }}>
+                Kontrolle, Sicherheit, Integrationen – alles an einem Ort.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <span 
+                className="px-3 py-1.5 rounded-full text-xs font-bold"
                 style={{ 
-                  color: CI.goldLight,
-                  textShadow: `0 0 10px ${CI.orange}60`,
+                  background: `${CI.orange}20`, 
+                  color: CI.orange,
+                  border: `1px solid ${CI.orange}40`,
                 }}
               >
-                Verwalte deinen Account • Personalisiere deine Erfahrung
-              </motion.p>
-            </motion.div>
+                {planLabel}
+              </span>
+              <span className="flex items-center gap-1.5 text-xs" style={{ color: `${CI.goldLight}60` }}>
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                LIVE
+              </span>
+              <span className="text-xs" style={{ color: `${CI.goldLight}50` }}>
+                Sync: {lastSync}
+              </span>
+            </div>
+          </div>
+        </motion.div>
 
-            {/* Tab Navigation - Ultra Modern */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="flex gap-3 mb-10 overflow-x-auto pb-2 justify-center"
+        {/* Main Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Sidebar Navigation - Desktop */}
+          <div className="hidden lg:block">
+            <div 
+              className="sticky top-4 p-4 rounded-2xl"
+              style={{
+                background: 'rgba(0,0,0,0.55)',
+                border: `1px solid ${CI.orange}20`,
+                backdropFilter: 'blur(20px)',
+              }}
             >
-              {tabs.map((tab, idx) => (
-                <motion.button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.3 + idx * 0.1 }}
-                  whileHover={{ 
-                    scale: 1.05, 
-                    y: -3,
-                    boxShadow: activeTab === tab.id 
-                      ? `0 0 30px ${CI.orange}80, 0 0 60px ${CI.orange}40`
-                      : `0 0 20px ${CI.orange}40`
-                  }}
-                  whileTap={{ scale: 0.95 }}
-                  className="px-8 py-4 rounded-2xl font-bold text-base whitespace-nowrap transition-all relative overflow-hidden"
+              <nav className="space-y-1">
+                {availableSections.map(section => (
+                  <NavItem
+                    key={section.id}
+                    section={section}
+                    active={activeSection === section.id}
+                    onClick={() => setActiveSection(section.id)}
+                  />
+                ))}
+              </nav>
+            </div>
+          </div>
+
+          {/* Mobile Navigation */}
+          <div className="lg:hidden flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
+            {availableSections.map(section => {
+              const Icon = SECTION_ICONS[section.icon] || User;
+              return (
+                <button
+                  key={section.id}
+                  onClick={() => setActiveSection(section.id)}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-full whitespace-nowrap text-sm font-medium transition-all flex-shrink-0"
                   style={{
-                    background: activeTab === tab.id
-                      ? `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`
-                      : 'rgba(255,255,255,0.03)',
-                    color: activeTab === tab.id ? '#000' : CI.goldLight,
-                    border: `2px solid ${activeTab === tab.id ? 'transparent' : `${CI.orange}30`}`,
-                    boxShadow: activeTab === tab.id 
-                      ? `0 0 20px ${CI.orange}60, inset 0 0 20px ${CI.goldDark}40`
-                      : 'none',
-                    backdropFilter: 'blur(10px)',
+                    background: activeSection === section.id 
+                      ? `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})` 
+                      : 'rgba(255,255,255,0.05)',
+                    color: activeSection === section.id ? '#000' : CI.goldLight,
+                    border: `1px solid ${activeSection === section.id ? 'transparent' : `${CI.orange}30`}`,
                   }}
                 >
-                  {activeTab === tab.id && (
-                    <motion.div
-                      layoutId="activeTab"
-                      className="absolute inset-0"
-                      style={{
-                        background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
-                        borderRadius: '1rem',
-                      }}
-                      transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-                    />
-                  )}
-                  <span className="relative z-10">{tab.label}</span>
-                </motion.button>
-              ))}
-            </motion.div>
+                  <Icon className="w-4 h-4" />
+                  {section.label}
+                </button>
+              );
+            })}
+          </div>
 
-            {/* Content */}
+          {/* Content Area */}
+          <div className="lg:col-span-3 space-y-6 min-h-0">
             <AnimatePresence mode="wait">
-              <motion.div
-                key={activeTab}
-                initial={{ opacity: 0, x: 20, scale: 0.95 }}
-                animate={{ opacity: 1, x: 0, scale: 1 }}
-                exit={{ opacity: 0, x: -20, scale: 0.95 }}
-                transition={{ duration: 0.3 }}
-              >
-                {/* ACCOUNT TAB */}
-                {activeTab === 'account' && (
-                  <div className="space-y-8">
-                    {/* Subscription Card */}
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      whileHover={{ scale: 1.02, boxShadow: `0 0 40px ${CI.orange}30` }}
-                      className="p-8 rounded-3xl relative overflow-hidden"
-                      style={{
-                        background: `linear-gradient(135deg, rgba(254,145,0,0.08), rgba(163,78,0,0.05))`,
-                        border: `2px solid transparent`,
-                        backgroundImage: `
-                          linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), 
-                          linear-gradient(135deg, ${CI.orange}, ${CI.goldLight})
-                        `,
-                        backgroundOrigin: 'border-box',
-                        backgroundClip: 'padding-box, border-box',
-                        backdropFilter: 'blur(20px)',
-                      }}
-                    >
-                      <motion.div
-                        className="absolute top-0 right-0 w-64 h-64 rounded-full"
-                        style={{
-                          background: `radial-gradient(circle, ${CI.orange}20, transparent)`,
-                        }}
-                        animate={{
-                          scale: [1, 1.2, 1],
-                          opacity: [0.3, 0.6, 0.3],
-                        }}
-                        transition={{
-                          duration: 4,
-                          repeat: Infinity,
-                        }}
-                      />
-                      
-                      <h2 className="text-3xl font-bold mb-6 font-['Orbitron']" style={{ 
-                        background: `linear-gradient(135deg, ${CI.goldLight}, ${CI.orange})`,
-                        WebkitBackgroundClip: 'text',
-                        backgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                      }}>
-                        Dein Plan
-                      </h2>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        {[
-                          { label: 'Status', value: subscription?.status === 'active' ? 'Aktiv' : 'Trial' },
-                          { label: 'Plan', value: subscription?.plan || 'Free' },
-                          { label: 'AI Nachrichten', value: `${subscription?.aiMessagesUsed || 0} / ${subscription?.aiMessagesLimit || '∞'}` },
-                        ].map((stat, idx) => (
-                          <motion.div
-                            key={stat.label}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 * idx }}
-                            whileHover={{ scale: 1.05, y: -5 }}
-                            className="p-6 rounded-2xl relative overflow-hidden"
-                            style={{
-                              background: 'rgba(255,255,255,0.03)',
-                              border: `1px solid ${CI.orange}20`,
-                              backdropFilter: 'blur(10px)',
-                            }}
-                          >
-                            <p className="text-sm mb-2" style={{ color: CI.goldLight }}>
-                              {stat.label}
-                            </p>
-                            <p className="text-2xl font-bold font-['Orbitron']" style={{ 
-                              color: CI.orange,
-                              textShadow: `0 0 10px ${CI.orange}60`,
-                            }}>
-                              {stat.value}
-                            </p>
-                            <motion.div
-                              className="absolute bottom-0 left-0 h-1 w-full"
-                              style={{ background: `linear-gradient(90deg, ${CI.orange}, ${CI.goldLight})` }}
-                              animate={{ scaleX: [0, 1, 0] }}
-                              transition={{ duration: 3, repeat: Infinity }}
-                            />
-                          </motion.div>
-                        ))}
+              {/* ACCOUNT SECTION */}
+              {activeSection === 'account' && (
+                <motion.div
+                  key="account"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  {/* Subscription Card */}
+                  {isCapabilityAvailable(capabilities, 'subscription') && (
+                    <GlassPanel>
+                      <div className="flex items-center gap-3 mb-6">
+                        <div 
+                          className="w-10 h-10 rounded-xl flex items-center justify-center"
+                          style={{ background: `${CI.orange}20` }}
+                        >
+                          <Zap className="w-5 h-5" style={{ color: CI.orange }} />
+                        </div>
+                        <div>
+                          <h2 className="text-lg font-bold font-['Orbitron']" style={{ color: CI.goldLight }}>
+                            Dein Plan
+                          </h2>
+                          <p className="text-xs" style={{ color: `${CI.goldLight}60` }}>
+                            Aktuelle Nutzung und Limits
+                          </p>
+                        </div>
                       </div>
-                      
-                      <motion.button
-                        whileHover={{ 
-                          scale: 1.03, 
-                          boxShadow: `0 0 30px ${CI.orange}80, 0 0 60px ${CI.orange}40`
-                        }}
-                        whileTap={{ scale: 0.98 }}
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                        <StatCard 
+                          icon={CheckCircle} 
+                          label="Status" 
+                          value={subscription?.status === 'active' ? 'Aktiv' : 'Trial'}
+                          color={subscription?.status === 'active' ? '#22c55e' : CI.orange}
+                        />
+                        <StatCard 
+                          icon={Zap} 
+                          label="Plan" 
+                          value={planLabel}
+                          color={CI.orange}
+                        />
+                        <StatCard 
+                          icon={MessageSquare} 
+                          label="AI Nachrichten" 
+                          value={`${usageStats?.ai_messages_used || subscription?.aiMessagesUsed || 0}`}
+                          color={CI.goldLight}
+                        />
+                        <StatCard 
+                          icon={Phone} 
+                          label="Voice Calls" 
+                          value={`${usageStats?.voice_calls_used || 0}`}
+                          color={CI.goldLight}
+                        />
+                      </div>
+
+                      <button
                         onClick={() => window.location.href = '/app/billing'}
-                        className="w-full py-4 rounded-2xl font-bold text-lg font-['Orbitron']"
+                        className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-sm transition-all hover:scale-[1.02]"
                         style={{
                           background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
                           color: '#000',
-                          boxShadow: `0 0 20px ${CI.orange}40`,
                         }}
                       >
-                        <motion.span
-                          animate={{ opacity: [0.8, 1, 0.8] }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                        >
-                          Plan upgraden →
-                        </motion.span>
-                      </motion.button>
-                    </motion.div>
+                        Plan upgraden →
+                      </button>
+                    </GlassPanel>
+                  )}
 
-                    {/* Profile Form */}
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.2 }}
-                      whileHover={{ scale: 1.01, boxShadow: `0 0 40px ${CI.orange}20` }}
-                      className="p-8 rounded-3xl"
-                      style={{
-                        background: 'rgba(0,0,0,0.6)',
-                        border: `2px solid ${CI.orange}20`,
-                        backdropFilter: 'blur(20px)',
-                      }}
-                    >
-                      <h2 className="text-3xl font-bold mb-8 font-['Orbitron']" style={{ 
-                        background: `linear-gradient(135deg, ${CI.goldLight}, ${CI.orange})`,
-                        WebkitBackgroundClip: 'text',
-                        backgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                      }}>
-                        Profil bearbeiten
-                      </h2>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {[
-                          { key: 'username', label: 'Benutzername', type: 'text', required: true },
-                          { key: 'email', label: 'Email', type: 'email', required: true },
-                          { key: 'firstName', label: 'Vorname', type: 'text', required: false },
-                          { key: 'lastName', label: 'Nachname', type: 'text', required: false },
-                        ].map((field, idx) => (
-                          <motion.div
-                            key={field.key}
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.1 * idx }}
-                          >
-                            <label className="block text-sm font-bold mb-3 font-['Orbitron']" style={{ color: CI.goldLight }}>
-                              {field.label} {field.required && <span style={{ color: CI.orange }}>*</span>}
-                            </label>
-                            <motion.input
-                              whileFocus={{ 
-                                scale: 1.02,
-                                boxShadow: `0 0 20px ${CI.orange}40`,
-                              }}
-                              type={field.type}
-                              value={profileForm[field.key as keyof typeof profileForm]}
-                              onChange={(e) => setProfileForm({ ...profileForm, [field.key]: e.target.value })}
-                              className="w-full px-6 py-4 rounded-2xl text-white focus:outline-none transition-all"
-                              style={{
-                                background: 'rgba(255,255,255,0.05)',
-                                border: `2px solid ${CI.orange}20`,
-                                backdropFilter: 'blur(10px)',
-                              }}
-                            />
-                          </motion.div>
-                        ))}
+                  {/* Profile Card */}
+                  {isCapabilityAvailable(capabilities, 'profile') && (
+                    <GlassPanel>
+                      <div className="flex items-center gap-3 mb-6">
+                        <div 
+                          className="w-10 h-10 rounded-xl flex items-center justify-center"
+                          style={{ background: `${CI.orange}20` }}
+                        >
+                          <User className="w-5 h-5" style={{ color: CI.orange }} />
+                        </div>
+                        <div>
+                          <h2 className="text-lg font-bold font-['Orbitron']" style={{ color: CI.goldLight }}>
+                            Profil bearbeiten
+                          </h2>
+                          <p className="text-xs" style={{ color: `${CI.goldLight}60` }}>
+                            Deine persönlichen Daten
+                          </p>
+                        </div>
                       </div>
 
-                      <motion.button
-                        whileHover={{ 
-                          scale: 1.03, 
-                          boxShadow: `0 0 30px ${CI.orange}60`
-                        }}
-                        whileTap={{ scale: 0.97 }}
-                        onClick={() => updateProfileMutation.mutate(profileForm)}
-                        disabled={updateProfileMutation.isPending}
-                        className="mt-8 w-full md:w-auto px-10 py-4 rounded-2xl font-bold text-lg font-['Orbitron']"
-                        style={{
-                          background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
-                          color: '#000',
-                          opacity: updateProfileMutation.isPending ? 0.5 : 1,
-                        }}
-                      >
-                        {updateProfileMutation.isPending ? 'Speichere...' : 'Änderungen speichern'}
-                      </motion.button>
-                    </motion.div>
-                  </div>
-                )}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <InputField
+                          label="Benutzername"
+                          value={profileForm.username}
+                          onChange={(v) => handleProfileChange('username', v)}
+                          required
+                          disabled={updateProfileMutation.isPending}
+                        />
+                        <InputField
+                          label="Email"
+                          value={profileForm.email}
+                          onChange={(v) => handleProfileChange('email', v)}
+                          type="email"
+                          required
+                          disabled={updateProfileMutation.isPending}
+                        />
+                        <InputField
+                          label="Vorname"
+                          value={profileForm.firstName}
+                          onChange={(v) => handleProfileChange('firstName', v)}
+                          disabled={updateProfileMutation.isPending}
+                        />
+                        <InputField
+                          label="Nachname"
+                          value={profileForm.lastName}
+                          onChange={(v) => handleProfileChange('lastName', v)}
+                          disabled={updateProfileMutation.isPending}
+                        />
+                      </div>
 
-                {/* NOTIFICATIONS TAB */}
-                {activeTab === 'notifications' && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="p-8 rounded-3xl"
-                    style={{
-                      background: 'rgba(0,0,0,0.6)',
-                      border: `2px solid ${CI.orange}20`,
-                      backdropFilter: 'blur(20px)',
-                    }}
-                  >
-                    <h2 className="text-3xl font-bold mb-8 font-['Orbitron']" style={{ 
-                      background: `linear-gradient(135deg, ${CI.goldLight}, ${CI.orange})`,
-                      WebkitBackgroundClip: 'text',
-                      backgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                    }}>
-                      Benachrichtigungen
-                    </h2>
-
-                    <div className="space-y-6">
-                      {[
-                        { key: 'emailNotifications', label: 'Email-Benachrichtigungen', desc: 'Erhalte Updates per Email' },
-                        { key: 'campaignAlerts', label: 'Kampagnen-Alerts', desc: 'Werde über Kampagnen-Events benachrichtigt' },
-                        { key: 'weeklyReports', label: 'Wöchentliche Reports', desc: 'Zusammenfassung deiner Aktivitäten' },
-                        { key: 'aiSuggestions', label: 'AI-Vorschläge', desc: 'Erhalte intelligente Empfehlungen' },
-                      ].map((setting, idx) => (
+                      {profileDirty && (
                         <motion.div
-                          key={setting.key}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: idx * 0.1 }}
-                          whileHover={{ scale: 1.02, x: 5 }}
-                          className="flex items-center justify-between p-6 rounded-2xl"
-                          style={{ 
-                            background: 'rgba(255,255,255,0.03)',
-                            border: `1px solid ${CI.orange}15`,
-                          }}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="mt-6 flex justify-end"
                         >
-                          <div>
-                            <p className="font-bold text-lg font-['Orbitron']" style={{ color: CI.goldLight }}>
-                              {setting.label}
-                            </p>
-                            <p className="text-sm mt-1" style={{ color: `${CI.goldLight}80` }}>
-                              {setting.desc}
-                            </p>
-                          </div>
                           <button
-                            onClick={() => setNotificationSettings({
-                              ...notificationSettings,
-                              [setting.key]: !notificationSettings[setting.key as keyof typeof notificationSettings]
-                            })}
-                            className="relative w-16 h-9 rounded-full transition-all"
+                            onClick={() => updateProfileMutation.mutate(profileForm)}
+                            disabled={updateProfileMutation.isPending}
+                            className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:scale-[1.02] disabled:opacity-50"
                             style={{
-                              background: notificationSettings[setting.key as keyof typeof notificationSettings]
-                                ? `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`
-                                : 'rgba(255,255,255,0.1)',
-                              boxShadow: notificationSettings[setting.key as keyof typeof notificationSettings]
-                                ? `0 0 15px ${CI.orange}60`
-                                : 'none',
+                              background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
+                              color: '#000',
                             }}
                           >
-                            <motion.div
-                              animate={{
-                                x: notificationSettings[setting.key as keyof typeof notificationSettings] ? 28 : 2
-                              }}
-                              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                              className="absolute top-1 w-7 h-7 rounded-full bg-white"
-                              style={{
-                                boxShadow: `0 2px 8px rgba(0,0,0,0.3)`,
-                              }}
-                            />
+                            {updateProfileMutation.isPending ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Speichere...
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="w-4 h-4" />
+                                Änderungen speichern
+                              </>
+                            )}
                           </button>
                         </motion.div>
-                      ))}
-                    </div>
+                      )}
+                    </GlassPanel>
+                  )}
+                </motion.div>
+              )}
 
-                    <motion.button
-                      whileHover={{ scale: 1.03, boxShadow: `0 0 30px ${CI.orange}60` }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => saveNotificationsMutation.mutate(notificationSettings)}
-                      disabled={saveNotificationsMutation.isPending}
-                      className="mt-8 w-full md:w-auto px-10 py-4 rounded-2xl font-bold text-lg font-['Orbitron']"
-                      style={{
-                        background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
-                        color: '#000',
-                      }}
-                    >
-                      {saveNotificationsMutation.isPending ? 'Speichere...' : 'Einstellungen speichern'}
-                    </motion.button>
-                  </motion.div>
-                )}
+              {/* SECURITY SECTION */}
+              {activeSection === 'security' && (
+                <motion.div
+                  key="security"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  {/* Password Card */}
+                  {isCapabilityAvailable(capabilities, 'password') && (
+                    <GlassPanel>
+                      <div className="flex items-center gap-3 mb-4">
+                        <div 
+                          className="w-10 h-10 rounded-xl flex items-center justify-center"
+                          style={{ background: `${CI.orange}20` }}
+                        >
+                          <Key className="w-5 h-5" style={{ color: CI.orange }} />
+                        </div>
+                        <div>
+                          <h2 className="text-lg font-bold font-['Orbitron']" style={{ color: CI.goldLight }}>
+                            Passwort ändern
+                          </h2>
+                          <p className="text-xs" style={{ color: `${CI.goldLight}60` }}>
+                            Schütze deinen Account mit einem starken Passwort
+                          </p>
+                        </div>
+                      </div>
 
-                {/* SECURITY TAB */}
-                {activeTab === 'security' && (
-                  <div className="space-y-8">
-                    {/* Password Change */}
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      whileHover={{ scale: 1.01 }}
-                      className="p-8 rounded-3xl"
-                      style={{
-                        background: 'rgba(0,0,0,0.6)',
-                        border: `2px solid ${CI.orange}20`,
-                        backdropFilter: 'blur(20px)',
-                      }}
-                    >
-                      <h2 className="text-3xl font-bold mb-4 font-['Orbitron']" style={{ 
-                        background: `linear-gradient(135deg, ${CI.goldLight}, ${CI.orange})`,
-                        WebkitBackgroundClip: 'text',
-                        backgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                      }}>
-                        Passwort ändern
-                      </h2>
-                      <p className="mb-6 text-lg" style={{ color: `${CI.goldLight}80` }}>
-                        Schütze deinen Account mit einem starken Passwort
-                      </p>
-
-                      <motion.button
-                        whileHover={{ scale: 1.03, boxShadow: `0 0 30px ${CI.orange}60` }}
-                        whileTap={{ scale: 0.97 }}
+                      <button
                         onClick={() => setShowPasswordDialog(true)}
-                        className="px-8 py-4 rounded-2xl font-bold text-lg font-['Orbitron']"
+                        className="px-6 py-3 rounded-xl font-bold text-sm transition-all hover:scale-[1.02]"
                         style={{
                           background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
                           color: '#000',
                         }}
                       >
                         Passwort ändern
-                      </motion.button>
-                    </motion.div>
+                      </button>
+                    </GlassPanel>
+                  )}
 
-                    {/* Delete Account */}
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.1 }}
-                      whileHover={{ scale: 1.01 }}
-                      className="p-8 rounded-3xl"
-                      style={{
-                        background: 'linear-gradient(135deg, rgba(255,0,0,0.08), rgba(139,0,0,0.05))',
-                        border: `2px solid rgba(255,0,0,0.3)`,
-                        backdropFilter: 'blur(20px)',
-                      }}
-                    >
-                      <h2 className="text-3xl font-bold mb-4 text-red-400 font-['Orbitron']">
-                        Account löschen
-                      </h2>
-                      <p className="mb-6 text-lg" style={{ color: `${CI.goldLight}80` }}>
-                        ⚠️ Diese Aktion kann nicht rückgängig gemacht werden! Alle deine Daten werden permanent gelöscht.
+                  {/* Delete Account Card */}
+                  {isCapabilityAvailable(capabilities, 'deleteAccount') && (
+                    <GlassPanel danger>
+                      <div className="flex items-center gap-3 mb-4">
+                        <div 
+                          className="w-10 h-10 rounded-xl flex items-center justify-center"
+                          style={{ background: 'rgba(239,68,68,0.15)' }}
+                        >
+                          <Trash2 className="w-5 h-5 text-red-500" />
+                        </div>
+                        <div>
+                          <h2 className="text-lg font-bold font-['Orbitron'] text-red-400">
+                            Account löschen
+                          </h2>
+                          <p className="text-xs" style={{ color: `${CI.goldLight}60` }}>
+                            ⚠️ Diese Aktion kann nicht rückgängig gemacht werden
+                          </p>
+                        </div>
+                      </div>
+
+                      <p className="text-sm mb-4" style={{ color: `${CI.goldLight}80` }}>
+                        Alle deine Daten, Kontakte und Einstellungen werden permanent gelöscht.
                       </p>
 
-                      <motion.button
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.97 }}
+                      <button
                         onClick={() => setShowDeleteDialog(true)}
-                        className="px-8 py-4 rounded-2xl font-bold text-lg font-['Orbitron']"
+                        className="px-6 py-3 rounded-xl font-bold text-sm transition-all hover:scale-[1.02]"
                         style={{
-                          background: 'linear-gradient(135deg, #ff0000, #8b0000)',
+                          background: 'linear-gradient(135deg, #ef4444, #991b1b)',
                           color: '#fff',
                         }}
                       >
-                        Account endgültig löschen
-                      </motion.button>
-                    </motion.div>
-                  </div>
-                )}
+                        Account löschen
+                      </button>
+                    </GlassPanel>
+                  )}
+                </motion.div>
+              )}
 
-                {/* PRIVACY TAB */}
-                {activeTab === 'privacy' && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="p-8 rounded-3xl"
-                    style={{
-                      background: 'rgba(0,0,0,0.6)',
-                      border: `2px solid ${CI.orange}20`,
-                      backdropFilter: 'blur(20px)',
-                    }}
-                  >
-                    <h2 className="text-3xl font-bold mb-8 font-['Orbitron']" style={{ 
-                      background: `linear-gradient(135deg, ${CI.goldLight}, ${CI.orange})`,
-                      WebkitBackgroundClip: 'text',
-                      backgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                    }}>
-                      Datenschutz
-                    </h2>
-
-                    <div className="space-y-6">
-                      {[
-                        { key: 'dataCollection', label: 'Datensammlung', desc: 'Erlaube ARAS AI, Nutzungsdaten zu sammeln' },
-                        { key: 'analytics', label: 'Analytics', desc: 'Hilf uns, ARAS AI zu verbessern' },
-                        { key: 'thirdPartySharing', label: 'Drittanbieter', desc: 'Daten mit Partnern teilen' },
-                      ].map((setting, idx) => (
-                        <motion.div
-                          key={setting.key}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: idx * 0.1 }}
-                          whileHover={{ scale: 1.02, x: 5 }}
-                          className="flex items-center justify-between p-6 rounded-2xl"
-                          style={{ 
-                            background: 'rgba(255,255,255,0.03)',
-                            border: `1px solid ${CI.orange}15`,
-                          }}
+              {/* DATA SECTION */}
+              {activeSection === 'data' && (
+                <motion.div
+                  key="data"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  {/* Data Sources Card */}
+                  {isCapabilityAvailable(capabilities, 'dataSources') && (
+                    <GlassPanel>
+                      <div className="flex items-center gap-3 mb-4">
+                        <div 
+                          className="w-10 h-10 rounded-xl flex items-center justify-center"
+                          style={{ background: `${CI.orange}20` }}
                         >
-                          <div>
-                            <p className="font-bold text-lg font-['Orbitron']" style={{ color: CI.goldLight }}>
-                              {setting.label}
-                            </p>
-                            <p className="text-sm mt-1" style={{ color: `${CI.goldLight}80` }}>
-                              {setting.desc}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => setPrivacySettings({
-                              ...privacySettings,
-                              [setting.key]: !privacySettings[setting.key as keyof typeof privacySettings]
-                            })}
-                            className="relative w-16 h-9 rounded-full transition-all"
-                            style={{
-                              background: privacySettings[setting.key as keyof typeof privacySettings]
-                                ? `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`
-                                : 'rgba(255,255,255,0.1)',
-                              boxShadow: privacySettings[setting.key as keyof typeof privacySettings]
-                                ? `0 0 15px ${CI.orange}60`
-                                : 'none',
-                            }}
-                          >
-                            <motion.div
-                              animate={{
-                                x: privacySettings[setting.key as keyof typeof privacySettings] ? 28 : 2
-                              }}
-                              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                              className="absolute top-1 w-7 h-7 rounded-full bg-white"
-                            />
-                          </button>
-                        </motion.div>
-                      ))}
+                          <FileText className="w-5 h-5" style={{ color: CI.orange }} />
+                        </div>
+                        <div className="flex-1">
+                          <h2 className="text-lg font-bold font-['Orbitron']" style={{ color: CI.goldLight }}>
+                            Datenquellen
+                          </h2>
+                          <p className="text-xs" style={{ color: `${CI.goldLight}60` }}>
+                            Deine Wissensbasis für ARAS AI
+                          </p>
+                        </div>
+                        <div 
+                          className="px-3 py-1 rounded-full text-sm font-bold"
+                          style={{ background: `${CI.orange}20`, color: CI.orange }}
+                        >
+                          {Array.isArray(dataSources) ? dataSources.length : 0} Quellen
+                        </div>
+                      </div>
+
+                      <p className="text-sm mb-4" style={{ color: `${CI.goldLight}80` }}>
+                        Verwalte die Informationen, die ARAS AI über dein Unternehmen kennt.
+                      </p>
+
+                      <button
+                        onClick={() => window.location.href = '/app/space'}
+                        className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:scale-[1.02]"
+                        style={{
+                          background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
+                          color: '#000',
+                        }}
+                      >
+                        <Database className="w-4 h-4" />
+                        Wissen verwalten
+                      </button>
+                    </GlassPanel>
+                  )}
+
+                  {/* Account Info Card */}
+                  <GlassPanel>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div 
+                        className="w-10 h-10 rounded-xl flex items-center justify-center"
+                        style={{ background: `${CI.orange}20` }}
+                      >
+                        <Clock className="w-5 h-5" style={{ color: CI.orange }} />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-bold font-['Orbitron']" style={{ color: CI.goldLight }}>
+                          Kontoinformationen
+                        </h2>
+                        <p className="text-xs" style={{ color: `${CI.goldLight}60` }}>
+                          Was ARAS AI über dein Konto weiß
+                        </p>
+                      </div>
                     </div>
 
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.4 }}
-                      className="mt-8 p-6 rounded-2xl"
-                      style={{ 
-                        background: `linear-gradient(135deg, ${CI.orange}10, ${CI.goldDark}05)`,
-                        border: `1px solid ${CI.orange}30`,
-                      }}
-                    >
-                      <p className="text-sm mb-2 font-bold font-['Orbitron']" style={{ color: CI.goldLight }}>
-                        🔒 Deine Daten sind sicher
-                      </p>
-                      <p className="text-sm" style={{ color: `${CI.goldLight}80` }}>
-                        Wir verwenden End-to-End-Verschlüsselung und teilen deine Daten niemals ohne deine Zustimmung.
-                      </p>
-                    </motion.div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                      {[
+                        { label: 'User ID', value: (user as any)?.id?.slice(0, 8) + '...' || '—' },
+                        { label: 'Email', value: (user as any)?.email || '—' },
+                        { label: 'Plan', value: subscription?.plan || 'free' },
+                        { label: 'Status', value: subscription?.status || 'trial' },
+                      ].map(item => (
+                        <div key={item.label}>
+                          <p className="text-xs mb-1" style={{ color: `${CI.goldLight}60` }}>{item.label}</p>
+                          <p className="font-mono text-xs truncate" style={{ color: CI.goldLight }}>{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </GlassPanel>
+                </motion.div>
+              )}
 
-                    <motion.button
-                      whileHover={{ scale: 1.03, boxShadow: `0 0 30px ${CI.orange}60` }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => savePrivacyMutation.mutate(privacySettings)}
-                      disabled={savePrivacyMutation.isPending}
-                      className="mt-8 w-full md:w-auto px-10 py-4 rounded-2xl font-bold text-lg font-['Orbitron']"
-                      style={{
-                        background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
-                        color: '#000',
-                      }}
-                    >
-                      {savePrivacyMutation.isPending ? 'Speichere...' : 'Einstellungen speichern'}
-                    </motion.button>
-                  </motion.div>
-                )}
-              </motion.div>
+              {/* DIAGNOSE SECTION */}
+              {activeSection === 'diagnose' && (
+                <motion.div
+                  key="diagnose"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  <GlassPanel>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div 
+                        className="w-10 h-10 rounded-xl flex items-center justify-center"
+                        style={{ background: `${CI.orange}20` }}
+                      >
+                        <Activity className="w-5 h-5" style={{ color: CI.orange }} />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-bold font-['Orbitron']" style={{ color: CI.goldLight }}>
+                          Diagnose & Transparenz
+                        </h2>
+                        <p className="text-xs" style={{ color: `${CI.goldLight}60` }}>
+                          Debug-Informationen für Support
+                        </p>
+                      </div>
+                    </div>
+
+                    <p className="text-sm mb-6" style={{ color: `${CI.goldLight}80` }}>
+                      Zeige alle Daten, die ARAS AI über dein Konto gespeichert hat.
+                    </p>
+
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        onClick={loadDiagnoseData}
+                        disabled={diagnoseLoading}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all hover:scale-[1.02] disabled:opacity-50"
+                        style={{
+                          background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
+                          color: '#000',
+                        }}
+                      >
+                        {diagnoseLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                        Diagnose anzeigen
+                      </button>
+
+                      {isCapabilityAvailable(capabilities, 'knowledgeDigest') && (
+                        <a
+                          href="/api/user/knowledge/digest?mode=space"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all hover:scale-[1.02]"
+                          style={{
+                            background: 'rgba(255,255,255,0.05)',
+                            color: CI.goldLight,
+                            border: `1px solid ${CI.orange}30`,
+                          }}
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          Knowledge Digest (Space)
+                        </a>
+                      )}
+
+                      {isCapabilityAvailable(capabilities, 'knowledgeHealth') && (
+                        <a
+                          href="/api/user/knowledge/health"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all hover:scale-[1.02]"
+                          style={{
+                            background: 'rgba(255,255,255,0.05)',
+                            color: CI.goldLight,
+                            border: `1px solid ${CI.orange}30`,
+                          }}
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          Knowledge Health
+                        </a>
+                      )}
+                    </div>
+                  </GlassPanel>
+                </motion.div>
+              )}
             </AnimatePresence>
           </div>
         </div>
@@ -866,82 +981,71 @@ export default function SettingsPage() {
             onClick={() => setShowPasswordDialog(false)}
           >
             <motion.div
-              initial={{ scale: 0.8, y: 50 }}
+              initial={{ scale: 0.9, y: 30 }}
               animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.8, y: 50 }}
+              exit={{ scale: 0.9, y: 30 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md p-8 rounded-3xl"
+              className="w-full max-w-md p-6 rounded-2xl"
               style={{
                 background: 'rgba(0,0,0,0.95)',
                 border: `2px solid ${CI.orange}`,
-                boxShadow: `0 0 40px ${CI.orange}60`,
-                backdropFilter: 'blur(20px)',
+                boxShadow: `0 0 40px ${CI.orange}40`,
               }}
             >
-              <h2 className="text-3xl font-bold mb-6 font-['Orbitron']" style={{ 
-                background: `linear-gradient(135deg, ${CI.goldLight}, ${CI.orange})`,
-                WebkitBackgroundClip: 'text',
-                backgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}>
+              <h2 className="text-2xl font-bold mb-6 font-['Orbitron']" style={{ color: CI.goldLight }}>
                 Passwort ändern
               </h2>
 
-              <div className="space-y-5">
-                {[
-                  { key: 'currentPassword', label: 'Aktuelles Passwort' },
-                  { key: 'newPassword', label: 'Neues Passwort' },
-                  { key: 'confirmPassword', label: 'Passwort bestätigen' },
-                ].map((field, idx) => (
-                  <motion.div
-                    key={field.key}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.1 * idx }}
-                  >
-                    <label className="block text-sm font-bold mb-2 font-['Orbitron']" style={{ color: CI.goldLight }}>
-                      {field.label}
-                    </label>
-                    <input
-                      type="password"
-                      value={passwordForm[field.key as keyof typeof passwordForm]}
-                      onChange={(e) => setPasswordForm({ ...passwordForm, [field.key]: e.target.value })}
-                      className="w-full px-5 py-4 rounded-2xl text-white focus:outline-none"
-                      style={{
-                        background: 'rgba(255,255,255,0.05)',
-                        border: `2px solid ${CI.orange}30`,
-                      }}
-                    />
-                  </motion.div>
-                ))}
+              <div className="space-y-4">
+                <InputField
+                  label="Aktuelles Passwort"
+                  value={passwordForm.currentPassword}
+                  onChange={(v) => setPasswordForm(prev => ({ ...prev, currentPassword: v }))}
+                  type="password"
+                  required
+                  disabled={changePasswordMutation.isPending}
+                />
+                <InputField
+                  label="Neues Passwort"
+                  value={passwordForm.newPassword}
+                  onChange={(v) => setPasswordForm(prev => ({ ...prev, newPassword: v }))}
+                  type="password"
+                  required
+                  disabled={changePasswordMutation.isPending}
+                  helper="Mindestens 8 Zeichen"
+                />
+                <InputField
+                  label="Passwort bestätigen"
+                  value={passwordForm.confirmPassword}
+                  onChange={(v) => setPasswordForm(prev => ({ ...prev, confirmPassword: v }))}
+                  type="password"
+                  required
+                  disabled={changePasswordMutation.isPending}
+                />
               </div>
 
-              <div className="flex gap-4 mt-8">
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
+              <div className="flex gap-3 mt-6">
+                <button
                   onClick={() => changePasswordMutation.mutate(passwordForm)}
                   disabled={changePasswordMutation.isPending}
-                  className="flex-1 py-4 rounded-2xl font-bold font-['Orbitron']"
+                  className="flex-1 py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-50"
                   style={{
                     background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
                     color: '#000',
                   }}
                 >
                   {changePasswordMutation.isPending ? 'Ändere...' : 'Passwort ändern'}
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
+                </button>
+                <button
                   onClick={() => setShowPasswordDialog(false)}
-                  className="flex-1 py-4 rounded-2xl font-bold font-['Orbitron']"
+                  className="flex-1 py-3 rounded-xl font-bold text-sm transition-all"
                   style={{
                     background: 'rgba(255,255,255,0.1)',
                     color: CI.goldLight,
                   }}
                 >
                   Abbrechen
-                </motion.button>
+                </button>
               </div>
             </motion.div>
           </motion.div>
@@ -960,69 +1064,108 @@ export default function SettingsPage() {
             onClick={() => setShowDeleteDialog(false)}
           >
             <motion.div
-              initial={{ scale: 0.8, y: 50 }}
+              initial={{ scale: 0.9, y: 30 }}
               animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.8, y: 50 }}
+              exit={{ scale: 0.9, y: 30 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md p-8 rounded-3xl"
+              className="w-full max-w-md p-6 rounded-2xl"
               style={{
                 background: 'rgba(20,0,0,0.95)',
-                border: '2px solid #ff0000',
-                boxShadow: '0 0 40px rgba(255,0,0,0.5)',
+                border: '2px solid #ef4444',
+                boxShadow: '0 0 40px rgba(239,68,68,0.4)',
               }}
             >
-              <h2 className="text-3xl font-bold mb-4 text-red-400 font-['Orbitron']">
+              <h2 className="text-2xl font-bold mb-4 text-red-400 font-['Orbitron']">
                 ⚠️ Account löschen?
               </h2>
-              <p className="mb-6 text-gray-300">
-                Diese Aktion ist <strong>permanent</strong> und kann nicht rückgängig gemacht werden!
-                <br /><br />
-                Alle deine Daten, Kontakte, Kampagnen und Einstellungen werden unwiederbringlich gelöscht.
+              <p className="text-sm mb-6" style={{ color: `${CI.goldLight}80` }}>
+                Diese Aktion ist <strong>permanent</strong> und kann nicht rückgängig gemacht werden. 
+                Alle deine Daten werden unwiederbringlich gelöscht.
               </p>
 
-              <div className="flex gap-4">
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
+              <div className="flex gap-3">
+                <button
                   onClick={() => deleteAccountMutation.mutate()}
                   disabled={deleteAccountMutation.isPending}
-                  className="flex-1 py-4 rounded-2xl font-bold font-['Orbitron']"
+                  className="flex-1 py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-50"
                   style={{
-                    background: 'linear-gradient(135deg, #ff0000, #8b0000)',
+                    background: 'linear-gradient(135deg, #ef4444, #991b1b)',
                     color: '#fff',
                   }}
                 >
                   {deleteAccountMutation.isPending ? 'Lösche...' : 'Ja, Account löschen'}
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
+                </button>
+                <button
                   onClick={() => setShowDeleteDialog(false)}
-                  className="flex-1 py-4 rounded-2xl font-bold font-['Orbitron']"
+                  className="flex-1 py-3 rounded-xl font-bold text-sm transition-all"
                   style={{
                     background: 'rgba(255,255,255,0.1)',
                     color: '#fff',
                   }}
                 >
                   Abbrechen
-                </motion.button>
+                </button>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* CSS for Gradient Animation */}
-      <style>{`
-        @keyframes gradient-shift {
-          0%, 100% {
-            filter: hue-rotate(0deg);
-          }
-          50% {
-            filter: hue-rotate(20deg);
-          }
-        }
-      `}</style>
+      {/* Diagnose Modal */}
+      <AnimatePresence>
+        {showDiagnoseModal && diagnoseData && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(10px)' }}
+            onClick={() => setShowDiagnoseModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 30 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 30 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-2xl max-h-[80vh] overflow-hidden rounded-2xl flex flex-col"
+              style={{
+                background: 'rgba(0,0,0,0.95)',
+                border: `2px solid ${CI.orange}`,
+                boxShadow: `0 0 40px ${CI.orange}40`,
+              }}
+            >
+              <div className="p-6 border-b" style={{ borderColor: `${CI.orange}30` }}>
+                <h2 className="text-xl font-bold font-['Orbitron']" style={{ color: CI.goldLight }}>
+                  Diagnose-Daten
+                </h2>
+                <p className="text-xs mt-1" style={{ color: `${CI.goldLight}60` }}>
+                  Read-only • Für Support-Zwecke
+                </p>
+              </div>
+              <div className="flex-1 overflow-auto p-6">
+                <pre 
+                  className="text-xs font-mono whitespace-pre-wrap break-all"
+                  style={{ color: CI.goldLight }}
+                >
+                  {JSON.stringify(diagnoseData, null, 2)}
+                </pre>
+              </div>
+              <div className="p-4 border-t" style={{ borderColor: `${CI.orange}30` }}>
+                <button
+                  onClick={() => setShowDiagnoseModal(false)}
+                  className="w-full py-3 rounded-xl font-bold text-sm"
+                  style={{
+                    background: 'rgba(255,255,255,0.1)',
+                    color: CI.goldLight,
+                  }}
+                >
+                  Schließen
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

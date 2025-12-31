@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/useAuth';
 import { useMutation } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import { SupportDock } from '@/components/support/SupportDock';
 import html2canvas from 'html2canvas';
 
 // ARAS CI Colors
@@ -213,65 +214,39 @@ export function FeedbackWidget() {
 
   return (
     <>
-      {/* Live-Chat Button - WhatsApp */}
-      <AnimatePresence>
-        {!isOpen && (
-          <motion.a
+      {/* Floating Support Dock - using SupportDock component */}
+      {!isOpen && (
+        <SupportDock autoHideMs={5000}>
+          {/* Live-Chat Button - WhatsApp */}
+          <a
             href="https://chat.whatsapp.com/GWx5JKr4RDfGduidjkzZfj?mode=hqrc"
             target="_blank"
             rel="noopener noreferrer"
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            className="fixed bottom-44 right-8 z-40 px-6 py-3 rounded-full font-bold text-sm font-['Orbitron'] shadow-2xl"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs font-['Orbitron'] whitespace-nowrap transition-all hover:scale-[1.02]"
             style={{
-              background: 'transparent',
-              border: '3px solid',
-              borderImageSlice: 1,
-              animation: 'border-flow-green 3s linear infinite, glow-green 2s ease-in-out infinite',
-              display: 'inline-block',
-              textDecoration: 'none',
+              background: 'rgba(37, 211, 102, 0.1)',
+              border: '1px solid rgba(37, 211, 102, 0.4)',
+              color: '#25D366',
             }}
           >
-            <span style={{ 
-              animation: 'text-flow-green 3s linear infinite',
-              display: 'inline-block',
-            }}>
-              💚 Live-Chat
-            </span>
-          </motion.a>
-        )}
-      </AnimatePresence>
+            💚 Live-Chat
+          </a>
 
-      {/* Floating Button - REDESIGNED */}
-      <AnimatePresence>
-        {!isOpen && (
-          <motion.button
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
+          {/* Alpha Feedback Button */}
+          <button
+            type="button"
             onClick={() => setIsOpen(true)}
-            className="fixed bottom-24 right-8 z-40 px-6 py-3 rounded-full font-bold text-sm font-['Orbitron'] shadow-2xl"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs font-['Orbitron'] whitespace-nowrap transition-all hover:scale-[1.02]"
             style={{
-              background: 'transparent',
-              border: '3px solid',
-              borderImageSlice: 1,
-              animation: 'border-flow 3s linear infinite, text-flow 3s linear infinite, glow-orange 2s ease-in-out infinite',
+              background: `rgba(254, 145, 0, 0.1)`,
+              border: `1px solid ${CI.orange}60`,
+              color: CI.orange,
             }}
           >
-            <span style={{ 
-              animation: 'text-flow 3s linear infinite',
-              display: 'inline-block',
-            }}>
-              💬 Alpha Feedback
-            </span>
-          </motion.button>
-        )}
-      </AnimatePresence>
+            💬 Alpha Feedback
+          </button>
+        </SupportDock>
+      )}
 
       {/* Modal - REDESIGNED: Kleiner, cleaner, transparenter */}
       <AnimatePresence>

@@ -24,12 +24,25 @@ export interface KnowledgeContextOptions {
   mode?: 'space' | 'power';  // Determines budget
 }
 
+export interface SourcesDebug {
+  rawCount: number;
+  mappedCount: number;
+  filteredCount: number;
+  ids: number[];
+  types: string[];
+  statuses: string[];
+  titlesPreview: string[];
+  error?: string;
+  stackTop?: string;
+}
+
 export interface KnowledgeContext {
   aiProfile: Record<string, any> | null;
   sources: UserDataSource[];
   digest: string;
   sourceCount: number;
   truncated: boolean;
+  sourcesDebug: SourcesDebug;
 }
 
 /**
@@ -147,7 +160,8 @@ export async function buildKnowledgeContext(
         sources: [],
         digest: '',
         sourceCount: 0,
-        truncated: false
+        truncated: false,
+        sourcesDebug: { rawCount: 0, mappedCount: 0, filteredCount: 0, ids: [], types: [], statuses: [], titlesPreview: [] }
       };
     }
 
@@ -155,14 +169,64 @@ export async function buildKnowledgeContext(
 
     // 2. Load active data sources (newest first, limited)
     let sources: UserDataSource[] = [];
+    let sourcesDebug: SourcesDebug = {
+      rawCount: 0,
+      mappedCount: 0,
+      filteredCount: 0,
+      ids: [],
+      types: [],
+      statuses: [],
+      titlesPreview: []
+    };
+    
     try {
+      // Use storage.getUserDataSources (Single Source of Truth)
+      logger.info(`[DIGEST] ═══ LOADING SOURCES for userId=${userId} mode=${mode} ═══`);
       const allSources = await storage.getUserDataSources(userId);
-      sources = allSources
-        .filter(s => s.status === 'active')
-        .slice(0, maxSources);
-    } catch (err) {
-      logger.error('[KNOWLEDGE] Failed to load data sources:', err);
-      // Continue with empty sources
+      sourcesDebug.rawCount = allSources.length;
+      
+      logger.info(`[DIGEST] Raw sources from storage: ${allSources.length}`);
+      
+      // Log each source for debugging
+      allSources.forEach((s: any, i: number) => {
+        logger.info(`[DIGEST] Source[${i}]: id=${s.id} type=${s.type} status="${s.status}" title="${s.title?.substring(0, 30)}" contentText.length=${s.contentText?.length || 0}`);
+      });
+      
+      // Map sources (all of them first)
+      const mappedSources = allSources.map((s: any) => ({
+        ...s,
+        // Ensure contentText has a value - use title as fallback if empty
+        contentText: s.contentText || s.title || ''
+      }));
+      sourcesDebug.mappedCount = mappedSources.length;
+      
+      // Filter: accept 'active', null, undefined, or empty string as active
+      const filtered = mappedSources.filter((s: any) => {
+        const status = (s.status || '').toLowerCase().trim();
+        const isActive = !status || status === 'active';
+        if (!isActive) {
+          logger.info(`[DIGEST] FILTERED OUT: id=${s.id} status="${s.status}"`);
+        }
+        return isActive;
+      });
+      
+      // Apply limit
+      sources = filtered.slice(0, maxSources);
+      sourcesDebug.filteredCount = sources.length;
+      sourcesDebug.ids = sources.map((s: any) => s.id);
+      sourcesDebug.types = sources.map((s: any) => s.type);
+      sourcesDebug.statuses = sources.map((s: any) => s.status || 'active');
+      sourcesDebug.titlesPreview = sources.map((s: any) => (s.title || '').substring(0, 40));
+      
+      logger.info(`[DIGEST] After filter: ${sources.length} sources (raw=${sourcesDebug.rawCount} mapped=${sourcesDebug.mappedCount} filtered=${sourcesDebug.filteredCount})`);
+      logger.info(`[DIGEST] IDs: ${sourcesDebug.ids.join(', ')}`);
+    } catch (err: any) {
+      logger.error('[KNOWLEDGE] ❌ Failed to load data sources:', err.message);
+      logger.error('[KNOWLEDGE] Stack:', err.stack);
+      // Capture error in sourcesDebug for visibility
+      sourcesDebug.error = err.message || 'Unknown error';
+      sourcesDebug.stackTop = (err.stack || '').split('\n').slice(0, 3).join(' | ');
+      // Continue with empty sources but error is visible
     }
 
     // 3. Build digest
@@ -211,7 +275,8 @@ export async function buildKnowledgeContext(
       sources,
       digest,
       sourceCount: sources.length,
-      truncated
+      truncated,
+      sourcesDebug
     };
 
   } catch (error) {
@@ -221,7 +286,8 @@ export async function buildKnowledgeContext(
       sources: [],
       digest: '',
       sourceCount: 0,
-      truncated: false
+      truncated: false,
+      sourcesDebug: { rawCount: 0, mappedCount: 0, filteredCount: 0, ids: [], types: [], statuses: [], titlesPreview: [] }
     };
   }
 }

@@ -620,9 +620,9 @@ export function ChatInterface() {
         </div>
       )}
 
-      <div ref={messagesContainerRef} className={`flex-1 overflow-y-auto relative z-10 aras-scroll ${!hasMessages ? 'flex items-center justify-center' : 'px-6 pt-4 pb-8 space-y-4'}`}>
+      <div ref={messagesContainerRef} className={`flex-1 overflow-y-auto relative z-10 aras-scroll ${!hasMessages ? 'flex items-center justify-center' : 'px-3 sm:px-6 pt-4 pb-32 sm:pb-24 space-y-4'}`}>
         {!hasMessages ? (
-          <div className="w-full flex flex-col items-center px-6">
+          <div className="w-full flex flex-col items-center px-3 sm:px-6">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="text-center mb-8 w-full max-w-3xl">
               
               <motion.div
@@ -661,7 +661,7 @@ export function ChatInterface() {
               </motion.div>
 
               <motion.h1 
-                className="text-7xl font-bold mb-6 relative"
+                className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-4 sm:mb-6 relative"
                 style={{ fontFamily: 'Orbitron, sans-serif' }}
                 initial={{ scale: 0.95 }}
                 animate={{ scale: 1 }}
@@ -703,11 +703,11 @@ export function ChatInterface() {
                 initial={{ opacity: 0 }} 
                 animate={{ opacity: 1 }} 
                 transition={{ delay: 0.3 }}
-                className="flex items-center justify-center space-x-2 text-base text-gray-500 mb-12"
+                className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:space-x-2 text-sm sm:text-base text-gray-500 mb-8 sm:mb-12"
               >
                 <span>erledigt für dich:</span>
                 <span 
-                  className="font-medium min-w-[200px] text-left"
+                  className="font-medium min-w-[160px] sm:min-w-[200px] text-center sm:text-left"
                   style={{
                     background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
                     backgroundSize: '200% auto',
@@ -725,67 +725,40 @@ export function ChatInterface() {
                 </span>
               </motion.div>
 
-              {/* 🔥 SPEKTAKULÄRE BUTTONS MIT PERMANENT ANIMIERTEN BORDERS & GLASSMORPHISM */}
+              {/* Quick Action Buttons - uniform, slim, no text wrap */}
               <motion.div 
                 initial={{ opacity: 0 }} 
                 animate={{ opacity: 1 }} 
                 transition={{ delay: 0.5 }}
-                className="flex justify-center gap-4 mb-12"
+                className="flex flex-wrap justify-center items-center gap-2 sm:gap-3 mb-8 sm:mb-12 px-3"
               >
                 {SUGGESTED_PROMPTS.map((prompt, index) => (
-                  <motion.div
+                  <motion.button
                     key={index}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.6 + index * 0.1 }}
-                    className="relative group"
+                    whileHover={{ scale: 1.03, y: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => prompt.isCall ? setShowCallModal(true) : handleSendMessage(prompt.text)}
+                    className="px-4 py-2.5 rounded-xl text-white text-xs font-semibold whitespace-nowrap flex items-center gap-2 transition-all"
+                    style={{
+                      fontFamily: 'Orbitron, sans-serif',
+                      background: 'rgba(10, 10, 10, 0.7)',
+                      border: '1px solid rgba(254, 145, 0, 0.4)',
+                      backdropFilter: 'blur(20px)',
+                      boxShadow: '0 0 15px rgba(254, 145, 0, 0.2)',
+                    }}
                   >
-                    {/* 🔥 PERMANENT ANIMIERTER GRADIENT BORDER - IMMER SICHTBAR! */}
-                    <motion.div
-                      className="absolute -inset-[2px] rounded-xl"
-                      style={{
-                        background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
-                        backgroundSize: '300% 100%',
-                        boxShadow: '0 0 20px rgba(254, 145, 0, 0.3)',
-                      }}
-                      animate={{
-                        backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
-                      }}
-                      transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                    />
-                    
-                    {/* Glassmorphism Button */}
-                    <motion.button
-                      whileHover={{ 
-                        scale: 1.05,
-                        y: -3,
-                        boxShadow: '0 10px 40px rgba(254, 145, 0, 0.5)',
-                      }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => prompt.isCall ? setShowCallModal(true) : handleSendMessage(prompt.text)}
-                      className="relative px-6 py-3.5 rounded-xl text-white text-sm font-semibold transition-all flex items-center gap-3"
-                      style={{
-                        fontFamily: 'Orbitron, sans-serif',
-                        background: 'rgba(10, 10, 10, 0.6)',
-                        backdropFilter: 'blur(30px)',
-                        WebkitBackdropFilter: 'blur(30px)',
-                      }}
-                    >
-                      <span className="relative z-10">{prompt.text}</span>
-                      <motion.div
-                        whileHover={{ x: 3, y: -3 }}
-                        transition={{ type: 'spring', stiffness: 500 }}
-                      >
-                        <ArrowUp className="w-4 h-4" style={{ color: '#FE9100' }} />
-                      </motion.div>
-                    </motion.button>
-                  </motion.div>
+                    <span>{prompt.text}</span>
+                    <ArrowUp className="w-3.5 h-3.5" style={{ color: '#FE9100' }} />
+                  </motion.button>
                 ))}
               </motion.div>
             </motion.div>
 
             {/* EINGABEFELD - ORIGINAL BEIBEHALTEN */}
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }} className="w-full max-w-3xl">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }} className="w-full max-w-3xl px-3 sm:px-0">
               {uploadedFiles.length > 0 && (
                 <div className="mb-3 space-y-2">
                   {uploadedFiles.map((file, index) => (

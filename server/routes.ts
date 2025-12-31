@@ -18,6 +18,7 @@ import multer from "multer";
 import twilio from "twilio";
 import chatRouter from "./chat";
 import { requireAdmin } from "./middleware/admin";
+import { getKnowledgeDigest } from "./knowledge/context-builder";
 import { checkCallLimit, checkMessageLimit } from "./middleware/usage-limits";
 import { setupSimpleAuth } from "./simple-auth";
 import { setupTranslationRoute } from "./translate-route";
@@ -67,20 +68,37 @@ async function comparePasswords(supplied: string, stored: string) {
   return testHex === hashed;
 }
 
+// ========================================
+// CANONICAL USER ID HELPER
+// All routes MUST use this to get userId
+// ========================================
+function getAuthUserId(req: any): string | null {
+  // Priority 1: Passport user object (most reliable)
+  if (req.user?.id) {
+    return req.user.id;
+  }
+  // Priority 2: Session userId (fallback)
+  if (req.session?.userId) {
+    return req.session.userId;
+  }
+  return null;
+}
+
 // Authentication middleware (Passport compatible)
 function requireAuth(req: any, res: any, next: any) {
   console.log('[REQUIREAUTH] Checking authentication...');
   console.log('[REQUIREAUTH] isAuthenticated:', req.isAuthenticated ? req.isAuthenticated() : 'no method');
-  console.log('[REQUIREAUTH] req.user:', req.user ? 'exists' : 'null');
+  console.log('[REQUIREAUTH] req.user?.id:', req.user?.id || 'null');
   console.log('[REQUIREAUTH] session.userId:', req.session?.userId);
   
   // Check if user is authenticated via Passport
   if (req.isAuthenticated && req.isAuthenticated()) {
     console.log('[REQUIREAUTH] ✅ Passport authenticated');
-    // Ensure session.userId is set for backwards compatibility
-    if (req.user && !req.session.userId) {
+    // ALWAYS sync session.userId with req.user.id for consistency
+    if (req.user?.id) {
       req.session.userId = req.user.id;
       req.session.username = req.user.username;
+      console.log('[REQUIREAUTH] Synced session.userId =', req.user.id);
     }
     return next();
   }
@@ -266,8 +284,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update AI Profile (Business Intelligence) - User can edit their business data
   app.patch('/api/user/ai-profile', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.session.userId;
+      const userId = getAuthUserId(req);
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'User ID not found' });
+      }
       const { companyDescription, targetAudience, effectiveKeywords, competitors, services } = req.body;
+      logger.info(`[AI_PROFILE] PATCH userId=${userId}`);
 
       // Get current user to merge with existing ai_profile data
       const [currentUser] = await client`
@@ -308,242 +330,467 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ============================================================================
-  // 📁 USER DATA SOURCES - Knowledge Base CRUD
-  // ============================================================================
+  // ========================================
+  // USER DATA SOURCES API (Knowledge Base)
+  // ========================================
+
+  // HEALTH CHECK: Verify storage methods exist at runtime
+  app.get('/api/user/knowledge/health', requireAuth, async (req: any, res) => {
+    try {
+      const userId = getAuthUserId(req);
+      const hasMethod = typeof storage.getUserDataSources === 'function';
+      
+      logger.info(`[HEALTH] userId=${userId} hasGetUserDataSources=${hasMethod}`);
+      
+      // Quick test: try to call the method
+      let testResult = { success: false, count: 0, error: null as string | null };
+      if (hasMethod) {
+        try {
+          const sources = await storage.getUserDataSources(userId);
+          testResult = { success: true, count: sources.length, error: null };
+        } catch (e: any) {
+          testResult = { success: false, count: 0, error: e.message };
+        }
+      }
+      
+      res.json({
+        success: true,
+        userId,
+        hasGetUserDataSources: hasMethod,
+        testResult,
+        status: hasMethod ? 'OK' : 'BROKEN'
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  // DEBUG: Preview system prompt with knowledge digest
+  app.get('/api/chat/debug/system-prompt', requireAuth, async (req: any, res) => {
+    try {
+      const userId = getAuthUserId(req);
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'User ID not found' });
+      }
+      const mode = (req.query.mode === 'power' ? 'power' : 'space') as 'space' | 'power';
+      
+      const user = await storage.getUser(userId);
+      const userName = user?.firstName || user?.username || 'User';
+      
+      // Get knowledge digest
+      const digest = await getKnowledgeDigest(userId, mode);
+      const sourceCount = (digest.match(/• \[/g) || []).length;
+      
+      // Build sample system prompt (abbreviated)
+      const basePrompt = `ARAS AI - Du bist der persönliche KI-Assistent von ${userName}.\n[...ARAS Identity...]`;
+      const finalPrompt = digest ? `${basePrompt}\n\n${digest}` : basePrompt;
+      
+      res.json({
+        success: true,
+        mode,
+        userId,
+        userName,
+        digest: {
+          present: digest.length > 0,
+          sourceCount,
+          charCount: digest.length,
+          preview: digest.slice(0, 500),
+          full: digest
+        },
+        systemPrompt: {
+          baseLength: basePrompt.length,
+          finalLength: finalPrompt.length,
+          digestInjected: digest.length > 0
+        }
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  });
+
+  // GET Knowledge Digest Preview (Debug Route)
+  app.get('/api/user/knowledge/digest', requireAuth, async (req: any, res) => {
+    try {
+      const userId = getAuthUserId(req);
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'User ID not found' });
+      }
+      const mode = (req.query.mode === 'power' ? 'power' : 'space') as 'space' | 'power';
+      
+      logger.info(`[DIGEST-ROUTE] Starting digest build for userId=${userId} mode=${mode}`);
+      
+      // Import and use the same builder function as Chat/Call
+      const { buildKnowledgeContext } = await import('./knowledge/context-builder');
+      const context = await buildKnowledgeContext(userId, { mode });
+      
+      logger.info(`[DIGEST-ROUTE] Digest built: userId=${userId}, mode=${mode}, sources=${context.sourceCount}, chars=${context.digest.length}`);
+      logger.info(`[DIGEST-ROUTE] sourcesDebug: raw=${context.sourcesDebug.rawCount} mapped=${context.sourcesDebug.mappedCount} filtered=${context.sourcesDebug.filteredCount} ids=${context.sourcesDebug.ids.join(',')}`);
+      
+      res.json({
+        success: true,
+        mode,
+        userId,
+        sourceCount: context.sourceCount,
+        charCount: context.digest.length,
+        truncated: context.truncated,
+        digest: context.digest,
+        aiProfile: context.aiProfile ? Object.keys(context.aiProfile) : [],
+        sourcesDebug: context.sourcesDebug
+      });
+    } catch (error: any) {
+      logger.error('❌ Error getting knowledge digest:', error);
+      res.status(500).json({ success: false, message: error.message || 'Failed to get knowledge digest' });
+    }
+  });
+
+  // ========================================
+  // VERIFICATION ROUTE: Raw sources from same codepath as digest
+  // ========================================
+  app.get('/api/user/knowledge/sources/raw', requireAuth, async (req: any, res) => {
+    try {
+      const userId = getAuthUserId(req);
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'User ID not found' });
+      }
+      
+      logger.info(`[SOURCES_RAW] Fetching sources for userId=${userId}`);
+      
+      // Use storage.getUserDataSources (now properly defined in DatabaseStorage class)
+      const sources = await storage.getUserDataSources(userId);
+      
+      logger.info(`[SOURCES_RAW] Got ${sources.length} sources for userId=${userId}`);
+      
+      // Return raw data for verification
+      res.json({
+        success: true,
+        userId,
+        count: sources.length,
+        rows: sources.map((s: any) => ({
+          id: s.id,
+          user_id: s.userId,
+          type: s.type,
+          title: s.title,
+          status: s.status,
+          content_preview: (s.contentText || '').substring(0, 100),
+          content_text_length: (s.contentText || '').length,
+          url: s.url,
+          createdAt: s.createdAt
+        }))
+      });
+    } catch (error: any) {
+      logger.error('❌ Error getting raw sources:', error);
+      res.status(500).json({ success: false, message: error.message, stack: error.stack });
+    }
+  });
+
+  // ========================================
+  // DEBUG ROUTE: Show exact DB state for data sources
+  // ========================================
+  app.get('/api/user/data-sources/debug', requireAuth, async (req: any, res) => {
+    try {
+      const canonicalUserId = getAuthUserId(req);
+      const sessionUserId = req.session?.userId || null;
+      const passportUserId = req.user?.id || null;
+      
+      logger.info(`[DATA_SOURCES_DEBUG] canonicalUserId=${canonicalUserId} sessionUserId=${sessionUserId} passportUserId=${passportUserId}`);
+      
+      // Ensure table exists first
+      await client`
+        CREATE TABLE IF NOT EXISTS user_data_sources (
+          id SERIAL PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          type TEXT NOT NULL CHECK (type IN ('text', 'url', 'file')),
+          title TEXT,
+          status TEXT DEFAULT 'active' CHECK (status IN ('pending', 'processing', 'active', 'failed')),
+          content_text TEXT,
+          url TEXT,
+          file_name TEXT,
+          file_mime TEXT,
+          file_size INTEGER,
+          file_storage_key TEXT,
+          error_message TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `;
+      
+      // Get total row count
+      const totalResult = await client`SELECT COUNT(*) as total FROM user_data_sources`;
+      const rowsTotal = parseInt(totalResult[0]?.total || '0');
+      
+      // Helper: count rows for a specific userId
+      const countByUserId = async (uid: string | null): Promise<number> => {
+        if (!uid) return 0;
+        const result = await client`SELECT COUNT(*) as count FROM user_data_sources WHERE user_id = ${uid}`;
+        return parseInt(result[0]?.count || '0');
+      };
+      
+      // Count for each ID (ALWAYS count, even if IDs are identical - they MUST match)
+      const rowsForCanonical = await countByUserId(canonicalUserId);
+      const rowsForSession = await countByUserId(sessionUserId);
+      const rowsForPassport = await countByUserId(passportUserId);
+      
+      logger.info(`[DATA_SOURCES_DEBUG] canonical=${canonicalUserId} session=${sessionUserId} passport=${passportUserId} counts: c=${rowsForCanonical}/s=${rowsForSession}/p=${rowsForPassport}`);
+      
+      // Get sample of ALL rows (to see what user_ids exist)
+      const sample = await client`
+        SELECT id, user_id, type, title, status, 
+               LEFT(content_text, 50) as content_preview,
+               url, created_at
+        FROM user_data_sources 
+        ORDER BY created_at DESC 
+        LIMIT 10
+      `;
+      
+      // Get distinct user_ids in the table
+      const distinctUserIds = await client`SELECT DISTINCT user_id FROM user_data_sources LIMIT 20`;
+      
+      // Also test storage.getUserDataSources to verify it works
+      let storageTest = { count: 0, error: null as string | null };
+      try {
+        const storageSources = await storage.getUserDataSources(canonicalUserId);
+        storageTest.count = storageSources.length;
+      } catch (e: any) {
+        storageTest.error = e.message;
+      }
+      
+      res.json({
+        success: true,
+        canonicalUserId,
+        sessionUserId,
+        passportUserId,
+        table: 'user_data_sources',
+        rowsTotal,
+        rowsForCanonical,
+        rowsForSession,
+        rowsForPassport,
+        storageTest,
+        distinctUserIds: distinctUserIds.map((r: any) => r.user_id),
+        sample
+      });
+    } catch (error: any) {
+      logger.error('❌ Error in debug route:', error);
+      res.status(500).json({ success: false, message: error.message, stack: error.stack });
+    }
+  });
 
   // GET all data sources for user
   app.get('/api/user/data-sources', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.session.userId || req.user?.id;
+      const userId = getAuthUserId(req);
       if (!userId) {
-        return res.status(401).json({ success: false, message: 'Unauthorized' });
+        return res.status(401).json({ success: false, message: 'User ID not found' });
       }
-
-      const dataSources = await storage.getUserDataSources(userId);
-      res.json({ success: true, dataSources });
+      
+      // Ensure table exists
+      await client`
+        CREATE TABLE IF NOT EXISTS user_data_sources (
+          id SERIAL PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          type TEXT NOT NULL CHECK (type IN ('text', 'url', 'file')),
+          title TEXT,
+          status TEXT DEFAULT 'active',
+          content_text TEXT,
+          url TEXT,
+          file_name TEXT,
+          file_mime TEXT,
+          file_size INTEGER,
+          file_storage_key TEXT,
+          error_message TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `;
+      
+      logger.info(`[DATA_SOURCES] GET userId=${userId}`);
+      const result = await client`
+        SELECT * FROM user_data_sources 
+        WHERE user_id = ${userId} 
+        ORDER BY created_at DESC
+      `;
+      
+      logger.info(`[DATA_SOURCES] GET found ${result.length} sources for userId=${userId}`);
+      res.json({ 
+        success: true, 
+        userId,
+        count: result.length,
+        dataSources: result 
+      });
     } catch (error: any) {
-      logger.error('[DATA-SOURCES] Error fetching data sources:', error);
-      res.status(500).json({ success: false, message: 'Failed to fetch data sources' });
+      logger.error('❌ Error fetching data sources:', error);
+      res.status(500).json({ success: false, message: error.message || 'Failed to fetch data sources' });
     }
   });
 
-  // POST create data source (text or url)
+  // POST new data source (text or url)
   app.post('/api/user/data-sources', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.session.userId || req.user?.id;
+      const userId = getAuthUserId(req);
       if (!userId) {
-        return res.status(401).json({ success: false, message: 'Unauthorized' });
+        return res.status(401).json({ success: false, message: 'User ID not found' });
       }
-
       const { type, title, contentText, url } = req.body;
 
-      // Validation
+      logger.info(`[DATA_SOURCES] POST userId=${userId} type=${type} title=${title}`);
+
+      // Validate
       if (!type || !['text', 'url'].includes(type)) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Invalid type. Must be "text" or "url"' 
-        });
+        return res.status(400).json({ success: false, message: 'Invalid type. Must be text or url.' });
+      }
+      if (type === 'text' && !contentText) {
+        return res.status(400).json({ success: false, message: 'Text content is required.' });
+      }
+      if (type === 'url' && !url) {
+        return res.status(400).json({ success: false, message: 'URL is required.' });
       }
 
-      if (type === 'text') {
-        if (!contentText || typeof contentText !== 'string') {
-          return res.status(400).json({ 
-            success: false, 
-            message: 'Content text is required for text type' 
-          });
-        }
-        if (contentText.length < 10) {
-          return res.status(400).json({ 
-            success: false, 
-            message: 'Content text must be at least 10 characters' 
-          });
-        }
-        if (contentText.length > 50000) {
-          return res.status(400).json({ 
-            success: false, 
-            message: 'Content text must be less than 50,000 characters' 
-          });
-        }
-      }
+      // Ensure table exists
+      await client`
+        CREATE TABLE IF NOT EXISTS user_data_sources (
+          id SERIAL PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          type TEXT NOT NULL CHECK (type IN ('text', 'url', 'file')),
+          title TEXT,
+          status TEXT DEFAULT 'active' CHECK (status IN ('pending', 'processing', 'active', 'failed')),
+          content_text TEXT,
+          url TEXT,
+          file_name TEXT,
+          file_mime TEXT,
+          file_size INTEGER,
+          file_storage_key TEXT,
+          error_message TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        )
+      `;
 
-      if (type === 'url') {
-        if (!url || typeof url !== 'string') {
-          return res.status(400).json({ 
-            success: false, 
-            message: 'URL is required for url type' 
-          });
-        }
-        // Basic URL validation
-        try {
-          new URL(url);
-        } catch {
-          return res.status(400).json({ 
-            success: false, 
-            message: 'Invalid URL format' 
-          });
-        }
-        if (url.length > 2000) {
-          return res.status(400).json({ 
-            success: false, 
-            message: 'URL must be less than 2,000 characters' 
-          });
-        }
-      }
+      // Insert
+      const [newSource] = await client`
+        INSERT INTO user_data_sources (user_id, type, title, content_text, url, status)
+        VALUES (${userId}, ${type}, ${title || null}, ${contentText || null}, ${url || null}, 'active')
+        RETURNING *
+      `;
 
-      const dataSource = await storage.createUserDataSource({
+      logger.info(`[DATA_SOURCES] ✅ CREATED id=${newSource.id} userId=${userId} type=${type} content_length=${(contentText || '').length}`);
+      
+      // Verify it was actually saved by re-reading
+      const verifyResult = await client`SELECT id, user_id, type FROM user_data_sources WHERE id = ${newSource.id}`;
+      logger.info(`[DATA_SOURCES] VERIFY: saved row exists=${verifyResult.length > 0} user_id=${verifyResult[0]?.user_id}`);
+      
+      res.json({ 
+        success: true, 
         userId,
-        type,
-        title: title || (type === 'url' ? url : 'Text Content'),
-        contentText: type === 'text' ? contentText : null,
-        url: type === 'url' ? url : null,
-        status: 'active',
+        source: {
+          id: newSource.id,
+          userId: newSource.user_id,
+          type: newSource.type,
+          title: newSource.title,
+          content: newSource.content_text,
+          url: newSource.url,
+          createdAt: newSource.created_at
+        }
       });
-
-      logger.info(`[DATA-SOURCES] Created ${type} source for user ${userId}`);
-      res.status(201).json({ success: true, dataSource });
     } catch (error: any) {
-      logger.error('[DATA-SOURCES] Error creating data source:', error);
-      res.status(500).json({ success: false, message: 'Failed to create data source' });
+      logger.error('❌ Error creating data source:', error);
+      res.status(500).json({ success: false, message: error.message || 'Failed to create data source' });
     }
   });
 
-  // Configure multer for data source file uploads
-  const dataSourceUpload = multer({
-    storage: multer.memoryStorage(),
-    limits: {
-      fileSize: 25 * 1024 * 1024, // 25MB limit
-    },
-    fileFilter: (req, file, cb) => {
-      const allowedMimes = [
-        'application/pdf',
-        'text/plain',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      ];
-      const allowedExtensions = ['.pdf', '.txt', '.doc', '.docx'];
-      
-      const ext = file.originalname.toLowerCase().slice(file.originalname.lastIndexOf('.'));
-      
-      if (allowedMimes.includes(file.mimetype) || allowedExtensions.includes(ext)) {
-        cb(null, true);
-      } else {
-        cb(new Error('Invalid file type. Allowed: PDF, TXT, DOC, DOCX'));
-      }
-    }
-  });
-
-  // POST upload file data source
-  app.post('/api/user/data-sources/upload', requireAuth, dataSourceUpload.single('file'), async (req: any, res) => {
+  // POST file upload - Returns proper response instead of 501
+  app.post('/api/user/data-sources/upload', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.session.userId || req.user?.id;
-      if (!userId) {
-        return res.status(401).json({ success: false, message: 'Unauthorized' });
-      }
-
-      if (!req.file) {
-        return res.status(400).json({ success: false, message: 'No file uploaded' });
-      }
-
-      const file = req.file;
-      const title = req.body.title || file.originalname;
-
-      // For now, store file content as base64 in the database
-      // In production, you'd upload to S3/R2 and store the key
-      const fileStorageKey = `user_${userId}_${Date.now()}_${file.originalname}`;
+      const userId = getAuthUserId(req);
+      logger.info(`[UPLOAD] File upload attempted by user ${userId} - feature not yet available`);
       
-      // Extract text content for text files
-      let contentText: string | null = null;
-      if (file.mimetype === 'text/plain') {
-        contentText = file.buffer.toString('utf-8');
-      }
-      // For PDF/DOC extraction, you'd use a library like pdf-parse
-      // For now, we store the file and mark for processing
-
-      const dataSource = await storage.createUserDataSource({
-        userId,
-        type: 'file',
-        title,
-        contentText,
-        fileName: file.originalname,
-        fileMime: file.mimetype,
-        fileSize: file.size,
-        fileStorageKey,
-        status: contentText ? 'active' : 'active', // Mark as active even without text extraction for now
+      // Return 200 with success:false and code for client-side handling
+      res.status(200).json({ 
+        success: false, 
+        code: 'NOT_IMPLEMENTED',
+        message: 'Datei-Upload kommt in Kürze. Bitte nutze Text oder URL.' 
       });
-
-      logger.info(`[DATA-SOURCES] Uploaded file for user ${userId}: ${file.originalname}`);
-      res.status(201).json({ success: true, dataSource });
     } catch (error: any) {
-      logger.error('[DATA-SOURCES] Error uploading file:', error);
-      if (error.message?.includes('Invalid file type')) {
-        return res.status(400).json({ success: false, message: error.message });
+      logger.error('❌ Error in file upload route:', error);
+      res.status(500).json({ success: false, message: 'Fehler beim Datei-Upload' });
+    }
+  });
+
+  // MIGRATE data sources from old userId to canonical userId
+  app.post('/api/user/data-sources/migrate', requireAuth, async (req: any, res) => {
+    try {
+      const canonicalUserId = getAuthUserId(req);
+      const { oldUserId } = req.body;
+      
+      if (!canonicalUserId) {
+        return res.status(401).json({ success: false, message: 'User ID not found' });
       }
-      res.status(500).json({ success: false, message: 'Failed to upload file' });
+      if (!oldUserId) {
+        return res.status(400).json({ success: false, message: 'oldUserId is required' });
+      }
+      if (oldUserId === canonicalUserId) {
+        return res.status(400).json({ success: false, message: 'oldUserId same as canonicalUserId' });
+      }
+      
+      logger.info(`[MIGRATE] Attempting to migrate data sources from ${oldUserId} to ${canonicalUserId}`);
+      
+      // Count rows to migrate
+      const countResult = await client`SELECT COUNT(*) as count FROM user_data_sources WHERE user_id = ${oldUserId}`;
+      const rowsToMigrate = parseInt(countResult[0]?.count || '0');
+      
+      if (rowsToMigrate === 0) {
+        return res.json({ success: true, message: 'No rows to migrate', migrated: 0 });
+      }
+      
+      // Migrate
+      const result = await client`
+        UPDATE user_data_sources 
+        SET user_id = ${canonicalUserId}, updated_at = NOW()
+        WHERE user_id = ${oldUserId}
+        RETURNING id
+      `;
+      
+      logger.info(`[MIGRATE] ✅ Migrated ${result.length} rows from ${oldUserId} to ${canonicalUserId}`);
+      
+      res.json({ 
+        success: true, 
+        message: `Migrated ${result.length} data sources`,
+        migrated: result.length,
+        fromUserId: oldUserId,
+        toUserId: canonicalUserId
+      });
+    } catch (error: any) {
+      logger.error('❌ Error migrating data sources:', error);
+      res.status(500).json({ success: false, message: error.message });
     }
   });
 
   // DELETE data source
   app.delete('/api/user/data-sources/:id', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.session.userId || req.user?.id;
+      const userId = getAuthUserId(req);
       if (!userId) {
-        return res.status(401).json({ success: false, message: 'Unauthorized' });
+        return res.status(401).json({ success: false, message: 'User ID not found' });
       }
+      const sourceId = parseInt(req.params.id);
 
-      const sourceId = parseInt(req.params.id, 10);
       if (isNaN(sourceId)) {
         return res.status(400).json({ success: false, message: 'Invalid source ID' });
       }
 
-      const deleted = await storage.deleteUserDataSource(sourceId, userId);
-      
-      if (!deleted) {
+      const result = await client`
+        DELETE FROM user_data_sources 
+        WHERE id = ${sourceId} AND user_id = ${userId}
+        RETURNING id
+      `;
+
+      if (result.length === 0) {
         return res.status(404).json({ success: false, message: 'Data source not found' });
       }
 
-      logger.info(`[DATA-SOURCES] Deleted source ${sourceId} for user ${userId}`);
+      logger.info(`🗑️ Data source deleted: id=${sourceId}`);
       res.json({ success: true, message: 'Data source deleted' });
     } catch (error: any) {
-      logger.error('[DATA-SOURCES] Error deleting data source:', error);
+      logger.error('❌ Error deleting data source:', error);
       res.status(500).json({ success: false, message: 'Failed to delete data source' });
-    }
-  });
-
-  // GET Knowledge Digest Preview (for debugging/visualization)
-  app.get('/api/user/knowledge-digest', requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.session.userId || req.user?.id;
-      if (!userId) {
-        return res.status(401).json({ success: false, message: 'Unauthorized' });
-      }
-
-      const mode = (req.query.mode === 'power' ? 'power' : 'space') as 'space' | 'power';
-      
-      // Dynamic import to avoid circular dependency
-      const { buildKnowledgeContext } = await import('./knowledge/context-builder');
-      const context = await buildKnowledgeContext(userId, { mode });
-
-      logger.info('[KNOWLEDGE-DIGEST] Preview requested', {
-        userId,
-        mode,
-        sourceCount: context.sourceCount,
-        charCount: context.digest.length
-      });
-
-      res.json({
-        success: true,
-        digest: context.digest,
-        meta: {
-          sourceCount: context.sourceCount,
-          charCount: context.digest.length,
-          truncated: context.truncated,
-          mode
-        }
-      });
-    } catch (error: any) {
-      logger.error('[KNOWLEDGE-DIGEST] Error fetching digest:', error);
-      res.status(500).json({ success: false, message: 'Failed to fetch knowledge digest' });
     }
   });
 
@@ -1124,12 +1371,34 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       }
       openaiMessages.push({ role: "user", content: currentMessage });
       
+      // 🧠 FETCH KNOWLEDGE DIGEST FIRST (before streaming starts)
+      let knowledgeDigest = '';
+      let digestSourceCount = 0;
+      let digestCharCount = 0;
+      try {
+        knowledgeDigest = await getKnowledgeDigest(userId, 'space');
+        digestSourceCount = (knowledgeDigest.match(/• \[/g) || []).length;
+        digestCharCount = knowledgeDigest.length;
+        logger.info(`[CHAT] 🧠 knowledgeDigestFetched: { mode: "space", userId: "${userId}", sourceCount: ${digestSourceCount}, charCount: ${digestCharCount} }`);
+      } catch (digestError: any) {
+        logger.error(`[CHAT] ❌ Failed to get knowledge digest for userId=${userId}:`, digestError.message);
+      }
+      
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
       
-      // ⚡ INSTANT FEEDBACK: Send "thinking" signal immediately
-      res.write(`data: ${JSON.stringify({ thinking: true })}
+      // ⚡ INSTANT FEEDBACK: Send "thinking" signal immediately + knowledge meta
+      res.write(`data: ${JSON.stringify({ 
+        thinking: true,
+        meta: {
+          knowledge: {
+            injected: digestCharCount > 0,
+            sourceCount: digestSourceCount,
+            charCount: digestCharCount
+          }
+        }
+      })}
 
 `);
       
@@ -1205,6 +1474,14 @@ Du bist ARAS AI, eigenentwickeltes Large Language Model der Schwarzott Group. Du
 Der User heisst ${userName}. Sprich ihn mit seinem Namen an!
 
 Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge wie ARAS.`;
+        }
+        
+        // 🧠 INJECT KNOWLEDGE DIGEST into system prompt (already fetched above)
+        if (knowledgeDigest && knowledgeDigest.length > 0) {
+          systemInstruction += `\n\n${knowledgeDigest}`;
+          logger.info(`[CHAT] 🧠 knowledgeDigestInjected: { mode: "space", userId: "${userId}", sourceCount: ${digestSourceCount}, charCount: ${digestCharCount}, digestPreview: "${knowledgeDigest.slice(0, 80).replace(/\n/g, ' ')}..." }`);
+        } else {
+          logger.info(`[CHAT] ⚠️ No knowledge digest to inject for userId=${userId}`);
         }
         
         // Initialize Gemini 2.5 Flash - Optimized for chat with Live Google Search
@@ -3289,7 +3566,6 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         contactContext,
         templateId: templateId || null,
         templateScenario: templateScenario || null,
-        userId,  // For loading knowledge digest (user data sources)
         userContext: {
           userName: user.firstName || user.username,
           company: user.company || undefined,
@@ -3350,6 +3626,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         { contactName: name, phoneNumber, message },
         { 
           userName: user.firstName || user.username || 'mein Kunde',
+          userId: userId, // 🧠 REQUIRED for knowledge digest injection
           // 🔥 BUSINESS INTELLIGENCE (Dezember 2025)
           company: user.company || undefined,
           website: user.website || undefined,
