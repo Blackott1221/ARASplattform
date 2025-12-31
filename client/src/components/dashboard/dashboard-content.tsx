@@ -7,6 +7,14 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { PowerResultCard } from '@/components/power/power-result-card';
 
 // ═══════════════════════════════════════════════════════════════
+// SAFE HELPERS (prevent crashes from null/undefined)
+// ═══════════════════════════════════════════════════════════════
+const safeArray = <T,>(x: T[] | null | undefined): T[] => Array.isArray(x) ? x : [];
+const safeJson = async (res: Response): Promise<any> => {
+  try { return await res.json(); } catch { return {}; }
+};
+
+// ═══════════════════════════════════════════════════════════════
 // DESIGN TOKENS (2026 Mission Control V5)
 // ═══════════════════════════════════════════════════════════════
 const DT = {
@@ -131,13 +139,19 @@ export function DashboardContent({ user }: DashboardContentProps) {
     staleTime: 10000,
   });
 
-  // Fetch chat sessions (Space)
-  const { data: chatSessions = [], refetch: refetchChatSessions } = useQuery<ChatSession[]>({
+  // Fetch chat sessions (Space) - SAFE: handles API failures gracefully
+  const { data: chatSessions = [], refetch: refetchChatSessions, isError: isChatError } = useQuery<ChatSession[]>({
     queryKey: ['dashboard-chat-sessions'],
     queryFn: async () => {
-      const res = await fetch('/api/user/chat-sessions', { credentials: 'include' });
-      if (!res.ok) return [];
-      return res.json();
+      try {
+        const res = await fetch('/api/user/chat-sessions', { credentials: 'include' });
+        const data = await safeJson(res);
+        // Handle new { success, sessions } shape or legacy array
+        return safeArray(data.sessions ?? data);
+      } catch (err) {
+        console.error('[Dashboard] Failed to fetch chat sessions:', err);
+        return [];
+      }
     },
     staleTime: 10000,
   });
@@ -192,9 +206,9 @@ export function DashboardContent({ user }: DashboardContentProps) {
     }))
   , [chatSessions]);
 
-  // Unified activity list
+  // Unified activity list - SAFE: always use safeArray to prevent spread crash
   const allActivities: ActivityItem[] = useMemo(() => {
-    let items = [...callActivities, ...chatActivities];
+    let items = [...safeArray(callActivities), ...safeArray(chatActivities)];
     
     // Filter by type
     if (activeFilter !== 'all') {

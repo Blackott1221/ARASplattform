@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
 import { ChatInterface } from "@/components/chat/chat-interface";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -619,9 +620,11 @@ export default function Space() {
             )}
           </AnimatePresence>
           
-          {/* Main Chat Interface */}
+          {/* Main Chat Interface - wrapped in ErrorBoundary */}
           <div className="flex-1 overflow-hidden relative">
-            <ChatInterface />
+            <ErrorBoundary fallbackTitle="Chat konnte nicht geladen werden">
+              <ChatInterface />
+            </ErrorBoundary>
           </div>
         </div>
       </div>

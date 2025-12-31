@@ -1,4 +1,5 @@
 import { DashboardContent } from "@/components/dashboard/dashboard-content";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { useAuth } from "@/hooks/useAuth";
 import type { User } from "@shared/schema";
 
@@ -6,6 +7,7 @@ import type { User } from "@shared/schema";
  * Dashboard Page
  * IMPORTANT: NO Sidebar/TopBar here!
  * AppPage already renders layout components
+ * Wrapped in ErrorBoundary to prevent blackscreen crashes
  */
 export default function Dashboard() {
   const { user, isLoading } = useAuth();
@@ -27,8 +29,10 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-black px-3 sm:px-4 md:px-6 py-4 sm:py-6 pb-32 sm:pb-24">
-      <DashboardContent user={user as User} />
-    </div>
+    <ErrorBoundary fallbackTitle="Dashboard konnte nicht geladen werden">
+      <div className="h-full overflow-y-auto bg-black px-3 sm:px-4 md:px-6 py-4 sm:py-6 pb-32 sm:pb-24">
+        <DashboardContent user={user as User} />
+      </div>
+    </ErrorBoundary>
   );
 }

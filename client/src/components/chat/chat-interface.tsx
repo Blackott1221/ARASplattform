@@ -9,6 +9,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { ChatMessage } from "@shared/schema";
+
+// SAFE HELPERS (prevent crashes from null/undefined)
+const safeArray = <T,>(x: T[] | null | undefined): T[] => Array.isArray(x) ? x : [];
+const safeJson = async (res: Response): Promise<any> => {
+  try { return await res.json(); } catch { return {}; }
+};
 import arasAiImage from "@assets/ChatGPT Image 9. Apr. 2025_ 21_38_23_1754515368187.png";
 import arasLogo from "@/assets/aras_logo_1755067745303.png";
 
@@ -154,7 +160,22 @@ export function ChatInterface() {
     }
   }, [currentTextIndex, isTyping]);
 
-  const { data: messages = [] } = useQuery<ChatMessage[]>({ queryKey: ["/api/chat/messages"], enabled: !!user && !authLoading, retry: false });
+  const { data: messages = [] } = useQuery<ChatMessage[]>({ 
+    queryKey: ["/api/chat/messages"], 
+    enabled: !!user && !authLoading, 
+    retry: false,
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/chat/messages', { credentials: 'include' });
+        const data = await safeJson(res);
+        // Handle new { success, messages } shape or legacy array
+        return safeArray(data.messages ?? data);
+      } catch (err) {
+        console.error('[Chat] Failed to fetch messages:', err);
+        return [];
+      }
+    }
+  });
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -162,7 +183,22 @@ export function ChatInterface() {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, isThinking, isStreaming]);
-  const { data: chatSessions = [] } = useQuery<any[]>({ queryKey: ["/api/chat/sessions"], enabled: !!user && !authLoading, retry: false });
+  const { data: chatSessions = [] } = useQuery<any[]>({ 
+    queryKey: ["/api/chat/sessions"], 
+    enabled: !!user && !authLoading, 
+    retry: false,
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/user/chat-sessions', { credentials: 'include' });
+        const data = await safeJson(res);
+        // Handle new { success, sessions } shape or legacy array
+        return safeArray(data.sessions ?? data);
+      } catch (err) {
+        console.error('[Chat] Failed to fetch sessions:', err);
+        return [];
+      }
+    }
+  });
   const { data: subscriptionData } = useQuery<import("@shared/schema").SubscriptionResponse>({ queryKey: ["/api/user/subscription"], enabled: !!user && !authLoading, retry: false });
 
   useEffect(() => {

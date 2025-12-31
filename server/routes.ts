@@ -1218,10 +1218,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Chat routes
+  // Chat routes - SAFE: Always returns { success, messages: [] }
   app.get('/api/chat/messages', requireAuth, async (req: any, res) => {
     try {
       const userId = req.session.userId;
+      if (!userId) {
+        return res.status(401).json({ success: false, messages: [], error: 'Not authenticated' });
+      }
+      
       let sessionId = req.query.sessionId ? parseInt(req.query.sessionId) : undefined;
       
       // If no sessionId provided, get messages for the active session
@@ -1233,10 +1237,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const messages = await storage.getChatMessages(userId, sessionId);
-      res.json(messages);
+      // SAFE: Always return array
+      res.json({ success: true, messages: Array.isArray(messages) ? messages : [] });
     } catch (error) {
-      logger.error("Error fetching chat messages:", error);
-      res.status(500).json({ message: "Failed to fetch chat messages" });
+      logger.error(`[CHAT-MESSAGES] Error for user ${req.session?.userId}:`, error);
+      // SAFE: Return empty array on error, never crash client
+      res.status(500).json({ success: false, messages: [], error: 'Failed to fetch chat messages' });
     }
   });
 
@@ -1559,34 +1565,60 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     }
   });
   // GET /api/user/chat-sessions - List all chat sessions for dashboard (with summary fields)
+  // SAFE: Always returns { success, sessions: [] }
   app.get('/api/user/chat-sessions', requireAuth, async (req: any, res) => {
     try {
       const userId = req.session.userId;
+      if (!userId) {
+        return res.status(401).json({ success: false, sessions: [], error: 'Not authenticated' });
+      }
+      
       const sessions = await storage.getChatSessions(userId);
+      
+      // SAFE: Ensure sessions is array
+      if (!Array.isArray(sessions)) {
+        return res.json({ success: true, sessions: [] });
+      }
       
       // Get message counts for each session
       const formattedSessions = await Promise.all(sessions.map(async (s: any) => {
-        const messages = await storage.getChatMessagesBySession(s.id);
-        const spaceSummary = s.metadata?.spaceSummary;
-        
-        return {
-          id: s.id,
-          title: s.title || 'Unbenannter Chat',
-          createdAt: s.createdAt,
-          updatedAt: s.updatedAt,
-          isActive: s.isActive,
-          messageCount: messages.length,
-          lastMessageAt: messages.length > 0 ? messages[messages.length - 1].timestamp : null,
-          // Summary fields (real data only)
-          summaryStatus: spaceSummary?.status || 'missing',
-          summaryShort: spaceSummary?.short || null,
-        };
+        try {
+          const messages = await storage.getChatMessagesBySession(s.id);
+          const spaceSummary = s.metadata?.spaceSummary;
+          
+          return {
+            id: s.id,
+            title: s.title || 'Unbenannter Chat',
+            createdAt: s.createdAt,
+            updatedAt: s.updatedAt,
+            isActive: s.isActive,
+            messageCount: Array.isArray(messages) ? messages.length : 0,
+            lastMessageAt: Array.isArray(messages) && messages.length > 0 ? messages[messages.length - 1].timestamp : null,
+            // Summary fields (real data only)
+            summaryStatus: spaceSummary?.status || 'missing',
+            summaryShort: spaceSummary?.short || null,
+          };
+        } catch (err) {
+          // If single session fails, return safe fallback
+          return {
+            id: s.id,
+            title: s.title || 'Unbenannter Chat',
+            createdAt: s.createdAt,
+            updatedAt: s.updatedAt,
+            isActive: s.isActive,
+            messageCount: 0,
+            lastMessageAt: null,
+            summaryStatus: 'missing',
+            summaryShort: null,
+          };
+        }
       }));
       
-      res.json(formattedSessions);
+      res.json({ success: true, sessions: formattedSessions });
     } catch (error) {
-      logger.error('Error fetching chat sessions:', error);
-      res.status(500).json({ message: 'Failed to fetch chat sessions' });
+      logger.error(`[CHAT-SESSIONS] Error for user ${req.session?.userId}:`, error);
+      // SAFE: Return empty array on error, never crash client
+      res.status(500).json({ success: false, sessions: [], error: 'Failed to fetch chat sessions' });
     }
   });
 
