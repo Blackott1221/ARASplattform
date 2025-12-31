@@ -177,9 +177,9 @@ function PreflightSkeleton() {
 }
 
 function PreflightCheckItem({ check, index = 0 }: { check: PreflightCheck; index?: number }) {
-  const [showDetails, setShowDetails] = useState(false);
-  const showFixButton = check.fixLink && (check.status === 'fail' || check.status === 'warn');
+  const showFixButton = check.status === 'fail' || check.status === 'warn';
   const hasAccent = check.status === 'fail' || check.status === 'warn';
+  const fixLink = '/app/leads'; // Always link to leads page
   
   return (
     <motion.div
@@ -198,58 +198,34 @@ function PreflightCheckItem({ check, index = 0 }: { check: PreflightCheck; index
           style={{ background: check.status === 'fail' ? '#ef4444' : '#fbbf24' }}
         />
       )}
-      <div 
-        className={`flex flex-col sm:flex-row sm:items-center gap-2 py-3 px-3 rounded-xl transition-all duration-200 hover:bg-white/[0.03] group ${hasAccent ? 'ml-2' : '-mx-3'}`}
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+      <a
+        href={hasAccent ? fixLink : undefined}
+        className={`block ${hasAccent ? 'cursor-pointer' : 'cursor-default'}`}
+        onClick={hasAccent ? undefined : (e) => e.preventDefault()}
       >
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <StatusDot status={check.status} />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium" style={{ color: DT.gold }}>{check.label}</p>
-            {check.details && !showDetails && (
-              <p className="text-xs text-neutral-500 truncate mt-0.5">{check.details}</p>
-            )}
-            {/* Expandable details */}
-            <AnimatePresence>
-              {showDetails && check.details && (
-                <motion.p
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="text-xs text-neutral-400 mt-1 leading-relaxed"
-                >
-                  {check.details}
-                </motion.p>
+        <div 
+          className={`flex flex-col sm:flex-row sm:items-center gap-2 py-3 px-3 rounded-xl transition-all duration-200 hover:bg-white/[0.03] group ${hasAccent ? 'ml-2' : '-mx-3'}`}
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+        >
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <StatusDot status={check.status} />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium" style={{ color: DT.gold }}>{check.label}</p>
+              {check.details && (
+                <p className="text-xs text-neutral-500 truncate mt-0.5">{check.details}</p>
               )}
-            </AnimatePresence>
-            {check.details && (
-              <button
-                onClick={() => setShowDetails(!showDetails)}
-                className="text-[10px] text-neutral-500 hover:text-neutral-400 mt-1 transition-colors"
-              >
-                {showDetails ? '− Weniger' : '+ Warum?'}
-              </button>
-            )}
+            </div>
           </div>
+          {showFixButton && (
+            <span
+              className="text-[12px] font-medium tracking-wide uppercase self-start sm:self-center transition-all hover:underline"
+              style={{ color: DT.orange }}
+            >
+              Jetzt beheben
+            </span>
+          )}
         </div>
-        {showFixButton && (
-          <motion.a
-            href={check.fixLink}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.98 }}
-            className="text-xs font-semibold px-3 py-1.5 rounded-[10px] self-start sm:self-center"
-            style={{ 
-              background: check.status === 'fail' ? 'rgba(255,106,0,0.12)' : 'rgba(251,191,36,0.10)',
-              color: check.status === 'fail' ? DT.orange : '#fbbf24',
-              border: `1px solid ${check.status === 'fail' ? 'rgba(255,106,0,0.25)' : 'rgba(251,191,36,0.25)'}`,
-              animation: check.status === 'fail' ? 'pulse-subtle 2s ease-in-out infinite' : 'none'
-            }}
-          >
-            Jetzt beheben
-          </motion.a>
-        )}
-      </div>
+      </a>
     </motion.div>
   );
 }
@@ -885,14 +861,14 @@ function PowerContent() {
     await handleOpenCallDetails(selectedCallId);
   };
 
-  // Poll for pending summaries in call history
+  // Poll for pending summaries in call history (faster: 5s)
   useEffect(() => {
-    const hasPending = callHistory.some((c: any) => c.summaryStatus === 'pending');
+    const hasPending = callHistory.some((c: any) => c.summaryStatus === 'pending' || (c.status === 'completed' && !c.summaryShort));
     
     if (hasPending && !summaryPollRef.current) {
       summaryPollRef.current = setInterval(() => {
         refetchHistory();
-      }, 12000); // Poll every 12s
+      }, 5000); // Poll every 5s when pending
     } else if (!hasPending && summaryPollRef.current) {
       clearInterval(summaryPollRef.current);
       summaryPollRef.current = null;
@@ -905,6 +881,31 @@ function PowerContent() {
       }
     };
   }, [callHistory, refetchHistory]);
+
+  // Auto-refresh drawer when viewing a pending call
+  const drawerPollRef = useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => {
+    const isPending = selectedCallDetails && (
+      selectedCallDetails.summaryStatus === 'pending' || 
+      (selectedCallDetails.status === 'completed' && !selectedCallDetails.summary)
+    );
+    
+    if (isPending && selectedCallId && !drawerPollRef.current) {
+      drawerPollRef.current = setInterval(() => {
+        handleOpenCallDetails(selectedCallId);
+      }, 5000); // Refresh drawer every 5s
+    } else if ((!isPending || !selectedCallId) && drawerPollRef.current) {
+      clearInterval(drawerPollRef.current);
+      drawerPollRef.current = null;
+    }
+    
+    return () => {
+      if (drawerPollRef.current) {
+        clearInterval(drawerPollRef.current);
+        drawerPollRef.current = null;
+      }
+    };
+  }, [selectedCallDetails, selectedCallId]);
 
   // Compute current step for visual stepper
   const currentStep = callStatus === 'ended' || result ? 4 : 
@@ -1116,21 +1117,52 @@ Time: ${persistentError.timestamp}`}
                 />
               </div>
 
-              {/* Start Button - Primary CTA */}
-              <button
-                onClick={handleStartCallProcess}
-                disabled={!canStart || isLoading || callStatus === 'ringing' || callStatus === 'connected'}
-                className="w-full py-[14px] rounded-[18px] font-bold text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:translate-y-[-1px]"
-                style={{
-                  background: canStart ? `linear-gradient(135deg, ${DT.orange}, ${DT.goldDark})` : 'rgba(255,255,255,0.06)',
-                  color: canStart ? '#000' : '#555',
-                  boxShadow: canStart ? DT.glowSubtle : 'none'
-                }}
-              >
-                {isLoading ? 'Wird vorbereitet...' : 
-                 callStatus === 'ringing' ? 'Verbindet...' : 
-                 'Jetzt anrufen lassen'}
-              </button>
+              {/* Start Button - 2026 Transparent CTA with Animated Border */}
+              <div className="flex justify-end sm:justify-end justify-stretch">
+                <button
+                  onClick={handleStartCallProcess}
+                  disabled={!canStart || isLoading || callStatus === 'ringing' || callStatus === 'connected'}
+                  className="relative overflow-hidden w-full sm:w-auto h-11 px-6 rounded-2xl text-[13px] font-medium tracking-wide uppercase transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+                  style={{
+                    background: 'rgba(0,0,0,0.25)',
+                    backdropFilter: 'blur(12px)',
+                    color: canStart ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)',
+                  }}
+                >
+                  {/* Border overlay */}
+                  <span 
+                    className="absolute inset-0 rounded-2xl pointer-events-none"
+                    style={{ border: '1px solid rgba(255,255,255,0.1)' }}
+                  />
+                  {/* Animated border glow (only when enabled) */}
+                  {canStart && !isLoading && (
+                    <span 
+                      className="absolute inset-0 rounded-2xl pointer-events-none opacity-60 group-hover:opacity-100 transition-opacity"
+                      style={{ 
+                        background: 'conic-gradient(from 180deg, rgba(255,106,0,0), rgba(255,106,0,0.35), rgba(233,215,196,0.18), rgba(255,106,0,0))',
+                        mask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                        maskComposite: 'exclude',
+                        WebkitMaskComposite: 'xor',
+                        padding: '1px',
+                        animation: 'spin 4s linear infinite'
+                      }}
+                    />
+                  )}
+                  {/* Button text */}
+                  <span className="relative z-10">
+                    {isLoading ? 'Wird gestartet...' : 
+                     callStatus === 'ringing' ? 'Verbindet...' : 
+                     'Jetzt anrufen lassen'}
+                  </span>
+                </button>
+              </div>
+              {/* CSS Keyframe for border animation */}
+              <style>{`
+                @keyframes spin {
+                  from { transform: rotate(0deg); }
+                  to { transform: rotate(360deg); }
+                }
+              `}</style>
             </div>
           </div>
 
@@ -1299,13 +1331,16 @@ Time: ${persistentError.timestamp}`}
                             {call.createdAt ? formatDistanceToNow(new Date(call.createdAt), { addSuffix: true, locale: de }) : ''}
                           </span>
                         </div>
-                        {/* Summary line - no icons */}
+                        {/* Summary line - auto-updates */}
                         {call.summaryShort ? (
                           <p className="text-xs text-neutral-400 truncate mt-0.5">{call.summaryShort}</p>
-                        ) : call.summaryStatus === 'pending' ? (
-                          <p className="text-xs text-neutral-500 italic mt-0.5">
-                            Zusammenfassung wird erstellt...
-                          </p>
+                        ) : call.summaryStatus === 'pending' || (call.status === 'completed' && !call.summaryShort) ? (
+                          <div className="mt-0.5">
+                            <p className="text-xs text-neutral-500 italic">
+                              Zusammenfassung wird erstellt...
+                            </p>
+                            <p className="text-[10px] text-neutral-600 mt-0.5">Aktualisiert automatisch</p>
+                          </div>
                         ) : call.status === 'failed' ? (
                           <p className="text-xs text-red-400/60 mt-0.5">Fehlgeschlagen</p>
                         ) : null}
