@@ -5,22 +5,31 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { 
-  Phone, Plus, X, Building2, User, Mail, StickyNote, ChevronDown, ChevronUp, 
-  Search, Sparkles, Loader2, CheckCircle, AlertTriangle, XCircle, Copy, 
-  RefreshCw, Zap, Clock, Database
-} from 'lucide-react';
 import { ClarificationChat } from '@/components/power/clarification-chat';
 import { PowerResultCard } from '@/components/power/power-result-card';
 import { ContactAutoSuggest } from '@/components/power/contact-auto-suggest';
 
 // ═══════════════════════════════════════════════════════════════
-// ARAS CI COLORS
+// DESIGN TOKENS (2026 Control Room - No Icons)
 // ═══════════════════════════════════════════════════════════════
+const DT = {
+  // Colors
+  orange: '#ff6a00',
+  gold: '#e9d7c4',
+  goldDark: '#a34e00',
+  // Panels
+  panelBg: 'rgba(0,0,0,0.35)',
+  panelBorder: 'rgba(255,255,255,0.10)',
+  // Glow
+  glow: '0 0 0 1px rgba(255,106,0,0.18), 0 0 22px rgba(255,106,0,0.10)',
+  glowSubtle: '0 0 12px rgba(255,106,0,0.08)',
+};
+
+// Legacy CI alias for backward compat
 const CI = {
-  goldLight: '#E9D7C4',
-  orange: '#FE9100',
-  goldDark: '#A34E00',
+  goldLight: DT.gold,
+  orange: DT.orange,
+  goldDark: DT.goldDark,
   black: '#0a0a0a'
 };
 
@@ -57,32 +66,33 @@ class PowerErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundar
       return (
         <div className="h-full flex items-center justify-center p-8">
           <div 
-            className="max-w-lg w-full p-8 rounded-2xl text-center"
-            style={{ background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(239,68,68,0.3)' }}
+            className="max-w-lg w-full p-8 rounded-[20px] text-center"
+            style={{ background: DT.panelBg, border: '1px solid rgba(239,68,68,0.3)' }}
           >
-            <XCircle className="w-16 h-16 mx-auto mb-4 text-red-500" />
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full border-2 border-red-500/50 flex items-center justify-center">
+              <div className="w-8 h-0.5 bg-red-500 rotate-45 absolute" />
+              <div className="w-8 h-0.5 bg-red-500 -rotate-45 absolute" />
+            </div>
             <h2 className="text-xl font-bold mb-2 font-['Orbitron'] text-red-400">
-              POWER konnte nicht geladen werden
+              FEHLER
             </h2>
             <p className="text-sm text-neutral-400 mb-6">
-              Ein unerwarteter Fehler ist aufgetreten.
+              POWER konnte nicht geladen werden.
             </p>
             <div className="flex gap-3 justify-center">
               <button
                 onClick={() => window.location.reload()}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm"
-                style={{ background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`, color: '#000' }}
+                className="px-5 py-2.5 rounded-[14px] font-bold text-sm transition-all hover:scale-[1.02]"
+                style={{ background: `linear-gradient(135deg, ${DT.orange}, ${DT.goldDark})`, color: '#000' }}
               >
-                <RefreshCw className="w-4 h-4" />
                 Neu laden
               </button>
               <button
                 onClick={this.handleCopyError}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm"
-                style={{ background: 'rgba(255,255,255,0.1)', color: CI.goldLight }}
+                className="px-5 py-2.5 rounded-[14px] font-bold text-sm transition-all hover:bg-white/15"
+                style={{ background: 'rgba(255,255,255,0.08)', color: DT.gold, border: `1px solid ${DT.panelBorder}` }}
               >
-                <Copy className="w-4 h-4" />
-                Fehler kopieren
+                Kopieren
               </button>
             </div>
           </div>
@@ -116,35 +126,50 @@ interface PersistentError {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// HELPER COMPONENTS
+// HELPER COMPONENTS (No Icons - Pure CSS)
 // ═══════════════════════════════════════════════════════════════
-function PreflightCheckItem({ check }: { check: PreflightCheck }) {
-  const icons = {
-    pending: <Loader2 className="w-4 h-4 animate-spin text-neutral-500" />,
-    pass: <CheckCircle className="w-4 h-4 text-green-500" />,
-    warn: <AlertTriangle className="w-4 h-4 text-yellow-500" />,
-    fail: <XCircle className="w-4 h-4 text-red-500" />,
+
+// Status Dot - CSS only circle with color
+function StatusDot({ status }: { status: 'pending' | 'pass' | 'warn' | 'fail' }) {
+  const colors = {
+    pending: { bg: 'rgba(156,163,175,0.3)', border: 'rgba(156,163,175,0.5)' },
+    pass: { bg: 'rgba(34,197,94,0.4)', border: 'rgba(34,197,94,0.6)' },
+    warn: { bg: 'rgba(251,191,36,0.4)', border: 'rgba(251,191,36,0.6)' },
+    fail: { bg: 'rgba(239,68,68,0.4)', border: 'rgba(239,68,68,0.6)' },
   };
+  const c = colors[status];
+  return (
+    <span 
+      className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${status === 'pending' ? 'animate-pulse' : ''}`}
+      style={{ background: c.bg, border: `1.5px solid ${c.border}` }}
+    />
+  );
+}
+
+function PreflightCheckItem({ check }: { check: PreflightCheck }) {
   const showFixButton = check.fixLink && (check.status === 'fail' || check.status === 'warn');
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-2 py-2.5 group">
+    <div 
+      className="flex flex-col sm:flex-row sm:items-center gap-2 py-3 px-3 -mx-3 rounded-xl transition-all hover:bg-white/[0.03] group"
+      style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+    >
       <div className="flex items-center gap-3 flex-1 min-w-0">
-        {icons[check.status]}
+        <StatusDot status={check.status} />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium" style={{ color: CI.goldLight }}>{check.label}</p>
+          <p className="text-sm font-medium" style={{ color: DT.gold }}>{check.label}</p>
           {check.details && (
-            <p className="text-xs text-neutral-500 truncate">{check.details}</p>
+            <p className="text-xs text-neutral-500 truncate mt-0.5">{check.details}</p>
           )}
         </div>
       </div>
       {showFixButton && (
         <a
           href={check.fixLink}
-          className="text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all hover:scale-105 self-start sm:self-center"
+          className="text-xs font-semibold px-3 py-1.5 rounded-[10px] transition-all hover:scale-[1.03] self-start sm:self-center"
           style={{ 
-            background: check.status === 'fail' ? `${CI.orange}25` : 'rgba(251,191,36,0.15)',
-            color: check.status === 'fail' ? CI.orange : '#fbbf24',
-            border: `1px solid ${check.status === 'fail' ? CI.orange : '#fbbf24'}40`
+            background: check.status === 'fail' ? 'rgba(255,106,0,0.12)' : 'rgba(251,191,36,0.10)',
+            color: check.status === 'fail' ? DT.orange : '#fbbf24',
+            border: `1px solid ${check.status === 'fail' ? 'rgba(255,106,0,0.25)' : 'rgba(251,191,36,0.25)'}`
           }}
         >
           Jetzt beheben
@@ -155,22 +180,76 @@ function PreflightCheckItem({ check }: { check: PreflightCheck }) {
 }
 
 function StatusPill({ status }: { status: string }) {
-  const config: Record<string, { label: string; color: string; bg: string }> = {
-    idle: { label: 'BEREIT', color: '#9ca3af', bg: 'rgba(156,163,175,0.1)' },
-    processing: { label: 'PRÜFE...', color: '#fbbf24', bg: 'rgba(251,191,36,0.1)' },
-    ringing: { label: 'KLINGELT', color: CI.orange, bg: `${CI.orange}15` },
-    connected: { label: 'VERBUNDEN', color: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
-    ended: { label: 'BEENDET', color: '#9ca3af', bg: 'rgba(156,163,175,0.1)' },
-    error: { label: 'FEHLER', color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
+  const config: Record<string, { label: string; color: string; bg: string; glow?: string }> = {
+    idle: { label: 'BEREIT', color: '#9ca3af', bg: 'rgba(156,163,175,0.08)' },
+    processing: { label: 'PRÜFUNG', color: '#fbbf24', bg: 'rgba(251,191,36,0.08)' },
+    ringing: { label: 'VERBINDET', color: DT.orange, bg: 'rgba(255,106,0,0.08)', glow: '0 0 12px rgba(255,106,0,0.3)' },
+    connected: { label: 'LÄUFT', color: '#22c55e', bg: 'rgba(34,197,94,0.08)', glow: '0 0 12px rgba(34,197,94,0.3)' },
+    ended: { label: 'BEENDET', color: '#9ca3af', bg: 'rgba(156,163,175,0.08)' },
+    error: { label: 'FEHLER', color: '#ef4444', bg: 'rgba(239,68,68,0.08)' },
   };
   const c = config[status] || config.idle;
   return (
     <span 
-      className="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide"
-      style={{ color: c.color, background: c.bg, border: `1px solid ${c.color}30` }}
+      className="px-4 py-2 rounded-full text-[11px] font-bold uppercase tracking-[0.08em] font-['Orbitron']"
+      style={{ color: c.color, background: c.bg, border: `1px solid ${c.color}25`, boxShadow: c.glow || 'none' }}
     >
       {c.label}
     </span>
+  );
+}
+
+// Visual Stepper (no logic, just display)
+function StepIndicator({ currentStep }: { currentStep: number }) {
+  const steps = [
+    { num: 1, label: 'Systemcheck' },
+    { num: 2, label: 'Kontakt' },
+    { num: 3, label: 'Anweisung' },
+    { num: 4, label: 'Ergebnis' },
+  ];
+  return (
+    <div className="flex items-center justify-between gap-2 mb-6">
+      {steps.map((step, idx) => {
+        const isActive = step.num === currentStep;
+        const isCompleted = step.num < currentStep;
+        return (
+          <div key={step.num} className="flex-1 flex flex-col items-center">
+            <div className="flex items-center w-full">
+              <div 
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                  isActive ? 'scale-110' : ''
+                }`}
+                style={{
+                  background: isActive ? `linear-gradient(135deg, ${DT.orange}, ${DT.goldDark})` : 
+                             isCompleted ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.05)',
+                  border: isActive ? 'none' : isCompleted ? '1px solid rgba(34,197,94,0.4)' : `1px solid ${DT.panelBorder}`,
+                  color: isActive ? '#000' : isCompleted ? '#4ade80' : '#666',
+                  boxShadow: isActive ? DT.glow : 'none'
+                }}
+              >
+                {step.num}
+              </div>
+              {idx < steps.length - 1 && (
+                <div 
+                  className="flex-1 h-px mx-2"
+                  style={{ 
+                    background: isCompleted ? 'rgba(34,197,94,0.4)' : 
+                               isActive ? `linear-gradient(90deg, ${DT.orange}60, transparent)` : 
+                               'rgba(255,255,255,0.08)' 
+                  }}
+                />
+              )}
+            </div>
+            <span 
+              className="text-[10px] mt-1.5 font-medium tracking-wide hidden sm:block"
+              style={{ color: isActive ? DT.gold : '#666' }}
+            >
+              {step.label}
+            </span>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -731,64 +810,78 @@ function PowerContent() {
     };
   }, [callHistory, refetchHistory]);
 
+  // Compute current step for visual stepper
+  const currentStep = callStatus === 'ended' || result ? 4 : 
+                      message.trim().length > 0 ? 3 : 
+                      phoneNumber.length >= 3 ? 2 : 1;
+
   // ─────────────────────────────────────────────────────────────
-  // RENDER - Scrollable container, no Sidebar/TopBar
+  // RENDER - 2026 Control Room Layout
   // ─────────────────────────────────────────────────────────────
   return (
     <div className="h-full flex-1 min-h-0 overflow-y-auto">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-8 space-y-6">
 
-        {/* HEADER */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        {/* TOP HEADER - Ultra Clean */}
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
           <div>
+            <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500 mb-1">
+              POWER / EINZELANRUF
+            </p>
             <h1 
-              className="text-2xl sm:text-3xl font-bold font-['Orbitron'] tracking-wide"
+              className="text-3xl sm:text-4xl font-black font-['Orbitron'] tracking-wide"
               style={{ 
-                backgroundImage: 'linear-gradient(90deg, #E9D7C4, #FE9100, #ffffff, #FE9100, #E9D7C4)',
-                backgroundSize: '300% 100%',
+                background: 'linear-gradient(90deg, #ff6a00, #ffb15a, #e9d7c4)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
               }}
             >
               POWER
             </h1>
-            <p className="text-sm text-neutral-400 mt-1">KI-gesteuerte Einzelanrufe starten</p>
           </div>
           <StatusPill status={callStatus} />
         </div>
 
-        {/* PERSISTENT ERROR PANEL */}
+        {/* STEP INDICATOR */}
+        <StepIndicator currentStep={currentStep} />
+
+        {/* PERSISTENT ERROR PANEL - No Icons */}
         <AnimatePresence>
           {persistentError && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="rounded-xl overflow-hidden"
-              style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}
+              className="rounded-[16px] overflow-hidden"
+              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}
             >
-              <div className="p-4">
-                <div className="flex items-start gap-3">
-                  <XCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <div className="p-5">
+                <div className="flex items-start gap-4">
+                  <div className="w-3 h-3 mt-1 rounded-full bg-red-500/60 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-red-400">{persistentError.userMessage}</p>
-                    <p className="text-sm text-red-300/70 mt-1">{persistentError.technicalMessage}</p>
+                    <p className="font-semibold text-red-400 text-sm">{persistentError.userMessage}</p>
+                    <p className="text-xs text-red-300/60 mt-1">{persistentError.technicalMessage}</p>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={copyErrorDebug} className="p-2 rounded-lg hover:bg-white/5">
-                      <Copy className="w-4 h-4 text-red-400" />
+                    <button 
+                      onClick={copyErrorDebug} 
+                      className="px-3 py-1.5 rounded-[10px] text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors"
+                    >
+                      Kopieren
                     </button>
-                    <button onClick={() => setPersistentError(null)} className="p-2 rounded-lg hover:bg-white/5">
-                      <X className="w-4 h-4 text-red-400" />
+                    <button 
+                      onClick={() => setPersistentError(null)} 
+                      className="px-3 py-1.5 rounded-[10px] text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors"
+                    >
+                      Schließen
                     </button>
                   </div>
                 </div>
                 <button
                   onClick={() => setExpandedError(!expandedError)}
-                  className="flex items-center gap-1 mt-3 text-xs text-red-400/70 hover:text-red-400"
+                  className="mt-3 text-xs text-red-400/60 hover:text-red-400 transition-colors"
                 >
-                  {expandedError ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                  Technische Details
+                  {expandedError ? '− Details ausblenden' : '+ Technische Details'}
                 </button>
                 <AnimatePresence>
                   {expandedError && (
@@ -798,7 +891,7 @@ function PowerContent() {
                       exit={{ height: 0, opacity: 0 }}
                       className="overflow-hidden"
                     >
-                      <pre className="mt-2 p-3 rounded-lg bg-black/30 text-xs text-red-300/60 overflow-x-auto">
+                      <pre className="mt-3 p-3 rounded-[12px] bg-black/30 text-[11px] text-red-300/50 overflow-x-auto font-mono">
 {`Endpoint: ${persistentError.endpoint || 'N/A'}
 Status: ${persistentError.status || 'N/A'}
 Time: ${persistentError.timestamp}`}
@@ -811,23 +904,22 @@ Time: ${persistentError.timestamp}`}
           )}
         </AnimatePresence>
 
-        {/* MAIN GRID */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* MAIN GRID - 12 Column Control Room */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-          {/* LEFT: Setup */}
-          <div className="space-y-5">
+          {/* LEFT COLUMN: col-span-7 */}
+          <div className="lg:col-span-7 space-y-5">
 
-            {/* Preflight Checks Panel */}
+            {/* Preflight Checks Panel - Glass Card */}
             <div 
-              className="rounded-xl p-5"
-              style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)' }}
+              className="rounded-[20px] p-5"
+              style={{ background: DT.panelBg, border: `1px solid ${DT.panelBorder}` }}
             >
-              <h3 className="text-sm font-bold uppercase tracking-wide mb-4 flex items-center gap-2" style={{ color: CI.goldLight }}>
-                <Zap className="w-4 h-4" style={{ color: CI.orange }} />
+              <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] mb-4" style={{ color: DT.gold }}>
                 Systemprüfung
               </h3>
               {preflightChecks.length > 0 ? (
-                <div className="divide-y divide-white/5">
+                <div>
                   {preflightChecks.map(check => (
                     <PreflightCheckItem key={check.id} check={check} />
                   ))}
@@ -837,93 +929,89 @@ Time: ${persistentError.timestamp}`}
               )}
             </div>
 
-            {/* Input Form */}
+            {/* Input Form - Ultra Clean */}
             <div 
-              className="rounded-xl p-5 space-y-4"
-              style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)' }}
+              className="rounded-[20px] p-5 space-y-5"
+              style={{ background: DT.panelBg, border: `1px solid ${DT.panelBorder}` }}
             >
-              <h3 className="text-sm font-bold uppercase tracking-wide mb-2 flex items-center gap-2" style={{ color: CI.goldLight }}>
-                <Phone className="w-4 h-4" style={{ color: CI.orange }} />
+              <h3 className="text-[11px] font-bold uppercase tracking-[0.15em]" style={{ color: DT.gold }}>
                 Anruf konfigurieren
               </h3>
 
               {/* Contact Name */}
               <div>
-                <label className="block text-xs font-medium text-neutral-400 mb-1.5">Kontaktname</label>
+                <label className="block text-[11px] font-medium text-neutral-500 mb-2 uppercase tracking-wide">Kontaktname</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={contactName}
                     onChange={e => setContactName(e.target.value)}
                     placeholder="z.B. Firma GmbH"
-                    className="flex-1 px-4 py-3 rounded-lg text-sm"
-                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: CI.goldLight }}
+                    className="flex-1 px-4 py-3 rounded-[14px] text-sm focus:outline-none focus:ring-1 focus:ring-orange-500/30 transition-all"
+                    style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${DT.panelBorder}`, color: DT.gold }}
                   />
                   <button
                     onClick={() => setShowContactPicker(true)}
-                    className="px-3 py-2 rounded-lg"
-                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
+                    className="px-4 py-3 rounded-[14px] text-xs font-medium hover:bg-white/[0.06] transition-colors"
+                    style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${DT.panelBorder}`, color: DT.gold }}
                   >
-                    <Search className="w-4 h-4" style={{ color: CI.goldLight }} />
+                    Kontakte
                   </button>
                 </div>
               </div>
 
               {/* Phone Number */}
               <div>
-                <label className="block text-xs font-medium text-neutral-400 mb-1.5">Telefonnummer *</label>
+                <label className="block text-[11px] font-medium text-neutral-500 mb-2 uppercase tracking-wide">Telefonnummer *</label>
                 <input
                   type="tel"
                   value={phoneNumber}
                   onChange={e => setPhoneNumber(e.target.value.replace(/[^\d+]/g, ''))}
                   placeholder="+49 123 4567890"
-                  className="w-full px-4 py-3 rounded-lg text-sm"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: CI.goldLight }}
+                  className="w-full px-4 py-3 rounded-[14px] text-sm focus:outline-none focus:ring-1 focus:ring-orange-500/30 transition-all"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${DT.panelBorder}`, color: DT.gold }}
                 />
               </div>
 
               {/* Message */}
               <div>
-                <label className="block text-xs font-medium text-neutral-400 mb-1.5">Nachricht / Anweisung *</label>
+                <label className="block text-[11px] font-medium text-neutral-500 mb-2 uppercase tracking-wide">Nachricht / Anweisung *</label>
                 <textarea
                   value={message}
                   onChange={e => setMessage(e.target.value)}
                   placeholder="z.B. Frag nach dem aktuellen Stand des Projekts..."
-                  rows={3}
-                  className="w-full px-4 py-3 rounded-lg text-sm resize-none"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: CI.goldLight }}
+                  rows={4}
+                  className="w-full px-4 py-3 rounded-[14px] text-sm resize-none focus:outline-none focus:ring-1 focus:ring-orange-500/30 transition-all"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${DT.panelBorder}`, color: DT.gold, minHeight: '120px' }}
                 />
               </div>
 
-              {/* Start Button */}
+              {/* Start Button - Primary CTA */}
               <button
                 onClick={handleStartCallProcess}
                 disabled={!canStart || isLoading || callStatus === 'ringing' || callStatus === 'connected'}
-                className="w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-[14px] rounded-[18px] font-bold text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:translate-y-[-1px]"
                 style={{
-                  background: canStart ? `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})` : 'rgba(255,255,255,0.1)',
-                  color: canStart ? '#000' : '#666'
+                  background: canStart ? `linear-gradient(135deg, ${DT.orange}, ${DT.goldDark})` : 'rgba(255,255,255,0.06)',
+                  color: canStart ? '#000' : '#555',
+                  boxShadow: canStart ? DT.glowSubtle : 'none'
                 }}
               >
-                {isLoading ? (
-                  <><Loader2 className="w-5 h-5 animate-spin" /> Wird vorbereitet...</>
-                ) : callStatus === 'ringing' ? (
-                  <><Loader2 className="w-5 h-5 animate-spin" /> Klingelt...</>
-                ) : (
-                  <><Phone className="w-5 h-5" /> Jetzt anrufen lassen</>
-                )}
+                {isLoading ? 'Wird vorbereitet...' : 
+                 callStatus === 'ringing' ? 'Verbindet...' : 
+                 'Jetzt anrufen lassen'}
               </button>
             </div>
           </div>
 
-          {/* RIGHT: Status & Results */}
-          <div className="space-y-5">
+          {/* RIGHT COLUMN: col-span-5 */}
+          <div className="lg:col-span-5 space-y-5">
 
             {/* Chat Flow */}
             {showChatFlow && validationResult?.questions && (
               <div 
-                className="rounded-xl p-5"
-                style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)' }}
+                className="rounded-[20px] p-5"
+                style={{ background: DT.panelBg, border: `1px solid ${DT.panelBorder}` }}
               >
                 <ClarificationChat
                   questions={validationResult.questions}
@@ -935,35 +1023,34 @@ Time: ${persistentError.timestamp}`}
               </div>
             )}
 
-            {/* Review Modal */}
+            {/* Review Modal - No Icons */}
             {showReview && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
+                initial={{ opacity: 0, scale: 0.97 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="rounded-xl p-5"
-                style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(254,145,0,0.3)' }}
+                className="rounded-[20px] p-5"
+                style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid rgba(255,106,0,0.25)` }}
               >
-                <h3 className="text-lg font-bold mb-4" style={{ color: CI.orange }}>
-                  <Sparkles className="w-5 h-5 inline mr-2" />
+                <h3 className="text-sm font-bold mb-4 uppercase tracking-wide" style={{ color: DT.orange }}>
                   Anruf bestätigen
                 </h3>
-                <div className="space-y-3 text-sm" style={{ color: CI.goldLight }}>
-                  <p><strong>Kontakt:</strong> {contactName || 'Unbekannt'}</p>
-                  <p><strong>Telefon:</strong> {phoneNumber}</p>
-                  <p><strong>Nachricht:</strong></p>
-                  <div className="p-3 rounded-lg bg-black/30 text-xs whitespace-pre-wrap">{enhancedPrompt}</div>
+                <div className="space-y-3 text-sm" style={{ color: DT.gold }}>
+                  <p><span className="text-neutral-500">Kontakt:</span> {contactName || 'Unbekannt'}</p>
+                  <p><span className="text-neutral-500">Telefon:</span> {phoneNumber}</p>
+                  <p className="text-neutral-500">Nachricht:</p>
+                  <div className="p-3 rounded-[12px] bg-black/40 text-xs whitespace-pre-wrap leading-relaxed">{enhancedPrompt}</div>
                 </div>
                 <div className="flex gap-3 mt-5">
                   <button
                     onClick={handleConfirmCall}
-                    className="flex-1 py-3 rounded-xl font-bold"
-                    style={{ background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`, color: '#000' }}
+                    className="flex-1 py-3 rounded-[14px] font-bold text-sm transition-all hover:translate-y-[-1px]"
+                    style={{ background: `linear-gradient(135deg, ${DT.orange}, ${DT.goldDark})`, color: '#000' }}
                   >
                     Jetzt anrufen
                   </button>
                   <button
                     onClick={() => setShowReview(false)}
-                    className="px-5 py-3 rounded-xl font-bold"
+                    className="px-5 py-3 rounded-[14px] font-bold text-sm hover:bg-white/[0.06] transition-colors"
                     style={{ background: 'rgba(255,255,255,0.1)', color: CI.goldLight }}
                   >
                     Abbrechen
@@ -972,22 +1059,25 @@ Time: ${persistentError.timestamp}`}
               </motion.div>
             )}
 
-            {/* Active Call Status */}
+            {/* Active Call Status - Clean, No Icons */}
             {(callStatus === 'ringing' || callStatus === 'connected') && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
+                initial={{ opacity: 0, scale: 0.97 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="rounded-xl p-6 text-center"
-                style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)' }}
+                className="rounded-[20px] p-6 text-center"
+                style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)' }}
               >
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ background: 'rgba(34,197,94,0.2)' }}>
-                  <Phone className="w-8 h-8 text-green-400" />
+                <div 
+                  className="w-14 h-14 mx-auto mb-4 rounded-full flex items-center justify-center animate-pulse"
+                  style={{ background: 'rgba(34,197,94,0.15)', border: '2px solid rgba(34,197,94,0.4)' }}
+                >
+                  <div className="w-4 h-4 rounded-full bg-green-400" />
                 </div>
-                <p className="text-lg font-bold text-green-400 mb-1">
-                  {callStatus === 'ringing' ? 'Anruf wird verbunden...' : 'Anruf läuft'}
+                <p className="text-base font-bold text-green-400 mb-1 uppercase tracking-wide">
+                  {callStatus === 'ringing' ? 'Verbindet...' : 'Anruf läuft'}
                 </p>
                 {callStatus === 'connected' && (
-                  <p className="text-sm text-green-300/70">Dauer: {formatDuration(callDuration)}</p>
+                  <p className="text-sm text-green-300/60 font-mono">{formatDuration(callDuration)}</p>
                 )}
               </motion.div>
             )}
@@ -1004,14 +1094,13 @@ Time: ${persistentError.timestamp}`}
               </motion.div>
             )}
 
-            {/* Call History (REAL ENDPOINT: /api/user/call-logs) - CLICKABLE */}
+            {/* Call History - Clean, Clickable, No Icons */}
             {callHistory.length > 0 && (
               <div 
-                className="rounded-xl p-5"
-                style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)' }}
+                className="rounded-[20px] p-5"
+                style={{ background: DT.panelBg, border: `1px solid ${DT.panelBorder}` }}
               >
-                <h3 className="text-sm font-bold uppercase tracking-wide mb-4 flex items-center gap-2" style={{ color: CI.goldLight }}>
-                  <Clock className="w-4 h-4" style={{ color: CI.orange }} />
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] mb-4" style={{ color: DT.gold }}>
                   Letzte Anrufe
                 </h3>
                 <div className="space-y-1">
@@ -1019,29 +1108,34 @@ Time: ${persistentError.timestamp}`}
                     <button
                       key={call.id}
                       onClick={() => handleOpenCallDetails(call.id)}
-                      className="w-full flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-lg transition-all hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-500/30 text-left group"
+                      className="w-full flex items-center gap-3 py-3 px-3 -mx-3 rounded-[12px] transition-all hover:bg-white/[0.04] focus:outline-none text-left group"
+                      style={{ borderRight: '2px solid transparent' }}
+                      onMouseEnter={e => (e.currentTarget.style.borderRightColor = `${DT.orange}50`)}
+                      onMouseLeave={e => (e.currentTarget.style.borderRightColor = 'transparent')}
                     >
-                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${call.status === 'completed' ? 'bg-green-500' : 'bg-red-500'}`} />
+                      <div 
+                        className={`w-2 h-2 rounded-full flex-shrink-0 ${call.status === 'completed' ? 'bg-green-500/70' : 'bg-red-500/70'}`} 
+                      />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="text-sm truncate font-medium group-hover:text-white transition-colors" style={{ color: CI.goldLight }}>{call.contactName || call.phoneNumber}</p>
+                          <p className="text-sm truncate font-medium group-hover:text-white transition-colors" style={{ color: DT.gold }}>
+                            {call.contactName || call.phoneNumber}
+                          </p>
                           <span className="text-[10px] text-neutral-500 flex-shrink-0">
                             {call.createdAt ? formatDistanceToNow(new Date(call.createdAt), { addSuffix: true, locale: de }) : ''}
                           </span>
                         </div>
-                        {/* Summary line */}
+                        {/* Summary line - no icons */}
                         {call.summaryShort ? (
                           <p className="text-xs text-neutral-400 truncate mt-0.5">{call.summaryShort}</p>
                         ) : call.summaryStatus === 'pending' ? (
-                          <p className="text-xs text-neutral-500 italic mt-0.5 flex items-center gap-1">
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                            Zusammenfassung wird erstellt…
+                          <p className="text-xs text-neutral-500 italic mt-0.5">
+                            Zusammenfassung wird erstellt...
                           </p>
                         ) : call.status === 'failed' ? (
-                          <p className="text-xs text-red-400/70 mt-0.5">Anruf fehlgeschlagen</p>
+                          <p className="text-xs text-red-400/60 mt-0.5">Fehlgeschlagen</p>
                         ) : null}
                       </div>
-                      <ChevronDown className="w-4 h-4 text-neutral-500 opacity-0 group-hover:opacity-100 transition-opacity rotate-[-90deg]" />
                     </button>
                   ))}
                 </div>
@@ -1050,7 +1144,7 @@ Time: ${persistentError.timestamp}`}
           </div>
         </div>
 
-        {/* CONTACT PICKER MODAL */}
+        {/* CONTACT PICKER MODAL - No Icons */}
         <AnimatePresence>
           {showContactPicker && (
             <motion.div
@@ -1058,21 +1152,24 @@ Time: ${persistentError.timestamp}`}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 flex items-center justify-center p-4"
-              style={{ background: 'rgba(0,0,0,0.8)' }}
+              style={{ background: 'rgba(0,0,0,0.85)' }}
               onClick={() => setShowContactPicker(false)}
             >
               <motion.div
-                initial={{ scale: 0.95 }}
+                initial={{ scale: 0.97 }}
                 animate={{ scale: 1 }}
-                exit={{ scale: 0.95 }}
-                className="w-full max-w-md rounded-2xl p-5"
-                style={{ background: 'rgba(15,15,15,0.98)', border: '1px solid rgba(255,255,255,0.1)' }}
+                exit={{ scale: 0.97 }}
+                className="w-full max-w-md rounded-[20px] p-5"
+                style={{ background: 'rgba(12,12,12,0.98)', border: `1px solid ${DT.panelBorder}` }}
                 onClick={e => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold" style={{ color: CI.goldLight }}>Kontakt auswählen</h3>
-                  <button onClick={() => setShowContactPicker(false)}>
-                    <X className="w-5 h-5 text-neutral-400" />
+                  <h3 className="text-base font-bold" style={{ color: DT.gold }}>Kontakt auswählen</h3>
+                  <button 
+                    onClick={() => setShowContactPicker(false)}
+                    className="text-xs font-medium text-neutral-500 hover:text-white transition-colors px-2 py-1"
+                  >
+                    Schließen
                   </button>
                 </div>
                 <input
@@ -1080,17 +1177,17 @@ Time: ${persistentError.timestamp}`}
                   value={contactSearchQuery}
                   onChange={e => setContactSearchQuery(e.target.value)}
                   placeholder="Suchen..."
-                  className="w-full px-4 py-2.5 rounded-lg mb-4 text-sm"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: CI.goldLight }}
+                  className="w-full px-4 py-2.5 rounded-[12px] mb-4 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500/30"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${DT.panelBorder}`, color: DT.gold }}
                 />
                 <div className="max-h-64 overflow-y-auto space-y-1">
                   {filteredContacts.map((contact: any) => (
                     <button
                       key={contact.id}
                       onClick={() => handleSelectContact(contact)}
-                      className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/5 transition-colors"
+                      className="w-full text-left px-3 py-2.5 rounded-[10px] hover:bg-white/[0.04] transition-colors"
                     >
-                      <p className="text-sm font-medium" style={{ color: CI.goldLight }}>{contact.company || contact.firstName}</p>
+                      <p className="text-sm font-medium" style={{ color: DT.gold }}>{contact.company || contact.firstName}</p>
                       <p className="text-xs text-neutral-500">{contact.phone}</p>
                     </button>
                   ))}
@@ -1100,17 +1197,17 @@ Time: ${persistentError.timestamp}`}
                 </div>
                 <button
                   onClick={() => { setShowContactPicker(false); setShowNewContactModal(true); }}
-                  className="w-full mt-4 py-2.5 rounded-lg flex items-center justify-center gap-2 text-sm font-medium"
-                  style={{ background: `${CI.orange}20`, color: CI.orange }}
+                  className="w-full mt-4 py-2.5 rounded-[12px] text-sm font-medium transition-all hover:scale-[1.01]"
+                  style={{ background: 'rgba(255,106,0,0.12)', color: DT.orange, border: '1px solid rgba(255,106,0,0.25)' }}
                 >
-                  <Plus className="w-4 h-4" /> Neuen Kontakt anlegen
+                  + Neuen Kontakt anlegen
                 </button>
               </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* NEW CONTACT MODAL */}
+        {/* NEW CONTACT MODAL - No Icons */}
         <AnimatePresence>
           {showNewContactModal && (
             <motion.div
@@ -1118,21 +1215,24 @@ Time: ${persistentError.timestamp}`}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 flex items-center justify-center p-4"
-              style={{ background: 'rgba(0,0,0,0.8)' }}
+              style={{ background: 'rgba(0,0,0,0.85)' }}
               onClick={() => setShowNewContactModal(false)}
             >
               <motion.div
-                initial={{ scale: 0.95 }}
+                initial={{ scale: 0.97 }}
                 animate={{ scale: 1 }}
-                exit={{ scale: 0.95 }}
-                className="w-full max-w-md rounded-2xl p-5"
-                style={{ background: 'rgba(15,15,15,0.98)', border: '1px solid rgba(255,255,255,0.1)' }}
+                exit={{ scale: 0.97 }}
+                className="w-full max-w-md rounded-[20px] p-5"
+                style={{ background: 'rgba(12,12,12,0.98)', border: `1px solid ${DT.panelBorder}` }}
                 onClick={e => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold" style={{ color: CI.goldLight }}>Neuer Kontakt</h3>
-                  <button onClick={() => setShowNewContactModal(false)}>
-                    <X className="w-5 h-5 text-neutral-400" />
+                  <h3 className="text-base font-bold" style={{ color: DT.gold }}>Neuer Kontakt</h3>
+                  <button 
+                    onClick={() => setShowNewContactModal(false)}
+                    className="text-xs font-medium text-neutral-500 hover:text-white transition-colors px-2 py-1"
+                  >
+                    Schließen
                   </button>
                 </div>
                 <div className="space-y-3">
@@ -1141,30 +1241,30 @@ Time: ${persistentError.timestamp}`}
                     value={newContactData.company}
                     onChange={e => setNewContactData({ ...newContactData, company: e.target.value })}
                     placeholder="Firma *"
-                    className="w-full px-4 py-2.5 rounded-lg text-sm"
-                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: CI.goldLight }}
+                    className="w-full px-4 py-2.5 rounded-[12px] text-sm focus:outline-none focus:ring-1 focus:ring-orange-500/30"
+                    style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${DT.panelBorder}`, color: DT.gold }}
                   />
                   <input
                     type="tel"
                     value={newContactData.phone}
                     onChange={e => setNewContactData({ ...newContactData, phone: e.target.value })}
                     placeholder="Telefon"
-                    className="w-full px-4 py-2.5 rounded-lg text-sm"
-                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: CI.goldLight }}
+                    className="w-full px-4 py-2.5 rounded-[12px] text-sm focus:outline-none focus:ring-1 focus:ring-orange-500/30"
+                    style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${DT.panelBorder}`, color: DT.gold }}
                   />
                   <input
                     type="email"
                     value={newContactData.email}
                     onChange={e => setNewContactData({ ...newContactData, email: e.target.value })}
                     placeholder="E-Mail"
-                    className="w-full px-4 py-2.5 rounded-lg text-sm"
-                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: CI.goldLight }}
+                    className="w-full px-4 py-2.5 rounded-[12px] text-sm focus:outline-none focus:ring-1 focus:ring-orange-500/30"
+                    style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${DT.panelBorder}`, color: DT.gold }}
                   />
                 </div>
                 <button
                   onClick={handleSaveNewContact}
-                  className="w-full mt-4 py-3 rounded-xl font-bold"
-                  style={{ background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`, color: '#000' }}
+                  className="w-full mt-4 py-3 rounded-[14px] font-bold transition-all hover:translate-y-[-1px]"
+                  style={{ background: `linear-gradient(135deg, ${DT.orange}, ${DT.goldDark})`, color: '#000' }}
                 >
                   Speichern
                 </button>
@@ -1173,7 +1273,7 @@ Time: ${persistentError.timestamp}`}
           )}
         </AnimatePresence>
 
-        {/* CALL DETAILS DRAWER (opens when clicking call history) */}
+        {/* CALL DETAILS DRAWER - Premium Glass, No Icons */}
         <AnimatePresence>
           {selectedCallId && (
             <motion.div
@@ -1181,7 +1281,7 @@ Time: ${persistentError.timestamp}`}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end"
-              style={{ background: 'rgba(0,0,0,0.75)' }}
+              style={{ background: 'rgba(0,0,0,0.8)' }}
               onClick={handleCloseDrawer}
             >
               <motion.div
@@ -1189,26 +1289,37 @@ Time: ${persistentError.timestamp}`}
                 animate={{ x: 0, opacity: 1 }}
                 exit={{ x: '100%', opacity: 0 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                className="w-full sm:w-[420px] sm:max-w-[90vw] h-[85vh] sm:h-full sm:max-h-screen overflow-hidden rounded-t-2xl sm:rounded-none flex flex-col"
-                style={{ background: 'rgba(12,12,12,0.98)', borderLeft: '1px solid rgba(255,255,255,0.1)' }}
+                className="w-full sm:w-[440px] sm:max-w-[90vw] h-[85vh] sm:h-full sm:max-h-screen overflow-hidden rounded-t-[24px] sm:rounded-none flex flex-col"
+                style={{ background: 'rgba(8,8,8,0.98)', borderLeft: `1px solid ${DT.panelBorder}` }}
                 onClick={e => e.stopPropagation()}
               >
-                {/* Drawer Header */}
-                <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-                  <h3 className="text-lg font-bold" style={{ color: CI.goldLight }}>Anrufdetails</h3>
-                  <div className="flex items-center gap-2">
+                {/* Drawer Header - Text Buttons Only */}
+                <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.08]">
+                  <h3 
+                    className="text-base font-bold uppercase tracking-wide"
+                    style={{ 
+                      background: `linear-gradient(90deg, ${DT.orange}, ${DT.gold})`,
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent'
+                    }}
+                  >
+                    Anrufdetails
+                  </h3>
+                  <div className="flex items-center gap-3">
                     <button
                       onClick={handleRefreshDrawerDetails}
                       disabled={loadingCallDetails}
-                      className="p-2 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50"
+                      className="text-xs font-medium px-3 py-1.5 rounded-[10px] hover:bg-white/[0.06] transition-colors disabled:opacity-50"
+                      style={{ color: DT.gold }}
                     >
-                      <RefreshCw className={`w-4 h-4 ${loadingCallDetails ? 'animate-spin' : ''}`} style={{ color: CI.goldLight }} />
+                      {loadingCallDetails ? 'Lädt...' : 'Aktualisieren'}
                     </button>
                     <button
                       onClick={handleCloseDrawer}
-                      className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                      className="text-xs font-medium px-3 py-1.5 rounded-[10px] hover:bg-white/[0.06] transition-colors"
+                      style={{ color: '#888' }}
                     >
-                      <X className="w-5 h-5" style={{ color: CI.goldLight }} />
+                      Schließen
                     </button>
                   </div>
                 </div>
@@ -1216,8 +1327,12 @@ Time: ${persistentError.timestamp}`}
                 {/* Drawer Content */}
                 <div className="flex-1 min-h-0 overflow-y-auto p-5">
                   {loadingCallDetails ? (
-                    <div className="flex items-center justify-center h-40">
-                      <Loader2 className="w-8 h-8 animate-spin" style={{ color: CI.orange }} />
+                    <div className="flex flex-col items-center justify-center h-40 gap-3">
+                      <div 
+                        className="w-10 h-10 rounded-full border-2 border-t-transparent animate-spin"
+                        style={{ borderColor: `${DT.orange}40`, borderTopColor: 'transparent' }}
+                      />
+                      <p className="text-xs text-neutral-500">Lade Details...</p>
                     </div>
                   ) : selectedCallDetails ? (
                     <PowerResultCard
@@ -1236,12 +1351,15 @@ Time: ${persistentError.timestamp}`}
                     />
                   ) : (
                     <div className="flex flex-col items-center justify-center h-40 text-neutral-500">
-                      <XCircle className="w-10 h-10 mb-2" />
+                      <div className="w-12 h-12 rounded-full border-2 border-red-500/30 flex items-center justify-center mb-3">
+                        <div className="w-6 h-0.5 bg-red-500/50 rotate-45 absolute" />
+                        <div className="w-6 h-0.5 bg-red-500/50 -rotate-45 absolute" />
+                      </div>
                       <p className="text-sm">Details konnten nicht geladen werden</p>
                       <button
                         onClick={handleRefreshDrawerDetails}
-                        className="mt-3 text-xs px-3 py-1.5 rounded-lg"
-                        style={{ background: `${CI.orange}20`, color: CI.orange }}
+                        className="mt-3 text-xs px-4 py-2 rounded-[10px] font-medium transition-all hover:scale-[1.02]"
+                        style={{ background: 'rgba(255,106,0,0.12)', color: DT.orange, border: '1px solid rgba(255,106,0,0.25)' }}
                       >
                         Erneut versuchen
                       </button>

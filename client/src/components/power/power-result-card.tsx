@@ -1,11 +1,21 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Copy, Download, RefreshCw, Loader2, CheckCircle, User, Bot, Sparkles } from 'lucide-react';
 
+// Design Tokens (2026 Control Room - No Icons)
+const DT = {
+  orange: '#ff6a00',
+  gold: '#e9d7c4',
+  goldDark: '#a34e00',
+  panelBg: 'rgba(0,0,0,0.35)',
+  panelBorder: 'rgba(255,255,255,0.10)',
+  glow: '0 0 0 1px rgba(255,106,0,0.18), 0 0 22px rgba(255,106,0,0.10)',
+};
+
+// Legacy CI alias
 const CI = {
-  goldLight: '#E9D7C4',
-  orange: '#FE9100',
-  goldDark: '#A34E00'
+  goldLight: DT.gold,
+  orange: DT.orange,
+  goldDark: DT.goldDark
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -309,20 +319,22 @@ export function PowerResultCard({
                 background: 'linear-gradient(90deg, transparent, rgba(254,145,0,0.3), rgba(233,215,196,0.2), rgba(254,145,0,0.3), transparent)'
               }}
             />
-            <h4 className="text-xs font-bold uppercase tracking-wide mb-3 flex items-center gap-2" style={{ color: CI.goldLight }}>
-              <Sparkles className="w-3.5 h-3.5" style={{ color: CI.orange }} />
+            <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] mb-3" style={{ color: DT.gold }}>
               Zusammenfassung
             </h4>
             
             {/* Outcome */}
-            <p className="text-sm text-neutral-200 mb-3">{summary.outcome}</p>
+            <p className="text-sm text-neutral-200 mb-3 leading-relaxed">{summary.outcome}</p>
             
-            {/* Bullet Points */}
+            {/* Bullet Points - CSS dots only */}
             {summary.bulletPoints && summary.bulletPoints.length > 0 && (
-              <ul className="space-y-1.5 mb-3">
+              <ul className="space-y-2 mb-3">
                 {summary.bulletPoints.map((point, i) => (
-                  <li key={i} className="flex items-start gap-2 text-xs text-neutral-400">
-                    <span className="text-orange-400 mt-0.5">•</span>
+                  <li key={i} className="flex items-start gap-2.5 text-xs text-neutral-400">
+                    <span 
+                      className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5"
+                      style={{ background: `linear-gradient(135deg, ${DT.orange}, ${DT.gold})` }}
+                    />
                     <span>{point}</span>
                   </li>
                 ))}
@@ -331,29 +343,29 @@ export function PowerResultCard({
             
             {/* Next Step */}
             {summary.nextStep && (
-              <div className="flex items-start gap-2 text-xs px-3 py-2 rounded-lg" style={{ background: 'rgba(254,145,0,0.08)', border: '1px solid rgba(254,145,0,0.15)' }}>
-                <span className="font-semibold" style={{ color: CI.orange }}>Nächster Schritt:</span>
+              <div className="text-xs px-3 py-2.5 rounded-[12px]" style={{ background: 'rgba(255,106,0,0.08)', border: '1px solid rgba(255,106,0,0.15)' }}>
+                <span className="font-semibold block mb-1 text-[10px] uppercase tracking-wide" style={{ color: DT.orange }}>Nächster Schritt</span>
                 <span className="text-neutral-300">{summary.nextStep}</span>
               </div>
             )}
             
-            {/* Tags & Sentiment */}
+            {/* Tags & Sentiment - No Emojis */}
             {(summary.tags?.length > 0 || summary.sentiment) && (
               <div className="flex flex-wrap items-center gap-2 mt-3">
                 {summary.sentiment && (
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                    summary.sentiment === 'positive' ? 'bg-green-500/15 text-green-400 border border-green-500/20' :
-                    summary.sentiment === 'negative' ? 'bg-red-500/15 text-red-400 border border-red-500/20' :
-                    'bg-neutral-500/15 text-neutral-400 border border-neutral-500/20'
+                  <span className={`text-[10px] px-2.5 py-1 rounded-full font-medium uppercase tracking-wide ${
+                    summary.sentiment === 'positive' ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
+                    summary.sentiment === 'negative' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                    'bg-neutral-500/10 text-neutral-400 border border-neutral-500/20'
                   }`}>
-                    {summary.sentiment === 'positive' ? '😊 Positiv' : 
-                     summary.sentiment === 'negative' ? '😟 Negativ' : 
-                     summary.sentiment === 'mixed' ? '🤔 Gemischt' : '😐 Neutral'}
+                    {summary.sentiment === 'positive' ? 'Positiv' : 
+                     summary.sentiment === 'negative' ? 'Negativ' : 
+                     summary.sentiment === 'mixed' ? 'Gemischt' : 'Neutral'}
                   </span>
                 )}
                 {summary.tags?.map((tag, i) => (
-                  <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-neutral-500 border border-white/10">
-                    #{tag}
+                  <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-neutral-500 border border-white/[0.08]">
+                    {tag}
                   </span>
                 ))}
               </div>
@@ -364,72 +376,65 @@ export function PowerResultCard({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="rounded-2xl px-4 py-4 relative overflow-hidden"
+            className="rounded-[16px] px-4 py-4 relative overflow-hidden"
             style={{
               background: 'rgba(10,10,10,0.92)',
-              border: '1px solid rgba(255,255,255,0.06)',
+              border: `1px solid ${DT.panelBorder}`,
               backdropFilter: 'blur(14px)'
             }}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs text-neutral-500">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>Zusammenfassung wird erstellt…</span>
+                <span className="w-3 h-3 rounded-full border border-neutral-500 border-t-transparent animate-spin" />
+                <span>Zusammenfassung wird erstellt...</span>
               </div>
               <button
                 onClick={onRefresh}
-                className="text-[10px] px-2 py-1 rounded flex items-center gap-1 hover:bg-white/5 transition-colors"
-                style={{ color: CI.orange }}
+                className="text-[10px] px-3 py-1.5 rounded-[8px] font-medium hover:bg-white/5 transition-colors"
+                style={{ color: DT.orange }}
               >
-                <RefreshCw className="w-3 h-3" />
                 Aktualisieren
               </button>
             </div>
           </motion.div>
         ) : null}
 
-        {/* 🎤 Audio Recording with Download */}
+        {/* Audio Recording - No Icons */}
         {(result.recordingUrl || result.id || result.callId) ? (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="rounded-2xl px-4 py-3 relative overflow-hidden"
+            className="rounded-[16px] px-4 py-3 relative overflow-hidden"
             style={{
               background: 'rgba(10,10,10,0.92)',
-              border: '1px solid rgba(255,255,255,0.06)',
+              border: `1px solid ${DT.panelBorder}`,
               backdropFilter: 'blur(14px)'
             }}
           >
-            {/* Dezente Audio-Wave-Linie */}
             <div
               className="absolute top-0 left-0 right-0 h-px"
               style={{
-                background: 'linear-gradient(90deg, transparent, rgba(254,145,0,0.15), rgba(233,215,196,0.15), rgba(254,145,0,0.15), transparent)'
+                background: 'linear-gradient(90deg, transparent, rgba(255,106,0,0.15), rgba(233,215,196,0.15), rgba(255,106,0,0.15), transparent)'
               }}
             />
             <div className="flex items-center justify-between text-[11px] text-neutral-400 mb-2">
-              <span>Aufzeichnung des Gesprächs</span>
-              <div className="flex items-center gap-2">
+              <span className="uppercase tracking-wide">Aufzeichnung</span>
+              <div className="flex items-center gap-3">
                 {result.duration != null && (
-                  <span>{formatDuration(result.duration)}</span>
+                  <span className="font-mono">{formatDuration(result.duration)}</span>
                 )}
-                {/* Download Button */}
+                {/* Download Button - Text only */}
                 <button
                   onClick={handleDownloadRecording}
                   disabled={downloadingAudio}
-                  className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all hover:scale-105 disabled:opacity-50"
+                  className="px-3 py-1.5 rounded-[8px] text-[10px] font-medium transition-all hover:scale-[1.02] disabled:opacity-50"
                   style={{
-                    background: 'rgba(254,145,0,0.15)',
-                    border: '1px solid rgba(254,145,0,0.3)',
-                    color: CI.orange
+                    background: 'rgba(255,106,0,0.12)',
+                    border: '1px solid rgba(255,106,0,0.25)',
+                    color: DT.orange
                   }}
                 >
-                  {downloadingAudio ? (
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                  ) : (
-                    <Download className="w-3 h-3" />
-                  )}
                   {downloadingAudio ? 'Lädt...' : 'Download'}
                 </button>
               </div>
@@ -453,7 +458,7 @@ export function PowerResultCard({
             )}
             {audioError && (
               <p className="mt-2 text-[10px] text-red-400">
-                Die Aufzeichnung konnte nicht geladen werden. Versuche es später erneut oder überprüfe deine Verbindung.
+                Die Aufzeichnung konnte nicht geladen werden.
               </p>
             )}
             {downloadError && (
@@ -461,15 +466,10 @@ export function PowerResultCard({
                 Download-Fehler: {downloadError}
               </p>
             )}
-            {!audioError && !downloadError && (
-              <p className="mt-1 text-[10px] text-neutral-500">
-                Klicke "Download" um die Aufnahme als Datei zu speichern.
-              </p>
-            )}
           </motion.div>
         ) : (
           <p className="text-[11px] text-neutral-500 px-2">
-            Für diesen Anruf ist aktuell keine Aufzeichnung verfügbar. Du kannst das Transkript und die Zusammenfassung nutzen.
+            Keine Aufzeichnung verfügbar.
           </p>
         )}
 
@@ -623,61 +623,56 @@ export function PowerResultCard({
           }}
         >
           <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-semibold" style={{ color: CI.goldLight }}>
+            <span className="text-[11px] font-bold uppercase tracking-[0.15em]" style={{ color: DT.gold }}>
               Transkript
             </span>
             <div className="flex items-center gap-2">
-              {/* Refresh Button */}
+              {/* Refresh Button - Text only */}
               {onRefresh && (
                 <button
                   onClick={onRefresh}
-                  className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all hover:scale-105"
+                  className="px-3 py-1.5 rounded-[8px] text-[10px] font-medium transition-all hover:bg-white/[0.06]"
                   style={{
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${DT.panelBorder}`,
                     color: '#9ca3af'
                   }}
                 >
-                  <RefreshCw className="w-3 h-3" />
                   Aktualisieren
                 </button>
               )}
-              {/* Copy Button */}
+              {/* Copy Button - Text only */}
               {normalizedTranscript.text && (
                 <button
                   onClick={handleCopyTranscript}
-                  className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all hover:scale-105"
+                  className="px-3 py-1.5 rounded-[8px] text-[10px] font-medium transition-all hover:scale-[1.02]"
                   style={{
-                    background: copied ? 'rgba(34,197,94,0.15)' : 'rgba(254,145,0,0.15)',
-                    border: copied ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(254,145,0,0.3)',
-                    color: copied ? '#4ade80' : CI.orange
+                    background: copied ? 'rgba(34,197,94,0.12)' : 'rgba(255,106,0,0.12)',
+                    border: copied ? '1px solid rgba(34,197,94,0.25)' : '1px solid rgba(255,106,0,0.25)',
+                    color: copied ? '#4ade80' : DT.orange
                   }}
                 >
-                  {copied ? (
-                    <><CheckCircle className="w-3 h-3" /> Kopiert!</>
-                  ) : (
-                    <><Copy className="w-3 h-3" /> Kopieren</>
-                  )}
+                  {copied ? 'Kopiert' : 'Kopieren'}
                 </button>
               )}
             </div>
           </div>
           
           <div 
-            className="p-4 rounded-xl overflow-y-auto"
+            className="p-4 rounded-[12px] overflow-y-auto"
             style={{ 
               background: 'rgba(0,0,0,0.3)',
-              border: '1px solid rgba(255,255,255,0.08)',
+              border: `1px solid ${DT.panelBorder}`,
               maxHeight: '350px'
             }}
           >
             {normalizedTranscript.isProcessing && !normalizedTranscript.text ? (
               <div className="flex items-center gap-3 text-neutral-400">
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="w-4 h-4 rounded-full border border-neutral-500 border-t-transparent animate-spin" />
                 <span className="text-xs">Transkript wird verarbeitet...</span>
               </div>
             ) : normalizedTranscript.messages.length > 0 ? (
-              /* Chat-style rendering for messages */
+              /* Chat-style rendering - CSS dots instead of icons */
               <div className="space-y-3">
                 {normalizedTranscript.messages.map((msg, idx) => (
                   <div 
@@ -685,37 +680,34 @@ export function PowerResultCard({
                     className={`flex gap-2 ${msg.role === 'agent' ? '' : 'flex-row-reverse'}`}
                   >
                     <div 
-                      className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center"
+                      className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold"
                       style={{
                         background: msg.role === 'agent' 
-                          ? 'linear-gradient(135deg, rgba(254,145,0,0.3), rgba(163,78,0,0.3))' 
-                          : 'rgba(255,255,255,0.1)',
+                          ? `linear-gradient(135deg, ${DT.orange}40, ${DT.goldDark}40)` 
+                          : 'rgba(255,255,255,0.08)',
                         border: msg.role === 'agent' 
-                          ? '1px solid rgba(254,145,0,0.4)' 
-                          : '1px solid rgba(255,255,255,0.15)'
+                          ? '1px solid rgba(255,106,0,0.35)' 
+                          : `1px solid ${DT.panelBorder}`,
+                        color: msg.role === 'agent' ? DT.orange : '#888'
                       }}
                     >
-                      {msg.role === 'agent' ? (
-                        <Bot className="w-3 h-3" style={{ color: CI.orange }} />
-                      ) : (
-                        <User className="w-3 h-3 text-neutral-400" />
-                      )}
+                      {msg.role === 'agent' ? 'A' : 'K'}
                     </div>
                     <div 
-                      className={`flex-1 px-3 py-2 rounded-xl text-xs leading-relaxed ${
+                      className={`flex-1 px-3 py-2 rounded-[10px] text-xs leading-relaxed ${
                         msg.role === 'agent' ? 'text-right' : ''
                       }`}
                       style={{
                         background: msg.role === 'agent' 
-                          ? 'rgba(254,145,0,0.08)' 
-                          : 'rgba(255,255,255,0.05)',
+                          ? 'rgba(255,106,0,0.06)' 
+                          : 'rgba(255,255,255,0.04)',
                         border: msg.role === 'agent' 
-                          ? '1px solid rgba(254,145,0,0.15)' 
-                          : '1px solid rgba(255,255,255,0.08)',
-                        color: msg.role === 'agent' ? CI.goldLight : '#d1d5db'
+                          ? '1px solid rgba(255,106,0,0.12)' 
+                          : `1px solid ${DT.panelBorder}`,
+                        color: msg.role === 'agent' ? DT.gold : '#d1d5db'
                       }}
                     >
-                      <div className="text-[9px] uppercase tracking-wider mb-1 opacity-60">
+                      <div className="text-[9px] uppercase tracking-wider mb-1 opacity-50">
                         {msg.role === 'agent' ? 'ARAS' : 'Kunde'}
                       </div>
                       {msg.text}
@@ -730,28 +722,28 @@ export function PowerResultCard({
               </pre>
             ) : (
               <p className="text-xs text-neutral-500">
-                Kein Transkript verfügbar. Klicke "Aktualisieren" um es erneut zu laden.
+                Kein Transkript verfügbar.
               </p>
             )}
           </div>
         </motion.div>
 
-        {/* 📇 Contact Verknüpfung */}
+        {/* Contact Verknüpfung - No emoji comment */}
         {result.phoneNumber && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className="p-4 rounded-xl"
+            className="p-4 rounded-[14px]"
             style={{
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.08)'
+              background: 'rgba(255,255,255,0.02)',
+              border: `1px solid ${DT.panelBorder}`
             }}
           >
             {linkedContact ? (
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-xs text-gray-400 mb-1">Verknüpft mit Kontakt:</div>
+                  <div className="text-[10px] uppercase tracking-wide text-gray-500 mb-1">Verknüpft mit</div>
                   <div className="text-sm font-semibold text-white">
                     {linkedContact.name}
                     {linkedContact.company && (
@@ -759,38 +751,38 @@ export function PowerResultCard({
                     )}
                   </div>
                 </div>
-                <div className="text-xs" style={{ color: CI.orange }}>✓ Gespeichert</div>
+                <div className="text-[10px] font-medium px-2 py-1 rounded-full" style={{ background: 'rgba(34,197,94,0.12)', color: '#4ade80' }}>Gespeichert</div>
               </div>
             ) : (
               <div>
-                <div className="text-xs font-semibold mb-3" style={{ color: CI.goldLight }}>
-                  Diesen Anruf einem Kontakt zuordnen
+                <div className="text-[11px] font-bold uppercase tracking-[0.12em] mb-3" style={{ color: DT.gold }}>
+                  Kontakt zuordnen
                 </div>
                 <div className="flex gap-2">
                   {onSaveAsNewContact && (
                     <button
                       onClick={() => onSaveAsNewContact(result.phoneNumber!, result.contactName)}
-                      className="flex-1 px-4 py-2.5 rounded-lg text-xs font-semibold transition-all hover:scale-[1.02]"
+                      className="flex-1 px-4 py-2.5 rounded-[10px] text-xs font-semibold transition-all hover:scale-[1.02]"
                       style={{
-                        background: 'rgba(254,145,0,0.12)',
-                        border: '1px solid rgba(254,145,0,0.25)',
-                        color: CI.orange
+                        background: 'rgba(255,106,0,0.10)',
+                        border: '1px solid rgba(255,106,0,0.20)',
+                        color: DT.orange
                       }}
                     >
-                      Als neuen Kontakt speichern
+                      Als neuen Kontakt
                     </button>
                   )}
                   {onLinkToContact && (
                     <button
                       onClick={() => onLinkToContact(result.phoneNumber!, result.contactName)}
-                      className="flex-1 px-4 py-2.5 rounded-lg text-xs font-semibold transition-all hover:scale-[1.02]"
+                      className="flex-1 px-4 py-2.5 rounded-[10px] text-xs font-semibold transition-all hover:scale-[1.02]"
                       style={{
-                        background: 'rgba(255,255,255,0.05)',
-                        border: '1px solid rgba(255,255,255,0.12)',
+                        background: 'rgba(255,255,255,0.04)',
+                        border: `1px solid ${DT.panelBorder}`,
                         color: '#d1d5db'
                       }}
                     >
-                      Mit Kontakt verknüpfen
+                      Verknüpfen
                     </button>
                   )}
                 </div>
@@ -808,26 +800,26 @@ export function PowerResultCard({
         >
           <button
             onClick={onNewCall}
-            className="flex-1 px-6 py-4 rounded-xl font-bold text-sm transition-all hover:scale-[1.02] relative overflow-hidden group"
+            className="flex-1 px-6 py-[14px] rounded-[16px] font-bold text-sm transition-all hover:translate-y-[-1px] relative overflow-hidden"
             style={{
-              background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
-              color: '#fff',
+              background: `linear-gradient(135deg, ${DT.orange}, ${DT.goldDark})`,
+              color: '#000',
               fontFamily: 'Orbitron, sans-serif',
-              boxShadow: `0 8px 24px rgba(254,145,0,0.25)`
+              boxShadow: DT.glow
             }}
           >
-            <span className="relative z-10">Neuer POWER Call</span>
+            Neuer POWER Call
           </button>
         </motion.div>
 
-        {/* Notification Hint */}
+        {/* Notification Hint - No emoji */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.7 }}
-          className="mt-2 text-center text-[11px] text-gray-500"
+          className="mt-3 text-center text-[10px] text-neutral-500"
         >
-          💡 Du erhältst automatisch eine Benachrichtigung, wenn der nächste Call abgeschlossen ist
+          Automatische Benachrichtigung bei Abschluss des nächsten Calls
         </motion.p>
       </div>
     </motion.div>
