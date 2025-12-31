@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Copy, Download, RefreshCw, Loader2, CheckCircle, User, Bot } from 'lucide-react';
+import { Copy, Download, RefreshCw, Loader2, CheckCircle, User, Bot, Sparkles } from 'lucide-react';
 
 const CI = {
   goldLight: '#E9D7C4',
@@ -279,6 +279,104 @@ export function PowerResultCard({
             </div>
           )}
         </motion.div>
+
+        {/* 📋 Summary Panel */}
+        {summary ? (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="rounded-2xl px-4 py-4 relative overflow-hidden"
+            style={{
+              background: 'rgba(10,10,10,0.92)',
+              border: '1px solid rgba(254,145,0,0.15)',
+              backdropFilter: 'blur(14px)'
+            }}
+          >
+            <div
+              className="absolute top-0 left-0 right-0 h-px"
+              style={{
+                background: 'linear-gradient(90deg, transparent, rgba(254,145,0,0.3), rgba(233,215,196,0.2), rgba(254,145,0,0.3), transparent)'
+              }}
+            />
+            <h4 className="text-xs font-bold uppercase tracking-wide mb-3 flex items-center gap-2" style={{ color: CI.goldLight }}>
+              <Sparkles className="w-3.5 h-3.5" style={{ color: CI.orange }} />
+              Zusammenfassung
+            </h4>
+            
+            {/* Outcome */}
+            <p className="text-sm text-neutral-200 mb-3">{summary.outcome}</p>
+            
+            {/* Bullet Points */}
+            {summary.bulletPoints && summary.bulletPoints.length > 0 && (
+              <ul className="space-y-1.5 mb-3">
+                {summary.bulletPoints.map((point, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs text-neutral-400">
+                    <span className="text-orange-400 mt-0.5">•</span>
+                    <span>{point}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            
+            {/* Next Step */}
+            {summary.nextStep && (
+              <div className="flex items-start gap-2 text-xs px-3 py-2 rounded-lg" style={{ background: 'rgba(254,145,0,0.08)', border: '1px solid rgba(254,145,0,0.15)' }}>
+                <span className="font-semibold" style={{ color: CI.orange }}>Nächster Schritt:</span>
+                <span className="text-neutral-300">{summary.nextStep}</span>
+              </div>
+            )}
+            
+            {/* Tags & Sentiment */}
+            {(summary.tags?.length > 0 || summary.sentiment) && (
+              <div className="flex flex-wrap items-center gap-2 mt-3">
+                {summary.sentiment && (
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                    summary.sentiment === 'positive' ? 'bg-green-500/15 text-green-400 border border-green-500/20' :
+                    summary.sentiment === 'negative' ? 'bg-red-500/15 text-red-400 border border-red-500/20' :
+                    'bg-neutral-500/15 text-neutral-400 border border-neutral-500/20'
+                  }`}>
+                    {summary.sentiment === 'positive' ? '😊 Positiv' : 
+                     summary.sentiment === 'negative' ? '😟 Negativ' : 
+                     summary.sentiment === 'mixed' ? '🤔 Gemischt' : '😐 Neutral'}
+                  </span>
+                )}
+                {summary.tags?.map((tag, i) => (
+                  <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-neutral-500 border border-white/10">
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        ) : onRefresh ? (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="rounded-2xl px-4 py-4 relative overflow-hidden"
+            style={{
+              background: 'rgba(10,10,10,0.92)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              backdropFilter: 'blur(14px)'
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs text-neutral-500">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Zusammenfassung wird erstellt…</span>
+              </div>
+              <button
+                onClick={onRefresh}
+                className="text-[10px] px-2 py-1 rounded flex items-center gap-1 hover:bg-white/5 transition-colors"
+                style={{ color: CI.orange }}
+              >
+                <RefreshCw className="w-3 h-3" />
+                Aktualisieren
+              </button>
+            </div>
+          </motion.div>
+        ) : null}
 
         {/* 🎤 Audio Recording with Download */}
         {(result.recordingUrl || result.id || result.callId) ? (

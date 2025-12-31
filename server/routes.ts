@@ -3060,17 +3060,30 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       // Sort by newest first and format for frontend
       const formattedLogs = callLogs
         .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-        .map((log: any) => ({
-          id: log.id,
-          phoneNumber: log.phoneNumber,
-          status: log.status,
-          transcript: log.transcript,
-          recordingUrl: log.recordingUrl,
-          duration: log.duration,
-          customPrompt: log.customPrompt,
-          metadata: log.metadata,
-          createdAt: log.createdAt
-        }));
+        .map((log: any) => {
+          // Extract summary from metadata if exists
+          const summary = log.metadata?.summary || null;
+          const summaryShort = summary?.outcome 
+            ? (summary.outcome.length > 120 ? summary.outcome.substring(0, 117) + '...' : summary.outcome)
+            : null;
+          
+          return {
+            id: log.id,
+            phoneNumber: log.phoneNumber,
+            contactName: log.metadata?.contactName || null,
+            status: log.status,
+            transcript: log.transcript,
+            recordingUrl: log.recordingUrl,
+            duration: log.duration,
+            customPrompt: log.customPrompt,
+            metadata: log.metadata,
+            createdAt: log.createdAt,
+            // NEW: Summary fields for call history display
+            summaryShort: summaryShort,
+            summaryStatus: summary ? 'ready' : (log.status === 'completed' ? 'pending' : null),
+            summary: summary
+          };
+        });
       
       res.json(formattedLogs);
     } catch (error: any) {

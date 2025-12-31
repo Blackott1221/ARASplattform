@@ -929,13 +929,26 @@ Time: ${persistentError.timestamp}`}
                 </h3>
                 <div className="space-y-2">
                   {callHistory.slice(0, 5).map((call: any) => (
-                    <div key={call.id} className="flex items-center gap-3 py-2 border-b border-white/5 last:border-0">
-                      <div className={`w-2 h-2 rounded-full ${call.status === 'completed' ? 'bg-green-500' : 'bg-red-500'}`} />
+                    <div key={call.id} className="flex items-center gap-3 py-2.5 border-b border-white/5 last:border-0">
+                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${call.status === 'completed' ? 'bg-green-500' : 'bg-red-500'}`} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm truncate" style={{ color: CI.goldLight }}>{call.contactName || call.phoneNumber}</p>
-                        <p className="text-xs text-neutral-500">
-                          {call.createdAt ? formatDistanceToNow(new Date(call.createdAt), { addSuffix: true, locale: de }) : ''}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm truncate font-medium" style={{ color: CI.goldLight }}>{call.contactName || call.phoneNumber}</p>
+                          <span className="text-[10px] text-neutral-500 flex-shrink-0">
+                            {call.createdAt ? formatDistanceToNow(new Date(call.createdAt), { addSuffix: true, locale: de }) : ''}
+                          </span>
+                        </div>
+                        {/* Summary line */}
+                        {call.summaryShort ? (
+                          <p className="text-xs text-neutral-400 truncate mt-0.5">{call.summaryShort}</p>
+                        ) : call.summaryStatus === 'pending' ? (
+                          <p className="text-xs text-neutral-500 italic mt-0.5 flex items-center gap-1">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Zusammenfassung wird erstellt…
+                          </p>
+                        ) : call.status === 'failed' ? (
+                          <p className="text-xs text-red-400/70 mt-0.5">Anruf fehlgeschlagen</p>
+                        ) : null}
                       </div>
                     </div>
                   ))}
