@@ -1,23 +1,22 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, Component, ReactNode } from 'react';
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import { Sidebar } from '@/components/layout/sidebar';
-import { TopBar } from '@/components/layout/topbar';
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Lock, Phone, Contact, Plus, X, Building2, User, Mail, StickyNote, ChevronDown, Search, Sparkles, Loader2 } from 'lucide-react';
-import type { SubscriptionResponse } from "@shared/schema";
-import arasLogo from "@/assets/aras_logo_1755067745303.png";
-import { CallWizard } from '@/components/power/call-wizard';
+import { 
+  Phone, Plus, X, Building2, User, Mail, StickyNote, ChevronDown, ChevronUp, 
+  Search, Sparkles, Loader2, CheckCircle, AlertTriangle, XCircle, Copy, 
+  RefreshCw, Zap, Clock, Database
+} from 'lucide-react';
 import { ClarificationChat } from '@/components/power/clarification-chat';
-import { CallTimeline } from '@/components/power/call-timeline';
 import { PowerResultCard } from '@/components/power/power-result-card';
 import { ContactAutoSuggest } from '@/components/power/contact-auto-suggest';
-// Templates entfernt aus POWER - bleiben im Code für spätere Features
 
-// ----------------- ARAS CI -----------------
+// ═══════════════════════════════════════════════════════════════
+// ARAS CI COLORS
+// ═══════════════════════════════════════════════════════════════
 const CI = {
   goldLight: '#E9D7C4',
   orange: '#FE9100',
@@ -25,325 +24,306 @@ const CI = {
   black: '#0a0a0a'
 };
 
-const ANIMATED_TEXTS = [
-  "Terminvereinbarungen automatisieren",
-  "Leads qualifizieren",
-  "Kundentermine bestätigen",
-  "Follow-ups durchführen",
-  "Feedback einholen",
-  "Bestellungen aufnehmen"
-];
+// ═══════════════════════════════════════════════════════════════
+// ERROR BOUNDARY - Catches React crashes, shows fallback UI
+// ═══════════════════════════════════════════════════════════════
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
 
-const EXAMPLE_PROMPTS = [
-  { text: 'Akquiriere Kunden für meine Dienstleistung XY' },
-  { text: 'Lade Besucher zu unserem Event ein' },
-  { text: 'Reaktiviere Bestandskunden mit einem kurzen Angebot' },
-  { text: 'Qualifiziere neue Leads aus der letzten Messe' },
-];
+class PowerErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
 
-const validatePhoneNumber = (phone: string): boolean => /^\+[0-9]{10,15}$/.test(phone);
-const formatPhoneInput = (value: string): string => value.replace(/[^\d+]/g, '');
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
 
-export default function Power() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  handleCopyError = () => {
+    const debugInfo = {
+      timestamp: new Date().toISOString(),
+      route: '/app/power',
+      error: this.state.error?.message,
+      stack: this.state.error?.stack?.substring(0, 500),
+    };
+    navigator.clipboard.writeText(JSON.stringify(debugInfo, null, 2));
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="h-full flex items-center justify-center p-8">
+          <div 
+            className="max-w-lg w-full p-8 rounded-2xl text-center"
+            style={{ background: 'rgba(0,0,0,0.8)', border: '1px solid rgba(239,68,68,0.3)' }}
+          >
+            <XCircle className="w-16 h-16 mx-auto mb-4 text-red-500" />
+            <h2 className="text-xl font-bold mb-2 font-['Orbitron'] text-red-400">
+              POWER konnte nicht geladen werden
+            </h2>
+            <p className="text-sm text-neutral-400 mb-6">
+              Ein unerwarteter Fehler ist aufgetreten.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => window.location.reload()}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm"
+                style={{ background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`, color: '#000' }}
+              >
+                <RefreshCw className="w-4 h-4" />
+                Neu laden
+              </button>
+              <button
+                onClick={this.handleCopyError}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm"
+                style={{ background: 'rgba(255,255,255,0.1)', color: CI.goldLight }}
+              >
+                <Copy className="w-4 h-4" />
+                Fehler kopieren
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PREFLIGHT CHECK TYPES
+// ═══════════════════════════════════════════════════════════════
+interface PreflightCheck {
+  id: string;
+  label: string;
+  status: 'pending' | 'pass' | 'warn' | 'fail';
+  details?: string;
+  fixLink?: string;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PERSISTENT ERROR TYPES
+// ═══════════════════════════════════════════════════════════════
+interface PersistentError {
+  userMessage: string;
+  technicalMessage: string;
+  endpoint?: string;
+  status?: number;
+  timestamp: string;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HELPER COMPONENTS
+// ═══════════════════════════════════════════════════════════════
+function PreflightCheckItem({ check }: { check: PreflightCheck }) {
+  const icons = {
+    pending: <Loader2 className="w-4 h-4 animate-spin text-neutral-500" />,
+    pass: <CheckCircle className="w-4 h-4 text-green-500" />,
+    warn: <AlertTriangle className="w-4 h-4 text-yellow-500" />,
+    fail: <XCircle className="w-4 h-4 text-red-500" />,
+  };
+  return (
+    <div className="flex items-center gap-3 py-2">
+      {icons[check.status]}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium" style={{ color: CI.goldLight }}>{check.label}</p>
+        {check.details && (
+          <p className="text-xs text-neutral-500 truncate">{check.details}</p>
+        )}
+      </div>
+      {check.fixLink && check.status === 'fail' && (
+        <a
+          href={check.fixLink}
+          className="text-xs font-medium px-2 py-1 rounded-md"
+          style={{ background: `${CI.orange}20`, color: CI.orange }}
+        >
+          Beheben →
+        </a>
+      )}
+    </div>
+  );
+}
+
+function StatusPill({ status }: { status: string }) {
+  const config: Record<string, { label: string; color: string; bg: string }> = {
+    idle: { label: 'BEREIT', color: '#9ca3af', bg: 'rgba(156,163,175,0.1)' },
+    processing: { label: 'PRÜFE...', color: '#fbbf24', bg: 'rgba(251,191,36,0.1)' },
+    ringing: { label: 'KLINGELT', color: CI.orange, bg: `${CI.orange}15` },
+    connected: { label: 'VERBUNDEN', color: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
+    ended: { label: 'BEENDET', color: '#9ca3af', bg: 'rgba(156,163,175,0.1)' },
+    error: { label: 'FEHLER', color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
+  };
+  const c = config[status] || config.idle;
+  return (
+    <span 
+      className="px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide"
+      style={{ color: c.color, background: c.bg, border: `1px solid ${c.color}30` }}
+    >
+      {c.label}
+    </span>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MAIN COMPONENT - NO SIDEBAR/TOPBAR (AppPage provides shell)
+// ═══════════════════════════════════════════════════════════════
+function PowerContent() {
   const { user } = useAuth();
   const { toast } = useToast();
-
-  // 🔥 NEW: Load user profile context for AI-enhanced calls
-  const { 
-    data: userProfileContext, 
-    isLoading: isProfileLoading, 
-    isError: isProfileError 
-  } = useQuery({
-    queryKey: ["user-profile-context"],
-    queryFn: async () => {
-      const res = await fetch("/api/user/profile-context", {
-        credentials: "include"
-      });
-      if (!res.ok) {
-        throw new Error("Failed to load profile context");
-      }
-      return res.json();
-    },
-    // Nur laden wenn User eingeloggt
-    enabled: !!user,
-    // Cache für 5 Minuten
-    staleTime: 5 * 60 * 1000
-  });
-
-  // Existing states (technical behaviour untouched)
-  const [contactName, setContactName] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [message, setMessage] = useState("");
-  const [showSaveContact, setShowSaveContact] = useState(false);
-  const [callHistory, setCallHistory] = useState<any[]>([]);
-  const [expandedCall, setExpandedCall] = useState<number | null>(null);
-  const [showHistory, setShowHistory] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
-  const [phoneError, setPhoneError] = useState("");
-  
-  // 🎯 Call Summary from ARAS Core
-  const [callSummary, setCallSummary] = useState<{
-    outcome: string;
-    bulletPoints: string[];
-    nextStep: string;
-    sentiment: 'positive' | 'neutral' | 'negative' | 'mixed';
-    tags: string[];
-  } | null>(null);
-  
-  // NEW: Kontaktbuch Integration
-  const [showContactPicker, setShowContactPicker] = useState(false);
-  const [showNewContactHint, setShowNewContactHint] = useState(false);
-  const [showNewContactModal, setShowNewContactModal] = useState(false);
-  const [contactSearchQuery, setContactSearchQuery] = useState("");
-  const [newContactData, setNewContactData] = useState({
-    company: "",
-    firstName: "",
-    lastName: "",
-    phone: "",
-    email: "",
-    notes: ""
-  });
-
-  // UI/typing
-  const [currentTextIndex, setCurrentTextIndex] = useState(0);
-  const [displayText, setDisplayText] = useState("");
-  const [isTyping, setIsTyping] = useState(true);
-
-  // Call status tracking
-  const [callStatus, setCallStatus] = useState<'idle' | 'processing' | 'ringing' | 'connected' | 'ended'>('idle');
-  const [callDuration, setCallDuration] = useState(0);
   const callTimerRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // NEW (UI only, no backend): bulk campaign inputs
-  const [campaignGoal, setCampaignGoal] = useState("");
-  const [bulkFileName, setBulkFileName] = useState<string | null>(null);
-  
-  // 🔥 NEW: Wizard State
-  const [showWizard, setShowWizard] = useState(false);
-  
-  // 🔥 NEW: Chat Clarification Flow
-  const [showChatFlow, setShowChatFlow] = useState(false);
-  const [validationResult, setValidationResult] = useState<any>(null);
-  const [chatAnswers, setChatAnswers] = useState<Record<string, string>>({});
-  const [enhancedPrompt, setEnhancedPrompt] = useState<string>('');
-  const [showReview, setShowReview] = useState(false);
 
-  // Contact ID für Contact-Kontext (ohne Templates)
+  // Form state
+  const [contactName, setContactName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [message, setMessage] = useState('');
   const [selectedContactId, setSelectedContactId] = useState<number | null>(null);
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // Call state
+  const [callStatus, setCallStatus] = useState<'idle' | 'processing' | 'ringing' | 'connected' | 'ended'>('idle');
+  const [callDuration, setCallDuration] = useState(0);
+  const [result, setResult] = useState<any>(null);
+  const [callSummary, setCallSummary] = useState<any>(null);
 
-  // Fetch call history from database
-  useEffect(() => {
-    const fetchCallHistory = async () => {
-      try {
-        const response = await fetch('/api/user/call-logs', {
-          credentials: 'include'
-        });
-        if (response.ok) {
-          const logs = await response.json();
-          setCallHistory(logs);
-        }
-      } catch (error) {
-        console.error('[CALL-HISTORY] Error fetching:', error);
-      }
-    };
-    
-    fetchCallHistory();
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchCallHistory, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  // UI state
+  const [showChatFlow, setShowChatFlow] = useState(false);
+  const [showReview, setShowReview] = useState(false);
+  const [enhancedPrompt, setEnhancedPrompt] = useState('');
+  const [validationResult, setValidationResult] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
 
-  // Fetch subscription
-  const { data: subscription, refetch: refetchSubscription } = useQuery<SubscriptionResponse>({
-    queryKey: ["/api/user/subscription"],
-    enabled: !!user,
+  // Preflight & Error state
+  const [preflightChecks, setPreflightChecks] = useState<PreflightCheck[]>([]);
+  const [persistentError, setPersistentError] = useState<PersistentError | null>(null);
+  const [expandedError, setExpandedError] = useState(false);
+
+  // Contact picker state
+  const [showContactPicker, setShowContactPicker] = useState(false);
+  const [contactSearchQuery, setContactSearchQuery] = useState('');
+  const [showNewContactModal, setShowNewContactModal] = useState(false);
+  const [newContactData, setNewContactData] = useState({
+    company: '', firstName: '', lastName: '', phone: '', email: '', notes: ''
   });
 
-  // Fetch contacts from new API
-  const { data: contacts = [] } = useQuery<any[]>({
-    queryKey: ["/api/contacts"],
-    enabled: !!user,
+  // ─────────────────────────────────────────────────────────────
+  // DATA QUERIES (real endpoints verified in server/routes.ts)
+  // ─────────────────────────────────────────────────────────────
+  
+  // GET /api/user/profile-context - Returns: { id, name, company, website, industry, jobRole, aiProfile }
+  const { data: profileContext, isLoading: profileLoading } = useQuery({
+    queryKey: ['profile-context'],
+    queryFn: async () => {
+      const res = await fetch('/api/user/profile-context', { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
   });
 
-  const subscriptionData = subscription || {
-    plan: 'pro',
-    status: 'active',
-    aiMessagesUsed: 0,
-    voiceCallsUsed: 0,
-    aiMessagesLimit: 100,
-    voiceCallsLimit: 100,
-    renewalDate: new Date().toISOString(),
-    hasPaymentMethod: false,
-    requiresPaymentSetup: false,
-    isTrialActive: false,
-    canUpgrade: false
-  };
+  // GET /api/user/knowledge/digest?mode=power - Returns: { sourceCount, charCount, digest }
+  const { data: knowledgeDigest, isLoading: digestLoading } = useQuery({
+    queryKey: ['knowledge-digest-power'],
+    queryFn: async () => {
+      const res = await fetch('/api/user/knowledge/digest?mode=power', { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+  });
 
-  // ----------------- Minimal helper UI (unchanged networking) -----------------
-  // NEW: Select contact from phonebook
-  const handleSelectContact = (contact: any) => {
-    setContactName(contact.company || `${contact.firstName || ''} ${contact.lastName || ''}`.trim());
-    setPhoneNumber(contact.phone || contact.phoneNumber || '');
-    setSelectedContactId(contact.id || null); // 🔥 Speichere contactId für Template-Personalisierung
-    setShowContactPicker(false);
-    toast({
-      title: 'Kontakt ausgewählt',
-      description: `${contact.company || 'Kontakt'} wurde ausgewählt`
+  // GET /api/contacts - Returns array of contacts
+  const { data: contacts = [] } = useQuery({
+    queryKey: ['contacts'],
+    queryFn: async () => {
+      const res = await fetch('/api/contacts', { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  // GET /api/user/call-logs - Returns array of call history (REAL ENDPOINT)
+  const { data: callHistory = [], refetch: refetchHistory } = useQuery({
+    queryKey: ['call-history'],
+    queryFn: async () => {
+      const res = await fetch('/api/user/call-logs', { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
+  // ─────────────────────────────────────────────────────────────
+  // PREFLIGHT CHECKS (runs on input change)
+  // ─────────────────────────────────────────────────────────────
+  const runPreflightChecks = () => {
+    const checks: PreflightCheck[] = [];
+
+    // 1. Auth check
+    checks.push({
+      id: 'auth',
+      label: 'Authentifizierung',
+      status: user ? 'pass' : 'fail',
+      details: user ? `Angemeldet als ${(user as any).firstName || (user as any).username}` : 'Nicht angemeldet',
     });
+
+    // 2. Profile check (real BI fields: company, aiProfile)
+    const hasCompany = !!profileContext?.company;
+    const hasAiProfile = !!(profileContext?.aiProfile?.companyDescription || profileContext?.aiProfile?.targetAudience);
+    checks.push({
+      id: 'profile',
+      label: 'Profildaten',
+      status: hasCompany && hasAiProfile ? 'pass' : hasCompany || hasAiProfile ? 'warn' : 'fail',
+      details: hasCompany ? profileContext.company : 'Firma & KI-Profil fehlen',
+      fixLink: !hasCompany && !hasAiProfile ? '/app/leads?section=ai-profile' : undefined,
+    });
+
+    // 3. Knowledge check (real endpoint: /api/user/knowledge/digest?mode=power)
+    const hasDigest = (knowledgeDigest?.charCount || 0) > 50;
+    checks.push({
+      id: 'knowledge',
+      label: 'Wissensdatenbank',
+      status: hasDigest ? 'pass' : 'warn',
+      details: hasDigest ? `${knowledgeDigest.sourceCount} Quellen, ${knowledgeDigest.charCount} Zeichen` : 'Wissensdatenbank ist leer',
+      fixLink: !hasDigest ? '/app/leads' : undefined,
+    });
+
+    // 4. Input validation
+    const phoneValid = phoneNumber.length >= 8;
+    const messageValid = message.trim().length > 0;
+    checks.push({
+      id: 'input',
+      label: 'Eingabedaten',
+      status: phoneValid && messageValid ? 'pass' : phoneValid || messageValid ? 'warn' : 'fail',
+      details: phoneValid && messageValid ? 'Alle Eingaben vorhanden' : 'Telefon und Nachricht eingeben',
+    });
+
+    setPreflightChecks(checks);
+    return !checks.some(c => c.status === 'fail');
   };
 
-  // Template-Handler entfernt - POWER fokussiert sich auf freien Text
-
-  // NEW: Save new contact with all fields
-  const handleSaveNewContact = async () => {
-    if (!newContactData.company.trim()) {
-      toast({
-        title: 'Firma erforderlich',
-        description: 'Bitte geben Sie mindestens einen Firmennamen ein.',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/contacts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(newContactData)
-      });
-
-      if (!response.ok) throw new Error('Save failed');
-
-      const savedContact = await response.json();
-      
-      // Fill form with new contact
-      setContactName(savedContact.company);
-      setPhoneNumber(savedContact.phone || '');
-      
-      // Reset and close
-      setNewContactData({
-        company: '',
-        firstName: '',
-        lastName: '',
-        phone: '',
-        email: '',
-        notes: ''
-      });
-      setShowNewContactModal(false);
-      
-      toast({
-        title: 'Kontakt gespeichert',
-        description: `${savedContact.company} wurde zu Ihrem Kontaktbuch hinzugefügt`
-      });
-    } catch {
-      toast({
-        title: 'Fehler',
-        description: 'Kontakt konnte nicht gespeichert werden',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  // Filter contacts for picker
-  const filteredContacts = contacts.filter(c => 
-    contactSearchQuery === '' ||
-    c.company?.toLowerCase().includes(contactSearchQuery.toLowerCase()) ||
-    c.firstName?.toLowerCase().includes(contactSearchQuery.toLowerCase()) ||
-    c.lastName?.toLowerCase().includes(contactSearchQuery.toLowerCase()) ||
-    c.phone?.includes(contactSearchQuery)
-  );
-
+  // Run preflight on input change
   useEffect(() => {
-    if (phoneNumber && validatePhoneNumber(phoneNumber)) {
-      fetch(`/api/user/call-history/${encodeURIComponent(phoneNumber)}`, { credentials: 'include' })
-        .then(res => res.json())
-        .then(data => setCallHistory(data || []))
-        .catch(() => {});
-    } else {
-      setCallHistory([]);
+    if (phoneNumber.length >= 3 || message.length > 0) {
+      runPreflightChecks();
     }
-  }, [phoneNumber]);
+  }, [phoneNumber, message, profileContext, knowledgeDigest, user]);
 
-  const handleSectionChange = (section: string) => {
-    if (section !== "power") window.location.href = `/app/${section}`;
-  };
+  // ─────────────────────────────────────────────────────────────
+  // CALL FLOW HANDLERS
+  // ─────────────────────────────────────────────────────────────
 
-  // Typewriter
-  useEffect(() => {
-    const currentText = ANIMATED_TEXTS[currentTextIndex];
-    let charIndex = 0;
-    if (isTyping) {
-      const typeInterval = setInterval(() => {
-        if (charIndex <= currentText.length) {
-          setDisplayText(currentText.substring(0, charIndex));
-          charIndex++;
-        } else {
-          setIsTyping(false);
-          setTimeout(() => {
-            setIsTyping(true);
-            setCurrentTextIndex((prev) => (prev + 1) % ANIMATED_TEXTS.length);
-          }, 1600);
-          clearInterval(typeInterval);
-        }
-      }, 45);
-      return () => clearInterval(typeInterval);
-    }
-  }, [currentTextIndex, isTyping]);
-
-  // autoresize
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 150) + 'px';
-    }
-  }, [message]);
-
-  const handlePhoneChange = (value: string) => {
-    const formatted = formatPhoneInput(value);
-    setPhoneNumber(formatted);
-    setPhoneError(formatted && !validatePhoneNumber(formatted) ? "Format: +4917661119320 (ohne Leerzeichen)" : "");
-  };
-
-  // ----------------- UI ONLY: bulk list drop -----------------
-  const onBulkFilePick = (f?: File) => {
-    if (!f) return;
-    const ok = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
-    if (!ok.includes(f.type) && !f.name.endsWith('.csv') && !f.name.endsWith('.xlsx')) {
-      toast({ title: 'Dateityp', description: 'Bitte CSV oder XLSX hochladen', variant: 'destructive' });
-      return;
-    }
-    setBulkFileName(f.name);
-    // UI only – keine Verarbeitung
-  };
-
-  // ----------------- 🔥 NEUE CALL LOGIC MIT CHAT-FLOW -----------------
-  // Schritt 1: Starte Chat-Flow (Validierung mit Gemini)
+  // Step 1: Start validation
   const handleStartCallProcess = async () => {
-    if (!contactName || !phoneNumber || !message) {
-      toast({ 
-        title: "Fehlende Angaben", 
-        description: "Bitte fülle alle Pflichtfelder aus", 
-        variant: "destructive" 
-      });
+    if (!runPreflightChecks()) {
+      toast({ title: 'Systemprüfung fehlgeschlagen', description: 'Bitte behebe die markierten Probleme.', variant: 'destructive' });
       return;
     }
-    if (!validatePhoneNumber(phoneNumber)) {
-      toast({ 
-        title: "Ungültige Telefonnummer", 
-        description: "Format: +4917661119320 (ohne Leerzeichen)", 
-        variant: "destructive" 
-      });
-      return;
-    }
-    
-    // Starte Validierung mit ARAS Core
+
+    setPersistentError(null);
     setLoading(true);
+    setCallStatus('processing');
+
     try {
+      // POST /api/aras-voice/validate-prompt - Body: { message, contactName, phoneNumber }
       const response = await fetch('/api/aras-voice/validate-prompt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -351,213 +331,167 @@ export default function Power() {
         body: JSON.stringify({
           message,
           contactName,
-          answers: {},
-          contactId: selectedContactId
-          // Kein templateId/templateScenario mehr - POWER nutzt freien Text
+          phoneNumber,
+          contactId: selectedContactId,
+          answers: {}
         })
       });
 
       if (!response.ok) {
-        throw new Error('Validierung fehlgeschlagen');
+        const errData = await response.json().catch(() => ({}));
+        throw { status: response.status, message: errData.error || 'Validierung fehlgeschlagen', endpoint: '/api/aras-voice/validate-prompt' };
       }
 
       const result = await response.json();
       setValidationResult(result);
 
       if (result.isComplete) {
-        // Direkt zum Review, keine Fragen
         setEnhancedPrompt(result.enhancedPrompt || message);
         setShowReview(true);
-      } else if (result.questions && result.questions.length > 0) {
-        // Zeige Chat-Flow für Fragen
+      } else if (result.questions?.length > 0) {
         setShowChatFlow(true);
       } else {
-        // Fallback: Direkt Call
         setEnhancedPrompt(message);
         setShowReview(true);
       }
-    } catch (error: any) {
-      toast({
-        title: 'Fehler',
-        description: error.message,
-        variant: 'destructive'
+    } catch (err: any) {
+      setPersistentError({
+        userMessage: 'Validierung fehlgeschlagen',
+        technicalMessage: err.message || 'Unbekannter Fehler',
+        endpoint: err.endpoint,
+        status: err.status,
+        timestamp: new Date().toISOString(),
       });
+      setCallStatus('idle');
     } finally {
       setLoading(false);
     }
   };
 
-  // Schritt 2: Chat-Flow abgeschlossen
+  // Step 2: Chat complete
   const handleChatComplete = (answers: Record<string, string>) => {
-    setChatAnswers(answers);
-    
-    // Baue Enhanced Prompt aus Antworten
-    const prompt = `${message}\n\nZusätzliche Details:\n${Object.entries(answers)
-      .map(([key, value]) => `- ${key}: ${value}`)
-      .join('\n')}`;
-    
-    setEnhancedPrompt(validationResult?.enhancedPrompt || prompt);
+    const finalPrompt = Object.entries(answers).map(([q, a]) => `${q}: ${a}`).join('\n');
+    setEnhancedPrompt(message + '\n\n' + finalPrompt);
     setShowChatFlow(false);
     setShowReview(true);
   };
 
-  // Schritt 3: Chat überspringen
+  // Step 3: Skip chat
   const handleSkipChat = () => {
     setEnhancedPrompt(message);
     setShowChatFlow(false);
     setShowReview(true);
   };
 
-  // Schritt 4: Review bestätigt → Call starten
+  // Step 4: Confirm call
   const handleConfirmCall = async () => {
     setShowReview(false);
     setLoading(true);
+    setPersistentError(null);
     setResult(null);
     setCallStatus('processing');
     setCallDuration(0);
 
     try {
-      const response = await fetch("/api/aras-voice/smart-call", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ 
-          name: contactName,
+      // POST /api/aras-voice/smart-call - Body: { name, phoneNumber, message } (ALL REQUIRED)
+      const response = await fetch('/api/aras-voice/smart-call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: contactName || 'Unbekannt',
           phoneNumber: phoneNumber,
           message: enhancedPrompt
         })
       });
+
       const data = await response.json();
-      
+
       if (!response.ok) {
-        setLoading(false);
-        setCallStatus('idle');
-        setResult({ success: false, error: data.error || data.message || `Fehler: ${response.status}` });
-        return;
+        throw { status: response.status, message: data.error || data.message || 'Anruf fehlgeschlagen', endpoint: '/api/aras-voice/smart-call' };
       }
-      
+
       if (data.success && data.callId) {
-        const callId = data.callId;
         setCallStatus('ringing');
-        
-        toast({
-          title: "🚀 Anruf gestartet",
-          description: `ARAS AI ruft jetzt ${contactName} an...`
-        });
-        
-        // Nach 3s: connected
+        toast({ title: '🚀 Anruf gestartet', description: `ARAS AI ruft jetzt ${contactName || phoneNumber} an...` });
+
+        // After 3s: connected (status from backend is in-progress)
         setTimeout(() => {
           setCallStatus('connected');
           callTimerRef.current = setInterval(() => {
             setCallDuration(prev => prev + 1);
           }, 1000);
         }, 3000);
-        
+
         // Start polling
-        setTimeout(() => pollCallDetails(callId), 5000);
+        setTimeout(() => pollCallDetails(data.callId), 5000);
       } else {
         setCallStatus('idle');
         setResult(data);
       }
-      
+    } catch (err: any) {
+      setPersistentError({
+        userMessage: 'Anruf konnte nicht gestartet werden',
+        technicalMessage: err.message || 'Unbekannter Fehler',
+        endpoint: err.endpoint,
+        status: err.status,
+        timestamp: new Date().toISOString(),
+      });
+      setCallStatus('error');
+    } finally {
       setLoading(false);
-    } catch (e: any) {
-      setLoading(false);
-      setCallStatus('idle');
-      setResult({ success: false, error: e?.message || "Anruf fehlgeschlagen" });
     }
   };
-  
-  // Polling Logic
+
+  // Polling: GET /api/aras-voice/call-details/:callId
   const pollCallDetails = async (callId: number) => {
     let attempts = 0;
     const maxAttempts = 30;
-    
+
     const pollInterval = setInterval(async () => {
       attempts++;
-      
+
       try {
-        const detailsResponse = await fetch(`/api/aras-voice/call-details/${callId}`, {
-          credentials: 'include'
-        });
-        
-        if (!detailsResponse.ok) {
+        const response = await fetch(`/api/aras-voice/call-details/${callId}`, { credentials: 'include' });
+
+        if (!response.ok) {
           if (attempts >= maxAttempts) {
             clearInterval(pollInterval);
-            if (callTimerRef.current) {
-              clearInterval(callTimerRef.current);
-              callTimerRef.current = null;
-            }
+            clearCallTimer();
             setCallStatus('ended');
             setResult({ success: false, error: 'Anruf-Details konnten nicht abgerufen werden' });
           }
           return;
         }
-        
-        const callDetails = await detailsResponse.json();
+
+        const callDetails = await response.json();
         const hasTranscript = !!callDetails.transcript;
         const hasAudio = !!callDetails.recordingUrl;
-        const isCompleted = callDetails.status === 'completed' || callDetails.status === 'done';
-        
-        if (hasTranscript) {
-          if (callTimerRef.current) {
-            clearInterval(callTimerRef.current);
-            callTimerRef.current = null;
-          }
+
+        // Status check: completed, failed, no-answer
+        if (callDetails.status === 'completed' || callDetails.status === 'failed' || callDetails.status === 'no-answer' || (hasTranscript && hasAudio)) {
+          clearInterval(pollInterval);
+          clearCallTimer();
           setCallStatus('ended');
-          
           setResult({
-            success: true,
-            id: callDetails.id || callDetails.callId,
-            recordingUrl: callDetails.recordingUrl || null,
+            success: callDetails.status === 'completed',
+            callId: callDetails.id,
             transcript: callDetails.transcript,
+            recordingUrl: callDetails.recordingUrl,
             duration: callDetails.duration || callDuration,
-            phoneNumber: callDetails.phoneNumber || phoneNumber,
-            contactName: callDetails.contactName || contactName
+            phoneNumber: callDetails.phoneNumber,
+            contactName: callDetails.contactName
           });
-          
-          // 🎯 Extract & Set Summary from ARAS Core
           if (callDetails.summary) {
-            setCallSummary({
-              outcome: callDetails.summary.outcome ?? '',
-              bulletPoints: Array.isArray(callDetails.summary.bulletPoints) ? callDetails.summary.bulletPoints : [],
-              nextStep: callDetails.summary.nextStep ?? '',
-              sentiment: callDetails.summary.sentiment ?? 'neutral',
-              tags: Array.isArray(callDetails.summary.tags) ? callDetails.summary.tags : []
-            });
-          } else {
-            setCallSummary(null);
+            setCallSummary(callDetails.summary);
           }
-          
-          // 🔥 NEUE TOAST-BENACHRICHTIGUNG
-          toast({
-            title: "✅ Anruf abgeschlossen",
-            description: `Der Anruf an ${contactName} wurde erfolgreich beendet. Transkript und Aufzeichnung sind verfügbar.`,
-          });
-          
-          // Refresh call history
-          try {
-            const historyResponse = await fetch('/api/user/call-logs', { credentials: 'include' });
-            if (historyResponse.ok) {
-              const logs = await historyResponse.json();
-              setCallHistory(logs);
-            }
-          } catch (e) {
-            console.error('Failed to refresh history:', e);
-          }
-          
-          if (hasAudio || isCompleted) {
-            clearInterval(pollInterval);
-            return;
-          }
+          refetchHistory();
+          return;
         }
-        
+
         if (attempts >= maxAttempts) {
           clearInterval(pollInterval);
-          if (callTimerRef.current) {
-            clearInterval(callTimerRef.current);
-            callTimerRef.current = null;
-          }
+          clearCallTimer();
           setCallStatus('ended');
           setResult({
             success: true,
@@ -566,846 +500,555 @@ export default function Power() {
             duration: callDuration
           });
         }
-      } catch (pollError) {
-        console.error('Polling error:', pollError);
+      } catch {
         if (attempts >= maxAttempts) {
           clearInterval(pollInterval);
-          if (callTimerRef.current) {
-            clearInterval(callTimerRef.current);
-            callTimerRef.current = null;
-          }
+          clearCallTimer();
           setCallStatus('ended');
           setResult({ success: false, error: 'Fehler beim Abrufen der Anrufdaten' });
         }
       }
     }, 4000);
-    
+
     // Safety timeout
     setTimeout(() => {
       clearInterval(pollInterval);
-      if (callTimerRef.current) {
-        clearInterval(callTimerRef.current);
-        callTimerRef.current = null;
-      }
+      clearCallTimer();
       if (callStatus !== 'ended') {
         setCallStatus('ended');
-        setResult({
-          success: true,
-          transcript: 'Anruf beendet. Details werden verarbeitet.',
-          duration: callDuration
-        });
+        setResult({ success: true, transcript: 'Anruf beendet. Details werden verarbeitet.', duration: callDuration });
       }
     }, 150000);
   };
 
-  // Reset für neuen Call
+  const clearCallTimer = () => {
+    if (callTimerRef.current) {
+      clearInterval(callTimerRef.current);
+      callTimerRef.current = null;
+    }
+  };
+
+  // Reset for new call
   const handleNewCall = () => {
     setResult(null);
-    setCallSummary(null); // 🎯 Reset Summary
+    setCallSummary(null);
     setCallStatus('idle');
     setCallDuration(0);
     setShowReview(false);
     setShowChatFlow(false);
     setEnhancedPrompt('');
-    setChatAnswers({});
     setValidationResult(null);
     setContactName('');
     setPhoneNumber('');
     setMessage('');
+    setPersistentError(null);
+    setPreflightChecks([]);
   };
-  
+
   // Cleanup timer on unmount
   useEffect(() => {
-    return () => {
-      if (callTimerRef.current) {
-        clearInterval(callTimerRef.current);
-      }
-    };
+    return () => clearCallTimer();
   }, []);
-  
-  // Format call duration
-  const formatCallDuration = (seconds: number) => {
+
+  // Copy error debug info
+  const copyErrorDebug = () => {
+    if (!persistentError) return;
+    const debug = {
+      timestamp: persistentError.timestamp,
+      userId: (user as any)?.id,
+      route: '/app/power',
+      state: callStatus,
+      endpoint: persistentError.endpoint,
+      httpStatus: persistentError.status,
+      message: persistentError.technicalMessage,
+    };
+    navigator.clipboard.writeText(JSON.stringify(debug, null, 2));
+    toast({ title: 'Debug-Info kopiert', description: 'In Zwischenablage kopiert' });
+  };
+
+  // Contact handlers
+  const handleSelectContact = (contact: any) => {
+    setContactName(contact.company || `${contact.firstName || ''} ${contact.lastName || ''}`.trim());
+    setPhoneNumber(contact.phone || contact.phoneNumber || '');
+    setSelectedContactId(contact.id || null);
+    setShowContactPicker(false);
+  };
+
+  const handleSaveNewContact = async () => {
+    if (!newContactData.company.trim()) {
+      toast({ title: 'Firma erforderlich', variant: 'destructive' });
+      return;
+    }
+    try {
+      const response = await fetch('/api/contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(newContactData)
+      });
+      if (!response.ok) throw new Error('Save failed');
+      const saved = await response.json();
+      setContactName(saved.company);
+      setPhoneNumber(saved.phone || '');
+      setNewContactData({ company: '', firstName: '', lastName: '', phone: '', email: '', notes: '' });
+      setShowNewContactModal(false);
+      toast({ title: 'Kontakt gespeichert' });
+    } catch {
+      toast({ title: 'Fehler beim Speichern', variant: 'destructive' });
+    }
+  };
+
+  const filteredContacts = contacts.filter((c: any) =>
+    contactSearchQuery === '' ||
+    c.company?.toLowerCase().includes(contactSearchQuery.toLowerCase()) ||
+    c.firstName?.toLowerCase().includes(contactSearchQuery.toLowerCase()) ||
+    c.phone?.includes(contactSearchQuery)
+  );
+
+  const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // ----------------- UI -----------------
+  const canStart = preflightChecks.length > 0 && !preflightChecks.some(c => c.status === 'fail') && phoneNumber.length >= 8 && message.trim().length > 0;
+  const isLoading = profileLoading || digestLoading || loading;
+
+  // ─────────────────────────────────────────────────────────────
+  // RENDER - Scrollable container, no Sidebar/TopBar
+  // ─────────────────────────────────────────────────────────────
   return (
-    <div className="flex h-screen relative overflow-hidden">
-      {/* Premium ARAS background */}
-      <div className="absolute inset-0 opacity-[0.14] pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#FE9100]/10 via-transparent to-[#A34E00]/10" />
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `
-              radial-gradient(circle at 22% 30%, rgba(254,145,0,0.09) 0%, transparent 55%),
-              radial-gradient(circle at 78% 70%, rgba(163,78,0,0.07) 0%, transparent 55%),
-              radial-gradient(circle at 50% 50%, rgba(233,215,196,0.05) 0%, transparent 65%)`
-          }}
-        />
-      </div>
+    <div className="h-full flex-1 min-h-0 overflow-y-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
-      <Sidebar
-        activeSection="power"
-        onSectionChange={handleSectionChange}
-        isCollapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-      />
-
-      <div className="flex-1 flex flex-col relative overflow-hidden content-zoom">
-        <TopBar
-          currentSection="power"
-          subscriptionData={subscriptionData}
-          user={user as import("@shared/schema").User}
-          isVisible={true}
-        />
-
-        <div className="flex-1 overflow-y-auto premium-scroll">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-            
-            {/* 🎯 HERO-ZONE */}
-            <motion.div
-              initial={{ opacity: 0, y: -12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="mb-8"
+        {/* HEADER */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 
+              className="text-2xl sm:text-3xl font-bold font-['Orbitron'] tracking-wide"
+              style={{ 
+                backgroundImage: 'linear-gradient(90deg, #E9D7C4, #FE9100, #ffffff, #FE9100, #E9D7C4)',
+                backgroundSize: '300% 100%',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
             >
-              {/* Headline + Subheadline */}
-              <div className="flex-1">
-                <h1
-                  className="text-[22px] md:text-[24px] font-semibold mb-2"
-                  style={{
-                    fontFamily: 'Orbitron, sans-serif',
-                    letterSpacing: '0.02em',
-                    backgroundImage: 'linear-gradient(90deg, #E9D7C4, #FE9100, #ffffff, #FE9100, #E9D7C4)',
-                    backgroundSize: '300% 100%',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    animation: 'aras-gradient-shift 14s linear infinite'
-                  }}
-                >
-                  POWER · Einzelanruf
-                </h1>
-                <p className="text-xs md:text-sm text-neutral-400 leading-relaxed max-w-2xl">
-                  Ein geführter Outbound-Einzelanruf mit ARAS. 
-                  Du beschreibst in 1–2 Sätzen, was passieren soll – 
-                  ARAS übernimmt den Rest und liefert Aufnahme, Transkript und eine klare Zusammenfassung zurück.
-                </p>
-              </div>
-            </motion.div>
+              POWER
+            </h1>
+            <p className="text-sm text-neutral-400 mt-1">KI-gesteuerte Einzelanrufe starten</p>
+          </div>
+          <StatusPill status={callStatus} />
+        </div>
 
-            {/* 🎯 2-SPALTEN-GRID */}
-            <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-6">
-              
-              {/* ============ LINKE SPALTE: SETUP + CHAT ============ */}
-              <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 }}
-                className="flex flex-col gap-4"
-              >
-                {/* Setup Card */}
-                <div
-                  className="rounded-3xl p-5 md:p-6"
-                  style={{
-                    background: 'linear-gradient(145deg, rgba(7,7,7,0.9), rgba(12,12,12,0.96))',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    boxShadow: '0 22px 60px rgba(0,0,0,0.75)',
-                    backdropFilter: 'blur(20px)'
-                  }}
-                >
-                  {/* Profil-Status-Box */}
-                  {userProfileContext && (
-                    <div
-                      className="mb-5 rounded-2xl px-4 py-3 text-xs"
-                      style={{
-                        background: userProfileContext.aiProfile?.products?.length > 0
-                          ? 'rgba(34,197,94,0.08)'
-                          : 'rgba(234,179,8,0.08)',
-                        border: userProfileContext.aiProfile?.products?.length > 0
-                          ? '1px solid rgba(34,197,94,0.25)'
-                          : '1px solid rgba(234,179,8,0.25)',
-                        color: userProfileContext.aiProfile?.products?.length > 0
-                          ? '#4ade80'
-                          : '#fde047'
-                      }}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-xs" style={{ color: '#fde047' }}>
-                          ⚠ Wissensdatenbank unvollständig
-                        </p>
-                        <span className="text-xs font-semibold">
-                          {userProfileContext.aiProfile?.products?.length > 0
-                            ? '✓ ARAS AI – Core PRO 1.0'
-                            : '⚠ Wissensdatenbank unvollständig'}
-                        </span>
-                        {!userProfileContext.aiProfile?.products?.length && (
-                          <button
-                            onClick={() => window.location.href = '/app/leads'}
-                            className="text-[10px] underline hover:no-underline"
-                          >
-                            Jetzt vervollständigen
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Formular */}
-                  <div className="space-y-4">
-                    <div className="mb-6">
-                      <label className="block text-xs font-medium text-neutral-400 mb-2">
-                        Gesprächspartner (Name/Firma)
-                      </label>
-                      <div className="flex gap-2">
-                        <ContactAutoSuggest
-                          value={contactName}
-                          onChange={(val) => {
-                            setContactName(val);
-                            setShowNewContactHint(false);
-                          }}
-                          onSelectContact={handleSelectContact}
-                          contacts={contacts || []}
-                          placeholder="Max Mustermann GmbH"
-                        />
-                        <button
-                          onClick={() => setShowContactPicker(true)}
-                          className="relative px-4 py-2.5 rounded-xl text-xs font-medium transition-all overflow-hidden"
-                          style={{
-                            background: 'rgba(255,255,255,0.03)',
-                            border: '1px solid rgba(255,255,255,0.10)',
-                            color: '#d1d5db'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-1px)';
-                            e.currentTarget.style.boxShadow = '0 6px 18px rgba(0,0,0,0.55)';
-                            e.currentTarget.style.borderColor = 'rgba(254,145,0,0.15)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = 'none';
-                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)';
-                          }}
-                        >
-                          <span
-                            className="absolute inset-0 opacity-0 hover:opacity-20 transition-opacity"
-                            style={{
-                              background: 'linear-gradient(120deg, transparent, rgba(254,145,0,0.15), transparent)',
-                              backgroundSize: '200% 100%',
-                              animation: 'aras-border-run 8s linear infinite'
-                            }}
-                          />
-                          <span className="relative">Aus Kontakten</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setNewContactData({
-                              ...newContactData,
-                              phone: phoneNumber,
-                              firstName: contactName?.split(' ')[0] || '',
-                              lastName: contactName?.split(' ').slice(1).join(' ') || ''
-                            });
-                            setShowNewContactModal(true);
-                          }}
-                          className="relative px-3 py-2.5 rounded-xl text-xs font-semibold transition-all overflow-hidden"
-                          style={{
-                            background: 'rgba(0,0,0,0.8)',
-                            border: '1px solid rgba(254,145,0,0.3)',
-                            color: '#FE9100',
-                            boxShadow: '0 0 16px rgba(254,145,0,0.25)'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'scale(1.02)';
-                            e.currentTarget.style.boxShadow = '0 0 16px rgba(254,145,0,0.25)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'scale(1)';
-                            e.currentTarget.style.boxShadow = 'none';
-                          }}
-                        >
-                          <span
-                            className="absolute inset-0"
-                            style={{
-                              background: 'linear-gradient(120deg, transparent, rgba(254,145,0,0.2), transparent)',
-                              backgroundSize: '200% 100%',
-                              animation: 'aras-border-run 7s linear infinite',
-                              borderRadius: '12px'
-                            }}
-                          />
-                          <span className="relative">+ Neu</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="mt-2">
-                      <label className="block text-xs font-medium text-neutral-400 mb-2">
-                        Telefonnummer
-                      </label>
-                      <input
-                        type="tel"
-                        value={phoneNumber}
-                        onChange={(e) => {
-                          handlePhoneChange(e.target.value);
-                          // Check if number exists in contacts
-                          const exists = contacts?.some(c => 
-                            (c.phone === e.target.value) || (c.phoneNumber === e.target.value)
-                          );
-                          setShowNewContactHint(!exists && e.target.value.length > 8);
-                        }}
-                        placeholder="+491701234567"
-                        className="w-full px-4 py-2.5 rounded-xl text-sm text-white placeholder-neutral-500 transition-all outline-none"
-                        style={{
-                          background: 'rgba(0,0,0,0.55)',
-                          border: phoneError ? '1px solid rgba(248,113,113,0.5)' : '1px solid rgba(255,255,255,0.14)'
-                        }}
-                        onFocus={(e) => {
-                          if (!phoneError) {
-                            e.currentTarget.style.borderColor = CI.orange;
-                            e.currentTarget.style.boxShadow = `0 0 0 4px rgba(254,145,0,0.08)`;
-                          }
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = phoneError ? 'rgba(248,113,113,0.5)' : 'rgba(255,255,255,0.07)';
-                          e.currentTarget.style.boxShadow = 'none';
-                        }}
-                      />
-                      {phoneError && (
-                        <p className="mt-1 text-[10px] text-red-400">{phoneError}</p>
-                      )}
-                      {showNewContactHint && !phoneError && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="mt-2 flex items-center justify-between p-2.5 rounded-lg"
-                          style={{
-                            background: 'rgba(254,145,0,0.06)',
-                            border: '1px solid rgba(254,145,0,0.15)'
-                          }}
-                        >
-                          <span className="text-[10px] text-neutral-300">
-                            Diese Nummer ist noch nicht gespeichert.
-                          </span>
-                          <button
-                            onClick={() => {
-                              setNewContactData({
-                                ...newContactData,
-                                phone: phoneNumber,
-                                firstName: contactName?.split(' ')[0] || '',
-                                lastName: contactName?.split(' ').slice(1).join(' ') || ''
-                              });
-                              setShowNewContactModal(true);
-                            }}
-                            className="text-[10px] font-medium px-2 py-1 rounded-md transition-all hover:scale-[1.05]"
-                            style={{
-                              background: 'rgba(254,145,0,0.2)',
-                              border: '1px solid rgba(254,145,0,0.35)',
-                              color: '#FE9100'
-                            }}
-                          >
-                            + Neuen Kontakt speichern
-                          </button>
-                        </motion.div>
-                      )}
-                      <p className="mt-1 text-[10px] text-neutral-500">
-                        Mit Ländervorwahl, z.B. +491701234567
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-neutral-400 mb-2">
-                        Ziel der Nachricht
-                      </label>
-                      <textarea
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value.slice(0, 500))}
-                        placeholder="Beschreibe in 1–2 Sätzen, was ARAS klären oder erreichen soll..."
-                        rows={4}
-                        className="w-full px-4 py-3 rounded-xl text-sm text-white placeholder-neutral-500 transition-all outline-none resize-none"
-                        style={{
-                          background: 'rgba(0,0,0,0.4)',
-                          border: '1px solid rgba(255,255,255,0.07)'
-                        }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = CI.orange;
-                          e.currentTarget.style.boxShadow = `0 0 0 4px rgba(254,145,0,0.08)`;
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)';
-                          e.currentTarget.style.boxShadow = 'none';
-                        }}
-                      />
-                      <div className="flex justify-between mt-1">
-                        <p className="text-[10px] text-neutral-500">
-                          Ton, Zielgruppe und Argumente zieht ARAS aus deinem Firmenprofil.
-                        </p>
-                        <span className="text-[10px] text-neutral-500">{message.length}/500</span>
-                      </div>
-                    </div>
-
-                    {/* Button */}
-                    <button
-                      onClick={handleStartCallProcess}
-                      disabled={loading || !contactName || !phoneNumber || !message || !!phoneError}
-                      className="relative w-full overflow-hidden rounded-2xl transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:scale-[1.015]"
-                    >
-                      <span
-                        className="absolute inset-0 rounded-2xl"
-                        style={{
-                          backgroundImage: 'linear-gradient(120deg, rgba(254,145,0,0.0), rgba(254,145,0,1.0), rgba(254,145,0,0.0))',
-                          backgroundSize: '200% 100%',
-                          animation: 'aras-border-run 5s linear infinite',
-                          boxShadow: '0 0 20px rgba(254,145,0,0.4)'
-                        }}
-                      />
-                      <span className="relative flex h-[calc(100%-2px)] w-[calc(100%-2px)] items-center justify-center rounded-[18px] m-[1px] px-4 py-3 text-sm font-semibold text-white"
-                        style={{ 
-                          fontFamily: 'Orbitron, sans-serif',
-                          background: 'rgba(0,0,0,0.85)'
-                        }}
-                      >
-                        {loading ? 'Wird vorbereitet...' : 'Jetzt anrufen lassen'}
-                      </span>
+        {/* PERSISTENT ERROR PANEL */}
+        <AnimatePresence>
+          {persistentError && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="rounded-xl overflow-hidden"
+              style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}
+            >
+              <div className="p-4">
+                <div className="flex items-start gap-3">
+                  <XCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-red-400">{persistentError.userMessage}</p>
+                    <p className="text-sm text-red-300/70 mt-1">{persistentError.technicalMessage}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={copyErrorDebug} className="p-2 rounded-lg hover:bg-white/5">
+                      <Copy className="w-4 h-4 text-red-400" />
+                    </button>
+                    <button onClick={() => setPersistentError(null)} className="p-2 rounded-lg hover:bg-white/5">
+                      <X className="w-4 h-4 text-red-400" />
                     </button>
                   </div>
                 </div>
-
-                {/* ClarificationChat Inline mit mehr Spacing */}
+                <button
+                  onClick={() => setExpandedError(!expandedError)}
+                  className="flex items-center gap-1 mt-3 text-xs text-red-400/70 hover:text-red-400"
+                >
+                  {expandedError ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  Technische Details
+                </button>
                 <AnimatePresence>
-                  {showChatFlow && validationResult && (
+                  {expandedError && (
                     <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.3 }}
-                      className="mt-6"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
                     >
-                      <ClarificationChat
-                        questions={validationResult.questions}
-                        onAnswersComplete={handleChatComplete}
-                        onSkip={handleSkipChat}
-                        initialMessage={message}
-                        userProfileContext={userProfileContext || null}
-                        callStatus={callStatus}
-                        finalSummary={callSummary}
-                        callInProgressSummaryHint="Der Anruf läuft – ich höre zu und bereite deine Zusammenfassung vor."
-                      />
+                      <pre className="mt-2 p-3 rounded-lg bg-black/30 text-xs text-red-300/60 overflow-x-auto">
+{`Endpoint: ${persistentError.endpoint || 'N/A'}
+Status: ${persistentError.status || 'N/A'}
+Time: ${persistentError.timestamp}`}
+                      </pre>
                     </motion.div>
                   )}
                 </AnimatePresence>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-                {/* Placeholder wenn kein Chat */}
-                {!showChatFlow && !result && (
-                  <div className="mt-2 text-[11px] text-neutral-500 px-2">
-                    Sobald ARAS Rückfragen zum Auftrag hat, erscheinen sie hier als kurze Chat-Nachrichten.
-                  </div>
-                )}
-              </motion.div>
+        {/* MAIN GRID */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-              {/* ============ RECHTE SPALTE: TIMELINE + RESULT + HISTORY ============ */}
-              <motion.div
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.2 }}
-                className="flex flex-col gap-4"
-              >
-                {/* Mini Headline */}
-                <div className="mb-3">
-                  <h2
-                    className="text-sm font-semibold mb-1"
-                    style={{
-                      fontFamily: 'Orbitron, sans-serif',
-                      letterSpacing: '0.02em',
-                      backgroundImage: 'linear-gradient(90deg, #E9D7C4, #FE9100, #ffffff, #FE9100, #E9D7C4)',
-                      backgroundSize: '300% 100%',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                      animation: 'aras-gradient-shift 14s linear infinite'
-                    }}
-                  >
-                    Call-Status
-                  </h2>
-                  <div
-                    className="h-px w-20"
-                    style={{
-                      background: 'linear-gradient(90deg, rgba(254,145,0,0.6), transparent)',
-                      boxShadow: '0 0 8px rgba(254,145,0,0.3)'
-                    }}
-                  />
+          {/* LEFT: Setup */}
+          <div className="space-y-5">
+
+            {/* Preflight Checks Panel */}
+            <div 
+              className="rounded-xl p-5"
+              style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)' }}
+            >
+              <h3 className="text-sm font-bold uppercase tracking-wide mb-4 flex items-center gap-2" style={{ color: CI.goldLight }}>
+                <Zap className="w-4 h-4" style={{ color: CI.orange }} />
+                Systemprüfung
+              </h3>
+              {preflightChecks.length > 0 ? (
+                <div className="divide-y divide-white/5">
+                  {preflightChecks.map(check => (
+                    <PreflightCheckItem key={check.id} check={check} />
+                  ))}
                 </div>
-
-                {/* Timeline */}
-                <div
-                  className="rounded-3xl p-5"
-                  style={{
-                    background: 'rgba(8,8,8,0.78)',
-                    border: '1px solid rgba(255,255,255,0.07)',
-                    boxShadow: '0 18px 50px rgba(0,0,0,0.85)',
-                    backdropFilter: 'blur(22px)'
-                  }}
-                >
-                  <CallTimeline currentStatus={callStatus} duration={callDuration} />
-                </div>
-
-                {/* Result Card */}
-                {result ? (
-                  <PowerResultCard
-                    result={result}
-                    summary={callSummary}
-                    linkedContact={callHistory.find(c => c.phoneNumber === result.phoneNumber) || null}
-                    onNewCall={handleNewCall}
-                    onLinkToContact={(phone, name) => {
-                      setShowContactPicker(true);
-                      // TODO: Auto-select contact logic
-                    }}
-                    onSaveAsNewContact={(phone, name) => {
-                      setNewContactData({
-                        ...newContactData,
-                        phone: phone || '',
-                        firstName: name?.split(' ')[0] || '',
-                        lastName: name?.split(' ').slice(1).join(' ') || ''
-                      });
-                      setShowNewContactModal(true);
-                    }}
-                  />
-                ) : (
-                  <div
-                    className="rounded-3xl p-6 text-center"
-                    style={{
-                      background: 'rgba(8,8,8,0.78)',
-                      border: '1px solid rgba(255,255,255,0.07)',
-                      boxShadow: '0 18px 50px rgba(0,0,0,0.85)',
-                      backdropFilter: 'blur(22px)'
-                    }}
-                  >
-                    <p className="text-xs text-neutral-500">
-                      Sobald ein POWER Anruf abgeschlossen ist, erscheinen hier Aufnahme, Transkript und eine klare Zusammenfassung.
-                    </p>
-                  </div>
-                )}
-
-                {/* Kompakte Call-History */}
-                {callHistory.length > 0 && (
-                  <div
-                    className="rounded-3xl p-4"
-                    style={{
-                      background: 'rgba(8,8,8,0.78)',
-                      border: '1px solid rgba(255,255,255,0.07)',
-                      backdropFilter: 'blur(22px)'
-                    }}
-                  >
-                    <h3
-                      className="text-xs font-semibold mb-3 uppercase tracking-wider"
-                      style={{
-                        fontFamily: 'Orbitron, sans-serif',
-                        letterSpacing: '0.02em',
-                        backgroundImage: 'linear-gradient(90deg, #E9D7C4, #FE9100, #ffffff, #FE9100, #E9D7C4)',
-                        backgroundSize: '300% 100%',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        animation: 'aras-gradient-shift 14s linear infinite'
-                      }}
-                    >
-                      Gesprächsverlauf
-                    </h3>
-                    <div className="space-y-2">
-                      {callHistory.slice(0, 5).map((call, idx) => (
-                        <button
-                          key={idx}
-                          onClick={() => {
-                            // TODO: Load full call details
-                            console.log('Load call:', call);
-                          }}
-                          className="w-full text-left px-3 py-2.5 rounded-xl transition-all"
-                          style={{
-                            background: 'rgba(8,8,8,0.88)',
-                            border: '1px solid rgba(255,255,255,0.06)'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(12,12,12,0.95)';
-                            e.currentTarget.style.boxShadow = '0 0 12px rgba(254,145,0,0.15)';
-                            e.currentTarget.style.borderColor = 'rgba(254,145,0,0.2)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(8,8,8,0.88)';
-                            e.currentTarget.style.boxShadow = 'none';
-                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
-                          }}
-                        >
-                          <div className="flex flex-col gap-1">
-                            <p className="text-xs font-semibold text-neutral-200 truncate">
-                              {call.contactName || 'Unbekannt'}
-                            </p>
-                            <p className="text-[11px] text-neutral-400 truncate">
-                              {call.phoneNumber}
-                            </p>
-                            <div className="flex items-center gap-2 text-[10px] text-neutral-500">
-                              <span className={`px-1.5 py-0.5 rounded ${
-                                call.status === 'completed' ? 'bg-green-500/10 text-green-400' :
-                                call.status === 'failed' ? 'bg-red-500/10 text-red-400' :
-                                'bg-yellow-500/10 text-yellow-400'
-                              }`}>
-                                {call.status === 'completed' ? 'abgeschlossen' : 
-                                 call.status === 'failed' ? 'fehlgeschlagen' : 
-                                 'initiiert'}
-                              </span>
-                              <span>·</span>
-                              <span>{formatDistanceToNow(new Date(call.createdAt), { addSuffix: true, locale: de })}</span>
-                            </div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </motion.div>
+              ) : (
+                <p className="text-sm text-neutral-500">Gib Telefonnummer und Nachricht ein, um die Prüfung zu starten.</p>
+              )}
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* 🔥 REVIEW MODAL (bleibt wie gehabt) */}
-      <AnimatePresence>
-        {showReview && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{
-              background: 'rgba(10, 10, 10, 0.90)',
-              backdropFilter: 'blur(12px)'
-            }}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="w-full max-w-2xl rounded-3xl p-6"
-              style={{
-                background: 'linear-gradient(145deg, rgba(12,12,12,0.98), rgba(7,7,7,0.98))',
-                border: '1px solid rgba(255,255,255,0.10)',
-                boxShadow: '0 25px 80px rgba(0,0,0,0.90)'
-              }}
+            {/* Input Form */}
+            <div 
+              className="rounded-xl p-5 space-y-4"
+              style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)' }}
             >
-              <h3 className="text-xl font-bold mb-4" style={{ fontFamily: 'Orbitron, sans-serif', color: CI.orange }}>
-                Final Review
+              <h3 className="text-sm font-bold uppercase tracking-wide mb-2 flex items-center gap-2" style={{ color: CI.goldLight }}>
+                <Phone className="w-4 h-4" style={{ color: CI.orange }} />
+                Anruf konfigurieren
               </h3>
-              <div className="space-y-3 text-sm mb-6">
-                <div>
-                  <span className="text-neutral-400">Kontakt:</span>{' '}
-                  <span className="text-white">{contactName}</span>
-                </div>
-                <div>
-                  <span className="text-neutral-400">Telefon:</span>{' '}
-                  <span className="text-white">{phoneNumber}</span>
-                </div>
-                <div>
-                  <span className="text-neutral-400">Auftrag:</span>{' '}
-                  <p className="text-white mt-1 p-3 rounded-xl bg-black/40 border border-white/10">
-                    {enhancedPrompt || message}
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowReview(false)}
-                  className="flex-1 px-6 py-3 rounded-xl text-sm font-medium transition-all"
-                  style={{
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    color: '#d1d5db'
-                  }}
-                >
-                  Zurück
-                </button>
-                <button
-                  onClick={handleConfirmCall}
-                  disabled={loading}
-                  className="flex-1 px-6 py-3 rounded-xl text-sm font-semibold transition-all relative overflow-hidden"
-                  style={{
-                    background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
-                    color: '#fff',
-                    fontFamily: 'Orbitron, sans-serif'
-                  }}
-                >
-                  {loading ? 'Startet...' : 'Anruf starten'}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      {/* Contact Picker Modal (bleibt wie gehabt) */}
-      <AnimatePresence>
-        {showContactPicker && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{
-              background: 'rgba(10, 10, 10, 0.90)',
-              backdropFilter: 'blur(12px)'
-            }}
-            onClick={() => setShowContactPicker(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
-              className="w-full max-w-2xl rounded-3xl p-6"
-              style={{
-                background: 'linear-gradient(145deg, rgba(12,12,12,0.98), rgba(7,7,7,0.98))',
-                border: '1px solid rgba(255,255,255,0.10)'
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                  Kontakt auswählen
-                </h3>
-                <button
-                  onClick={() => setShowContactPicker(false)}
-                  className="p-2 rounded-lg hover:bg-white/10"
-                >
-                  ✕
-                </button>
-              </div>
-              <input
-                type="text"
-                value={contactSearchQuery}
-                onChange={(e) => setContactSearchQuery(e.target.value)}
-                placeholder="Suchen..."
-                className="w-full px-4 py-2 rounded-xl mb-4 text-sm bg-black/40 border border-white/10 text-white"
-              />
-              <div className="max-h-[400px] overflow-y-auto space-y-2">
-                {contacts?.filter((c: any) =>
-                  c.company?.toLowerCase().includes(contactSearchQuery.toLowerCase()) ||
-                  c.firstName?.toLowerCase().includes(contactSearchQuery.toLowerCase()) ||
-                  c.lastName?.toLowerCase().includes(contactSearchQuery.toLowerCase())
-                ).map((contact: any) => (
+              {/* Contact Name */}
+              <div>
+                <label className="block text-xs font-medium text-neutral-400 mb-1.5">Kontaktname</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={contactName}
+                    onChange={e => setContactName(e.target.value)}
+                    placeholder="z.B. Firma GmbH"
+                    className="flex-1 px-4 py-3 rounded-lg text-sm"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: CI.goldLight }}
+                  />
                   <button
-                    key={contact.id}
-                    onClick={() => {
-                      handleSelectContact(contact);
-                      setShowContactPicker(false);
-                    }}
-                    className="w-full text-left px-4 py-3 rounded-xl hover:bg-white/5 transition-all"
-                    style={{ border: '1px solid rgba(255,255,255,0.08)' }}
+                    onClick={() => setShowContactPicker(true)}
+                    className="px-3 py-2 rounded-lg"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
                   >
-                    <div className="font-medium text-sm text-white">
-                      {contact.company || `${contact.firstName} ${contact.lastName}`}
-                    </div>
-                    <div className="text-xs text-neutral-500">
-                      {contact.phone || contact.phoneNumber}
-                    </div>
+                    <Search className="w-4 h-4" style={{ color: CI.goldLight }} />
                   </button>
-                ))}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* New Contact Modal (bleibt wie gehabt) */}
-      <AnimatePresence>
-        {showNewContactModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{
-              background: 'rgba(10, 10, 10, 0.90)',
-              backdropFilter: 'blur(12px)'
-            }}
-            onClick={() => setShowNewContactModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
-              className="w-full max-w-xl rounded-3xl p-6"
-              style={{
-                background: 'linear-gradient(145deg, rgba(12,12,12,0.98), rgba(7,7,7,0.98))',
-                border: '1px solid rgba(255,255,255,0.10)'
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-lg font-bold mb-4" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                Neuen Kontakt anlegen
-              </h3>
-              <div className="space-y-3">
-                <input
-                  type="text"
-                  value={newContactData.company}
-                  onChange={(e) => setNewContactData({ ...newContactData, company: e.target.value })}
-                  placeholder="Firma *"
-                  className="w-full px-4 py-2 rounded-xl text-sm bg-black/40 border border-white/10 text-white"
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <input
-                    type="text"
-                    value={newContactData.firstName}
-                    onChange={(e) => setNewContactData({ ...newContactData, firstName: e.target.value })}
-                    placeholder="Vorname"
-                    className="px-4 py-2 rounded-xl text-sm bg-black/40 border border-white/10 text-white"
-                  />
-                  <input
-                    type="text"
-                    value={newContactData.lastName}
-                    onChange={(e) => setNewContactData({ ...newContactData, lastName: e.target.value })}
-                    placeholder="Nachname"
-                    className="px-4 py-2 rounded-xl text-sm bg-black/40 border border-white/10 text-white"
-                  />
                 </div>
+              </div>
+
+              {/* Phone Number */}
+              <div>
+                <label className="block text-xs font-medium text-neutral-400 mb-1.5">Telefonnummer *</label>
                 <input
                   type="tel"
-                  value={newContactData.phone}
-                  onChange={(e) => setNewContactData({ ...newContactData, phone: e.target.value })}
-                  placeholder="Telefon"
-                  className="w-full px-4 py-2 rounded-xl text-sm bg-black/40 border border-white/10 text-white"
-                />
-                <input
-                  type="email"
-                  value={newContactData.email}
-                  onChange={(e) => setNewContactData({ ...newContactData, email: e.target.value })}
-                  placeholder="E-Mail"
-                  className="w-full px-4 py-2 rounded-xl text-sm bg-black/40 border border-white/10 text-white"
-                />
-                <textarea
-                  value={newContactData.notes}
-                  onChange={(e) => setNewContactData({ ...newContactData, notes: e.target.value })}
-                  placeholder="Notizen"
-                  rows={3}
-                  className="w-full px-4 py-2 rounded-xl text-sm bg-black/40 border border-white/10 text-white resize-none"
+                  value={phoneNumber}
+                  onChange={e => setPhoneNumber(e.target.value.replace(/[^\d+]/g, ''))}
+                  placeholder="+49 123 4567890"
+                  className="w-full px-4 py-3 rounded-lg text-sm"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: CI.goldLight }}
                 />
               </div>
-              <div className="flex gap-3 mt-4">
+
+              {/* Message */}
+              <div>
+                <label className="block text-xs font-medium text-neutral-400 mb-1.5">Nachricht / Anweisung *</label>
+                <textarea
+                  value={message}
+                  onChange={e => setMessage(e.target.value)}
+                  placeholder="z.B. Frag nach dem aktuellen Stand des Projekts..."
+                  rows={3}
+                  className="w-full px-4 py-3 rounded-lg text-sm resize-none"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: CI.goldLight }}
+                />
+              </div>
+
+              {/* Start Button */}
+              <button
+                onClick={handleStartCallProcess}
+                disabled={!canStart || isLoading || callStatus === 'ringing' || callStatus === 'connected'}
+                className="w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  background: canStart ? `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})` : 'rgba(255,255,255,0.1)',
+                  color: canStart ? '#000' : '#666'
+                }}
+              >
+                {isLoading ? (
+                  <><Loader2 className="w-5 h-5 animate-spin" /> Wird vorbereitet...</>
+                ) : callStatus === 'ringing' ? (
+                  <><Loader2 className="w-5 h-5 animate-spin" /> Klingelt...</>
+                ) : (
+                  <><Phone className="w-5 h-5" /> Jetzt anrufen lassen</>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* RIGHT: Status & Results */}
+          <div className="space-y-5">
+
+            {/* Chat Flow */}
+            {showChatFlow && validationResult?.questions && (
+              <div 
+                className="rounded-xl p-5"
+                style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)' }}
+              >
+                <ClarificationChat
+                  questions={validationResult.questions}
+                  initialMessage={message}
+                  userProfileContext={profileContext}
+                  onAnswersComplete={handleChatComplete}
+                  onSkip={handleSkipChat}
+                />
+              </div>
+            )}
+
+            {/* Review Modal */}
+            {showReview && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="rounded-xl p-5"
+                style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(254,145,0,0.3)' }}
+              >
+                <h3 className="text-lg font-bold mb-4" style={{ color: CI.orange }}>
+                  <Sparkles className="w-5 h-5 inline mr-2" />
+                  Anruf bestätigen
+                </h3>
+                <div className="space-y-3 text-sm" style={{ color: CI.goldLight }}>
+                  <p><strong>Kontakt:</strong> {contactName || 'Unbekannt'}</p>
+                  <p><strong>Telefon:</strong> {phoneNumber}</p>
+                  <p><strong>Nachricht:</strong></p>
+                  <div className="p-3 rounded-lg bg-black/30 text-xs whitespace-pre-wrap">{enhancedPrompt}</div>
+                </div>
+                <div className="flex gap-3 mt-5">
+                  <button
+                    onClick={handleConfirmCall}
+                    className="flex-1 py-3 rounded-xl font-bold"
+                    style={{ background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`, color: '#000' }}
+                  >
+                    Jetzt anrufen
+                  </button>
+                  <button
+                    onClick={() => setShowReview(false)}
+                    className="px-5 py-3 rounded-xl font-bold"
+                    style={{ background: 'rgba(255,255,255,0.1)', color: CI.goldLight }}
+                  >
+                    Abbrechen
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Active Call Status */}
+            {(callStatus === 'ringing' || callStatus === 'connected') && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="rounded-xl p-6 text-center"
+                style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)' }}
+              >
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ background: 'rgba(34,197,94,0.2)' }}>
+                  <Phone className="w-8 h-8 text-green-400" />
+                </div>
+                <p className="text-lg font-bold text-green-400 mb-1">
+                  {callStatus === 'ringing' ? 'Anruf wird verbunden...' : 'Anruf läuft'}
+                </p>
+                {callStatus === 'connected' && (
+                  <p className="text-sm text-green-300/70">Dauer: {formatDuration(callDuration)}</p>
+                )}
+              </motion.div>
+            )}
+
+            {/* Call Result */}
+            {callStatus === 'ended' && result && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                <PowerResultCard
+                  result={result}
+                  summary={callSummary}
+                  onNewCall={handleNewCall}
+                />
+              </motion.div>
+            )}
+
+            {/* Call History (REAL ENDPOINT: /api/user/call-logs) */}
+            {callHistory.length > 0 && (
+              <div 
+                className="rounded-xl p-5"
+                style={{ background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)' }}
+              >
+                <h3 className="text-sm font-bold uppercase tracking-wide mb-4 flex items-center gap-2" style={{ color: CI.goldLight }}>
+                  <Clock className="w-4 h-4" style={{ color: CI.orange }} />
+                  Letzte Anrufe
+                </h3>
+                <div className="space-y-2">
+                  {callHistory.slice(0, 5).map((call: any) => (
+                    <div key={call.id} className="flex items-center gap-3 py-2 border-b border-white/5 last:border-0">
+                      <div className={`w-2 h-2 rounded-full ${call.status === 'completed' ? 'bg-green-500' : 'bg-red-500'}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm truncate" style={{ color: CI.goldLight }}>{call.contactName || call.phoneNumber}</p>
+                        <p className="text-xs text-neutral-500">
+                          {call.createdAt ? formatDistanceToNow(new Date(call.createdAt), { addSuffix: true, locale: de }) : ''}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* CONTACT PICKER MODAL */}
+        <AnimatePresence>
+          {showContactPicker && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              style={{ background: 'rgba(0,0,0,0.8)' }}
+              onClick={() => setShowContactPicker(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.95 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.95 }}
+                className="w-full max-w-md rounded-2xl p-5"
+                style={{ background: 'rgba(15,15,15,0.98)', border: '1px solid rgba(255,255,255,0.1)' }}
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold" style={{ color: CI.goldLight }}>Kontakt auswählen</h3>
+                  <button onClick={() => setShowContactPicker(false)}>
+                    <X className="w-5 h-5 text-neutral-400" />
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={contactSearchQuery}
+                  onChange={e => setContactSearchQuery(e.target.value)}
+                  placeholder="Suchen..."
+                  className="w-full px-4 py-2.5 rounded-lg mb-4 text-sm"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: CI.goldLight }}
+                />
+                <div className="max-h-64 overflow-y-auto space-y-1">
+                  {filteredContacts.map((contact: any) => (
+                    <button
+                      key={contact.id}
+                      onClick={() => handleSelectContact(contact)}
+                      className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-white/5 transition-colors"
+                    >
+                      <p className="text-sm font-medium" style={{ color: CI.goldLight }}>{contact.company || contact.firstName}</p>
+                      <p className="text-xs text-neutral-500">{contact.phone}</p>
+                    </button>
+                  ))}
+                  {filteredContacts.length === 0 && (
+                    <p className="text-center text-sm text-neutral-500 py-4">Keine Kontakte gefunden</p>
+                  )}
+                </div>
                 <button
-                  onClick={() => setShowNewContactModal(false)}
-                  className="flex-1 px-4 py-2 rounded-xl text-sm bg-white/5 border border-white/10 text-neutral-300"
+                  onClick={() => { setShowContactPicker(false); setShowNewContactModal(true); }}
+                  className="w-full mt-4 py-2.5 rounded-lg flex items-center justify-center gap-2 text-sm font-medium"
+                  style={{ background: `${CI.orange}20`, color: CI.orange }}
                 >
-                  Abbrechen
+                  <Plus className="w-4 h-4" /> Neuen Kontakt anlegen
                 </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* NEW CONTACT MODAL */}
+        <AnimatePresence>
+          {showNewContactModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              style={{ background: 'rgba(0,0,0,0.8)' }}
+              onClick={() => setShowNewContactModal(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.95 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.95 }}
+                className="w-full max-w-md rounded-2xl p-5"
+                style={{ background: 'rgba(15,15,15,0.98)', border: '1px solid rgba(255,255,255,0.1)' }}
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold" style={{ color: CI.goldLight }}>Neuer Kontakt</h3>
+                  <button onClick={() => setShowNewContactModal(false)}>
+                    <X className="w-5 h-5 text-neutral-400" />
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={newContactData.company}
+                    onChange={e => setNewContactData({ ...newContactData, company: e.target.value })}
+                    placeholder="Firma *"
+                    className="w-full px-4 py-2.5 rounded-lg text-sm"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: CI.goldLight }}
+                  />
+                  <input
+                    type="tel"
+                    value={newContactData.phone}
+                    onChange={e => setNewContactData({ ...newContactData, phone: e.target.value })}
+                    placeholder="Telefon"
+                    className="w-full px-4 py-2.5 rounded-lg text-sm"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: CI.goldLight }}
+                  />
+                  <input
+                    type="email"
+                    value={newContactData.email}
+                    onChange={e => setNewContactData({ ...newContactData, email: e.target.value })}
+                    placeholder="E-Mail"
+                    className="w-full px-4 py-2.5 rounded-lg text-sm"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: CI.goldLight }}
+                  />
+                </div>
                 <button
                   onClick={handleSaveNewContact}
-                  className="flex-1 px-4 py-2 rounded-xl text-sm font-semibold"
-                  style={{
-                    background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
-                    color: '#fff'
-                  }}
+                  className="w-full mt-4 py-3 rounded-xl font-bold"
+                  style={{ background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`, color: '#000' }}
                 >
                   Speichern
                 </button>
-              </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
+
+      </div>
     </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXPORT - Wrapped in ErrorBoundary
+// ═══════════════════════════════════════════════════════════════
+export default function Power() {
+  return (
+    <PowerErrorBoundary>
+      <PowerContent />
+    </PowerErrorBoundary>
   );
 }
