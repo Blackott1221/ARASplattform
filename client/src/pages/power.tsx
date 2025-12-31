@@ -125,22 +125,29 @@ function PreflightCheckItem({ check }: { check: PreflightCheck }) {
     warn: <AlertTriangle className="w-4 h-4 text-yellow-500" />,
     fail: <XCircle className="w-4 h-4 text-red-500" />,
   };
+  const showFixButton = check.fixLink && (check.status === 'fail' || check.status === 'warn');
   return (
-    <div className="flex items-center gap-3 py-2">
-      {icons[check.status]}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium" style={{ color: CI.goldLight }}>{check.label}</p>
-        {check.details && (
-          <p className="text-xs text-neutral-500 truncate">{check.details}</p>
-        )}
+    <div className="flex flex-col sm:flex-row sm:items-center gap-2 py-2.5 group">
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        {icons[check.status]}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium" style={{ color: CI.goldLight }}>{check.label}</p>
+          {check.details && (
+            <p className="text-xs text-neutral-500 truncate">{check.details}</p>
+          )}
+        </div>
       </div>
-      {check.fixLink && check.status === 'fail' && (
+      {showFixButton && (
         <a
           href={check.fixLink}
-          className="text-xs font-medium px-2 py-1 rounded-md"
-          style={{ background: `${CI.orange}20`, color: CI.orange }}
+          className="text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all hover:scale-105 self-start sm:self-center"
+          style={{ 
+            background: check.status === 'fail' ? `${CI.orange}25` : 'rgba(251,191,36,0.15)',
+            color: check.status === 'fail' ? CI.orange : '#fbbf24',
+            border: `1px solid ${check.status === 'fail' ? CI.orange : '#fbbf24'}40`
+          }}
         >
-          Beheben →
+          Jetzt beheben
         </a>
       )}
     </div>
@@ -206,6 +213,12 @@ function PowerContent() {
   const [newContactData, setNewContactData] = useState({
     company: '', firstName: '', lastName: '', phone: '', email: '', notes: ''
   });
+
+  // Call history drawer state
+  const [selectedCallId, setSelectedCallId] = useState<number | null>(null);
+  const [selectedCallDetails, setSelectedCallDetails] = useState<any>(null);
+  const [loadingCallDetails, setLoadingCallDetails] = useState(false);
+  const summaryPollRef = useRef<NodeJS.Timeout | null>(null);
 
   // ─────────────────────────────────────────────────────────────
   // DATA QUERIES (real endpoints verified in server/routes.ts)
@@ -415,16 +428,9 @@ function PowerContent() {
         setCallStatus('ringing');
         toast({ title: '🚀 Anruf gestartet', description: `ARAS AI ruft jetzt ${contactName || phoneNumber} an...` });
 
-        // After 3s: connected (status from backend is in-progress)
-        setTimeout(() => {
-          setCallStatus('connected');
-          callTimerRef.current = setInterval(() => {
-            setCallDuration(prev => prev + 1);
-          }, 1000);
-        }, 3000);
-
-        // Start polling
-        setTimeout(() => pollCallDetails(data.callId), 5000);
+        // Start polling immediately - status will be updated based on backend response
+        // No fake "connected" timeout - only show connected when backend confirms in_progress
+        setTimeout(() => pollCallDetails(data.callId), 2000);
       } else {
         setCallStatus('idle');
         setResult(data);
@@ -467,14 +473,32 @@ function PowerContent() {
         const callDetails = await response.json();
         const hasTranscript = !!callDetails.transcript;
         const hasAudio = !!callDetails.recordingUrl;
+        const backendStatus = callDetails.status?.toLowerCase();
 
-        // Status check: completed, failed, no-answer
-        if (callDetails.status === 'completed' || callDetails.status === 'failed' || callDetails.status === 'no-answer' || (hasTranscript && hasAudio)) {
+        // Map backend status to UI status accurately
+        // Backend statuses: queued, dialing, in_progress, in-progress, connected, ended, completed, failed, no-answer
+        if (backendStatus === 'in_progress' || backendStatus === 'in-progress' || backendStatus === 'connected') {
+          // Only now show "connected" and start timer
+          if (callStatus !== 'connected') {
+            setCallStatus('connected');
+            if (!callTimerRef.current) {
+              callTimerRef.current = setInterval(() => {
+                setCallDuration(prev => prev + 1);
+              }, 1000);
+            }
+          }
+        } else if (backendStatus === 'queued' || backendStatus === 'dialing' || backendStatus === 'ringing') {
+          // Still connecting
+          setCallStatus('ringing');
+        }
+
+        // Status check: completed, failed, no-answer, ended
+        if (backendStatus === 'completed' || backendStatus === 'ended' || backendStatus === 'failed' || backendStatus === 'no-answer' || (hasTranscript && hasAudio)) {
           clearInterval(pollInterval);
           clearCallTimer();
           setCallStatus('ended');
           setResult({
-            success: callDetails.status === 'completed',
+            success: backendStatus === 'completed' || backendStatus === 'ended',
             callId: callDetails.id,
             transcript: callDetails.transcript,
             recordingUrl: callDetails.recordingUrl,
@@ -643,6 +667,55 @@ function PowerContent() {
 
   const canStart = preflightChecks.length > 0 && !preflightChecks.some(c => c.status === 'fail') && phoneNumber.length >= 8 && message.trim().length > 0;
   const isLoading = profileLoading || digestLoading || loading;
+
+  // Load call details when clicking a call history item
+  const handleOpenCallDetails = async (callId: number) => {
+    setSelectedCallId(callId);
+    setLoadingCallDetails(true);
+    setSelectedCallDetails(null);
+    
+    try {
+      const res = await fetch(`/api/aras-voice/call-details/${callId}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to load call details');
+      const data = await res.json();
+      setSelectedCallDetails(data);
+    } catch (err) {
+      toast({ title: 'Fehler beim Laden der Anrufdetails', variant: 'destructive' });
+    } finally {
+      setLoadingCallDetails(false);
+    }
+  };
+
+  const handleCloseDrawer = () => {
+    setSelectedCallId(null);
+    setSelectedCallDetails(null);
+  };
+
+  const handleRefreshDrawerDetails = async () => {
+    if (!selectedCallId) return;
+    await handleOpenCallDetails(selectedCallId);
+  };
+
+  // Poll for pending summaries in call history
+  useEffect(() => {
+    const hasPending = callHistory.some((c: any) => c.summaryStatus === 'pending');
+    
+    if (hasPending && !summaryPollRef.current) {
+      summaryPollRef.current = setInterval(() => {
+        refetchHistory();
+      }, 12000); // Poll every 12s
+    } else if (!hasPending && summaryPollRef.current) {
+      clearInterval(summaryPollRef.current);
+      summaryPollRef.current = null;
+    }
+    
+    return () => {
+      if (summaryPollRef.current) {
+        clearInterval(summaryPollRef.current);
+        summaryPollRef.current = null;
+      }
+    };
+  }, [callHistory, refetchHistory]);
 
   // ─────────────────────────────────────────────────────────────
   // RENDER - Scrollable container, no Sidebar/TopBar
@@ -917,7 +990,7 @@ Time: ${persistentError.timestamp}`}
               </motion.div>
             )}
 
-            {/* Call History (REAL ENDPOINT: /api/user/call-logs) */}
+            {/* Call History (REAL ENDPOINT: /api/user/call-logs) - CLICKABLE */}
             {callHistory.length > 0 && (
               <div 
                 className="rounded-xl p-5"
@@ -927,13 +1000,17 @@ Time: ${persistentError.timestamp}`}
                   <Clock className="w-4 h-4" style={{ color: CI.orange }} />
                   Letzte Anrufe
                 </h3>
-                <div className="space-y-2">
+                <div className="space-y-1">
                   {callHistory.slice(0, 5).map((call: any) => (
-                    <div key={call.id} className="flex items-center gap-3 py-2.5 border-b border-white/5 last:border-0">
+                    <button
+                      key={call.id}
+                      onClick={() => handleOpenCallDetails(call.id)}
+                      className="w-full flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-lg transition-all hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-orange-500/30 text-left group"
+                    >
                       <div className={`w-2 h-2 rounded-full flex-shrink-0 ${call.status === 'completed' ? 'bg-green-500' : 'bg-red-500'}`} />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="text-sm truncate font-medium" style={{ color: CI.goldLight }}>{call.contactName || call.phoneNumber}</p>
+                          <p className="text-sm truncate font-medium group-hover:text-white transition-colors" style={{ color: CI.goldLight }}>{call.contactName || call.phoneNumber}</p>
                           <span className="text-[10px] text-neutral-500 flex-shrink-0">
                             {call.createdAt ? formatDistanceToNow(new Date(call.createdAt), { addSuffix: true, locale: de }) : ''}
                           </span>
@@ -950,7 +1027,8 @@ Time: ${persistentError.timestamp}`}
                           <p className="text-xs text-red-400/70 mt-0.5">Anruf fehlgeschlagen</p>
                         ) : null}
                       </div>
-                    </div>
+                      <ChevronDown className="w-4 h-4 text-neutral-500 opacity-0 group-hover:opacity-100 transition-opacity rotate-[-90deg]" />
+                    </button>
                   ))}
                 </div>
               </div>
@@ -1076,6 +1154,86 @@ Time: ${persistentError.timestamp}`}
                 >
                   Speichern
                 </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* CALL DETAILS DRAWER (opens when clicking call history) */}
+        <AnimatePresence>
+          {selectedCallId && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end"
+              style={{ background: 'rgba(0,0,0,0.75)' }}
+              onClick={handleCloseDrawer}
+            >
+              <motion.div
+                initial={{ x: '100%', opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: '100%', opacity: 0 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                className="w-full sm:w-[420px] sm:max-w-[90vw] h-[85vh] sm:h-full sm:max-h-screen overflow-hidden rounded-t-2xl sm:rounded-none flex flex-col"
+                style={{ background: 'rgba(12,12,12,0.98)', borderLeft: '1px solid rgba(255,255,255,0.1)' }}
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Drawer Header */}
+                <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+                  <h3 className="text-lg font-bold" style={{ color: CI.goldLight }}>Anrufdetails</h3>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleRefreshDrawerDetails}
+                      disabled={loadingCallDetails}
+                      className="p-2 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${loadingCallDetails ? 'animate-spin' : ''}`} style={{ color: CI.goldLight }} />
+                    </button>
+                    <button
+                      onClick={handleCloseDrawer}
+                      className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+                    >
+                      <X className="w-5 h-5" style={{ color: CI.goldLight }} />
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Drawer Content */}
+                <div className="flex-1 min-h-0 overflow-y-auto p-5">
+                  {loadingCallDetails ? (
+                    <div className="flex items-center justify-center h-40">
+                      <Loader2 className="w-8 h-8 animate-spin" style={{ color: CI.orange }} />
+                    </div>
+                  ) : selectedCallDetails ? (
+                    <PowerResultCard
+                      result={{
+                        id: selectedCallDetails.id,
+                        callId: selectedCallDetails.id,
+                        recordingUrl: selectedCallDetails.recordingUrl,
+                        transcript: selectedCallDetails.transcript,
+                        duration: selectedCallDetails.duration,
+                        phoneNumber: selectedCallDetails.phoneNumber,
+                        contactName: selectedCallDetails.metadata?.contactName
+                      }}
+                      summary={selectedCallDetails.summary}
+                      onNewCall={handleCloseDrawer}
+                      onRefresh={handleRefreshDrawerDetails}
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-40 text-neutral-500">
+                      <XCircle className="w-10 h-10 mb-2" />
+                      <p className="text-sm">Details konnten nicht geladen werden</p>
+                      <button
+                        onClick={handleRefreshDrawerDetails}
+                        className="mt-3 text-xs px-3 py-1.5 rounded-lg"
+                        style={{ background: `${CI.orange}20`, color: CI.orange }}
+                      >
+                        Erneut versuchen
+                      </button>
+                    </div>
+                  )}
+                </div>
               </motion.div>
             </motion.div>
           )}
