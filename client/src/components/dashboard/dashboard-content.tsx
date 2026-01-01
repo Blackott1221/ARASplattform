@@ -32,28 +32,34 @@ const setDoneAction = (id: string, done: boolean) => {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// DESIGN TOKENS V7 (2026 Mission Control+ with Matrix Tech Layer)
+// DESIGN TOKENS V8 (2026 Clean Futurism - Unicorn Control Center)
 // ═══════════════════════════════════════════════════════════════
 const DT = {
   // Premium Futuristic Layer
   orange: '#ff6a00',
   gold: '#e9d7c4',
   goldDark: '#a34e00',
-  panelBg: 'rgba(0,0,0,0.34)',
-  panelBgHover: 'rgba(0,0,0,0.45)',
-  panelBorder: 'rgba(255,255,255,0.10)',
-  panelBorderHover: 'rgba(255,255,255,0.16)',
+  panelBg: 'rgba(0,0,0,0.42)',
+  panelBgHover: 'rgba(0,0,0,0.52)',
+  panelBorder: 'rgba(255,255,255,0.08)',
+  panelBorderStrong: 'rgba(255,255,255,0.14)',
   glow: '0 0 0 1px rgba(255,106,0,0.18), 0 0 22px rgba(255,106,0,0.10)',
   glowSubtle: '0 0 12px rgba(255,106,0,0.08)',
   rowBg: 'rgba(255,255,255,0.02)',
   rowBgHover: 'rgba(255,255,255,0.05)',
-  textDim: 'rgba(255,255,255,0.70)',
+  textDim: 'rgba(255,255,255,0.72)',
+  textSoft: 'rgba(255,255,255,0.55)',
+  shadow: '0 18px 60px rgba(0,0,0,0.55)',
   // Matrix Tech Layer
-  matrixBg: 'rgba(0,12,8,0.85)',
+  matrixBg: 'rgba(0,12,8,0.88)',
   matrixBorder: 'rgba(0,255,136,0.12)',
   matrixText: 'rgba(0,255,136,0.85)',
   matrixTextDim: 'rgba(0,255,136,0.50)',
   matrixAccent: '#00ff88',
+  // Status colors
+  statusReady: '#22c55e',
+  statusPending: '#f59e0b',
+  statusFailed: '#ef4444',
 };
 
 const ANIM = {
@@ -62,8 +68,8 @@ const ANIM = {
   stagger: 0.03,
 };
 
-// CSS Keyframes for shimmer + matrix scanline animation (injected once)
-const v7CSS = `
+// CSS Keyframes for shimmer + matrix scanline animation V8 (injected once)
+const v8CSS = `
 @keyframes shimmer {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(200%); }
@@ -75,6 +81,10 @@ const v7CSS = `
 @keyframes scanline {
   0% { transform: translateY(-100%); }
   100% { transform: translateY(100%); }
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 .matrix-panel {
   position: relative;
@@ -89,8 +99,8 @@ const v7CSS = `
       0deg,
       transparent,
       transparent 2px,
-      rgba(0,255,136,0.015) 2px,
-      rgba(0,255,136,0.015) 4px
+      rgba(0,255,136,0.012) 2px,
+      rgba(0,255,136,0.012) 4px
     );
   pointer-events: none;
   z-index: 1;
@@ -99,17 +109,32 @@ const v7CSS = `
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(0,255,136,0.03), transparent 8px, transparent 92%, rgba(0,255,136,0.03));
-  animation: scanline 8s linear infinite;
+  background: linear-gradient(180deg, rgba(0,255,136,0.02), transparent 8px, transparent 92%, rgba(0,255,136,0.02));
+  animation: scanline 10s linear infinite;
   pointer-events: none;
   z-index: 2;
-  opacity: 0.4;
+  opacity: 0.3;
+}
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-dot-pending {
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .matrix-panel::after { animation: none; }
+  .status-dot-pending { animation: none; }
+  @keyframes shimmer { 0%, 100% { transform: none; } }
+  @keyframes sheen { 0%, 100% { background-position: 0 center; } }
 }
 `;
-if (typeof document !== 'undefined' && !document.getElementById('aras-v7-css')) {
+if (typeof document !== 'undefined' && !document.getElementById('aras-v8-css')) {
   const style = document.createElement('style');
-  style.id = 'aras-v7-css';
-  style.textContent = v7CSS;
+  style.id = 'aras-v8-css';
+  style.textContent = v8CSS;
   document.head.appendChild(style);
 }
 
@@ -235,6 +260,20 @@ interface DataSourcesResponse {
   success: boolean;
   count: number;
   dataSources: DataSource[];
+}
+
+// V8: Contact Radar - grouped contact data from call logs
+interface ContactRadarEntry {
+  key: string; // phoneNumber or contactName
+  displayName: string;
+  lastCallAt: string;
+  callCount7d: number;
+  callCount30d: number;
+  lastOutcome?: string;
+  lastSentiment?: string;
+  lastNextStep?: string;
+  pendingCount: number;
+  calls: CallLog[];
 }
 
 export function DashboardContent({ user }: DashboardContentProps) {
@@ -583,21 +622,76 @@ export function DashboardContent({ user }: DashboardContentProps) {
   // Profile completeness calculation (REAL - count filled fields)
   const profileCompleteness = useMemo(() => {
     if (!profileContext) return null;
-    const fields = [
-      profileContext.company,
-      profileContext.industry,
-      profileContext.website,
-      profileContext.phone,
-      profileContext.aiProfile?.companyDescription,
-      profileContext.aiProfile?.targetAudience,
-      profileContext.aiProfile?.services,
-      profileContext.aiProfile?.effectiveKeywords?.length,
-      profileContext.aiProfile?.competitors?.length,
-      profileContext.aiProfile?.products?.length,
+    const fieldChecks = [
+      { name: 'Firma', filled: !!profileContext.company },
+      { name: 'Branche', filled: !!profileContext.industry },
+      { name: 'Website', filled: !!profileContext.website },
+      { name: 'Telefon', filled: !!profileContext.phone },
+      { name: 'Beschreibung', filled: !!profileContext.aiProfile?.companyDescription },
+      { name: 'Zielgruppe', filled: !!profileContext.aiProfile?.targetAudience },
+      { name: 'Services', filled: !!profileContext.aiProfile?.services },
+      { name: 'Keywords', filled: (profileContext.aiProfile?.effectiveKeywords?.length ?? 0) > 0 },
+      { name: 'Wettbewerber', filled: (profileContext.aiProfile?.competitors?.length ?? 0) > 0 },
+      { name: 'Produkte', filled: (profileContext.aiProfile?.products?.length ?? 0) > 0 },
     ];
-    const filled = fields.filter(f => f && (typeof f !== 'number' || f > 0)).length;
-    return { filled, total: fields.length };
+    const filled = fieldChecks.filter(f => f.filled).length;
+    const missing = fieldChecks.filter(f => !f.filled).map(f => f.name);
+    return { filled, total: fieldChecks.length, missing };
   }, [profileContext]);
+
+  // V8: Contact Radar - group calls by contact
+  const contactRadar: ContactRadarEntry[] = useMemo(() => {
+    const now = new Date();
+    const sevenDaysAgo = subDays(now, 7);
+    const thirtyDaysAgo = subDays(now, 30);
+    const grouped = new Map<string, ContactRadarEntry>();
+    
+    safeArray(callLogs).forEach(call => {
+      const key = call.phoneNumber || call.contactName || 'unknown';
+      const displayName = call.contactName || call.phoneNumber || 'Unbekannt';
+      
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          key,
+          displayName,
+          lastCallAt: call.createdAt,
+          callCount7d: 0,
+          callCount30d: 0,
+          pendingCount: 0,
+          calls: [],
+        });
+      }
+      
+      const entry = grouped.get(key)!;
+      entry.calls.push(call);
+      
+      // Update last call if newer
+      if (new Date(call.createdAt) > new Date(entry.lastCallAt)) {
+        entry.lastCallAt = call.createdAt;
+        entry.lastOutcome = call.summary?.outcome;
+        entry.lastSentiment = call.summary?.sentiment;
+        entry.lastNextStep = call.summary?.nextStep;
+      }
+      
+      // Count by time range
+      const callDate = new Date(call.createdAt);
+      if (isAfter(callDate, sevenDaysAgo)) entry.callCount7d++;
+      if (isAfter(callDate, thirtyDaysAgo)) entry.callCount30d++;
+      
+      // Count pending
+      if (call.summaryStatus === 'pending' || (!call.summary && call.status === 'completed')) {
+        entry.pendingCount++;
+      }
+    });
+    
+    // Sort by last call date descending, take top 8
+    return Array.from(grouped.values())
+      .sort((a, b) => new Date(b.lastCallAt).getTime() - new Date(a.lastCallAt).getTime())
+      .slice(0, 8);
+  }, [callLogs]);
+
+  // V8: Last sync timestamp (client time)
+  const lastSyncTime = useMemo(() => format(new Date(), 'HH:mm:ss'), [callLogs, chatSessions]);
 
   // V7: Today Agenda - combine calls today + calendar events today
   const todayAgenda = useMemo(() => {
@@ -1060,14 +1154,40 @@ Status: ${persistentError.status || 'N/A'}`}
                       </div>
                     )}
                     
-                    {/* Completeness hint */}
-                    {profileCompleteness && profileCompleteness.filled < 7 && (
+                    {/* V8: Completeness bar */}
+                    {profileCompleteness && (
+                      <div className="mt-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[9px] uppercase tracking-wide text-neutral-600">Vollständigkeit</span>
+                          <span className="text-[10px] font-medium" style={{ color: profileCompleteness.filled >= 7 ? DT.statusReady : DT.orange }}>
+                            {profileCompleteness.filled}/{profileCompleteness.total}
+                          </span>
+                        </div>
+                        <div className="h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
+                          <div 
+                            className="h-full rounded-full transition-all"
+                            style={{ 
+                              width: `${(profileCompleteness.filled / profileCompleteness.total) * 100}%`,
+                              background: profileCompleteness.filled >= 7 ? DT.statusReady : `linear-gradient(90deg, ${DT.orange}, ${DT.gold})`
+                            }}
+                          />
+                        </div>
+                        {profileCompleteness.missing.length > 0 && profileCompleteness.missing.length <= 5 && (
+                          <p className="text-[9px] text-neutral-600 mt-1.5">
+                            Fehlt: {profileCompleteness.missing.slice(0, 3).join(', ')}{profileCompleteness.missing.length > 3 ? ` +${profileCompleteness.missing.length - 3}` : ''}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* CTA */}
+                    {profileCompleteness && profileCompleteness.filled < 10 && (
                       <a 
                         href="/app/leads"
-                        className="block w-full py-2.5 px-3 rounded-xl text-[11px] font-medium text-center transition-all hover:bg-white/[0.06] mt-2"
+                        className="block w-full py-2.5 px-3 rounded-xl text-[11px] font-medium text-center transition-all hover:bg-white/[0.06] mt-1"
                         style={{ border: `1px solid ${DT.orange}30`, color: DT.orange }}
                       >
-                        Profil vervollständigen
+                        Jetzt vervollständigen
                       </a>
                     )}
                   </div>
@@ -1289,7 +1409,7 @@ Status: ${persistentError.status || 'N/A'}`}
               </div>
             </motion.div>
 
-            {/* V7: Readiness / Health Panel (Matrix Tech) */}
+            {/* V8: System Readiness Panel (Matrix Tech) - Enhanced */}
             <motion.div
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1319,13 +1439,93 @@ Status: ${persistentError.status || 'N/A'}`}
                     )}
                   </p>
                   <p>
-                    SUMMARIES_PENDING: <span style={{ color: stats.pendingCount > 0 ? DT.orange : DT.matrixAccent }}>{stats.pendingCount}</span>
+                    SUMMARIES_PENDING: <span style={{ color: stats.pendingCount > 0 ? DT.statusPending : DT.matrixAccent }}>{stats.pendingCount}</span>
                     {stats.pendingCount > 0 && <span className="ml-2 text-[9px]" style={{ color: DT.matrixTextDim }}>AUTO</span>}
                   </p>
                   <p>
-                    FEED_STATUS: <span style={{ color: feedStatus === 'OK' ? DT.matrixAccent : '#ef4444' }}>{feedStatus}</span>
+                    CALLS_TODAY: <span style={{ color: DT.matrixAccent }}>{stats.callsToday}</span>
+                  </p>
+                  <p>
+                    SPACE_TODAY: <span style={{ color: DT.matrixAccent }}>{stats.spaceToday}</span>
+                  </p>
+                  <p>
+                    FEED_STATUS: <span style={{ color: feedStatus === 'OK' ? DT.matrixAccent : DT.statusFailed }}>{feedStatus}</span>
+                  </p>
+                  <p>
+                    LAST_SYNC: <span style={{ color: DT.matrixTextDim }}>{lastSyncTime}</span>
                   </p>
                 </div>
+              </div>
+            </motion.div>
+
+            {/* V8: Contact Radar Panel */}
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: ANIM.duration, delay: 0.48 }}
+              className="rounded-2xl overflow-hidden"
+              style={{ background: DT.panelBg, backdropFilter: 'blur(20px)', border: `1px solid ${DT.panelBorder}` }}
+            >
+              <div className="p-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500">
+                    Contact Radar
+                  </h3>
+                  <span className="text-[10px] text-neutral-600">
+                    {contactRadar.length} Kontakte
+                  </span>
+                </div>
+              </div>
+              <div className="p-3">
+                {contactRadar.length === 0 ? (
+                  <div className="text-center py-6">
+                    <p className="text-xs text-neutral-500 mb-1">Noch keine Kontakt-Historie</p>
+                    <p className="text-[10px] text-neutral-600">Starte deinen ersten Anruf</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
+                    {contactRadar.map(contact => (
+                      <button
+                        key={contact.key}
+                        onClick={() => {
+                          // Open first call from this contact in drawer
+                          const firstCall = contact.calls[0];
+                          if (firstCall) {
+                            const activity = callActivities.find(c => c.id === firstCall.id);
+                            if (activity) handleItemClick(activity);
+                          }
+                        }}
+                        className="w-full text-left p-3 rounded-xl transition-all hover:translate-y-[-1px]"
+                        style={{ background: DT.rowBg, border: `1px solid ${DT.panelBorder}` }}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-neutral-200 truncate">{contact.displayName}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[9px] text-neutral-500">{contact.callCount7d} Calls 7T</span>
+                              {contact.pendingCount > 0 && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(245,158,11,0.15)', color: DT.statusPending }}>
+                                  {contact.pendingCount} pending
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <span className="text-[9px] text-neutral-600 flex-shrink-0">
+                            {formatDistanceToNow(new Date(contact.lastCallAt), { addSuffix: true, locale: de })}
+                          </span>
+                        </div>
+                        {contact.lastOutcome && (
+                          <p className="text-[10px] text-neutral-500 mt-1.5 line-clamp-1">{contact.lastOutcome}</p>
+                        )}
+                        {contact.lastNextStep && !contact.lastOutcome && (
+                          <p className="text-[10px] mt-1.5 line-clamp-1" style={{ color: DT.orange }}>
+                            Next: {contact.lastNextStep}
+                          </p>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </motion.div>
 
