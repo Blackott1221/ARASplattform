@@ -1743,7 +1743,7 @@ Status: ${persistentError.status || 'N/A'}`}
               </div>
             </motion.div>
 
-            {/* V6: Calendar Preview Panel */}
+            {/* V10: Calendar Panel with 7-Day Strip */}
             <motion.div
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1753,49 +1753,93 @@ Status: ${persistentError.status || 'N/A'}`}
             >
               <div className="p-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                 <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500">
-                  Kalender (7 Tage)
+                  Kalender
                 </h3>
               </div>
-              <div className="p-4">
+              
+              {/* 7-Day Strip */}
+              <div className="px-3 pt-3">
+                <div className="grid grid-cols-7 gap-1">
+                  {Array.from({ length: 7 }).map((_, idx) => {
+                    const day = addDays(startOfDay(new Date()), idx);
+                    const dayStr = format(day, 'yyyy-MM-dd');
+                    const eventsOnDay = calendarEvents.filter(e => e.date === dayStr).length;
+                    const tasksOnDay = openTasks.filter(t => t.dueAt && isSameDay(new Date(t.dueAt), day)).length;
+                    const isCurrentDay = idx === 0;
+                    
+                    return (
+                      <div 
+                        key={idx}
+                        className={`text-center p-2 rounded-lg transition-all cursor-default ${isCurrentDay ? 'ring-1 ring-orange-500/30' : ''}`}
+                        style={{ 
+                          background: isCurrentDay ? 'rgba(255,106,0,0.08)' : 'rgba(255,255,255,0.02)',
+                        }}
+                      >
+                        <p className="text-[9px] uppercase text-neutral-500 mb-0.5">
+                          {format(day, 'EEE', { locale: de })}
+                        </p>
+                        <p className={`text-sm font-semibold ${isCurrentDay ? 'text-orange-400' : 'text-neutral-300'}`}>
+                          {format(day, 'd')}
+                        </p>
+                        <div className="flex justify-center gap-1 mt-1">
+                          {eventsOnDay > 0 && (
+                            <span className="w-1.5 h-1.5 rounded-full" style={{ background: DT.gold }} title={`${eventsOnDay} Termine`} />
+                          )}
+                          {tasksOnDay > 0 && (
+                            <span className="w-1.5 h-1.5 rounded-full" style={{ background: DT.orange }} title={`${tasksOnDay} Aufgaben`} />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Next Events List */}
+              <div className="p-3">
                 {calendarLoading ? (
                   <div className="space-y-2">
                     <div className="h-3 bg-neutral-800/50 rounded animate-pulse w-full" />
                     <div className="h-3 bg-neutral-800/30 rounded animate-pulse w-3/4" />
                   </div>
                 ) : calendarEvents.length === 0 ? (
-                  <div className="text-center py-4">
-                    <p className="text-xs text-neutral-500 mb-1">Keine Termine</p>
-                    <p className="text-[10px] text-neutral-600 mb-3">Kalender zeigt verbundene Termine</p>
+                  <div className="text-center py-3">
+                    <p className="text-[10px] text-neutral-600 mb-2">Keine Termine in den nächsten 7 Tagen</p>
                     <a 
                       href="/app/kalender"
-                      className="inline-block text-[11px] font-medium px-3 py-1.5 rounded-lg transition-colors hover:bg-white/[0.06]"
+                      className="inline-block text-[10px] font-medium px-3 py-1.5 rounded-lg transition-colors hover:bg-white/[0.06]"
                       style={{ color: DT.gold, border: `1px solid ${DT.panelBorder}` }}
                     >
                       Kalender öffnen
                     </a>
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    {calendarEvents.slice(0, 5).map(event => (
+                  <div className="space-y-1.5">
+                    {calendarEvents.slice(0, 4).map(event => (
                       <div 
                         key={event.id}
-                        className="p-2.5 rounded-xl"
-                        style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${DT.panelBorder}` }}
+                        className="p-2 rounded-lg flex items-center gap-2"
+                        style={{ background: 'rgba(255,255,255,0.02)' }}
                       >
-                        <p className="text-xs font-medium text-neutral-300 truncate">{event.title}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] text-neutral-500">
-                            {format(new Date(event.date), 'dd.MM', { locale: de })}
-                          </span>
+                        <div className="w-8 text-center flex-shrink-0">
+                          <p className="text-[10px] font-semibold text-neutral-400">
+                            {format(new Date(event.date), 'dd', { locale: de })}
+                          </p>
+                          <p className="text-[8px] uppercase text-neutral-600">
+                            {format(new Date(event.date), 'MMM', { locale: de })}
+                          </p>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] text-neutral-300 truncate">{event.title}</p>
                           {event.startTime && (
-                            <span className="text-[10px] text-neutral-600">{event.startTime}</span>
+                            <p className="text-[9px] text-neutral-600">{event.startTime}</p>
                           )}
                         </div>
                       </div>
                     ))}
                     <a 
                       href="/app/kalender"
-                      className="block text-center text-[11px] font-medium py-2 text-neutral-500 hover:text-neutral-300 transition-colors"
+                      className="block text-center text-[10px] font-medium py-1.5 text-neutral-500 hover:text-neutral-300 transition-colors"
                     >
                       Alle anzeigen
                     </a>
@@ -2211,12 +2255,12 @@ Status: ${persistentError.status || 'N/A'}`}
                             { id: 'summary', label: 'Übersicht' },
                             { id: 'transcript', label: 'Transkript' },
                             { id: 'audio', label: 'Audio' },
-                            ...(selectedDetails?.summary?.nextStep ? [{ id: 'nextstep', label: 'Nächste Schritte' }] : [])
+                            { id: 'tasks', label: 'Aufgaben' },
                           ]
                         : [
                             { id: 'summary', label: 'Übersicht' },
                             { id: 'messages', label: 'Verlauf' },
-                            ...(selectedDetails?.summaryFull?.nextStep ? [{ id: 'nextstep', label: 'Nächste Schritte' }] : [])
+                            { id: 'tasks', label: 'Aufgaben' },
                           ]
                       ).map((tab) => (
                         <button
@@ -2303,6 +2347,125 @@ Status: ${persistentError.status || 'N/A'}`}
                                   />
                                 )}
                               </div>
+                            </div>
+
+                            {/* V10: Tasks Section - Linked to this source */}
+                            <div 
+                              data-mission-section="tasks"
+                              className="scroll-mt-[140px] mt-4 rounded-2xl p-4"
+                              style={{ 
+                                background: 'rgba(255,255,255,0.02)',
+                                border: '1px solid rgba(255,255,255,0.05)'
+                              }}
+                            >
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="text-[11px] font-bold uppercase tracking-[0.15em] text-neutral-500">
+                                  Aufgaben aus dieser {selectedItem.type === 'call' ? 'Anruf' : 'Session'}
+                                </h4>
+                                <span className="text-[10px] text-neutral-600">
+                                  {openTasks.filter(t => t.sourceId === String(selectedItem.id) && t.sourceType === selectedItem.type).length} Aufgaben
+                                </span>
+                              </div>
+                              
+                              {/* Tasks list for this source */}
+                              {(() => {
+                                const sourceTasks = openTasks.filter(t => 
+                                  t.sourceId === String(selectedItem.id) && 
+                                  t.sourceType === selectedItem.type
+                                );
+                                
+                                if (sourceTasks.length === 0) {
+                                  return (
+                                    <p className="text-[11px] text-neutral-600 text-center py-4">
+                                      Keine Aufgaben aus dieser {selectedItem.type === 'call' ? 'Anruf' : 'Session'}
+                                    </p>
+                                  );
+                                }
+                                
+                                return (
+                                  <div className="space-y-2">
+                                    {sourceTasks.map(task => {
+                                      const isDone = task.status === 'done';
+                                      return (
+                                        <div 
+                                          key={task.id}
+                                          className={`p-3 rounded-xl transition-all ${isDone ? 'opacity-50' : ''}`}
+                                          style={{ 
+                                            background: 'rgba(0,0,0,0.2)', 
+                                            border: `1px solid ${DT.panelBorder}`,
+                                            borderLeft: `3px solid ${task.priority === 'high' ? DT.orange : 'rgba(255,106,0,0.4)'}`
+                                          }}
+                                        >
+                                          <div className="flex items-start gap-2">
+                                            <button
+                                              onClick={() => markTaskDoneMutation.mutate({ taskId: task.id, done: !isDone })}
+                                              disabled={markTaskDoneMutation.isPending}
+                                              className="mt-0.5 w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-all"
+                                              style={{ 
+                                                borderColor: isDone ? '#22c55e' : 'rgba(255,255,255,0.2)',
+                                                background: isDone ? 'rgba(34,197,94,0.15)' : 'transparent'
+                                              }}
+                                            >
+                                              {isDone && <div className="w-2 h-2 rounded-sm bg-green-500" />}
+                                            </button>
+                                            <div className="flex-1 min-w-0">
+                                              <p className={`text-xs leading-relaxed ${isDone ? 'line-through text-neutral-600' : 'text-neutral-300'}`}>
+                                                {task.title}
+                                              </p>
+                                              {task.dueAt && (
+                                                <p className="text-[9px] text-neutral-500 mt-1">
+                                                  Fällig: {format(new Date(task.dueAt), 'dd.MM HH:mm', { locale: de })}
+                                                </p>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              })()}
+
+                              {/* Add new task linked to this source */}
+                              <form
+                                onSubmit={(e) => {
+                                  e.preventDefault();
+                                  const input = (e.target as HTMLFormElement).elements.namedItem('drawerTaskInput') as HTMLInputElement;
+                                  if (input?.value.trim()) {
+                                    // Create task with sourceType and sourceId
+                                    fetch('/api/user/tasks', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      credentials: 'include',
+                                      body: JSON.stringify({ 
+                                        title: input.value.trim(),
+                                        sourceType: selectedItem.type,
+                                        sourceId: String(selectedItem.id),
+                                      }),
+                                    }).then(() => {
+                                      input.value = '';
+                                      refetchOpenTasks();
+                                    });
+                                  }
+                                }}
+                                className="flex items-center gap-2 mt-3 pt-3 border-t"
+                                style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+                              >
+                                <input
+                                  name="drawerTaskInput"
+                                  type="text"
+                                  placeholder="Neue Aufgabe hinzufügen..."
+                                  className="flex-1 text-[11px] px-3 py-2 rounded-lg bg-transparent border outline-none transition-colors focus:border-orange-500/40"
+                                  style={{ borderColor: 'rgba(255,255,255,0.08)', color: '#ddd' }}
+                                />
+                                <button
+                                  type="submit"
+                                  className="text-[10px] font-semibold px-3 py-2 rounded-lg transition-all"
+                                  style={{ background: 'rgba(255,106,0,0.15)', color: DT.orange }}
+                                >
+                                  Hinzufügen
+                                </button>
+                              </form>
                             </div>
                           </motion.div>
                         ) : (
