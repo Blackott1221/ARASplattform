@@ -148,20 +148,23 @@ const v8CSS = `
 .status-dot-pending {
   animation: pulse-dot 1.5s ease-in-out infinite;
 }
-/* V9 Mission Panel Drawer Styles */
-.mission-drawer-scrollbar::-webkit-scrollbar {
-  width: 6px;
+/* V10 Cinematic Drawer Styles */
+.cinematic-drawer-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,106,0,0.25) transparent;
 }
-.mission-drawer-scrollbar::-webkit-scrollbar-track {
-  background: rgba(255,255,255,0.02);
-  border-radius: 3px;
+.cinematic-drawer-scroll::-webkit-scrollbar {
+  width: 5px;
 }
-.mission-drawer-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255,106,0,0.25);
-  border-radius: 3px;
+.cinematic-drawer-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
-.mission-drawer-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255,106,0,0.4);
+.cinematic-drawer-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255,106,0,0.2);
+  border-radius: 4px;
+}
+.cinematic-drawer-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,106,0,0.35);
 }
 .drawer-sheen-line {
   position: relative;
@@ -176,6 +179,44 @@ const v8CSS = `
   height: 100%;
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
   animation: drawer-sheen 4s ease-in-out infinite;
+}
+.drawer-tab-underline {
+  position: relative;
+}
+.drawer-tab-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #ff6a00, #e9d7c4);
+  border-radius: 1px;
+  transform: scaleX(0);
+  transition: transform 0.2s ease;
+}
+.drawer-tab-underline.active::after {
+  transform: scaleX(1);
+}
+.drawer-edge-fade-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 5px;
+  height: 24px;
+  background: linear-gradient(180deg, rgba(12,12,12,0.95) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 2;
+}
+.drawer-edge-fade-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 5px;
+  height: 32px;
+  background: linear-gradient(0deg, rgba(12,12,12,0.95) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 2;
 }
 @media (prefers-reduced-motion: reduce) {
   .matrix-panel::after { animation: none; }
@@ -1756,41 +1797,48 @@ Status: ${persistentError.status || 'N/A'}`}
           </div>
         </div>
 
-        {/* V9 MISSION PANEL DRAWER - 2026 Premium Design */}
+        {/* V10 CINEMATIC DRAWER - 2026 Premium Design */}
         <AnimatePresence>
           {selectedItem && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
+              transition={{ duration: 0.28 }}
               className="fixed inset-0 z-50"
               onClick={handleCloseDrawer}
               role="dialog"
               aria-modal="true"
               aria-labelledby="drawer-title"
             >
-              {/* Backdrop: blur + gradient vignette */}
+              {/* Cinematic Backdrop: radial vignette + blur + noise */}
               <div 
                 className="absolute inset-0"
                 style={{ 
-                  background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.92) 100%)',
-                  backdropFilter: 'blur(12px)',
+                  background: 'radial-gradient(ellipse at 60% 40%, rgba(8,8,8,0.78) 0%, rgba(0,0,0,0.94) 100%)',
+                  backdropFilter: 'blur(14px)',
+                }}
+              />
+              {/* Subtle noise layer */}
+              <div 
+                className="absolute inset-0 opacity-[0.025] pointer-events-none"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
                 }}
               />
               
               {/* Panel Container - Responsive positioning */}
               <div className="absolute inset-0 flex items-end xl:items-stretch xl:justify-end">
                 <motion.div
-                  initial={{ x: '100%', opacity: 0.9 }}
+                  initial={{ x: '100%', opacity: 0.92 }}
                   animate={{ x: 0, opacity: 1 }}
-                  exit={{ x: '100%', opacity: 0.9 }}
-                  transition={{ duration: 0.26, ease: [0.32, 0.72, 0, 1] }}
-                  className="relative w-full xl:w-[580px] xl:max-w-[40vw] xl:min-w-[520px] h-[90vh] xl:h-full flex flex-col rounded-t-[24px] xl:rounded-none overflow-hidden"
+                  exit={{ x: '100%', opacity: 0.92 }}
+                  transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
+                  className="relative w-full xl:w-[620px] xl:max-w-[42vw] xl:min-w-[560px] h-[92vh] xl:h-full flex flex-col rounded-t-[28px] xl:rounded-none overflow-hidden"
                   style={{ 
-                    background: 'linear-gradient(180deg, rgba(18,18,18,0.99) 0%, rgba(12,12,12,0.995) 100%)',
-                    borderLeft: `1px solid ${DT.panelBorder}`,
-                    boxShadow: '-20px 0 80px rgba(0,0,0,0.5)',
+                    background: 'linear-gradient(180deg, rgba(16,16,16,0.995) 0%, rgba(10,10,10,0.998) 100%)',
+                    borderLeft: `1px solid rgba(255,255,255,0.08)`,
+                    boxShadow: '-24px 0 100px rgba(0,0,0,0.6)',
                   }}
                   onClick={e => e.stopPropagation()}
                 >
@@ -1800,52 +1848,61 @@ Status: ${persistentError.status || 'N/A'}`}
                     style={{ background: `linear-gradient(90deg, ${DT.orange}, ${DT.gold}, ${DT.orange})` }}
                   />
                   
-                  {/* Drawer Header */}
+                  {/* STICKY HEADER */}
                   <motion.div 
-                    initial={{ opacity: 0, y: -6 }}
+                    initial={{ opacity: 0, y: -8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1, duration: 0.22 }}
-                    className="flex-shrink-0 px-6 py-5 border-b"
-                    style={{ borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.2)' }}
+                    transition={{ delay: 0.1, duration: 0.24 }}
+                    className="flex-shrink-0 px-6 py-5 border-b sticky top-0 z-10"
+                    style={{ borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(12,12,12,0.95)', backdropFilter: 'blur(12px)' }}
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         {/* Type chip */}
                         <span 
-                          className="inline-block px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-[0.15em] mb-2"
+                          className="inline-block px-2.5 py-1 rounded-md text-[9px] font-bold uppercase tracking-[0.18em] mb-2"
                           style={{ 
-                            background: selectedItem.type === 'call' ? 'rgba(255,106,0,0.15)' : 'rgba(99,102,241,0.15)',
+                            background: selectedItem.type === 'call' ? 'rgba(255,106,0,0.12)' : 'rgba(99,102,241,0.12)',
                             color: selectedItem.type === 'call' ? DT.orange : '#818cf8',
-                            border: `1px solid ${selectedItem.type === 'call' ? 'rgba(255,106,0,0.25)' : 'rgba(99,102,241,0.25)'}`
+                            border: `1px solid ${selectedItem.type === 'call' ? 'rgba(255,106,0,0.22)' : 'rgba(99,102,241,0.22)'}`
                           }}
                         >
                           {selectedItem.type === 'call' ? 'CALL' : 'SPACE'}
                         </span>
                         
-                        {/* Title */}
+                        {/* Title with gradient */}
                         <h3 
                           id="drawer-title"
                           className="text-lg font-bold truncate"
-                          style={{ color: DT.gold }}
+                          style={{ 
+                            background: `linear-gradient(90deg, ${DT.gold}, ${DT.orange}80)`,
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            backgroundClip: 'text',
+                          }}
                         >
                           {selectedItem.title}
                         </h3>
                         
                         {/* Secondary info line */}
-                        <div className="flex items-center gap-3 mt-1.5 text-[11px] text-neutral-500">
+                        <div className="flex items-center flex-wrap gap-2 mt-2 text-[11px] text-neutral-500">
                           <span>{format(new Date(selectedItem.timestamp), 'dd.MM.yyyy HH:mm', { locale: de })}</span>
                           {selectedItem.meta?.durationSec && (
-                            <span>{formatDuration(selectedItem.meta.durationSec)}</span>
+                            <>
+                              <span className="w-1 h-1 rounded-full bg-neutral-600" />
+                              <span>{formatDuration(selectedItem.meta.durationSec)}</span>
+                            </>
                           )}
+                          <span className="w-1 h-1 rounded-full bg-neutral-600" />
                           <span 
-                            className="px-1.5 py-0.5 rounded text-[9px] font-medium"
+                            className="px-2 py-0.5 rounded-md text-[9px] font-semibold"
                             style={{ 
-                              background: selectedItem.status === 'ready' || selectedItem.status === 'completed' ? 'rgba(34,197,94,0.12)' :
-                                          selectedItem.status === 'pending' ? 'rgba(245,158,11,0.12)' :
-                                          selectedItem.status === 'failed' ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.06)',
-                              color: selectedItem.status === 'ready' || selectedItem.status === 'completed' ? '#22c55e' :
-                                     selectedItem.status === 'pending' ? '#f59e0b' :
-                                     selectedItem.status === 'failed' ? '#ef4444' : '#888'
+                              background: selectedItem.status === 'ready' || selectedItem.status === 'completed' ? 'rgba(34,197,94,0.1)' :
+                                          selectedItem.status === 'pending' ? 'rgba(245,158,11,0.1)' :
+                                          selectedItem.status === 'failed' ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,0.05)',
+                              color: selectedItem.status === 'ready' || selectedItem.status === 'completed' ? '#4ade80' :
+                                     selectedItem.status === 'pending' ? '#fbbf24' :
+                                     selectedItem.status === 'failed' ? '#f87171' : '#888'
                             }}
                           >
                             {selectedItem.status === 'ready' || selectedItem.status === 'completed' ? 'Bereit' :
@@ -1856,11 +1913,11 @@ Status: ${persistentError.status || 'N/A'}`}
                       </div>
                       
                       {/* Action buttons */}
-                      <div className="flex flex-col gap-1.5 flex-shrink-0">
+                      <div className="flex items-center gap-2 flex-shrink-0">
                         <button
                           onClick={() => selectedItem && handleOpenDetails(selectedItem)}
                           disabled={loadingDetails}
-                          className="text-[11px] font-medium px-3 py-2 rounded-lg transition-all disabled:opacity-50"
+                          className="text-[11px] font-semibold px-4 py-2 rounded-lg transition-all disabled:opacity-50 hover:scale-[1.02]"
                           style={{ 
                             background: 'rgba(255,106,0,0.1)', 
                             color: DT.orange,
@@ -1871,86 +1928,152 @@ Status: ${persistentError.status || 'N/A'}`}
                         </button>
                         <button
                           onClick={handleCloseDrawer}
-                          className="text-[11px] font-medium px-3 py-2 rounded-lg transition-all hover:bg-white/[0.06]"
-                          style={{ color: '#777', border: '1px solid rgba(255,255,255,0.08)' }}
+                          className="text-[11px] font-medium px-4 py-2 rounded-lg transition-all hover:bg-white/[0.06]"
+                          style={{ color: '#888', border: '1px solid rgba(255,255,255,0.08)' }}
                         >
                           Schließen
                         </button>
                       </div>
                     </div>
                   </motion.div>
-                  
-                  {/* Drawer Content - Premium scrollbar */}
-                  <div className="flex-1 min-h-0 overflow-y-auto mission-drawer-scrollbar p-6">
-                  <AnimatePresence mode="wait">
-                    {loadingDetails ? (
-                      <motion.div 
-                        key="loading"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="space-y-4 w-full"
-                      >
-                        <div className="h-4 bg-neutral-800/50 rounded animate-pulse w-3/4" />
-                        <div className="h-3 bg-neutral-800/30 rounded animate-pulse w-full" />
-                        <div className="h-3 bg-neutral-800/30 rounded animate-pulse w-5/6" />
-                        <div className="h-20 bg-neutral-800/20 rounded-[12px] animate-pulse w-full mt-4" />
-                      </motion.div>
-                    ) : selectedDetails ? (
-                      <motion.div
-                        key="content"
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: ANIM.duration }}
-                      >
-                        {selectedItem.type === 'call' ? (
-                          <PowerResultCard
-                            result={{
-                              id: selectedDetails.id,
-                              callId: selectedDetails.id,
-                              recordingUrl: selectedDetails.recordingUrl,
-                              transcript: selectedDetails.transcript,
-                              duration: selectedDetails.durationSeconds ?? selectedDetails.duration,
-                              phoneNumber: selectedDetails.phoneNumber,
-                              contactName: selectedDetails.metadata?.contactName
-                            }}
-                            summary={selectedDetails.summary}
-                            onNewCall={handleCloseDrawer}
-                            onRefresh={() => selectedItem && handleOpenDetails(selectedItem)}
-                          />
-                        ) : (
-                          <ChatSessionDetails 
-                            session={selectedDetails} 
-                            onClose={handleCloseDrawer}
-                            onRefresh={() => selectedItem && handleOpenDetails(selectedItem)}
-                          />
-                        )}
-                      </motion.div>
-                    ) : (
-                      <motion.div 
-                        key="error"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="flex flex-col items-center justify-center h-40 text-neutral-500"
-                      >
-                        <div className="w-12 h-12 rounded-full border-2 border-red-500/30 flex items-center justify-center mb-3 relative">
-                          <div className="w-6 h-0.5 bg-red-500/50 rotate-45 absolute" />
-                          <div className="w-6 h-0.5 bg-red-500/50 -rotate-45 absolute" />
-                        </div>
-                        <p className="text-sm">Details konnten nicht geladen werden</p>
+
+                  {/* SEGMENT TABS */}
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.15, duration: 0.2 }}
+                    className="flex-shrink-0 px-6 py-3 border-b sticky top-[92px] z-10 overflow-x-auto"
+                    style={{ borderColor: 'rgba(255,255,255,0.04)', background: 'rgba(12,12,12,0.92)', backdropFilter: 'blur(8px)' }}
+                  >
+                    <div className="flex items-center gap-1 min-w-max">
+                      {(selectedItem.type === 'call' 
+                        ? [
+                            { id: 'summary', label: 'Übersicht' },
+                            { id: 'transcript', label: 'Transkript' },
+                            { id: 'audio', label: 'Audio' },
+                            ...(selectedDetails?.summary?.nextStep ? [{ id: 'nextstep', label: 'Nächste Schritte' }] : [])
+                          ]
+                        : [
+                            { id: 'summary', label: 'Übersicht' },
+                            { id: 'messages', label: 'Verlauf' },
+                            ...(selectedDetails?.summaryFull?.nextStep ? [{ id: 'nextstep', label: 'Nächste Schritte' }] : [])
+                          ]
+                      ).map((tab) => (
                         <button
-                          onClick={() => selectedItem && handleOpenDetails(selectedItem)}
-                          className="mt-3 text-xs px-4 py-2 rounded-[10px] font-medium"
-                          style={{ background: 'rgba(255,106,0,0.12)', color: DT.orange, border: '1px solid rgba(255,106,0,0.25)' }}
+                          key={tab.id}
+                          onClick={() => {
+                            const scrollContainer = document.getElementById('drawer-scroll-body');
+                            const section = scrollContainer?.querySelector(`[data-mission-section="${tab.id}"]`);
+                            if (section) {
+                              section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                          }}
+                          className="drawer-tab-underline px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.1em] transition-colors hover:text-white"
+                          style={{ color: '#888' }}
                         >
-                          Erneut versuchen
+                          {tab.label}
                         </button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </motion.div>
+                      ))}
+                    </div>
+                  </motion.div>
+                  
+                  {/* SCROLL BODY with edge fades */}
+                  <div className="flex-1 min-h-0 relative">
+                    {/* Top edge fade */}
+                    <div className="drawer-edge-fade-top" />
+                    
+                    {/* Scroll container */}
+                    <div 
+                      id="drawer-scroll-body"
+                      className="h-full overflow-y-auto cinematic-drawer-scroll px-6 py-6"
+                      style={{ overscrollBehavior: 'contain' }}
+                    >
+                      <AnimatePresence mode="wait">
+                        {loadingDetails ? (
+                          <motion.div 
+                            key="loading"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="space-y-4 w-full pt-2"
+                          >
+                            <div className="h-5 bg-neutral-800/40 rounded-lg animate-pulse w-3/4" />
+                            <div className="h-4 bg-neutral-800/25 rounded animate-pulse w-full" />
+                            <div className="h-4 bg-neutral-800/25 rounded animate-pulse w-5/6" />
+                            <div className="h-28 bg-neutral-800/15 rounded-[14px] animate-pulse w-full mt-6" />
+                            <div className="h-20 bg-neutral-800/15 rounded-[14px] animate-pulse w-full" />
+                          </motion.div>
+                        ) : selectedDetails ? (
+                          <motion.div
+                            key="content"
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.26 }}
+                          >
+                            {/* Content Frame */}
+                            <div 
+                              className="rounded-2xl p-1"
+                              style={{ 
+                                background: 'rgba(255,255,255,0.02)',
+                                border: '1px solid rgba(255,255,255,0.05)'
+                              }}
+                            >
+                              <div className="p-4">
+                                {selectedItem.type === 'call' ? (
+                                  <PowerResultCard
+                                    result={{
+                                      id: selectedDetails.id,
+                                      callId: selectedDetails.id,
+                                      recordingUrl: selectedDetails.recordingUrl,
+                                      transcript: selectedDetails.transcript,
+                                      duration: selectedDetails.durationSeconds ?? selectedDetails.duration,
+                                      phoneNumber: selectedDetails.phoneNumber,
+                                      contactName: selectedDetails.metadata?.contactName
+                                    }}
+                                    summary={selectedDetails.summary}
+                                    onNewCall={handleCloseDrawer}
+                                    onRefresh={() => selectedItem && handleOpenDetails(selectedItem)}
+                                  />
+                                ) : (
+                                  <ChatSessionDetails 
+                                    session={selectedDetails} 
+                                    onClose={handleCloseDrawer}
+                                    onRefresh={() => selectedItem && handleOpenDetails(selectedItem)}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          </motion.div>
+                        ) : (
+                          <motion.div 
+                            key="error"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="flex flex-col items-center justify-center h-48 text-neutral-500"
+                          >
+                            <div className="w-14 h-14 rounded-full border-2 border-red-500/25 flex items-center justify-center mb-4 relative">
+                              <div className="w-7 h-0.5 bg-red-500/40 rotate-45 absolute" />
+                              <div className="w-7 h-0.5 bg-red-500/40 -rotate-45 absolute" />
+                            </div>
+                            <p className="text-sm mb-1">Details konnten nicht geladen werden</p>
+                            <p className="text-[11px] text-neutral-600 mb-4">Prüfe deine Verbindung und versuche es erneut</p>
+                            <button
+                              onClick={() => selectedItem && handleOpenDetails(selectedItem)}
+                              className="text-xs px-5 py-2.5 rounded-xl font-semibold transition-all hover:scale-[1.02]"
+                              style={{ background: 'rgba(255,106,0,0.12)', color: DT.orange, border: '1px solid rgba(255,106,0,0.25)' }}
+                            >
+                              Erneut versuchen
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                    
+                    {/* Bottom edge fade */}
+                    <div className="drawer-edge-fade-bottom" />
+                  </div>
+                </motion.div>
               </div>
             </motion.div>
           )}
@@ -2067,6 +2190,7 @@ function ChatSessionDetails({ session, onClose, onRefresh }: { session: any; onC
   return (
     <div className="space-y-5">
       {/* Session Info */}
+      <div data-mission-section="summary" className="scroll-mt-[140px]">
       <div className="p-4 rounded-[14px]" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
         <h4 className="text-sm font-semibold mb-2" style={{ color: DT.gold }}>{session.title}</h4>
         <p className="text-xs text-neutral-500">
@@ -2075,7 +2199,7 @@ function ChatSessionDetails({ session, onClose, onRefresh }: { session: any; onC
       </div>
 
       {/* Summary Section */}
-      <div className="space-y-3">
+      <div className="space-y-3 mt-5">
         <h4 className="text-[11px] font-bold uppercase tracking-[0.1em] text-neutral-500">
           Zusammenfassung
         </h4>
@@ -2160,10 +2284,11 @@ function ChatSessionDetails({ session, onClose, onRefresh }: { session: any; onC
           </div>
         )}
       </div>
+      </div>
 
       {/* Messages */}
       {session.messages?.length > 0 && (
-        <div className="space-y-3">
+        <div data-mission-section="messages" className="scroll-mt-[140px] space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-[11px] font-bold uppercase tracking-[0.1em] text-neutral-500">
               Verlauf
@@ -2200,6 +2325,11 @@ function ChatSessionDetails({ session, onClose, onRefresh }: { session: any; onC
             ))}
           </div>
         </div>
+      )}
+
+      {/* Next Step Section Marker (if summary has nextStep) */}
+      {session.summaryFull?.nextStep && (
+        <div data-mission-section="nextstep" className="scroll-mt-[140px]" />
       )}
 
       {/* Open in Space CTA - CORRECT DEEP LINK */}

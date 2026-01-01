@@ -323,7 +323,8 @@ export function PowerResultCard({
           )}
         </motion.div>
 
-        {/* 📋 Summary Panel */}
+        {/* Summary Panel */}
+        <div data-mission-section="summary" className="scroll-mt-[140px]">
         {summary ? (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -424,8 +425,10 @@ export function PowerResultCard({
             </div>
           </motion.div>
         ) : null}
+        </div>
 
         {/* Audio Recording - No Icons */}
+        <div data-mission-section="audio" className="scroll-mt-[140px]">
         {(result.recordingUrl || result.id || result.callId) ? (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -498,8 +501,9 @@ export function PowerResultCard({
             Keine Aufzeichnung verfügbar.
           </p>
         )}
+        </div>
 
-        {/* 🎯 ARAS Core Summary */}
+        {/* ARAS Core Summary */}
         {summary ? (
           <motion.div
             className="rounded-2xl p-4 md:p-5 relative overflow-hidden"
@@ -637,7 +641,8 @@ export function PowerResultCard({
           </p>
         )}
 
-        {/* 📄 Transkript - Normalized & with Actions */}
+        {/* Transkript - Normalized & with Actions */}
+        <div data-mission-section="transcript" className="scroll-mt-[140px]">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -753,6 +758,12 @@ export function PowerResultCard({
             )}
           </div>
         </motion.div>
+        </div>
+
+        {/* Next Step Section Marker */}
+        {summary?.nextStep && (
+          <div data-mission-section="nextstep" className="scroll-mt-[140px]" />
+        )}
 
         {/* Contact Verknüpfung - No emoji comment */}
         {result.phoneNumber && (
