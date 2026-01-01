@@ -4,6 +4,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
 import { ChatInterface } from "@/components/chat/chat-interface";
 import { FeedbackWidget } from "@/components/feedback/feedback-widget";
+import { NewYearOverlay } from "@/components/overlays/new-year-overlay";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { Menu, X } from "lucide-react";
@@ -185,6 +186,9 @@ export default function App() {
 
       {/* Feedback Widget - Always visible for Alpha users */}
       <FeedbackWidget />
+
+      {/* New Year 2026 Overlay - Global, one-time per user */}
+      {user && <NewYearOverlay userId={String((user as User).id)} />}
     </div>
   );
 }
