@@ -17,8 +17,10 @@ const safeJson = async (res: Response): Promise<any> => {
   try { return await res.json(); } catch { return {}; }
 };
 
-// LocalStorage key for done actions
+// LocalStorage keys for action management (Operations panel)
 const DONE_ACTIONS_KEY = 'aras_done_actions_v1';
+const SNOOZED_ACTIONS_KEY = 'aras_snoozed_actions_v1';
+
 const getDoneActions = (): Set<string> => {
   try {
     const stored = localStorage.getItem(DONE_ACTIONS_KEY);
@@ -29,6 +31,24 @@ const setDoneAction = (id: string, done: boolean) => {
   const current = getDoneActions();
   if (done) current.add(id); else current.delete(id);
   localStorage.setItem(DONE_ACTIONS_KEY, JSON.stringify([...current]));
+};
+
+// Snoozed actions: { id: snoozeUntilTimestamp }
+const getSnoozedActions = (): Record<string, number> => {
+  try {
+    const stored = localStorage.getItem(SNOOZED_ACTIONS_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch { return {}; }
+};
+const snoozeAction = (id: string, untilMs: number) => {
+  const current = getSnoozedActions();
+  current[id] = untilMs;
+  localStorage.setItem(SNOOZED_ACTIONS_KEY, JSON.stringify(current));
+};
+const unsnoozeAction = (id: string) => {
+  const current = getSnoozedActions();
+  delete current[id];
+  localStorage.setItem(SNOOZED_ACTIONS_KEY, JSON.stringify(current));
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -319,6 +339,8 @@ export function DashboardContent({ user }: DashboardContentProps) {
   const [activeFilter, setActiveFilter] = useState<'all' | 'call' | 'space'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [doneActions, setDoneActionsState] = useState<Set<string>>(getDoneActions);
+  const [snoozedActions, setSnoozedActionsState] = useState<Record<string, number>>(getSnoozedActions);
+  const [opsFilter, setOpsFilter] = useState<'offen' | 'heute' | 'später' | 'erledigt'>('offen');
   const summaryPollRef = useRef<NodeJS.Timeout | null>(null);
   const drawerPollRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -641,30 +663,52 @@ export function DashboardContent({ user }: DashboardContentProps) {
     return { callsToday, spaceToday, successRate, avgDuration, pendingCount };
   }, [callActivities, chatActivities, allActivities]);
 
-  // V6: Extract action items from nextStep fields in call summaries
-  const actionItems: ActionItem[] = useMemo(() => {
-    const items: ActionItem[] = [];
+  // V9: Extract action items from nextStep fields with snooze support
+  const actionItems = useMemo(() => {
+    const items: (ActionItem & { snoozedUntil?: number })[] = [];
     const done = doneActions;
+    const snoozed = snoozedActions;
+    const now = Date.now();
     
     // From calls with summary.nextStep
     callLogs.forEach(call => {
       const nextStep = call.summary?.nextStep;
       if (nextStep && nextStep.trim().length > 5) {
         const id = `call-${call.id}`;
+        const snoozeTs = snoozed[id];
         items.push({
           id,
           title: nextStep.length > 140 ? nextStep.substring(0, 137) + '...' : nextStep,
           source: { type: 'call', name: call.contactName || call.phoneNumber, timestamp: call.createdAt },
           done: done.has(id),
           rawId: call.id,
+          snoozedUntil: snoozeTs && snoozeTs > now ? snoozeTs : undefined,
         });
       }
     });
     
-    // Sort by timestamp (newest first) and take top 10
+    // Sort by timestamp (newest first) and take top 15
     items.sort((a, b) => new Date(b.source.timestamp).getTime() - new Date(a.source.timestamp).getTime());
-    return items.slice(0, 10);
-  }, [callLogs, doneActions]);
+    return items.slice(0, 15);
+  }, [callLogs, doneActions, snoozedActions]);
+
+  // V9: Filtered action items based on opsFilter
+  const filteredActionItems = useMemo(() => {
+    const now = Date.now();
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+    
+    return actionItems.filter(item => {
+      if (opsFilter === 'erledigt') return item.done;
+      if (opsFilter === 'später') return item.snoozedUntil && item.snoozedUntil > now;
+      if (opsFilter === 'heute') {
+        // Show items due today (not snoozed beyond today, not done)
+        return !item.done && (!item.snoozedUntil || item.snoozedUntil <= todayEnd.getTime());
+      }
+      // 'offen' - show all not done, not currently snoozed
+      return !item.done && (!item.snoozedUntil || item.snoozedUntil <= now);
+    });
+  }, [actionItems, opsFilter]);
 
   // Toggle action done state
   const toggleActionDone = useCallback((id: string) => {
@@ -674,6 +718,38 @@ export function DashboardContent({ user }: DashboardContentProps) {
       setDoneAction(id, next.has(id));
       return next;
     });
+    // Also clear snooze if marking done
+    if (!doneActions.has(id)) {
+      setSnoozedActionsState(prev => {
+        const next = { ...prev };
+        delete next[id];
+        unsnoozeAction(id);
+        return next;
+      });
+    }
+  }, [doneActions]);
+
+  // V9: Snooze action handler
+  const handleSnoozeAction = useCallback((id: string, duration: '1h' | 'morgen' | 'woche') => {
+    const now = new Date();
+    let untilMs: number;
+    
+    if (duration === '1h') {
+      untilMs = now.getTime() + 60 * 60 * 1000;
+    } else if (duration === 'morgen') {
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(9, 0, 0, 0);
+      untilMs = tomorrow.getTime();
+    } else {
+      const nextWeek = new Date(now);
+      nextWeek.setDate(nextWeek.getDate() + 7);
+      nextWeek.setHours(9, 0, 0, 0);
+      untilMs = nextWeek.getTime();
+    }
+    
+    snoozeAction(id, untilMs);
+    setSnoozedActionsState(prev => ({ ...prev, [id]: untilMs }));
   }, []);
 
   // Profile completeness calculation (REAL - count filled fields)
@@ -1252,7 +1328,7 @@ Status: ${persistentError.status || 'N/A'}`}
               </div>
             </motion.div>
 
-            {/* V6: Action Inbox Panel */}
+            {/* V9: Operations Panel (upgraded Action Inbox) */}
             <motion.div
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1261,13 +1337,31 @@ Status: ${persistentError.status || 'N/A'}`}
               style={{ background: DT.panelBg, backdropFilter: 'blur(20px)', border: `1px solid ${DT.panelBorder}` }}
             >
               <div className="p-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-3">
                   <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500">
-                    Action Inbox
+                    Operations
                   </h3>
                   <span className="text-[10px] text-neutral-600">
                     {actionItems.filter(a => !a.done).length} offen
                   </span>
+                </div>
+                {/* Filter tabs */}
+                <div className="flex items-center gap-1 p-0.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                  {(['offen', 'heute', 'später', 'erledigt'] as const).map(filter => (
+                    <button
+                      key={filter}
+                      onClick={() => setOpsFilter(filter)}
+                      className={`flex-1 px-2 py-1.5 rounded-md text-[9px] font-semibold uppercase tracking-wider transition-all ${
+                        opsFilter === filter ? 'text-white' : 'text-neutral-600 hover:text-neutral-400'
+                      }`}
+                      style={opsFilter === filter ? { 
+                        background: 'rgba(255,106,0,0.15)', 
+                        boxShadow: 'inset 0 0 0 1px rgba(255,106,0,0.25)'
+                      } : {}}
+                    >
+                      {filter}
+                    </button>
+                  ))}
                 </div>
               </div>
               <div className="p-3">
@@ -1276,9 +1370,13 @@ Status: ${persistentError.status || 'N/A'}`}
                     <p className="text-xs text-neutral-500 mb-1">Keine Aufgaben</p>
                     <p className="text-[10px] text-neutral-600">Aufgaben werden aus Anruf-Zusammenfassungen erstellt</p>
                   </div>
+                ) : filteredActionItems.length === 0 ? (
+                  <div className="text-center py-6">
+                    <p className="text-xs text-neutral-500">Keine Aufgaben in dieser Ansicht</p>
+                  </div>
                 ) : (
-                  <div className="space-y-1.5 max-h-[240px] overflow-y-auto">
-                    {actionItems.map(action => (
+                  <div className="space-y-1.5 max-h-[280px] overflow-y-auto mission-drawer-scrollbar">
+                    {filteredActionItems.map(action => (
                       <div 
                         key={action.id}
                         className={`p-3 rounded-xl transition-all ${action.done ? 'opacity-50' : ''}`}
@@ -1299,10 +1397,43 @@ Status: ${persistentError.status || 'N/A'}`}
                             <p className={`text-xs leading-relaxed ${action.done ? 'line-through text-neutral-600' : 'text-neutral-300'}`}>
                               {action.title}
                             </p>
-                            <p className="text-[9px] text-neutral-600 mt-1">
-                              <span className="uppercase tracking-wide">{action.source.type}</span> · {action.source.name}
-                            </p>
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <span 
+                                className="text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded font-medium"
+                                style={{ background: 'rgba(255,106,0,0.12)', color: DT.orange }}
+                              >
+                                {action.source.type}
+                              </span>
+                              <span className="text-[9px] text-neutral-600 truncate">{action.source.name}</span>
+                            </div>
+                            {/* Snooze indicator */}
+                            {action.snoozedUntil && (
+                              <p className="text-[9px] mt-1" style={{ color: DT.statusPending }}>
+                                Zurückgestellt bis {format(new Date(action.snoozedUntil), 'dd.MM HH:mm', { locale: de })}
+                              </p>
+                            )}
                           </div>
+                          {/* Snooze dropdown */}
+                          {!action.done && !action.snoozedUntil && (
+                            <div className="relative flex-shrink-0">
+                              <select
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    handleSnoozeAction(action.id, e.target.value as '1h' | 'morgen' | 'woche');
+                                    e.target.value = '';
+                                  }
+                                }}
+                                className="appearance-none text-[9px] px-2 py-1 rounded bg-transparent border cursor-pointer transition-colors hover:bg-white/[0.04]"
+                                style={{ borderColor: 'rgba(255,255,255,0.1)', color: '#888' }}
+                                defaultValue=""
+                              >
+                                <option value="" disabled>Später</option>
+                                <option value="1h">1 Stunde</option>
+                                <option value="morgen">Morgen</option>
+                                <option value="woche">Nächste Woche</option>
+                              </select>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
