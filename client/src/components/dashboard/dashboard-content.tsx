@@ -86,6 +86,10 @@ const v8CSS = `
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
 }
+@keyframes drawer-sheen {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
 .matrix-panel {
   position: relative;
   overflow: hidden;
@@ -124,9 +128,39 @@ const v8CSS = `
 .status-dot-pending {
   animation: pulse-dot 1.5s ease-in-out infinite;
 }
+/* V9 Mission Panel Drawer Styles */
+.mission-drawer-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.mission-drawer-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.02);
+  border-radius: 3px;
+}
+.mission-drawer-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255,106,0,0.25);
+  border-radius: 3px;
+}
+.mission-drawer-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,106,0,0.4);
+}
+.drawer-sheen-line {
+  position: relative;
+  overflow: hidden;
+}
+.drawer-sheen-line::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 25%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: drawer-sheen 4s ease-in-out infinite;
+}
 @media (prefers-reduced-motion: reduce) {
   .matrix-panel::after { animation: none; }
   .status-dot-pending { animation: none; }
+  .drawer-sheen-line::after { animation: none; }
   @keyframes shimmer { 0%, 100% { transform: none; } }
   @keyframes sheen { 0%, 100% { background-position: 0 center; } }
 }
@@ -553,10 +587,33 @@ export function DashboardContent({ user }: DashboardContentProps) {
     }
   }, []);
 
-  const handleCloseDrawer = () => {
+  const handleCloseDrawer = useCallback(() => {
     setSelectedItem(null);
     setSelectedDetails(null);
-  };
+  }, []);
+
+  // V9: ESC key closes drawer + body scroll lock
+  useEffect(() => {
+    if (!selectedItem) return;
+    
+    // Lock body scroll
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    
+    // ESC key handler
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleCloseDrawer();
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedItem, handleCloseDrawer]);
 
   // Calculate stats from all activities (REAL DATA ONLY - no fake KPIs)
   const stats = useMemo(() => {
@@ -1492,7 +1549,7 @@ Status: ${persistentError.status || 'N/A'}`}
                           const firstCall = contact.calls[0];
                           if (firstCall) {
                             const activity = callActivities.find(c => c.id === firstCall.id);
-                            if (activity) handleItemClick(activity);
+                            if (activity) handleOpenDetails(activity);
                           }
                         }}
                         className="w-full text-left p-3 rounded-xl transition-all hover:translate-y-[-1px]"
@@ -1568,67 +1625,132 @@ Status: ${persistentError.status || 'N/A'}`}
           </div>
         </div>
 
-        {/* UNIFIED DETAILS DRAWER - V5 Premium */}
+        {/* V9 MISSION PANEL DRAWER - 2026 Premium Design */}
         <AnimatePresence>
           {selectedItem && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end"
-              style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}
+              transition={{ duration: 0.25 }}
+              className="fixed inset-0 z-50"
               onClick={handleCloseDrawer}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="drawer-title"
             >
-              <motion.div
-                initial={{ x: '100%', opacity: 0.8 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: '100%', opacity: 0.8 }}
-                transition={{ duration: 0.24, ease: ANIM.easing }}
-                className="w-full sm:w-[480px] sm:max-w-[92vw] h-[88vh] sm:h-full sm:max-h-screen overflow-hidden rounded-t-3xl sm:rounded-none flex flex-col"
-                style={{ background: 'rgba(12,12,12,0.98)', borderLeft: `1px solid ${DT.panelBorder}` }}
-                onClick={e => e.stopPropagation()}
-              >
-                {/* Drawer Header - V5 */}
-                <motion.div 
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.08, duration: 0.2 }}
-                  className="flex items-center justify-between px-5 py-4 border-b"
-                  style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+              {/* Backdrop: blur + gradient vignette */}
+              <div 
+                className="absolute inset-0"
+                style={{ 
+                  background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.92) 100%)',
+                  backdropFilter: 'blur(12px)',
+                }}
+              />
+              
+              {/* Panel Container - Responsive positioning */}
+              <div className="absolute inset-0 flex items-end xl:items-stretch xl:justify-end">
+                <motion.div
+                  initial={{ x: '100%', opacity: 0.9 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={{ x: '100%', opacity: 0.9 }}
+                  transition={{ duration: 0.26, ease: [0.32, 0.72, 0, 1] }}
+                  className="relative w-full xl:w-[580px] xl:max-w-[40vw] xl:min-w-[520px] h-[90vh] xl:h-full flex flex-col rounded-t-[24px] xl:rounded-none overflow-hidden"
+                  style={{ 
+                    background: 'linear-gradient(180deg, rgba(18,18,18,0.99) 0%, rgba(12,12,12,0.995) 100%)',
+                    borderLeft: `1px solid ${DT.panelBorder}`,
+                    boxShadow: '-20px 0 80px rgba(0,0,0,0.5)',
+                  }}
+                  onClick={e => e.stopPropagation()}
                 >
-                  <div>
-                    <p className="text-[9px] uppercase tracking-[0.2em] text-neutral-600 mb-0.5">
-                      {selectedItem.type === 'call' ? 'ANRUF' : 'SPACE'}
-                    </p>
-                    <h3 
-                      className="text-sm font-bold"
-                      style={{ color: DT.gold }}
-                    >
-                      {selectedItem.title}
-                    </h3>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => selectedItem && handleOpenDetails(selectedItem)}
-                      disabled={loadingDetails}
-                      className="text-[11px] font-medium px-3 py-1.5 rounded-lg hover:bg-white/[0.06] transition-colors disabled:opacity-50"
-                      style={{ color: DT.gold }}
-                    >
-                      {loadingDetails ? 'Lädt...' : 'Aktualisieren'}
-                    </button>
-                    <button
-                      onClick={handleCloseDrawer}
-                      className="text-[11px] font-medium px-3 py-1.5 rounded-lg hover:bg-white/[0.06] transition-colors"
-                      style={{ color: '#666' }}
-                    >
-                      Schließen
-                    </button>
-                  </div>
-                </motion.div>
-                
-                {/* Drawer Content */}
-                <div className="flex-1 min-h-0 overflow-y-auto p-5">
+                  {/* Animated top border line */}
+                  <div 
+                    className="drawer-sheen-line h-[2px] w-full flex-shrink-0"
+                    style={{ background: `linear-gradient(90deg, ${DT.orange}, ${DT.gold}, ${DT.orange})` }}
+                  />
+                  
+                  {/* Drawer Header */}
+                  <motion.div 
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1, duration: 0.22 }}
+                    className="flex-shrink-0 px-6 py-5 border-b"
+                    style={{ borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.2)' }}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        {/* Type chip */}
+                        <span 
+                          className="inline-block px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-[0.15em] mb-2"
+                          style={{ 
+                            background: selectedItem.type === 'call' ? 'rgba(255,106,0,0.15)' : 'rgba(99,102,241,0.15)',
+                            color: selectedItem.type === 'call' ? DT.orange : '#818cf8',
+                            border: `1px solid ${selectedItem.type === 'call' ? 'rgba(255,106,0,0.25)' : 'rgba(99,102,241,0.25)'}`
+                          }}
+                        >
+                          {selectedItem.type === 'call' ? 'CALL' : 'SPACE'}
+                        </span>
+                        
+                        {/* Title */}
+                        <h3 
+                          id="drawer-title"
+                          className="text-lg font-bold truncate"
+                          style={{ color: DT.gold }}
+                        >
+                          {selectedItem.title}
+                        </h3>
+                        
+                        {/* Secondary info line */}
+                        <div className="flex items-center gap-3 mt-1.5 text-[11px] text-neutral-500">
+                          <span>{format(new Date(selectedItem.timestamp), 'dd.MM.yyyy HH:mm', { locale: de })}</span>
+                          {selectedItem.meta?.durationSec && (
+                            <span>{formatDuration(selectedItem.meta.durationSec)}</span>
+                          )}
+                          <span 
+                            className="px-1.5 py-0.5 rounded text-[9px] font-medium"
+                            style={{ 
+                              background: selectedItem.status === 'ready' || selectedItem.status === 'completed' ? 'rgba(34,197,94,0.12)' :
+                                          selectedItem.status === 'pending' ? 'rgba(245,158,11,0.12)' :
+                                          selectedItem.status === 'failed' ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.06)',
+                              color: selectedItem.status === 'ready' || selectedItem.status === 'completed' ? '#22c55e' :
+                                     selectedItem.status === 'pending' ? '#f59e0b' :
+                                     selectedItem.status === 'failed' ? '#ef4444' : '#888'
+                            }}
+                          >
+                            {selectedItem.status === 'ready' || selectedItem.status === 'completed' ? 'Bereit' :
+                             selectedItem.status === 'pending' ? 'Wird verarbeitet' :
+                             selectedItem.status === 'failed' ? 'Fehlgeschlagen' : 'In Bearbeitung'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* Action buttons */}
+                      <div className="flex flex-col gap-1.5 flex-shrink-0">
+                        <button
+                          onClick={() => selectedItem && handleOpenDetails(selectedItem)}
+                          disabled={loadingDetails}
+                          className="text-[11px] font-medium px-3 py-2 rounded-lg transition-all disabled:opacity-50"
+                          style={{ 
+                            background: 'rgba(255,106,0,0.1)', 
+                            color: DT.orange,
+                            border: '1px solid rgba(255,106,0,0.2)'
+                          }}
+                        >
+                          {loadingDetails ? 'Lädt...' : 'Aktualisieren'}
+                        </button>
+                        <button
+                          onClick={handleCloseDrawer}
+                          className="text-[11px] font-medium px-3 py-2 rounded-lg transition-all hover:bg-white/[0.06]"
+                          style={{ color: '#777', border: '1px solid rgba(255,255,255,0.08)' }}
+                        >
+                          Schließen
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                  
+                  {/* Drawer Content - Premium scrollbar */}
+                  <div className="flex-1 min-h-0 overflow-y-auto mission-drawer-scrollbar p-6">
                   <AnimatePresence mode="wait">
                     {loadingDetails ? (
                       <motion.div 
@@ -1698,6 +1820,7 @@ Status: ${persistentError.status || 'N/A'}`}
                   </AnimatePresence>
                 </div>
               </motion.div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
