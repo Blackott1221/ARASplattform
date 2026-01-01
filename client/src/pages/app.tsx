@@ -5,10 +5,17 @@ import { TopBar } from "@/components/layout/topbar";
 import { ChatInterface } from "@/components/chat/chat-interface";
 import { FeedbackWidget } from "@/components/feedback/feedback-widget";
 import { NewYearOverlay } from "@/components/overlays/new-year-overlay";
+import { AppErrorBoundary } from "@/components/system/app-error-boundary";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { Menu, X } from "lucide-react";
 import type { User, SubscriptionResponse } from "@shared/schema";
+
+// ARAS CI Colors for loading states
+const COLORS = {
+  orange: '#ff6a00',
+  gold: '#e9d7c4',
+};
 
 // Lazy load pages for better performance
 const Dashboard = lazy(() => import("@/pages/dashboard"));
@@ -97,15 +104,55 @@ export default function App() {
     }
   };
 
+  // Cinematic loading state - never shows black screen
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-black">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FE9100]" />
+      <div 
+        className="fixed inset-0 flex items-center justify-center"
+        style={{
+          background: 'radial-gradient(ellipse at 50% 40%, rgba(12,12,12,0.96) 0%, rgba(0,0,0,0.99) 100%)',
+        }}
+      >
+        <div className="text-center">
+          <div 
+            className="w-12 h-12 mx-auto mb-4 rounded-full"
+            style={{
+              background: `conic-gradient(${COLORS.orange}, ${COLORS.gold}, ${COLORS.orange})`,
+              animation: 'spin 1.5s linear infinite',
+            }}
+          >
+            <div className="w-10 h-10 m-1 rounded-full bg-black" />
+          </div>
+          <p className="text-sm text-neutral-500">Wird geladen...</p>
+        </div>
+        <style>{`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  // Redirect to login if no user after loading complete
+  if (!user) {
+    const returnTo = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.href = `/login?returnTo=${returnTo}`;
+    return (
+      <div 
+        className="fixed inset-0 flex items-center justify-center"
+        style={{
+          background: 'radial-gradient(ellipse at 50% 40%, rgba(12,12,12,0.96) 0%, rgba(0,0,0,0.99) 100%)',
+        }}
+      >
+        <p className="text-sm text-neutral-500">Weiterleitung zur Anmeldung...</p>
       </div>
     );
   }
 
   return (
+    <AppErrorBoundary>
     <div className="flex min-h-screen h-screen bg-transparent overflow-hidden">
       {/* Mobile Sidebar Overlay */}
       {isMobileSidebarOpen && (
@@ -190,5 +237,6 @@ export default function App() {
       {/* New Year 2026 Overlay - Global, one-time per user */}
       {user && <NewYearOverlay userId={String((user as User).id)} />}
     </div>
+    </AppErrorBoundary>
   );
 }

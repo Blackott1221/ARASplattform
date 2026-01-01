@@ -538,28 +538,39 @@ export default function Space() {
                         </p>
                       </motion.div>
 
-                      {/* Services */}
-                      {aiProfile?.services && aiProfile.services.length > 0 && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.5 }}
-                          className="p-4 rounded-xl bg-white/5 border border-white/10"
-                        >
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-base">💼</span>
-                            <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Services</h3>
-                          </div>
-                          <ul className="text-xs text-gray-400 space-y-1">
-                            {aiProfile.services.slice(0, 3).map((service: string, i: number) => (
-                              <li key={i} className="line-clamp-1">• {service}</li>
-                            ))}
-                            {aiProfile.services.length > 3 && (
-                              <li className="text-[#FE9100] font-semibold">+{aiProfile.services.length - 3} mehr</li>
-                            )}
-                          </ul>
-                        </motion.div>
-                      )}
+                      {/* Services - normalized to prevent crash */}
+                      {(() => {
+                        // Normalize services: handle string, array, or undefined
+                        const servicesRaw = aiProfile?.services;
+                        const servicesList: string[] = Array.isArray(servicesRaw) 
+                          ? servicesRaw.filter((s): s is string => typeof s === 'string' && s.trim() !== '')
+                          : (typeof servicesRaw === 'string' && servicesRaw.trim() 
+                              ? servicesRaw.split(/[,;\n]+/).map(s => s.trim()).filter(Boolean)
+                              : []);
+                        
+                        if (servicesList.length === 0) return null;
+                        
+                        return (
+                          <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.5 }}
+                            className="p-4 rounded-xl bg-white/5 border border-white/10"
+                          >
+                            <div className="flex items-center gap-2 mb-2">
+                              <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Services</h3>
+                            </div>
+                            <ul className="text-xs text-gray-400 space-y-1">
+                              {servicesList.slice(0, 3).map((service: string, i: number) => (
+                                <li key={i} className="line-clamp-1">{service}</li>
+                              ))}
+                              {servicesList.length > 3 && (
+                                <li className="text-[#FE9100] font-semibold">+{servicesList.length - 3} mehr</li>
+                              )}
+                            </ul>
+                          </motion.div>
+                        );
+                      })()}
 
                       {/* Target Audience */}
                       {aiProfile?.targetAudience && (

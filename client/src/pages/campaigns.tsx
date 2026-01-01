@@ -140,11 +140,24 @@ export default function Campaigns() {
     if (!aiProfile) return [];
     
     const suggestions: string[] = [];
-    if (aiProfile.products && Array.isArray(aiProfile.products) && aiProfile.products.length > 0) {
-      suggestions.push(...aiProfile.products.slice(0, 3));
+    // Normalize products - handle array or string
+    const products = Array.isArray(aiProfile.products) 
+      ? aiProfile.products.filter((p: unknown): p is string => typeof p === 'string' && !!p.trim())
+      : (typeof aiProfile.products === 'string' && aiProfile.products.trim() 
+          ? aiProfile.products.split(/[,;\n]+/).map((s: string) => s.trim()).filter(Boolean)
+          : []);
+    if (products.length > 0) {
+      suggestions.push(...products.slice(0, 3));
     }
-    if (aiProfile.services && Array.isArray(aiProfile.services) && aiProfile.services.length > 0) {
-      suggestions.push(...aiProfile.services.slice(0, 3));
+    
+    // Normalize services - handle array or string
+    const services = Array.isArray(aiProfile.services) 
+      ? aiProfile.services.filter((s: unknown): s is string => typeof s === 'string' && !!s.trim())
+      : (typeof aiProfile.services === 'string' && aiProfile.services.trim() 
+          ? aiProfile.services.split(/[,;\n]+/).map((s: string) => s.trim()).filter(Boolean)
+          : []);
+    if (services.length > 0) {
+      suggestions.push(...services.slice(0, 3));
     }
     return suggestions;
   };
