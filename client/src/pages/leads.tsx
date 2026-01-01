@@ -1,10 +1,78 @@
-import React, { useState, useEffect, useRef, useCallback, Component, ErrorInfo, ReactNode } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Component, ErrorInfo, ReactNode, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { useLocation } from 'wouter';
+
+// V8: Parse URL search params (wouter doesn't have useSearchParams)
+function useSearchParams(): URLSearchParams {
+  const [location] = useLocation();
+  return useMemo(() => {
+    if (typeof window === 'undefined') return new URLSearchParams();
+    return new URLSearchParams(window.location.search);
+  }, [location]);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MISSING FIELD DETECTION (V8 - Guided Setup)
+// ═══════════════════════════════════════════════════════════════
+interface MissingField {
+  key: string;
+  label: string;
+  reason: string;
+  sectionId: string;
+  severity: 'warn' | 'fail';
+}
+
+const FIELD_DEFINITIONS: Omit<MissingField, 'severity'>[] = [
+  { key: 'company', label: 'Firma', reason: 'Wird für personalisierte Anrufe und Zusammenfassungen benötigt.', sectionId: 'profile-section' },
+  { key: 'companyDescription', label: 'Unternehmensbeschreibung', reason: 'Hilft ARAS, dein Geschäft zu verstehen und passend zu kommunizieren.', sectionId: 'business-section' },
+  { key: 'targetAudience', label: 'Zielgruppe', reason: 'Ermöglicht zielgerichtete Gesprächsführung und bessere Zusammenfassungen.', sectionId: 'business-section' },
+  { key: 'services', label: 'Dienstleistungen', reason: 'Verbessert die Gesprächsqualität und Kontextverständnis.', sectionId: 'business-section' },
+];
+
+function getMissingFields(userProfile: any, aiProfile: any): MissingField[] {
+  const missing: MissingField[] = [];
+  
+  // Company - fail if missing
+  if (!userProfile?.company?.trim()) {
+    missing.push({ ...FIELD_DEFINITIONS[0], severity: 'fail' });
+  }
+  
+  // Company Description - warn if missing, fail if too short
+  const desc = aiProfile?.companyDescription?.trim() || '';
+  if (!desc) {
+    missing.push({ ...FIELD_DEFINITIONS[1], severity: 'warn' });
+  } else if (desc.length < 40) {
+    missing.push({ ...FIELD_DEFINITIONS[1], severity: 'warn', reason: 'Beschreibung zu kurz (min. 40 Zeichen empfohlen).' });
+  }
+  
+  // Target Audience - fail if missing
+  if (!aiProfile?.targetAudience?.trim()) {
+    missing.push({ ...FIELD_DEFINITIONS[2], severity: 'fail' });
+  }
+  
+  // Services - warn if missing
+  if (!aiProfile?.services?.trim()) {
+    missing.push({ ...FIELD_DEFINITIONS[3], severity: 'warn' });
+  }
+  
+  return missing;
+}
+
+// Missing field styles
+const MISSING_FIELD_STYLES = {
+  border: '1px solid rgba(255,106,0,0.55)',
+  boxShadow: '0 0 0 1px rgba(255,106,0,0.2), 0 0 24px rgba(255,106,0,0.18)',
+  background: 'rgba(255,106,0,0.06)',
+};
+
+const MISSING_HINT_STYLES = {
+  color: 'rgba(233,215,196,0.9)',
+};
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -151,6 +219,14 @@ function LeadsContent() {
   const heroRef = useRef<HTMLDivElement>(null);
   const [hasMounted, setHasMounted] = useState(false);
   
+  // V8: Deep-link support for guided setup
+  const searchParams = useSearchParams();
+  const [highlightedFields, setHighlightedFields] = useState<Set<string>>(new Set());
+  const [showSetupBar, setShowSetupBar] = useState(false);
+  const fromPower = searchParams.get('from') === 'power';
+  const businessSectionRef = useRef<HTMLDivElement>(null);
+  const profileSectionRef = useRef<HTMLDivElement>(null);
+  
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -159,6 +235,35 @@ function LeadsContent() {
   useEffect(() => {
     setHasMounted(true);
   }, []);
+
+  // V8: Parse URL params and setup highlighting
+  useEffect(() => {
+    const missingParam = searchParams.get('missing');
+    const sectionParam = searchParams.get('section');
+    
+    if (missingParam) {
+      const keys = missingParam.split(',').map(k => k.trim().replace('aiProfile.', ''));
+      setHighlightedFields(new Set(keys));
+      setShowSetupBar(true);
+      
+      // Auto-scroll to first missing field's section after short delay
+      setTimeout(() => {
+        const firstKey = keys[0];
+        const targetSection = firstKey === 'company' ? profileSectionRef : businessSectionRef;
+        targetSection.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        
+        // If business section, auto-open edit mode
+        if (firstKey !== 'company') {
+          setIsEditingBusiness(true);
+        }
+      }, 300);
+    } else if (sectionParam) {
+      setTimeout(() => {
+        const targetSection = sectionParam === 'profile-section' ? profileSectionRef : businessSectionRef;
+        targetSection.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 300);
+    }
+  }, [searchParams]);
 
   // Fetch data sources from API
   const { data: dataSourcesResponse, isLoading: isLoadingDataSources, refetch: refetchDataSources } = useQuery<{ success: boolean; dataSources: DataSource[] }>({
@@ -227,6 +332,39 @@ function LeadsContent() {
 
   const userProfile = (user as UserType) || {};
   const aiProfile = userProfile.aiProfile || {};
+
+  // V8: Compute missing fields for guided setup
+  const missingFields = useMemo(() => getMissingFields(userProfile, aiProfile), [userProfile, aiProfile]);
+  const missingFieldKeys = useMemo(() => new Set(missingFields.map(f => f.key)), [missingFields]);
+  
+  // V8: Check if a field should be highlighted (from URL or computed missing)
+  const isFieldHighlighted = useCallback((key: string) => {
+    return highlightedFields.has(key) || missingFieldKeys.has(key);
+  }, [highlightedFields, missingFieldKeys]);
+
+  // V8: Get field style for highlighted fields
+  const getFieldStyle = useCallback((key: string) => {
+    if (isFieldHighlighted(key)) {
+      return MISSING_FIELD_STYLES;
+    }
+    return {};
+  }, [isFieldHighlighted]);
+
+  // V8: Get missing field info
+  const getMissingFieldInfo = useCallback((key: string) => {
+    return missingFields.find(f => f.key === key);
+  }, [missingFields]);
+
+  // V8: Scroll to next missing field
+  const scrollToNextMissing = useCallback(() => {
+    if (missingFields.length === 0) return;
+    const firstMissing = missingFields[0];
+    const targetSection = firstMissing.key === 'company' ? profileSectionRef : businessSectionRef;
+    targetSection.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (firstMissing.key !== 'company') {
+      setIsEditingBusiness(true);
+    }
+  }, [missingFields]);
 
   // Start editing business intelligence
   const startEditingBusiness = () => {
@@ -624,6 +762,49 @@ function LeadsContent() {
           </div>
         </motion.div>
 
+        {/* V8: Setup Summary Bar - Only show when missing fields exist */}
+        {(missingFields.length > 0 || showSetupBar) && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-[16px] p-4 mb-6"
+            style={{
+              background: 'rgba(255,106,0,0.08)',
+              border: '1px solid rgba(255,106,0,0.25)',
+              backdropFilter: 'blur(12px)',
+            }}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white/90">
+                  Setup unvollständig: {missingFields.length} {missingFields.length === 1 ? 'Punkt' : 'Punkte'} offen
+                </p>
+                <p className="text-xs text-white/50 mt-0.5">
+                  {missingFields.map(f => f.label).join(', ')}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={scrollToNextMissing}
+                  className="px-3 py-1.5 text-xs font-medium rounded-lg transition-all hover:bg-white/10"
+                  style={{ background: 'rgba(255,106,0,0.15)', color: '#ff6a00' }}
+                >
+                  Zum nächsten Feld
+                </button>
+                {fromPower && (
+                  <a
+                    href="/app/power"
+                    className="px-3 py-1.5 text-xs font-medium rounded-lg transition-all hover:bg-white/10"
+                    style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.7)' }}
+                  >
+                    Zurück zu Power
+                  </a>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* ═══════════════════════════════════════════════════════════════════
             SECTION C: "ALLES ÜBER DICH" - Profile + Business Intelligence
         ═══════════════════════════════════════════════════════════════════ */}
@@ -634,7 +815,7 @@ function LeadsContent() {
           className="space-y-6"
         >
           {/* Profile Card */}
-          <div className="bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-[22px] p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_20px_50px_rgba(0,0,0,0.4)]">
+          <div ref={profileSectionRef} id="profile-section" className="bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-[22px] p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_20px_50px_rgba(0,0,0,0.4)]">
             <div className="flex items-center gap-3 mb-5">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff6a00]/20 to-[#e9d7c4]/10 flex items-center justify-center">
                 <User className="w-5 h-5 text-[#ff6a00]" />
@@ -665,7 +846,7 @@ function LeadsContent() {
           </div>
 
           {/* Business Intelligence Card */}
-          <div className="bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-[22px] overflow-hidden shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_20px_50px_rgba(0,0,0,0.4)]">
+          <div ref={businessSectionRef} id="business-section" className="bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-[22px] overflow-hidden shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_20px_50px_rgba(0,0,0,0.4)]">
             <div className="p-6 border-b border-white/[0.06] flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff6a00]/20 to-[#e9d7c4]/10 flex items-center justify-center">
@@ -742,7 +923,13 @@ function LeadsContent() {
                       onChange={(e) => setEditedBusiness({...editedBusiness, companyDescription: e.target.value})}
                       className="bg-black/40 border-white/10 text-white text-sm min-h-[100px] rounded-xl focus:border-[#ff6a00]/50 focus:ring-[#ff6a00]/20"
                       placeholder="Beschreibe dein Unternehmen..."
+                      style={getFieldStyle('companyDescription')}
                     />
+                    {isFieldHighlighted('companyDescription') && (
+                      <p className="text-[10px] mt-1.5" style={MISSING_HINT_STYLES}>
+                        {getMissingFieldInfo('companyDescription')?.reason}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="text-[11px] text-white/50 uppercase tracking-wider mb-2 block">Zielgruppe</label>
@@ -751,7 +938,13 @@ function LeadsContent() {
                       onChange={(e) => setEditedBusiness({...editedBusiness, targetAudience: e.target.value})}
                       className="bg-black/40 border-white/10 text-white text-sm rounded-xl focus:border-[#ff6a00]/50 focus:ring-[#ff6a00]/20"
                       placeholder="Wer sind deine Kunden?"
+                      style={getFieldStyle('targetAudience')}
                     />
+                    {isFieldHighlighted('targetAudience') && (
+                      <p className="text-[10px] mt-1.5" style={MISSING_HINT_STYLES}>
+                        {getMissingFieldInfo('targetAudience')?.reason}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="text-[11px] text-white/50 uppercase tracking-wider mb-2 block">Dienstleistungen</label>
@@ -760,7 +953,13 @@ function LeadsContent() {
                       onChange={(e) => setEditedBusiness({...editedBusiness, services: e.target.value})}
                       className="bg-black/40 border-white/10 text-white text-sm rounded-xl focus:border-[#ff6a00]/50 focus:ring-[#ff6a00]/20"
                       placeholder="Welche Dienstleistungen bietest du an?"
+                      style={getFieldStyle('services')}
                     />
+                    {isFieldHighlighted('services') && (
+                      <p className="text-[10px] mt-1.5" style={MISSING_HINT_STYLES}>
+                        {getMissingFieldInfo('services')?.reason}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="text-[11px] text-white/50 uppercase tracking-wider mb-2 block">Keywords (kommagetrennt)</label>
