@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 
 // Design Tokens (2026 Control Room - No Icons)
@@ -155,12 +155,35 @@ export function PowerResultCard({
   const [downloadingAudio, setDownloadingAudio] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const autoRefreshRef = useRef<NodeJS.Timeout | null>(null);
 
   // Normalize transcript once
   const normalizedTranscript = useMemo(() => 
     normalizeTranscript(result?.transcript), 
     [result?.transcript]
   );
+
+  // Determine if summary is pending (no summary but onRefresh available)
+  const isPending = !summary && typeof onRefresh === 'function' && (result?.id || result?.callId);
+
+  // Auto-refresh when pending - poll every 6s until summary arrives
+  useEffect(() => {
+    if (isPending && !autoRefreshRef.current) {
+      autoRefreshRef.current = setInterval(() => {
+        onRefresh?.();
+      }, 6000);
+    } else if (!isPending && autoRefreshRef.current) {
+      clearInterval(autoRefreshRef.current);
+      autoRefreshRef.current = null;
+    }
+
+    return () => {
+      if (autoRefreshRef.current) {
+        clearInterval(autoRefreshRef.current);
+        autoRefreshRef.current = null;
+      }
+    };
+  }, [isPending, onRefresh]);
 
   if (!result) return null;
 
@@ -384,9 +407,12 @@ export function PowerResultCard({
             }}
           >
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs text-neutral-500">
-                <span className="w-3 h-3 rounded-full border border-neutral-500 border-t-transparent animate-spin" />
-                <span>Zusammenfassung wird erstellt...</span>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 text-xs text-neutral-500">
+                  <span className="w-3 h-3 rounded-full border border-neutral-500 border-t-transparent animate-spin" />
+                  <span>Zusammenfassung wird erstellt...</span>
+                </div>
+                <p className="text-[10px] text-neutral-600 mt-1 ml-5">Aktualisiert automatisch</p>
               </div>
               <button
                 onClick={onRefresh}
