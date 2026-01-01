@@ -681,3 +681,51 @@ export type InternalCallLog = typeof internalCallLogs.$inferSelect;
 export type InsertInternalCallLog = typeof internalCallLogs.$inferInsert;
 export type InternalNote = typeof internalNotes.$inferSelect;
 export type InsertInternalNote = typeof internalNotes.$inferInsert;
+
+// ============================================================================
+// USER TASKS - Dashboard Action Items (DB-Persistent)
+// ============================================================================
+// Tasks extracted from Call/Space summaries or manually created
+// Used in Dashboard Operations panel for 1-click completion
+// ============================================================================
+
+export const userTasks = pgTable("user_tasks", {
+  id: varchar("id").primaryKey().notNull(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  
+  // Source tracking
+  sourceType: varchar("source_type", { enum: ["call", "space", "manual"] }).notNull(),
+  sourceId: varchar("source_id"), // callId or sessionId as string
+  fingerprint: varchar("fingerprint").notNull(), // unique per (userId, sourceType, sourceId, fingerprint)
+  
+  // Task content
+  title: varchar("title", { length: 180 }).notNull(),
+  details: text("details"), // optional extended info
+  
+  // Priority & scheduling
+  priority: varchar("priority", { enum: ["low", "medium", "high"] }).default("medium").notNull(),
+  dueAt: timestamp("due_at"),
+  snoozedUntil: timestamp("snoozed_until"),
+  
+  // Status
+  status: varchar("status", { enum: ["open", "done"] }).default("open").notNull(),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+}, (table) => [
+  index("user_tasks_user_id_idx").on(table.userId),
+  index("user_tasks_user_status_idx").on(table.userId, table.status),
+  index("user_tasks_user_source_idx").on(table.userId, table.sourceType),
+  index("user_tasks_fingerprint_idx").on(table.userId, table.fingerprint),
+  index("user_tasks_due_at_idx").on(table.dueAt),
+]);
+
+export type UserTask = typeof userTasks.$inferSelect;
+export type InsertUserTask = typeof userTasks.$inferInsert;
+
+export const insertUserTaskSchema = createInsertSchema(userTasks).omit({
+  createdAt: true,
+  updatedAt: true,
+});

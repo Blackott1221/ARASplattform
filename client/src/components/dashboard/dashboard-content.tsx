@@ -1,8 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { formatDistanceToNow, isToday, isYesterday, subDays, isAfter, format, addDays } from 'date-fns';
+import { formatDistanceToNow, isToday, isYesterday, subDays, isAfter, format, addDays, isSameDay, startOfDay } from 'date-fns';
 import { de } from 'date-fns/locale';
-import type { User } from '@shared/schema';
+import type { User, UserTask } from '@shared/schema';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { PowerResultCard } from '@/components/power/power-result-card';
 
@@ -482,6 +482,179 @@ export function DashboardContent({ user }: DashboardContentProps) {
     });
     return { total: sources.length, byType, totalChars };
   }, [dataSourcesData]);
+
+  // ═══════════════════════════════════════════════════════════════
+  // V10: DB-BACKED TASKS (Real Data - replaces localStorage)
+  // ═══════════════════════════════════════════════════════════════
+  const queryClient = useQueryClient();
+  const [tasksSyncing, setTasksSyncing] = useState(false);
+  const [newTaskInput, setNewTaskInput] = useState('');
+  const taskSyncedRef = useRef(false);
+
+  // Fetch open tasks
+  const { data: openTasks = [], refetch: refetchOpenTasks } = useQuery<UserTask[]>({
+    queryKey: ['dashboard-tasks-open'],
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/user/tasks?status=open', { credentials: 'include' });
+        if (!res.ok) return [];
+        const data = await safeJson(res);
+        return safeArray(data.tasks);
+      } catch (err) {
+        console.error('[Dashboard] Failed to fetch open tasks:', err);
+        return [];
+      }
+    },
+    staleTime: 15000,
+  });
+
+  // Fetch done tasks (limited)
+  const { data: doneTasks = [], refetch: refetchDoneTasks } = useQuery<UserTask[]>({
+    queryKey: ['dashboard-tasks-done'],
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/user/tasks?status=done&limit=20', { credentials: 'include' });
+        if (!res.ok) return [];
+        const data = await safeJson(res);
+        return safeArray(data.tasks);
+      } catch (err) {
+        console.error('[Dashboard] Failed to fetch done tasks:', err);
+        return [];
+      }
+    },
+    staleTime: 30000,
+  });
+
+  // Sync tasks from call/space summaries on dashboard load
+  useEffect(() => {
+    if (taskSyncedRef.current) return;
+    if (callLogs.length === 0 && chatSessions.length === 0) return;
+    
+    taskSyncedRef.current = true;
+    setTasksSyncing(true);
+    
+    fetch('/api/user/tasks/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ windowDays: 30, maxItems: 80 }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        console.log('[Dashboard] Tasks synced:', data);
+        if (data.created > 0) {
+          refetchOpenTasks();
+        }
+      })
+      .catch(err => console.error('[Dashboard] Task sync failed:', err))
+      .finally(() => setTasksSyncing(false));
+  }, [callLogs.length, chatSessions.length, refetchOpenTasks]);
+
+  // Mutation: Mark task done
+  const markTaskDoneMutation = useMutation({
+    mutationFn: async ({ taskId, done }: { taskId: string; done: boolean }) => {
+      const res = await fetch(`/api/user/tasks/${taskId}/done`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ done }),
+      });
+      if (!res.ok) throw new Error('Failed to update task');
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchOpenTasks();
+      refetchDoneTasks();
+    },
+  });
+
+  // Mutation: Snooze task
+  const snoozeTaskMutation = useMutation({
+    mutationFn: async ({ taskId, snoozedUntil }: { taskId: string; snoozedUntil: string | null }) => {
+      const res = await fetch(`/api/user/tasks/${taskId}/snooze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ snoozedUntil }),
+      });
+      if (!res.ok) throw new Error('Failed to snooze task');
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchOpenTasks();
+    },
+  });
+
+  // Mutation: Create manual task
+  const createTaskMutation = useMutation({
+    mutationFn: async ({ title, dueAt, priority }: { title: string; dueAt?: string; priority?: string }) => {
+      const res = await fetch('/api/user/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ title, dueAt, priority }),
+      });
+      if (!res.ok) throw new Error('Failed to create task');
+      return res.json();
+    },
+    onSuccess: () => {
+      setNewTaskInput('');
+      refetchOpenTasks();
+    },
+  });
+
+  // V10: All tasks combined for Operations panel
+  const allDbTasks = useMemo(() => {
+    return [...safeArray(openTasks), ...safeArray(doneTasks)];
+  }, [openTasks, doneTasks]);
+
+  // V10: Filtered DB tasks based on opsFilter
+  const filteredDbTasks = useMemo(() => {
+    const now = new Date();
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+    
+    return allDbTasks.filter(task => {
+      const isDone = task.status === 'done';
+      const isSnoozed = task.snoozedUntil && new Date(task.snoozedUntil) > now;
+      const dueToday = task.dueAt && isSameDay(new Date(task.dueAt), now);
+      
+      if (opsFilter === 'erledigt') return isDone;
+      if (opsFilter === 'später') return !isDone && isSnoozed;
+      if (opsFilter === 'heute') {
+        return !isDone && !isSnoozed && (dueToday || !task.dueAt);
+      }
+      // 'offen' - show all not done, not currently snoozed
+      return !isDone && !isSnoozed;
+    });
+  }, [allDbTasks, opsFilter]);
+
+  // V10: Task counts for filter tabs
+  const taskCounts = useMemo(() => {
+    const now = new Date();
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+    
+    let offen = 0, heute = 0, spaeter = 0, erledigt = 0;
+    
+    allDbTasks.forEach(task => {
+      const isDone = task.status === 'done';
+      const isSnoozed = task.snoozedUntil && new Date(task.snoozedUntil) > now;
+      
+      if (isDone) {
+        erledigt++;
+      } else if (isSnoozed) {
+        spaeter++;
+      } else {
+        offen++;
+        // Also count for heute if due today or no due date
+        const dueToday = task.dueAt && isSameDay(new Date(task.dueAt), now);
+        if (dueToday || !task.dueAt) heute++;
+      }
+    });
+    
+    return { offen, heute, spaeter, erledigt };
+  }, [allDbTasks]);
 
   // Set persistent error if fetch fails
   useEffect(() => {
@@ -1378,106 +1551,193 @@ Status: ${persistentError.status || 'N/A'}`}
               style={{ background: DT.panelBg, backdropFilter: 'blur(20px)', border: `1px solid ${DT.panelBorder}` }}
             >
               <div className="p-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between">
                   <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-500">
                     Operations
                   </h3>
-                  <span className="text-[10px] text-neutral-600">
-                    {actionItems.filter(a => !a.done).length} offen
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {tasksSyncing && (
+                      <span className="text-[9px] text-neutral-600 animate-pulse">Sync...</span>
+                    )}
+                    <span className="text-[10px] text-neutral-600">
+                      {taskCounts.offen} offen
+                    </span>
+                  </div>
                 </div>
-                {/* Filter tabs */}
+                {/* Filter tabs with counts */}
                 <div className="flex items-center gap-1 p-0.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)' }}>
-                  {(['offen', 'heute', 'später', 'erledigt'] as const).map(filter => (
+                  {([
+                    { key: 'offen', label: 'Offen', count: taskCounts.offen },
+                    { key: 'heute', label: 'Heute', count: taskCounts.heute },
+                    { key: 'später', label: 'Später', count: taskCounts.spaeter },
+                    { key: 'erledigt', label: 'Erledigt', count: taskCounts.erledigt },
+                  ] as const).map(({ key, label, count }) => (
                     <button
-                      key={filter}
-                      onClick={() => setOpsFilter(filter)}
+                      key={key}
+                      onClick={() => setOpsFilter(key)}
                       className={`flex-1 px-2 py-1.5 rounded-md text-[9px] font-semibold uppercase tracking-wider transition-all ${
-                        opsFilter === filter ? 'text-white' : 'text-neutral-600 hover:text-neutral-400'
+                        opsFilter === key ? 'text-white' : 'text-neutral-600 hover:text-neutral-400'
                       }`}
-                      style={opsFilter === filter ? { 
+                      style={opsFilter === key ? { 
                         background: 'rgba(255,106,0,0.15)', 
                         boxShadow: 'inset 0 0 0 1px rgba(255,106,0,0.25)'
                       } : {}}
                     >
-                      {filter}
+                      {label} {count > 0 && <span className="ml-0.5 opacity-70">({count})</span>}
                     </button>
                   ))}
                 </div>
               </div>
-              <div className="p-3">
-                {actionItems.length === 0 ? (
+              
+              {/* Quick Add Task Input */}
+              <div className="px-3 pb-2">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (newTaskInput.trim()) {
+                      createTaskMutation.mutate({ title: newTaskInput.trim() });
+                    }
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <input
+                    type="text"
+                    value={newTaskInput}
+                    onChange={(e) => setNewTaskInput(e.target.value)}
+                    placeholder="Neue Aufgabe..."
+                    className="flex-1 text-xs px-3 py-2 rounded-lg bg-transparent border outline-none transition-colors focus:border-orange-500/40"
+                    style={{ borderColor: 'rgba(255,255,255,0.08)', color: '#ddd' }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!newTaskInput.trim() || createTaskMutation.isPending}
+                    className="text-[10px] font-semibold px-3 py-2 rounded-lg transition-all disabled:opacity-40"
+                    style={{ background: 'rgba(255,106,0,0.15)', color: DT.orange }}
+                  >
+                    {createTaskMutation.isPending ? '...' : 'Hinzufügen'}
+                  </button>
+                </form>
+              </div>
+
+              <div className="p-3 pt-0">
+                {allDbTasks.length === 0 ? (
                   <div className="text-center py-6">
                     <p className="text-xs text-neutral-500 mb-1">Keine Aufgaben</p>
                     <p className="text-[10px] text-neutral-600">Aufgaben werden aus Anruf-Zusammenfassungen erstellt</p>
                   </div>
-                ) : filteredActionItems.length === 0 ? (
+                ) : filteredDbTasks.length === 0 ? (
                   <div className="text-center py-6">
                     <p className="text-xs text-neutral-500">Keine Aufgaben in dieser Ansicht</p>
                   </div>
                 ) : (
-                  <div className="space-y-1.5 max-h-[280px] overflow-y-auto mission-drawer-scrollbar">
-                    {filteredActionItems.map(action => (
-                      <div 
-                        key={action.id}
-                        className={`p-3 rounded-xl transition-all ${action.done ? 'opacity-50' : ''}`}
-                        style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${DT.panelBorder}` }}
-                      >
-                        <div className="flex items-start gap-2">
-                          <button
-                            onClick={() => toggleActionDone(action.id)}
-                            className="mt-0.5 w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-all"
-                            style={{ 
-                              borderColor: action.done ? '#22c55e' : 'rgba(255,255,255,0.2)',
-                              background: action.done ? 'rgba(34,197,94,0.15)' : 'transparent'
-                            }}
-                          >
-                            {action.done && <div className="w-2 h-2 rounded-sm bg-green-500" />}
-                          </button>
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-xs leading-relaxed ${action.done ? 'line-through text-neutral-600' : 'text-neutral-300'}`}>
-                              {action.title}
-                            </p>
-                            <div className="flex items-center gap-2 mt-1.5">
-                              <span 
-                                className="text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded font-medium"
-                                style={{ background: 'rgba(255,106,0,0.12)', color: DT.orange }}
-                              >
-                                {action.source.type}
-                              </span>
-                              <span className="text-[9px] text-neutral-600 truncate">{action.source.name}</span>
-                            </div>
-                            {/* Snooze indicator */}
-                            {action.snoozedUntil && (
-                              <p className="text-[9px] mt-1" style={{ color: DT.statusPending }}>
-                                Zurückgestellt bis {format(new Date(action.snoozedUntil), 'dd.MM HH:mm', { locale: de })}
+                  <div className="space-y-1.5 max-h-[280px] overflow-y-auto cinematic-drawer-scroll">
+                    {filteredDbTasks.map(task => {
+                      const isDone = task.status === 'done';
+                      const isSnoozed = task.snoozedUntil && new Date(task.snoozedUntil) > new Date();
+                      
+                      return (
+                        <div 
+                          key={task.id}
+                          className={`p-3 rounded-xl transition-all ${isDone ? 'opacity-50' : ''}`}
+                          style={{ 
+                            background: 'rgba(255,255,255,0.02)', 
+                            border: `1px solid ${DT.panelBorder}`,
+                            borderLeft: `3px solid ${task.priority === 'high' ? DT.orange : task.priority === 'low' ? '#666' : 'rgba(255,106,0,0.4)'}`
+                          }}
+                        >
+                          <div className="flex items-start gap-2">
+                            <button
+                              onClick={() => markTaskDoneMutation.mutate({ taskId: task.id, done: !isDone })}
+                              disabled={markTaskDoneMutation.isPending}
+                              className="mt-0.5 w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-all"
+                              style={{ 
+                                borderColor: isDone ? '#22c55e' : 'rgba(255,255,255,0.2)',
+                                background: isDone ? 'rgba(34,197,94,0.15)' : 'transparent'
+                              }}
+                            >
+                              {isDone && <div className="w-2 h-2 rounded-sm bg-green-500" />}
+                            </button>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-xs leading-relaxed ${isDone ? 'line-through text-neutral-600' : 'text-neutral-300'}`}>
+                                {task.title}
                               </p>
+                              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                <span 
+                                  className="text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded font-medium"
+                                  style={{ 
+                                    background: task.sourceType === 'call' ? 'rgba(255,106,0,0.12)' : 
+                                               task.sourceType === 'space' ? 'rgba(99,102,241,0.12)' : 'rgba(255,255,255,0.08)',
+                                    color: task.sourceType === 'call' ? DT.orange : 
+                                           task.sourceType === 'space' ? '#818cf8' : '#888'
+                                  }}
+                                >
+                                  {task.sourceType}
+                                </span>
+                                {task.dueAt && (
+                                  <span className="text-[9px] text-neutral-500">
+                                    Fällig: {format(new Date(task.dueAt), 'dd.MM HH:mm', { locale: de })}
+                                  </span>
+                                )}
+                              </div>
+                              {/* Snooze indicator */}
+                              {isSnoozed && task.snoozedUntil && (
+                                <p className="text-[9px] mt-1" style={{ color: DT.statusPending }}>
+                                  Zurückgestellt bis {format(new Date(task.snoozedUntil), 'dd.MM HH:mm', { locale: de })}
+                                </p>
+                              )}
+                            </div>
+                            {/* Snooze dropdown */}
+                            {!isDone && !isSnoozed && (
+                              <div className="relative flex-shrink-0">
+                                <select
+                                  onChange={(e) => {
+                                    if (e.target.value) {
+                                      const now = new Date();
+                                      let snoozedUntil: string;
+                                      
+                                      if (e.target.value === '1h') {
+                                        snoozedUntil = new Date(now.getTime() + 60 * 60 * 1000).toISOString();
+                                      } else if (e.target.value === 'morgen') {
+                                        const tomorrow = new Date(now);
+                                        tomorrow.setDate(tomorrow.getDate() + 1);
+                                        tomorrow.setHours(9, 0, 0, 0);
+                                        snoozedUntil = tomorrow.toISOString();
+                                      } else {
+                                        const nextWeek = new Date(now);
+                                        nextWeek.setDate(nextWeek.getDate() + 7);
+                                        nextWeek.setHours(9, 0, 0, 0);
+                                        snoozedUntil = nextWeek.toISOString();
+                                      }
+                                      
+                                      snoozeTaskMutation.mutate({ taskId: task.id, snoozedUntil });
+                                      e.target.value = '';
+                                    }
+                                  }}
+                                  className="appearance-none text-[9px] px-2 py-1 rounded bg-transparent border cursor-pointer transition-colors hover:bg-white/[0.04]"
+                                  style={{ borderColor: 'rgba(255,255,255,0.1)', color: '#888' }}
+                                  defaultValue=""
+                                >
+                                  <option value="" disabled>Später</option>
+                                  <option value="1h">1 Stunde</option>
+                                  <option value="morgen">Morgen</option>
+                                  <option value="woche">Nächste Woche</option>
+                                </select>
+                              </div>
+                            )}
+                            {/* Unsnooze button */}
+                            {isSnoozed && (
+                              <button
+                                onClick={() => snoozeTaskMutation.mutate({ taskId: task.id, snoozedUntil: null })}
+                                className="text-[9px] px-2 py-1 rounded transition-colors hover:bg-white/[0.04]"
+                                style={{ color: '#888' }}
+                              >
+                                Aufheben
+                              </button>
                             )}
                           </div>
-                          {/* Snooze dropdown */}
-                          {!action.done && !action.snoozedUntil && (
-                            <div className="relative flex-shrink-0">
-                              <select
-                                onChange={(e) => {
-                                  if (e.target.value) {
-                                    handleSnoozeAction(action.id, e.target.value as '1h' | 'morgen' | 'woche');
-                                    e.target.value = '';
-                                  }
-                                }}
-                                className="appearance-none text-[9px] px-2 py-1 rounded bg-transparent border cursor-pointer transition-colors hover:bg-white/[0.04]"
-                                style={{ borderColor: 'rgba(255,255,255,0.1)', color: '#888' }}
-                                defaultValue=""
-                              >
-                                <option value="" disabled>Später</option>
-                                <option value="1h">1 Stunde</option>
-                                <option value="morgen">Morgen</option>
-                                <option value="woche">Nächste Woche</option>
-                              </select>
-                            </div>
-                          )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

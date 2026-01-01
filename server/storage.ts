@@ -10,6 +10,7 @@ import {
   subscriptionPlans,
   usageTracking,
   twilioSettings,
+  userTasks,
   type User,
   type UpsertUser,
   type Lead,
@@ -26,6 +27,8 @@ import {
   type UsageTracking,
   type TwilioSettings,
   type InsertTwilioSettings,
+  type UserTask,
+  type InsertUserTask,
 } from "@shared/schema";
 import { db } from "./db";
 import { logger } from "./logger";
@@ -168,6 +171,21 @@ export interface IStorage {
   
   // User Data Sources (Knowledge Base)
   getUserDataSources(userId: string): Promise<any[]>;
+  
+  // User Tasks (Dashboard Operations)
+  listUserTasks(userId: string, filters?: {
+    status?: 'open' | 'done' | 'all';
+    sourceType?: 'call' | 'space' | 'manual';
+    sourceId?: string;
+    includeDone?: boolean;
+    limit?: number;
+    sinceDays?: number;
+  }): Promise<UserTask[]>;
+  upsertUserTask(task: InsertUserTask): Promise<UserTask>;
+  setTaskDone(userId: string, taskId: string, done: boolean): Promise<UserTask | null>;
+  snoozeTask(userId: string, taskId: string, snoozedUntil: Date | null): Promise<UserTask | null>;
+  createManualTask(userId: string, title: string, dueAt?: Date, priority?: 'low' | 'medium' | 'high'): Promise<UserTask>;
+  getTaskByFingerprint(userId: string, fingerprint: string): Promise<UserTask | null>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2398,6 +2416,194 @@ export class MemStorage implements IStorage {
       logger.error(`[STORAGE] ❌ ERROR fetching data sources for userId=${userId}:`, error.message);
       logger.error(`[STORAGE] Stack:`, error.stack);
       throw error; // Rethrow - don't hide errors with empty array
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // USER TASKS - Dashboard Operations (DB-Persistent)
+  // ═══════════════════════════════════════════════════════════════
+
+  async listUserTasks(userId: string, filters?: {
+    status?: 'open' | 'done' | 'all';
+    sourceType?: 'call' | 'space' | 'manual';
+    sourceId?: string;
+    includeDone?: boolean;
+    limit?: number;
+    sinceDays?: number;
+  }): Promise<UserTask[]> {
+    try {
+      const conditions = [eq(userTasks.userId, userId)];
+      
+      // Status filter
+      if (filters?.status && filters.status !== 'all') {
+        conditions.push(eq(userTasks.status, filters.status));
+      } else if (!filters?.includeDone && filters?.status !== 'all') {
+        conditions.push(eq(userTasks.status, 'open'));
+      }
+      
+      // Source type filter
+      if (filters?.sourceType) {
+        conditions.push(eq(userTasks.sourceType, filters.sourceType));
+      }
+      
+      // Source ID filter
+      if (filters?.sourceId) {
+        conditions.push(eq(userTasks.sourceId, filters.sourceId));
+      }
+      
+      // Since days filter
+      if (filters?.sinceDays) {
+        const sinceDate = new Date();
+        sinceDate.setDate(sinceDate.getDate() - filters.sinceDays);
+        conditions.push(sql`${userTasks.createdAt} >= ${sinceDate}`);
+      }
+      
+      let query = db
+        .select()
+        .from(userTasks)
+        .where(and(...conditions))
+        .orderBy(desc(userTasks.createdAt));
+      
+      if (filters?.limit) {
+        query = query.limit(filters.limit) as any;
+      }
+      
+      const result = await query;
+      logger.info(`[STORAGE] listUserTasks for userId=${userId}: found ${result.length} tasks`);
+      return result;
+    } catch (error: any) {
+      logger.error(`[STORAGE] Error listing user tasks:`, error.message);
+      return [];
+    }
+  }
+
+  async upsertUserTask(task: InsertUserTask): Promise<UserTask> {
+    try {
+      // Check if task with same fingerprint exists
+      const existing = await this.getTaskByFingerprint(task.userId, task.fingerprint);
+      
+      if (existing) {
+        // Update existing task (only certain fields)
+        const [updated] = await db
+          .update(userTasks)
+          .set({
+            title: task.title,
+            details: task.details,
+            priority: task.priority,
+            dueAt: task.dueAt,
+            updatedAt: new Date(),
+          })
+          .where(eq(userTasks.id, existing.id))
+          .returning();
+        logger.info(`[STORAGE] Updated existing task: ${updated.id}`);
+        return updated;
+      } else {
+        // Create new task
+        const [created] = await db
+          .insert(userTasks)
+          .values({
+            ...task,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .returning();
+        logger.info(`[STORAGE] Created new task: ${created.id}`);
+        return created;
+      }
+    } catch (error: any) {
+      logger.error(`[STORAGE] Error upserting task:`, error.message);
+      throw error;
+    }
+  }
+
+  async setTaskDone(userId: string, taskId: string, done: boolean): Promise<UserTask | null> {
+    try {
+      const [updated] = await db
+        .update(userTasks)
+        .set({
+          status: done ? 'done' : 'open',
+          completedAt: done ? new Date() : null,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(userTasks.id, taskId), eq(userTasks.userId, userId)))
+        .returning();
+      
+      if (updated) {
+        logger.info(`[STORAGE] Task ${taskId} marked as ${done ? 'done' : 'open'}`);
+      }
+      return updated || null;
+    } catch (error: any) {
+      logger.error(`[STORAGE] Error setting task done:`, error.message);
+      return null;
+    }
+  }
+
+  async snoozeTask(userId: string, taskId: string, snoozedUntil: Date | null): Promise<UserTask | null> {
+    try {
+      const [updated] = await db
+        .update(userTasks)
+        .set({
+          snoozedUntil,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(userTasks.id, taskId), eq(userTasks.userId, userId)))
+        .returning();
+      
+      if (updated) {
+        logger.info(`[STORAGE] Task ${taskId} snoozed until ${snoozedUntil?.toISOString() || 'null'}`);
+      }
+      return updated || null;
+    } catch (error: any) {
+      logger.error(`[STORAGE] Error snoozing task:`, error.message);
+      return null;
+    }
+  }
+
+  async createManualTask(
+    userId: string, 
+    title: string, 
+    dueAt?: Date, 
+    priority: 'low' | 'medium' | 'high' = 'medium'
+  ): Promise<UserTask> {
+    try {
+      const taskId = `task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const fingerprint = `manual_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+      
+      const [created] = await db
+        .insert(userTasks)
+        .values({
+          id: taskId,
+          userId,
+          sourceType: 'manual',
+          sourceId: null,
+          fingerprint,
+          title: title.slice(0, 180),
+          priority,
+          dueAt: dueAt || null,
+          status: 'open',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+      
+      logger.info(`[STORAGE] Created manual task: ${created.id}`);
+      return created;
+    } catch (error: any) {
+      logger.error(`[STORAGE] Error creating manual task:`, error.message);
+      throw error;
+    }
+  }
+
+  async getTaskByFingerprint(userId: string, fingerprint: string): Promise<UserTask | null> {
+    try {
+      const [task] = await db
+        .select()
+        .from(userTasks)
+        .where(and(eq(userTasks.userId, userId), eq(userTasks.fingerprint, fingerprint)));
+      return task || null;
+    } catch (error: any) {
+      logger.error(`[STORAGE] Error getting task by fingerprint:`, error.message);
+      return null;
     }
   }
 }

@@ -331,6 +331,247 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ========================================
+  // USER TASKS API (Dashboard Operations)
+  // ========================================
+
+  // GET /api/user/tasks - List user tasks with filters
+  app.get('/api/user/tasks', requireAuth, async (req: any, res) => {
+    try {
+      const userId = getAuthUserId(req);
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'User ID not found' });
+      }
+
+      const { status, sourceType, sourceId, limit, sinceDays } = req.query;
+      
+      const tasks = await storage.listUserTasks(userId, {
+        status: status as 'open' | 'done' | 'all' | undefined,
+        sourceType: sourceType as 'call' | 'space' | 'manual' | undefined,
+        sourceId: sourceId as string | undefined,
+        limit: limit ? parseInt(limit as string, 10) : undefined,
+        sinceDays: sinceDays ? parseInt(sinceDays as string, 10) : undefined,
+      });
+
+      res.json({ success: true, tasks });
+    } catch (error: any) {
+      logger.error('[TASKS] Error listing tasks:', error.message);
+      res.status(500).json({ success: false, message: 'Failed to list tasks' });
+    }
+  });
+
+  // POST /api/user/tasks - Create manual task
+  app.post('/api/user/tasks', requireAuth, async (req: any, res) => {
+    try {
+      const userId = getAuthUserId(req);
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'User ID not found' });
+      }
+
+      const { title, dueAt, priority } = req.body;
+      
+      if (!title || typeof title !== 'string' || title.trim().length === 0) {
+        return res.status(400).json({ success: false, message: 'Title is required' });
+      }
+
+      const task = await storage.createManualTask(
+        userId,
+        title.trim(),
+        dueAt ? new Date(dueAt) : undefined,
+        priority || 'medium'
+      );
+
+      res.json({ success: true, task });
+    } catch (error: any) {
+      logger.error('[TASKS] Error creating task:', error.message);
+      res.status(500).json({ success: false, message: 'Failed to create task' });
+    }
+  });
+
+  // POST /api/user/tasks/:taskId/done - Mark task as done/undone
+  app.post('/api/user/tasks/:taskId/done', requireAuth, async (req: any, res) => {
+    try {
+      const userId = getAuthUserId(req);
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'User ID not found' });
+      }
+
+      const { taskId } = req.params;
+      const { done } = req.body;
+
+      const task = await storage.setTaskDone(userId, taskId, done === true);
+
+      if (!task) {
+        return res.status(404).json({ success: false, message: 'Task not found' });
+      }
+
+      res.json({ success: true, task });
+    } catch (error: any) {
+      logger.error('[TASKS] Error updating task status:', error.message);
+      res.status(500).json({ success: false, message: 'Failed to update task status' });
+    }
+  });
+
+  // POST /api/user/tasks/:taskId/snooze - Snooze task
+  app.post('/api/user/tasks/:taskId/snooze', requireAuth, async (req: any, res) => {
+    try {
+      const userId = getAuthUserId(req);
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'User ID not found' });
+      }
+
+      const { taskId } = req.params;
+      const { snoozedUntil } = req.body;
+
+      const task = await storage.snoozeTask(
+        userId,
+        taskId,
+        snoozedUntil ? new Date(snoozedUntil) : null
+      );
+
+      if (!task) {
+        return res.status(404).json({ success: false, message: 'Task not found' });
+      }
+
+      res.json({ success: true, task });
+    } catch (error: any) {
+      logger.error('[TASKS] Error snoozing task:', error.message);
+      res.status(500).json({ success: false, message: 'Failed to snooze task' });
+    }
+  });
+
+  // POST /api/user/tasks/sync - Sync tasks from call/space summaries
+  app.post('/api/user/tasks/sync', requireAuth, async (req: any, res) => {
+    try {
+      const userId = getAuthUserId(req);
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'User ID not found' });
+      }
+
+      const { windowDays = 30, maxItems = 80 } = req.body;
+      
+      // Import task extractor
+      const { extractTasksFromNextStep, generateFingerprint } = await import('./tasks/task-extractor');
+
+      let created = 0;
+      let updated = 0;
+      let skipped = 0;
+      let scannedCalls = 0;
+      let scannedSpaces = 0;
+
+      // Get recent calls with summaries
+      const sinceDate = new Date();
+      sinceDate.setDate(sinceDate.getDate() - windowDays);
+
+      const calls = await client`
+        SELECT id, metadata, contact_name, created_at
+        FROM call_logs
+        WHERE user_id = ${userId}
+          AND created_at >= ${sinceDate}
+        ORDER BY created_at DESC
+        LIMIT ${maxItems}
+      `;
+
+      scannedCalls = calls.length;
+
+      // Process calls
+      for (const call of calls) {
+        const summary = call.metadata?.summary;
+        if (!summary?.nextStep) continue;
+
+        const tasks = extractTasksFromNextStep(summary.nextStep);
+        
+        for (const task of tasks) {
+          const fingerprint = generateFingerprint('call', String(call.id), task.title);
+          
+          try {
+            const existing = await storage.getTaskByFingerprint(userId, fingerprint);
+            
+            if (existing) {
+              skipped++;
+            } else {
+              await storage.upsertUserTask({
+                id: `task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                userId,
+                sourceType: 'call',
+                sourceId: String(call.id),
+                fingerprint,
+                title: task.title,
+                priority: task.priority,
+                dueAt: task.dueAt,
+                status: 'open',
+              });
+              created++;
+            }
+          } catch (e) {
+            skipped++;
+          }
+        }
+      }
+
+      // Get recent space sessions with summaries
+      const sessions = await client`
+        SELECT id, title, metadata, created_at
+        FROM chat_sessions
+        WHERE user_id = ${userId}
+          AND created_at >= ${sinceDate}
+        ORDER BY created_at DESC
+        LIMIT ${maxItems}
+      `;
+
+      scannedSpaces = sessions.length;
+
+      // Process sessions
+      for (const session of sessions) {
+        const summary = session.metadata?.spaceSummary?.full;
+        if (!summary?.nextStep) continue;
+
+        const tasks = extractTasksFromNextStep(summary.nextStep);
+        
+        for (const task of tasks) {
+          const fingerprint = generateFingerprint('space', String(session.id), task.title);
+          
+          try {
+            const existing = await storage.getTaskByFingerprint(userId, fingerprint);
+            
+            if (existing) {
+              skipped++;
+            } else {
+              await storage.upsertUserTask({
+                id: `task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                userId,
+                sourceType: 'space',
+                sourceId: String(session.id),
+                fingerprint,
+                title: task.title,
+                priority: task.priority,
+                dueAt: task.dueAt,
+                status: 'open',
+              });
+              created++;
+            }
+          } catch (e) {
+            skipped++;
+          }
+        }
+      }
+
+      logger.info(`[TASKS/SYNC] userId=${userId} created=${created} updated=${updated} skipped=${skipped} calls=${scannedCalls} spaces=${scannedSpaces}`);
+
+      res.json({
+        success: true,
+        created,
+        updated,
+        skipped,
+        scannedCalls,
+        scannedSpaces
+      });
+    } catch (error: any) {
+      logger.error('[TASKS/SYNC] Error syncing tasks:', error.message);
+      res.status(500).json({ success: false, message: 'Failed to sync tasks' });
+    }
+  });
+
+  // ========================================
   // USER DATA SOURCES API (Knowledge Base)
   // ========================================
 
