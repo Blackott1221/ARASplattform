@@ -8,6 +8,7 @@ import { PowerResultCard } from '@/components/power/power-result-card';
 import { MissionBriefing } from '@/components/dashboard/mission-briefing';
 import { CoachTour, startDashboardTour, isTourCompleted } from '@/components/system/coach-tour';
 import { MatrixPanel, type MatrixLine } from '@/components/system/matrix-panel';
+import { ModuleBoundary } from '@/components/system/module-boundary';
 import { SmartInbox } from '@/components/dashboard/smart-inbox';
 import { ContactRadar, FocusBar } from '@/components/dashboard/contact-radar';
 import { TodayOS } from '@/components/dashboard/today-os';
@@ -1562,65 +1563,71 @@ Status: ${persistentError.status || 'N/A'}`}
           <div className="lg:col-span-8 space-y-5">
 
             {/* Smart Inbox - Unified Activity Feed with Triage */}
-            <motion.div
-              data-tour="mc-feed"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: ANIM.duration, delay: 0.15 }}
-              className="rounded-2xl overflow-hidden"
-              style={{ background: DT.panelBg, backdropFilter: 'blur(20px)', border: `1px solid ${DT.panelBorder}` }}
-            >
-              <div className="p-4">
-                <SmartInbox
-                  calls={callLogs}
-                  spaces={chatSessions}
-                  tasks={safeArray(openTasks)}
-                  userId={user?.id || 'anonymous'}
-                  sourceFilter={activeFilter === 'call' ? 'calls' : activeFilter === 'space' ? 'space' : 'all'}
-                  searchQuery={searchQuery}
-                  onOpenItem={handleOpenInboxItem}
-                  onRefreshFeed={() => {
-                    refetchCallLogs();
-                    refetchChatSessions();
-                  }}
-                  onSourceFilterChange={(filter) => {
-                    setActiveFilter(filter === 'calls' ? 'call' : filter === 'space' ? 'space' : 'all');
-                  }}
-                  onSearchChange={setSearchQuery}
-                  inboxQueueRef={inboxQueueRef}
-                  focusKey={focusKey}
-                />
-              </div>
-            </motion.div>
+            <ModuleBoundary moduleName="SmartInbox" userId={user?.id} fallbackHeight="400px">
+              <motion.div
+                data-tour="mc-feed"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: ANIM.duration, delay: 0.15 }}
+                className="rounded-2xl overflow-hidden"
+                style={{ background: DT.panelBg, backdropFilter: 'blur(20px)', border: `1px solid ${DT.panelBorder}` }}
+              >
+                <div className="p-4">
+                  <SmartInbox
+                    calls={callLogs}
+                    spaces={chatSessions}
+                    tasks={safeArray(openTasks)}
+                    userId={user?.id || 'anonymous'}
+                    sourceFilter={activeFilter === 'call' ? 'calls' : activeFilter === 'space' ? 'space' : 'all'}
+                    searchQuery={searchQuery}
+                    onOpenItem={handleOpenInboxItem}
+                    onRefreshFeed={() => {
+                      refetchCallLogs();
+                      refetchChatSessions();
+                    }}
+                    onSourceFilterChange={(filter) => {
+                      setActiveFilter(filter === 'calls' ? 'call' : filter === 'space' ? 'space' : 'all');
+                    }}
+                    onSearchChange={setSearchQuery}
+                    inboxQueueRef={inboxQueueRef}
+                    focusKey={focusKey}
+                  />
+                </div>
+              </motion.div>
+            </ModuleBoundary>
           </div>
 
           {/* RIGHT COLUMN: col-span-4 */}
           <div className="lg:col-span-4 space-y-4">
 
             {/* Contact Radar - Mini CRM */}
-            <ContactRadar
-              insights={contactInsights}
-              focusKey={focusKey}
-              onFocus={setFocusKey}
-              onClearFocus={() => setFocusKey(null)}
-              onOpenBest={handleOpenBestContact}
-              pinnedKeys={pinnedKeys}
-              onTogglePin={handleTogglePin}
-            />
+            <ModuleBoundary moduleName="ContactRadar" userId={user?.id} fallbackHeight="280px">
+              <ContactRadar
+                insights={contactInsights}
+                focusKey={focusKey}
+                onFocus={setFocusKey}
+                onClearFocus={() => setFocusKey(null)}
+                onOpenBest={handleOpenBestContact}
+                pinnedKeys={pinnedKeys}
+                onTogglePin={handleTogglePin}
+              />
+            </ModuleBoundary>
 
             {/* TODAY OS - Timeline + Week Strip */}
-            <TodayOS
-              itemsTimed={todayTimeline.timed}
-              itemsUntimed={todayTimeline.untimed}
-              weekStrip={weekStrip}
-              counts={todayTimeline.counts}
-              focusKey={focusKey}
-              unassignedCount={todayTimeline.unassignedCount}
-              onOpen={handleOpenTimelineItem}
-              onTaskDone={handleTimelineTaskDone}
-              onTaskSnooze={handleTimelineTaskSnooze}
-              onCreateTaskFromItem={handleCreateTaskFromTimelineItem}
-            />
+            <ModuleBoundary moduleName="TodayOS" userId={user?.id} fallbackHeight="350px">
+              <TodayOS
+                itemsTimed={todayTimeline.timed}
+                itemsUntimed={todayTimeline.untimed}
+                weekStrip={weekStrip}
+                counts={todayTimeline.counts}
+                focusKey={focusKey}
+                unassignedCount={todayTimeline.unassignedCount}
+                onOpen={handleOpenTimelineItem}
+                onTaskDone={handleTimelineTaskDone}
+                onTaskSnooze={handleTimelineTaskSnooze}
+                onCreateTaskFromItem={handleCreateTaskFromTimelineItem}
+              />
+            </ModuleBoundary>
 
             {/* V6: Business Snapshot Panel */}
             <motion.div
@@ -2081,6 +2088,7 @@ Status: ${persistentError.status || 'N/A'}`}
             </motion.div>
 
             {/* Matrix Panels Wrapper for Tour */}
+            <ModuleBoundary moduleName="MatrixPanels" userId={user?.id} fallbackHeight="200px">
             <div data-tour="mc-matrix" className="space-y-4">
 
             {/* V7: Data Sources Panel (Matrix Tech) */}
@@ -2178,6 +2186,7 @@ Status: ${persistentError.status || 'N/A'}`}
             </motion.div>
 
             </div>{/* End Matrix Panels Wrapper */}
+            </ModuleBoundary>
 
             {/* V8: Contact Radar Panel */}
             <motion.div
