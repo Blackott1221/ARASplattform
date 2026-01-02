@@ -2664,11 +2664,44 @@ function ChatSessionDetails({ session, onClose, onRefresh }: { session: any; onC
               </ul>
             )}
             
-            {/* Next Step */}
-            <div className="pt-2 border-t border-white/[0.06]">
-              <p className="text-[10px] uppercase tracking-wide text-neutral-500 mb-1">Nächster Schritt</p>
-              <p className="text-xs text-neutral-300">{session.summaryFull.nextStep}</p>
-            </div>
+            {/* Next Step + Task Action */}
+            {session.summaryFull.nextStep && (
+              <div className="pt-2 border-t border-white/[0.06]">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <p className="text-[10px] uppercase tracking-wide text-neutral-500 mb-1">Nächster Schritt</p>
+                    <p className="text-xs text-neutral-300">{session.summaryFull.nextStep}</p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await fetch('/api/user/tasks', {
+                          method: 'POST',
+                          credentials: 'include',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            title: session.summaryFull.nextStep.slice(0, 180),
+                            sourceType: 'space',
+                            sourceId: String(session.id),
+                          }),
+                        });
+                        if (res.status === 409) {
+                          alert('Aufgabe existiert bereits');
+                        } else if (res.ok) {
+                          alert('Aufgabe erstellt');
+                        }
+                      } catch (err) {
+                        console.error('Failed to create task:', err);
+                      }
+                    }}
+                    className="flex-shrink-0 text-[9px] font-medium px-2 py-1 rounded-lg transition-all hover:bg-white/[0.08]"
+                    style={{ color: DT.orange, border: '1px solid rgba(255,106,0,0.25)' }}
+                  >
+                    Als Aufgabe
+                  </button>
+                </div>
+              </div>
+            )}
             
             {/* Tags */}
             {session.summaryFull.tags?.length > 0 && (
