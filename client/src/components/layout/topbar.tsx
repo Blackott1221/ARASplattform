@@ -97,6 +97,31 @@ export function TopBar({ currentSection, subscriptionData, user, isVisible }: To
 
       {/* RIGHT SECTION */}
       <div className="flex items-center gap-2 md:gap-3 relative z-20">
+        {/* Command Palette Hint */}
+        <motion.button
+          data-tour="mc-command-hint"
+          type="button"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2 }}
+          onClick={() => {
+            // Trigger Cmd/Ctrl+K programmatically
+            const event = new KeyboardEvent('keydown', {
+              key: 'k',
+              metaKey: navigator.platform.includes('Mac'),
+              ctrlKey: !navigator.platform.includes('Mac'),
+              bubbles: true,
+            });
+            window.dispatchEvent(event);
+          }}
+          className="hidden md:flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06] transition-all cursor-pointer"
+          title="Command Palette öffnen"
+        >
+          <span className="text-[9px] font-mono text-neutral-500">
+            {navigator.platform.includes('Mac') ? '⌘K' : 'Ctrl+K'}
+          </span>
+        </motion.button>
+
         {/* Usage Widget – extra z-index so Overlay stets sichtbar */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: -4 }}

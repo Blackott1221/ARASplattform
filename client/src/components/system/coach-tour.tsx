@@ -11,6 +11,11 @@ const STORAGE_KEY = 'aras.dashboard.tour.completed';
 // Tour step definitions
 const TOUR_STEPS = [
   {
+    target: 'mc-command-hint',
+    title: 'Command Palette',
+    description: 'Cmd/Ctrl+K öffnet dein Kontrollzentrum — schneller als Menüs. Navigiere, suche, fokussiere direkt per Tastatur.',
+  },
+  {
     target: 'mc-header',
     title: 'Mission Control',
     description: 'Dein zentrales Dashboard für alle ARAS-Aktivitäten. Hier siehst du auf einen Blick, was passiert ist und was als Nächstes ansteht.',

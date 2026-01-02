@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense, useMemo } from "react";
 import { useLocation } from "wouter";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
@@ -6,6 +6,9 @@ import { ChatInterface } from "@/components/chat/chat-interface";
 import { FeedbackWidget } from "@/components/feedback/feedback-widget";
 import { NewYearOverlay } from "@/components/overlays/new-year-overlay";
 import { AppErrorBoundary } from "@/components/system/app-error-boundary";
+import { CommandPalette } from "@/components/system/command-palette";
+import { useRegisterCommands } from "@/lib/commands/use-register-commands";
+import type { Command } from "@/lib/commands/command-types";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { Menu, X } from "lucide-react";
@@ -58,6 +61,69 @@ export default function App() {
   useEffect(() => {
     setIsMobileSidebarOpen(false);
   }, [activeSection]);
+
+  // Navigation commands for Command Palette
+  const navigationCommands = useMemo<Command[]>(() => [
+    {
+      id: 'nav-dashboard',
+      group: 'Navigation',
+      title: 'Dashboard öffnen',
+      keywords: ['mission control', 'übersicht', 'home'],
+      perform: () => { setActiveSection('dashboard'); setLocation('/app/dashboard'); },
+    },
+    {
+      id: 'nav-space',
+      group: 'Navigation',
+      title: 'Space öffnen',
+      keywords: ['chat', 'ai', 'assistent'],
+      perform: () => { setActiveSection('space'); setLocation('/app/space'); },
+    },
+    {
+      id: 'nav-power',
+      group: 'Navigation',
+      title: 'Power öffnen',
+      keywords: ['analyse', 'recherche', 'deep'],
+      perform: () => { setActiveSection('power'); setLocation('/app/power'); },
+    },
+    {
+      id: 'nav-campaigns',
+      group: 'Navigation',
+      title: 'Kampagnen öffnen',
+      keywords: ['outbound', 'sequenz', 'automation'],
+      perform: () => { setActiveSection('campaigns'); setLocation('/app/campaigns'); },
+    },
+    {
+      id: 'nav-contacts',
+      group: 'Navigation',
+      title: 'Kontakte öffnen',
+      keywords: ['crm', 'leads', 'personen'],
+      perform: () => { setActiveSection('contacts'); setLocation('/app/contacts'); },
+    },
+    {
+      id: 'nav-calendar',
+      group: 'Navigation',
+      title: 'Kalender öffnen',
+      keywords: ['termine', 'events', 'schedule'],
+      perform: () => { setActiveSection('calendar'); setLocation('/app/calendar'); },
+    },
+    {
+      id: 'nav-leads',
+      group: 'Navigation',
+      title: 'Wissensdatenbank öffnen',
+      keywords: ['knowledge', 'daten', 'quellen'],
+      perform: () => { setActiveSection('leads'); setLocation('/app/leads'); },
+    },
+    {
+      id: 'nav-settings',
+      group: 'Navigation',
+      title: 'Einstellungen öffnen',
+      keywords: ['profil', 'account', 'config'],
+      perform: () => { setActiveSection('settings'); setLocation('/app/settings'); },
+    },
+  ], [setLocation]);
+
+  // Register navigation commands
+  useRegisterCommands('app-navigation', navigationCommands);
 
   const { data: subscriptionData } = useQuery<SubscriptionResponse>({
     queryKey: ["/api/user/subscription"],
@@ -236,6 +302,9 @@ export default function App() {
 
       {/* New Year 2026 Overlay - Global, one-time per user */}
       {user && <NewYearOverlay userId={String((user as User).id)} />}
+
+      {/* Command Palette - Global (Cmd/Ctrl+K) */}
+      <CommandPalette userId={user ? String((user as User).id) : undefined} />
     </div>
     </AppErrorBoundary>
   );
