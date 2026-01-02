@@ -5,6 +5,9 @@ import { de } from 'date-fns/locale';
 import type { User, UserTask } from '@shared/schema';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { PowerResultCard } from '@/components/power/power-result-card';
+import { MissionBriefing } from '@/components/dashboard/mission-briefing';
+import { CoachTour, startDashboardTour, isTourCompleted } from '@/components/system/coach-tour';
+import { MatrixPanel, type MatrixLine } from '@/components/system/matrix-panel';
 
 // ═══════════════════════════════════════════════════════════════
 // SAFE HELPERS V7 (prevent crashes from null/undefined)
@@ -1124,6 +1127,7 @@ export function DashboardContent({ user }: DashboardContentProps) {
 
         {/* HEADER - Mission Control V5 */}
         <motion.div
+          data-tour="mc-header"
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: ANIM.duration }}
@@ -1225,8 +1229,12 @@ Status: ${persistentError.status || 'N/A'}`}
           )}
         </AnimatePresence>
 
+        {/* Mission Briefing - First-run onboarding */}
+        <MissionBriefing onStartTour={startDashboardTour} />
+
         {/* OVERVIEW TILES - 4 Mini Cards (REAL DATA ONLY) */}
         <motion.div
+          data-tour="mc-kpis"
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: ANIM.duration, delay: 0.1 }}
@@ -1250,6 +1258,7 @@ Status: ${persistentError.status || 'N/A'}`}
 
             {/* Unified Activity Feed */}
             <motion.div
+              data-tour="mc-feed"
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: ANIM.duration, delay: 0.15 }}
@@ -1444,6 +1453,7 @@ Status: ${persistentError.status || 'N/A'}`}
 
             {/* V6: Business Snapshot Panel */}
             <motion.div
+              data-tour="mc-snapshot"
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: ANIM.duration, delay: 0.2 }}
@@ -1544,6 +1554,7 @@ Status: ${persistentError.status || 'N/A'}`}
 
             {/* V9: Operations Panel (upgraded Action Inbox) */}
             <motion.div
+              data-tour="mc-ops"
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: ANIM.duration, delay: 0.25 }}
@@ -1745,6 +1756,7 @@ Status: ${persistentError.status || 'N/A'}`}
 
             {/* V10: Calendar Panel with 7-Day Strip */}
             <motion.div
+              data-tour="mc-calendar"
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: ANIM.duration, delay: 0.3 }}
@@ -1897,6 +1909,9 @@ Status: ${persistentError.status || 'N/A'}`}
               </div>
             </motion.div>
 
+            {/* Matrix Panels Wrapper for Tour */}
+            <div data-tour="mc-matrix" className="space-y-4">
+
             {/* V7: Data Sources Panel (Matrix Tech) */}
             <motion.div
               initial={{ opacity: 0, y: 6 }}
@@ -1990,6 +2005,8 @@ Status: ${persistentError.status || 'N/A'}`}
                 </div>
               </div>
             </motion.div>
+
+            </div>{/* End Matrix Panels Wrapper */}
 
             {/* V8: Contact Radar Panel */}
             <motion.div
@@ -2501,6 +2518,9 @@ Status: ${persistentError.status || 'N/A'}`}
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Coach Tour Overlay - Non-destructive guided tour */}
+        <CoachTour autoStart={!isTourCompleted()} />
 
       </div>
     </div>
