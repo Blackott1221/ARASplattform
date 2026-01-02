@@ -80,7 +80,7 @@ export function MissionBriefing({ onStartTour }: MissionBriefingProps) {
                   <span className="text-neutral-300 font-medium">Contact Radar</span> zeigt dir, wen du als Nächstes bewegen solltest — Fokus macht daraus einen Arbeitsmodus.
                 </p>
                 <p className="text-[13px] text-neutral-400 leading-relaxed">
-                  <span className="text-neutral-300 font-medium">Rechts</span> findest du Status, Kalender und Operations.
+                  <span className="text-neutral-300 font-medium">Today OS</span> bündelt Termine, Aktionen und fällige Aufgaben in einer Timeline — ohne Rätselraten.
                 </p>
                 <p className="text-[13px] text-neutral-400 leading-relaxed">
                   Wenn irgendwo <span className="text-neutral-500 font-mono">—</span> steht, fehlen Daten oder es ist noch nichts passiert.

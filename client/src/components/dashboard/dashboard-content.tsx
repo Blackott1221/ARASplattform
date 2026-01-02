@@ -10,8 +10,10 @@ import { CoachTour, startDashboardTour, isTourCompleted } from '@/components/sys
 import { MatrixPanel, type MatrixLine } from '@/components/system/matrix-panel';
 import { SmartInbox } from '@/components/dashboard/smart-inbox';
 import { ContactRadar, FocusBar } from '@/components/dashboard/contact-radar';
+import { TodayOS } from '@/components/dashboard/today-os';
 import type { InboxItem, SourceFilter as InboxSourceFilter } from '@/lib/inbox/triage';
 import { buildContactInsights, rankContacts, getBestSourceToOpen, type ContactInsight } from '@/lib/contacts/contact-insights';
+import { buildTodayTimeline, buildWeekStrip, type TimelineItem } from '@/lib/timeline/timeline';
 
 // ═══════════════════════════════════════════════════════════════
 // SAFE HELPERS V7 (prevent crashes from null/undefined)
@@ -807,6 +809,162 @@ export function DashboardContent({ user }: DashboardContentProps) {
     }
   }, [callsById, spacesById, handleOpenDetails]);
 
+  // TODAY OS: Build timeline data
+  const todayTimeline = useMemo(() => {
+    return buildTodayTimeline({
+      now: new Date(),
+      calls: callLogs,
+      spaces: chatSessions,
+      tasks: safeArray(allDbTasks),
+      focusKey,
+    });
+  }, [callLogs, chatSessions, allDbTasks, focusKey]);
+
+  const weekStrip = useMemo(() => {
+    return buildWeekStrip({
+      now: new Date(),
+      calls: callLogs,
+      spaces: chatSessions,
+      tasks: safeArray(allDbTasks),
+      focusKey,
+    });
+  }, [callLogs, chatSessions, allDbTasks, focusKey]);
+
+  // TODAY OS: Handler to open timeline item
+  const handleOpenTimelineItem = useCallback((item: TimelineItem) => {
+    if (item.sourceType === 'call' && item.sourceId) {
+      const call = callsById.get(item.sourceId);
+      if (call) {
+        handleOpenDetails({
+          type: 'call',
+          id: item.sourceId,
+          title: item.title,
+          timestamp: item.at?.toISOString() || new Date().toISOString(),
+          status: 'ready',
+          raw: call,
+        });
+      }
+    } else if (item.sourceType === 'space' && item.sourceId) {
+      const space = spacesById.get(item.sourceId);
+      if (space) {
+        handleOpenDetails({
+          type: 'space',
+          id: item.sourceId,
+          title: item.title,
+          timestamp: item.at?.toISOString() || new Date().toISOString(),
+          status: 'ready',
+          raw: space,
+        });
+      }
+    } else if (item.sourceType === 'task' && item.meta?.sourceType && item.meta?.sourceId) {
+      // Open the underlying source of the task
+      if (item.meta.sourceType === 'call') {
+        const call = callsById.get(String(item.meta.sourceId));
+        if (call) {
+          handleOpenDetails({
+            type: 'call',
+            id: String(item.meta.sourceId),
+            title: item.title,
+            timestamp: new Date().toISOString(),
+            status: 'ready',
+            raw: call,
+          });
+        }
+      } else if (item.meta.sourceType === 'space') {
+        const space = spacesById.get(String(item.meta.sourceId));
+        if (space) {
+          handleOpenDetails({
+            type: 'space',
+            id: String(item.meta.sourceId),
+            title: item.title,
+            timestamp: new Date().toISOString(),
+            status: 'ready',
+            raw: space,
+          });
+        }
+      }
+    }
+  }, [callsById, spacesById, handleOpenDetails]);
+
+  // TODAY OS: Task done handler
+  const handleTimelineTaskDone = useCallback(async (taskId: string, done: boolean) => {
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ done }),
+      });
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ['user-tasks'] });
+      }
+    } catch (err) {
+      console.error('Failed to update task:', err);
+    }
+  }, [queryClient]);
+
+  // TODAY OS: Task snooze handler
+  const handleTimelineTaskSnooze = useCallback(async (taskId: string, mode: '1h' | 'tomorrow' | 'nextweek') => {
+    let snoozedUntil: Date;
+    const now = new Date();
+    
+    if (mode === '1h') {
+      snoozedUntil = new Date(now.getTime() + 60 * 60 * 1000);
+    } else if (mode === 'tomorrow') {
+      snoozedUntil = new Date(now);
+      snoozedUntil.setDate(snoozedUntil.getDate() + 1);
+      snoozedUntil.setHours(9, 0, 0, 0);
+    } else {
+      snoozedUntil = new Date(now);
+      snoozedUntil.setDate(snoozedUntil.getDate() + 7);
+      snoozedUntil.setHours(9, 0, 0, 0);
+    }
+
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ snoozedUntil: snoozedUntil.toISOString() }),
+      });
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ['user-tasks'] });
+      }
+    } catch (err) {
+      console.error('Failed to snooze task:', err);
+    }
+  }, [queryClient]);
+
+  // TODAY OS: Create task from timeline item
+  const handleCreateTaskFromTimelineItem = useCallback(async (item: TimelineItem) => {
+    if (!item.subtitle) return;
+    
+    try {
+      const res = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          title: item.subtitle.slice(0, 100),
+          description: item.subtitle,
+          sourceType: item.sourceType,
+          sourceId: item.sourceId,
+        }),
+      });
+      
+      if (res.status === 409) {
+        // Duplicate task, ignore
+        return;
+      }
+      
+      if (res.ok) {
+        queryClient.invalidateQueries({ queryKey: ['user-tasks'] });
+      }
+    } catch (err) {
+      console.error('Failed to create task:', err);
+    }
+  }, [queryClient]);
+
   // Unified activity list - SAFE: always use safeArray to prevent spread crash
   const allActivities: ActivityItem[] = useMemo(() => {
     let items = [...safeArray(callActivities), ...safeArray(chatActivities)];
@@ -1448,6 +1606,20 @@ Status: ${persistentError.status || 'N/A'}`}
               onOpenBest={handleOpenBestContact}
               pinnedKeys={pinnedKeys}
               onTogglePin={handleTogglePin}
+            />
+
+            {/* TODAY OS - Timeline + Week Strip */}
+            <TodayOS
+              itemsTimed={todayTimeline.timed}
+              itemsUntimed={todayTimeline.untimed}
+              weekStrip={weekStrip}
+              counts={todayTimeline.counts}
+              focusKey={focusKey}
+              unassignedCount={todayTimeline.unassignedCount}
+              onOpen={handleOpenTimelineItem}
+              onTaskDone={handleTimelineTaskDone}
+              onTaskSnooze={handleTimelineTaskSnooze}
+              onCreateTaskFromItem={handleCreateTaskFromTimelineItem}
             />
 
             {/* V6: Business Snapshot Panel */}

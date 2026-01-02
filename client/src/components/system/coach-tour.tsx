@@ -46,6 +46,11 @@ const TOUR_STEPS = [
     description: 'Fokus filtert Inbox, Feed und Aufgaben auf genau diesen Kontakt. So arbeitest du konzentriert an einem Thema.',
   },
   {
+    target: 'mc-today-os',
+    title: 'Today OS',
+    description: 'Hier siehst du deinen Tag als Arbeitsfluss — nur echte Zeiten. Ohne Zeit bleibt ohne Zeit.',
+  },
+  {
     target: 'mc-snapshot',
     title: 'Business Snapshot',
     description: 'Zeigt die Vollständigkeit deines Profils. Je mehr Infos du hinterlegst, desto besser kann ARAS für dich arbeiten.',
