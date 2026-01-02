@@ -74,13 +74,16 @@ export function MissionBriefing({ onStartTour }: MissionBriefingProps) {
               {/* Explanation */}
               <div className="space-y-2 mb-4">
                 <p className="text-[13px] text-neutral-400 leading-relaxed">
-                  <span className="text-neutral-300 font-medium">Links</span> siehst du deine Aktivität: Anrufe und Space-Chats.
+                  <span className="text-neutral-300 font-medium">Inbox</span> zeigt dir Aktionen, laufende Summaries und Fehler — ohne Raten.
+                </p>
+                <p className="text-[13px] text-neutral-400 leading-relaxed">
+                  <span className="text-neutral-300 font-medium">Links</span> siehst du deine Aktivität: Anrufe und Space-Chats, priorisiert nach Handlungsbedarf.
                 </p>
                 <p className="text-[13px] text-neutral-400 leading-relaxed">
                   <span className="text-neutral-300 font-medium">Rechts</span> findest du Status, Kalender und Operations.
                 </p>
                 <p className="text-[13px] text-neutral-400 leading-relaxed">
-                  Wenn irgendwo <span className="text-neutral-500 font-mono">—</span> steht, fehlen Daten oder es ist noch nichts passiert. ARAS zeigt dir dann den nächsten sinnvollen Schritt.
+                  Wenn irgendwo <span className="text-neutral-500 font-mono">—</span> steht, fehlen Daten oder es ist noch nichts passiert.
                 </p>
               </div>
 

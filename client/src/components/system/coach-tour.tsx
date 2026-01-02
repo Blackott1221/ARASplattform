@@ -21,9 +21,19 @@ const TOUR_STEPS = [
     description: 'Calls heute, letzte 7 Tage und ausstehende Zusammenfassungen. So behältst du den Überblick über deine Kommunikation.',
   },
   {
-    target: 'mc-feed',
-    title: 'Activity Feed',
-    description: 'Hier erscheinen deine Anrufe und Space-Chats. Klicke auf einen Eintrag, um Details im Cinematic Drawer zu öffnen.',
+    target: 'mc-inbox-tabs',
+    title: 'Smart Inbox',
+    description: 'So priorisiert ARAS deine Arbeit: Aktionen, laufende Verarbeitungen, Fehler und reine Infos — klar getrennt für schnelles Handeln.',
+  },
+  {
+    target: 'mc-inbox-actions',
+    title: 'Batch-Aktionen',
+    description: 'Mit einem Klick: Aufgaben erstellen, alle Items durchgehen oder Fehlgeschlagenes prüfen. Effizient arbeiten ohne Einzelklicks.',
+  },
+  {
+    target: 'mc-inbox-list',
+    title: 'Inbox Liste',
+    description: 'Deine Anrufe und Space-Chats, gefiltert nach Kategorie. Klicke auf einen Eintrag für Details im Cinematic Drawer.',
   },
   {
     target: 'mc-snapshot',

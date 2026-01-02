@@ -8,6 +8,8 @@ import { PowerResultCard } from '@/components/power/power-result-card';
 import { MissionBriefing } from '@/components/dashboard/mission-briefing';
 import { CoachTour, startDashboardTour, isTourCompleted } from '@/components/system/coach-tour';
 import { MatrixPanel, type MatrixLine } from '@/components/system/matrix-panel';
+import { SmartInbox } from '@/components/dashboard/smart-inbox';
+import type { InboxItem, SourceFilter as InboxSourceFilter } from '@/lib/inbox/triage';
 
 // ═══════════════════════════════════════════════════════════════
 // SAFE HELPERS V7 (prevent crashes from null/undefined)
@@ -387,6 +389,9 @@ export function DashboardContent({ user }: DashboardContentProps) {
   const [opsFilter, setOpsFilter] = useState<'offen' | 'heute' | 'später' | 'erledigt'>('offen');
   const summaryPollRef = useRef<NodeJS.Timeout | null>(null);
   const drawerPollRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Smart Inbox queue for drawer navigation
+  const inboxQueueRef = useRef<{ items: InboxItem[]; currentIndex: number } | null>(null);
 
   // Fetch call logs
   const { data: callLogs = [], refetch: refetchCallLogs, isError: isCallError, error: callError } = useQuery<CallLog[]>({
@@ -829,6 +834,44 @@ export function DashboardContent({ user }: DashboardContentProps) {
   const handleCloseDrawer = useCallback(() => {
     setSelectedItem(null);
     setSelectedDetails(null);
+    // Clear inbox queue when drawer closes
+    if (inboxQueueRef.current) {
+      inboxQueueRef.current = null;
+    }
+  }, []);
+
+  // Handler to open inbox item (converts InboxItem to ActivityItem)
+  const handleOpenInboxItem = useCallback((inboxItem: InboxItem) => {
+    const activityItem: ActivityItem = {
+      type: inboxItem.sourceType as ActivityType,
+      id: inboxItem.id,
+      title: inboxItem.title,
+      timestamp: inboxItem.createdAt || new Date().toISOString(),
+      status: inboxItem.status === 'action' ? 'ready' :
+              inboxItem.status === 'pending' ? 'pending' :
+              inboxItem.status === 'failed' ? 'failed' : 'completed',
+      summaryShort: inboxItem.subtitle,
+      raw: inboxItem.rawRef,
+    };
+    handleOpenDetails(activityItem);
+  }, [handleOpenDetails]);
+
+  // Handler to open next inbox item in queue
+  const handleOpenNextInboxItem = useCallback(() => {
+    if (!inboxQueueRef.current) return;
+    const { items, currentIndex } = inboxQueueRef.current;
+    const nextIndex = currentIndex + 1;
+    if (nextIndex < items.length) {
+      inboxQueueRef.current.currentIndex = nextIndex;
+      handleOpenInboxItem(items[nextIndex]);
+    }
+  }, [handleOpenInboxItem]);
+
+  // Check if there's a next item in queue
+  const hasNextInboxItem = useCallback(() => {
+    if (!inboxQueueRef.current) return false;
+    const { items, currentIndex } = inboxQueueRef.current;
+    return currentIndex + 1 < items.length;
   }, []);
 
   // V9: ESC key closes drawer + body scroll lock
@@ -1256,7 +1299,7 @@ Status: ${persistentError.status || 'N/A'}`}
           {/* LEFT COLUMN: col-span-8 */}
           <div className="lg:col-span-8 space-y-5">
 
-            {/* Unified Activity Feed */}
+            {/* Smart Inbox - Unified Activity Feed with Triage */}
             <motion.div
               data-tour="mc-feed"
               initial={{ opacity: 0, y: 6 }}
@@ -1265,185 +1308,25 @@ Status: ${persistentError.status || 'N/A'}`}
               className="rounded-2xl overflow-hidden"
               style={{ background: DT.panelBg, backdropFilter: 'blur(20px)', border: `1px solid ${DT.panelBorder}` }}
             >
-              {/* Control Strip - Filter + Search */}
-              <div className="p-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                  {/* Filter Tabs */}
-                  <div className="flex items-center gap-1 p-0.5 rounded-[10px]" style={{ background: 'rgba(255,255,255,0.03)' }}>
-                    {(['all', 'call', 'space'] as const).map(filter => (
-                      <button
-                        key={filter}
-                        onClick={() => setActiveFilter(filter)}
-                        aria-pressed={activeFilter === filter}
-                        className={`px-4 py-2 rounded-[8px] text-[11px] font-semibold uppercase tracking-wider transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/50 ${
-                          activeFilter === filter 
-                            ? 'text-white' 
-                            : 'text-neutral-500 hover:text-neutral-300'
-                        }`}
-                        style={activeFilter === filter ? { 
-                          background: `linear-gradient(135deg, rgba(255,106,0,0.2), rgba(255,106,0,0.08))`, 
-                          boxShadow: '0 0 12px rgba(255,106,0,0.12), inset 0 0 0 1px rgba(255,106,0,0.25)'
-                        } : {}}
-                      >
-                        {filter === 'all' ? 'Alles' : filter === 'call' ? 'Calls' : 'Space'}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Search Input */}
-                  <div className="relative flex-1">
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={e => setSearchQuery(e.target.value)}
-                      placeholder="Suchen (Titel, Tags, Zusammenfassung)"
-                      className="w-full px-4 py-2 rounded-[10px] text-[13px] focus:outline-none transition-all placeholder:text-neutral-600"
-                      style={{ 
-                        background: 'rgba(255,255,255,0.03)', 
-                        border: `1px solid ${DT.panelBorder}`, 
-                        color: '#fff'
-                      }}
-                      onFocus={e => e.target.style.borderColor = 'rgba(255,106,0,0.3)'}
-                      onBlur={e => e.target.style.borderColor = DT.panelBorder}
-                    />
-                    {searchQuery && (
-                      <button
-                        onClick={() => setSearchQuery('')}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white text-[11px] font-medium transition-colors px-1.5 py-0.5 rounded hover:bg-white/[0.06]"
-                      >
-                        Löschen
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-              
-              {/* Feed Content */}
               <div className="p-4">
-              
-              {/* Activity List */}
-              {allActivities.length === 0 ? (
-                <div className="text-center py-16">
-                  <p className="text-sm text-neutral-400 mb-4">Noch keine Aktivität</p>
-                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                    <a 
-                      href="/app/power"
-                      className="px-5 py-2.5 rounded-xl text-[13px] font-medium transition-all hover:translate-y-[-1px]"
-                      style={{ 
-                        background: `linear-gradient(135deg, ${DT.orange}, ${DT.goldDark})`, 
-                        color: '#000',
-                        boxShadow: '0 4px 20px rgba(255,106,0,0.2)'
-                      }}
-                    >
-                      Ersten Anruf starten
-                    </a>
-                    <a 
-                      href="/app/space"
-                      className="px-5 py-2.5 rounded-xl text-[13px] font-medium transition-all hover:bg-white/[0.06]"
-                      style={{ border: `1px solid ${DT.panelBorder}`, color: DT.gold }}
-                    >
-                      Space öffnen
-                    </a>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {groupedActivities.map(group => (
-                    <div key={group.label}>
-                      {/* Group Label */}
-                      <p className="text-[10px] font-medium uppercase tracking-wide text-neutral-500 mb-2 px-1">
-                        {group.label}
-                      </p>
-                      
-                      {/* Group Items - Premium List Rows */}
-                      <div className="space-y-1.5">
-                        {group.items.map((item, idx) => (
-                          <motion.button
-                            key={`${item.type}-${item.id}`}
-                            initial={{ opacity: 0, x: -6 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            whileHover={{ y: -1, x: 2 }}
-                            transition={{ duration: ANIM.duration, delay: idx * ANIM.stagger }}
-                            onClick={() => handleOpenDetails(item)}
-                            aria-label={`${item.type === 'call' ? 'Anruf' : 'Space Session'}: ${item.title}`}
-                            className="w-full flex items-center gap-3 py-3 px-4 rounded-xl transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500/40 text-left group"
-                            style={{ 
-                              background: DT.rowBg,
-                              border: `1px solid transparent`
-                            }}
-                            onMouseEnter={e => {
-                              e.currentTarget.style.background = DT.rowBgHover;
-                              e.currentTarget.style.borderColor = 'rgba(255,106,0,0.15)';
-                              e.currentTarget.style.boxShadow = '0 0 20px rgba(255,106,0,0.06)';
-                            }}
-                            onMouseLeave={e => {
-                              e.currentTarget.style.background = DT.rowBg;
-                              e.currentTarget.style.borderColor = 'transparent';
-                              e.currentTarget.style.boxShadow = 'none';
-                            }}
-                          >
-                            {/* Status dot + Type indicator */}
-                            <div className="flex flex-col items-center gap-1.5 flex-shrink-0 w-5">
-                              <div 
-                                className={`w-2 h-2 rounded-full transition-all ${
-                                  item.status === 'ready' || item.status === 'completed' ? 'bg-green-500/80' : 
-                                  item.status === 'failed' ? 'bg-red-500/80' : 
-                                  item.status === 'pending' ? 'bg-amber-500/80' :
-                                  'bg-blue-500/80'
-                                }`} 
-                                style={{ boxShadow: item.status === 'pending' ? '0 0 8px rgba(245,158,11,0.4)' : undefined }}
-                              />
-                              <span className="text-[8px] uppercase tracking-wider text-neutral-600 font-medium">
-                                {item.type === 'call' ? 'CALL' : 'SPACE'}
-                              </span>
-                            </div>
-                            
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className="text-[13px] truncate font-medium group-hover:text-white transition-colors" style={{ color: DT.gold }}>
-                                  {item.title}
-                                </p>
-                                <span className="text-[10px] text-neutral-600 flex-shrink-0">
-                                  {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true, locale: de })}
-                                </span>
-                              </div>
-                              {/* Summary line - clean shimmer */}
-                              {item.summaryShort ? (
-                                <p className="text-xs text-neutral-400 truncate mt-1">{item.summaryShort}</p>
-                              ) : item.status === 'pending' ? (
-                                <div className="mt-1 flex items-center gap-2">
-                                  <div className="h-1 w-20 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                                    <div className="h-full w-10 rounded-full" style={{ background: `linear-gradient(90deg, transparent, ${DT.orange}30, transparent)`, animation: 'shimmer 2s ease-in-out infinite' }} />
-                                  </div>
-                                  <p className="text-[10px] text-neutral-600">Wird aktualisiert</p>
-                                </div>
-                              ) : item.status === 'failed' ? (
-                                <p className="text-[11px] text-red-400/70 mt-1">Fehlgeschlagen</p>
-                              ) : item.type === 'space' && item.status === 'completed' ? (
-                                <p className="text-[11px] text-neutral-500 mt-1">
-                                  {item.meta?.messageCount ? `${item.meta.messageCount} Nachrichten` : 'Session'}
-                                </p>
-                              ) : item.type === 'call' && !item.summaryShort ? (
-                                <div className="mt-1 flex items-center gap-2">
-                                  <div className="h-1 w-20 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                                    <div className="h-full w-10 rounded-full" style={{ background: `linear-gradient(90deg, transparent, ${DT.orange}30, transparent)`, animation: 'shimmer 2s ease-in-out infinite' }} />
-                                  </div>
-                                  <p className="text-[10px] text-neutral-600">Wird aktualisiert</p>
-                                </div>
-                              ) : null}
-                            </div>
-                            
-                            {/* Meta (duration/count) */}
-                            <span className="text-[11px] text-neutral-500 tabular-nums flex-shrink-0 font-medium">
-                              {item.meta?.durationSec ? formatDuration(item.meta.durationSec) : item.meta?.messageCount ? `${item.meta.messageCount}` : ''}
-                            </span>
-                          </motion.button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                <SmartInbox
+                  calls={callLogs}
+                  spaces={chatSessions}
+                  tasks={safeArray(openTasks)}
+                  userId={user?.id || 'anonymous'}
+                  sourceFilter={activeFilter === 'call' ? 'calls' : activeFilter === 'space' ? 'space' : 'all'}
+                  searchQuery={searchQuery}
+                  onOpenItem={handleOpenInboxItem}
+                  onRefreshFeed={() => {
+                    refetchCallLogs();
+                    refetchChatSessions();
+                  }}
+                  onSourceFilterChange={(filter) => {
+                    setActiveFilter(filter === 'calls' ? 'call' : filter === 'space' ? 'space' : 'all');
+                  }}
+                  onSearchChange={setSearchQuery}
+                  inboxQueueRef={inboxQueueRef}
+                />
               </div>
             </motion.div>
           </div>
@@ -2235,6 +2118,20 @@ Status: ${persistentError.status || 'N/A'}`}
                       
                       {/* Action buttons */}
                       <div className="flex items-center gap-2 flex-shrink-0">
+                        {/* Inbox Queue: Nächstes button */}
+                        {hasNextInboxItem() && (
+                          <button
+                            onClick={handleOpenNextInboxItem}
+                            className="text-[11px] font-semibold px-4 py-2 rounded-lg transition-all hover:scale-[1.02]"
+                            style={{ 
+                              background: 'rgba(233,215,196,0.1)', 
+                              color: DT.gold,
+                              border: '1px solid rgba(233,215,196,0.2)'
+                            }}
+                          >
+                            Nächstes
+                          </button>
+                        )}
                         <button
                           onClick={() => selectedItem && handleOpenDetails(selectedItem)}
                           disabled={loadingDetails}
