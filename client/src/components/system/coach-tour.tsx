@@ -36,6 +36,16 @@ const TOUR_STEPS = [
     description: 'Deine Anrufe und Space-Chats, gefiltert nach Kategorie. Klicke auf einen Eintrag für Details im Cinematic Drawer.',
   },
   {
+    target: 'mc-contact-radar',
+    title: 'Contact Radar',
+    description: 'Hier priorisiert ARAS Kontakte nach offenen Aufgaben, Fehlern und Next Steps. Dein Mini-CRM für schnelle Entscheidungen.',
+  },
+  {
+    target: 'mc-focus',
+    title: 'Fokus-Modus',
+    description: 'Fokus filtert Inbox, Feed und Aufgaben auf genau diesen Kontakt. So arbeitest du konzentriert an einem Thema.',
+  },
+  {
     target: 'mc-snapshot',
     title: 'Business Snapshot',
     description: 'Zeigt die Vollständigkeit deines Profils. Je mehr Infos du hinterlegst, desto besser kann ARAS für dich arbeiten.',

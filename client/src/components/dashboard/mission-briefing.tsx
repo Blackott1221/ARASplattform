@@ -77,7 +77,7 @@ export function MissionBriefing({ onStartTour }: MissionBriefingProps) {
                   <span className="text-neutral-300 font-medium">Inbox</span> zeigt dir Aktionen, laufende Summaries und Fehler — ohne Raten.
                 </p>
                 <p className="text-[13px] text-neutral-400 leading-relaxed">
-                  <span className="text-neutral-300 font-medium">Links</span> siehst du deine Aktivität: Anrufe und Space-Chats, priorisiert nach Handlungsbedarf.
+                  <span className="text-neutral-300 font-medium">Contact Radar</span> zeigt dir, wen du als Nächstes bewegen solltest — Fokus macht daraus einen Arbeitsmodus.
                 </p>
                 <p className="text-[13px] text-neutral-400 leading-relaxed">
                   <span className="text-neutral-300 font-medium">Rechts</span> findest du Status, Kalender und Operations.

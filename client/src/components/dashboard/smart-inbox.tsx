@@ -67,6 +67,8 @@ interface SmartInboxProps {
   onSearchChange: (query: string) => void;
   // Queue context for drawer navigation
   inboxQueueRef?: React.MutableRefObject<{ items: InboxItem[]; currentIndex: number } | null>;
+  // Focus mode filtering
+  focusKey?: string | null;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -85,6 +87,7 @@ export function SmartInbox({
   onSourceFilterChange,
   onSearchChange,
   inboxQueueRef,
+  focusKey,
 }: SmartInboxProps) {
   // State
   const [inboxTab, setInboxTab] = useState<InboxTab>('action');
@@ -105,16 +108,20 @@ export function SmartInbox({
   }, [allItems, sourceFilter, dismissedIds]);
 
   // Filtered and sorted items for current view
-  const displayItems = useMemo(() => {
-    const filtered = filterInbox({
+  const { displayItems, unfocusedCount } = useMemo(() => {
+    const result = filterInbox({
       items: allItems,
       sourceFilter,
       tab: inboxTab,
       query: searchQuery,
       dismissedIds: inboxTab === 'info' ? dismissedIds : undefined,
+      focusKey,
     });
-    return sortInboxItems(filtered, inboxTab);
-  }, [allItems, sourceFilter, inboxTab, searchQuery, dismissedIds]);
+    return {
+      displayItems: sortInboxItems(result.items, inboxTab),
+      unfocusedCount: result.unfocusedCount,
+    };
+  }, [allItems, sourceFilter, inboxTab, searchQuery, dismissedIds, focusKey]);
 
   // Update queue ref for drawer navigation
   useEffect(() => {
@@ -427,6 +434,13 @@ export function SmartInbox({
           color: '#ddd',
         }}
       />
+
+      {/* Focus mode hint */}
+      {focusKey && unfocusedCount > 0 && (
+        <div className="px-2 py-1.5 rounded-lg text-[10px] text-neutral-500" style={{ background: 'rgba(255,255,255,0.02)' }}>
+          {unfocusedCount} Eintrag{unfocusedCount > 1 ? 'e' : ''} nicht zuordenbar (ausgeblendet im Fokus)
+        </div>
+      )}
 
       {/* Inbox List */}
       <div 

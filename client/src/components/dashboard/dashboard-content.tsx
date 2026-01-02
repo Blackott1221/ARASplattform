@@ -9,7 +9,9 @@ import { MissionBriefing } from '@/components/dashboard/mission-briefing';
 import { CoachTour, startDashboardTour, isTourCompleted } from '@/components/system/coach-tour';
 import { MatrixPanel, type MatrixLine } from '@/components/system/matrix-panel';
 import { SmartInbox } from '@/components/dashboard/smart-inbox';
+import { ContactRadar, FocusBar } from '@/components/dashboard/contact-radar';
 import type { InboxItem, SourceFilter as InboxSourceFilter } from '@/lib/inbox/triage';
+import { buildContactInsights, rankContacts, getBestSourceToOpen, type ContactInsight } from '@/lib/contacts/contact-insights';
 
 // ═══════════════════════════════════════════════════════════════
 // SAFE HELPERS V7 (prevent crashes from null/undefined)
@@ -393,6 +395,41 @@ export function DashboardContent({ user }: DashboardContentProps) {
   // Smart Inbox queue for drawer navigation
   const inboxQueueRef = useRef<{ items: InboxItem[]; currentIndex: number } | null>(null);
 
+  // Contact Radar: Focus Mode state (persisted per user/device)
+  const focusStorageKey = `aras:dashboard:focus:${user?.id || 'anon'}`;
+  const pinsStorageKey = `aras:dashboard:pins:${user?.id || 'anon'}`;
+  
+  const [focusKey, setFocusKey] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(focusStorageKey) || null;
+    } catch { return null; }
+  });
+  
+  const [pinnedKeys, setPinnedKeys] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem(pinsStorageKey);
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  });
+
+  // Persist focus state
+  useEffect(() => {
+    try {
+      if (focusKey) {
+        localStorage.setItem(focusStorageKey, focusKey);
+      } else {
+        localStorage.removeItem(focusStorageKey);
+      }
+    } catch {}
+  }, [focusKey, focusStorageKey]);
+
+  // Persist pinned contacts
+  useEffect(() => {
+    try {
+      localStorage.setItem(pinsStorageKey, JSON.stringify(pinnedKeys));
+    } catch {}
+  }, [pinnedKeys, pinsStorageKey]);
+
   // Fetch call logs
   const { data: callLogs = [], refetch: refetchCallLogs, isError: isCallError, error: callError } = useQuery<CallLog[]>({
     queryKey: ['dashboard-call-logs'],
@@ -713,6 +750,62 @@ export function DashboardContent({ user }: DashboardContentProps) {
       raw: session,
     }))
   , [chatSessions]);
+
+  // Contact Radar: Build insights from all data sources
+  const contactInsights = useMemo(() => {
+    const insights = buildContactInsights({
+      calls: callLogs,
+      spaces: chatSessions,
+      tasks: safeArray(allDbTasks),
+    });
+    return rankContacts(insights);
+  }, [callLogs, chatSessions, allDbTasks]);
+
+  // Lookup maps for opening best source
+  const callsById = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const call of callLogs) {
+      if (call.id) map.set(String(call.id), call);
+    }
+    return map;
+  }, [callLogs]);
+
+  const spacesById = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const session of chatSessions) {
+      if (session.id) map.set(String(session.id), session);
+    }
+    return map;
+  }, [chatSessions]);
+
+  // Get focused contact label for FocusBar
+  const focusedContact = useMemo(() => {
+    if (!focusKey) return null;
+    return contactInsights.find(c => c.ref.key === focusKey) || null;
+  }, [focusKey, contactInsights]);
+
+  // Handler to toggle pin
+  const handleTogglePin = useCallback((key: string) => {
+    setPinnedKeys(prev => 
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  }, []);
+
+  // Handler to open best source for a contact
+  const handleOpenBestContact = useCallback((insight: ContactInsight) => {
+    const best = getBestSourceToOpen(insight, callsById, spacesById);
+    if (best) {
+      const activityItem: ActivityItem = {
+        type: best.type as ActivityType,
+        id: best.id,
+        title: insight.ref.label,
+        timestamp: new Date().toISOString(),
+        status: 'ready',
+        raw: best.raw,
+      };
+      handleOpenDetails(activityItem);
+    }
+  }, [callsById, spacesById, handleOpenDetails]);
 
   // Unified activity list - SAFE: always use safeArray to prevent spread crash
   const allActivities: ActivityItem[] = useMemo(() => {
@@ -1293,6 +1386,17 @@ Status: ${persistentError.status || 'N/A'}`}
           <StatTile label="Ausstehend" value={stats.pendingCount} highlight={stats.pendingCount > 0} />
         </motion.div>
 
+        {/* Focus Bar - shown when contact focus is active */}
+        <AnimatePresence>
+          {focusKey && focusedContact && (
+            <FocusBar
+              contactLabel={focusedContact.ref.label}
+              onClearFocus={() => setFocusKey(null)}
+              onOpenContact={() => handleOpenBestContact(focusedContact)}
+            />
+          )}
+        </AnimatePresence>
+
         {/* MAIN GRID - 12 Columns */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
@@ -1326,6 +1430,7 @@ Status: ${persistentError.status || 'N/A'}`}
                   }}
                   onSearchChange={setSearchQuery}
                   inboxQueueRef={inboxQueueRef}
+                  focusKey={focusKey}
                 />
               </div>
             </motion.div>
@@ -1333,6 +1438,17 @@ Status: ${persistentError.status || 'N/A'}`}
 
           {/* RIGHT COLUMN: col-span-4 */}
           <div className="lg:col-span-4 space-y-4">
+
+            {/* Contact Radar - Mini CRM */}
+            <ContactRadar
+              insights={contactInsights}
+              focusKey={focusKey}
+              onFocus={setFocusKey}
+              onClearFocus={() => setFocusKey(null)}
+              onOpenBest={handleOpenBestContact}
+              pinnedKeys={pinnedKeys}
+              onTogglePin={handleTogglePin}
+            />
 
             {/* V6: Business Snapshot Panel */}
             <motion.div

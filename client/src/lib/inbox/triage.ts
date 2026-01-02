@@ -5,6 +5,7 @@
  */
 
 import type { UserTask } from '@shared/schema';
+import { buildContactRefFromCall, buildContactRefFromSpace } from '@/lib/contacts/contact-key';
 
 // ═══════════════════════════════════════════════════════════════
 // TYPES
@@ -26,6 +27,7 @@ export interface InboxItem {
   error?: string;
   taskOpenCount?: number;
   summaryStatus?: string;
+  contactKey?: string; // For focus mode filtering
   rawRef: any; // Original data reference for drawer
 }
 
@@ -187,6 +189,7 @@ export function buildInboxItems({ calls, spaces, tasks }: BuildInboxParams): Inb
     const sourceId = String(id);
     const taskCount = countOpenTasks('call', sourceId);
     const status = detectStatus(call, 'call', taskCount);
+    const contactRef = buildContactRefFromCall(call);
 
     items.push({
       id,
@@ -201,6 +204,7 @@ export function buildInboxItems({ calls, spaces, tasks }: BuildInboxParams): Inb
       error: safeString(call.error) || safeString(call.summaryError),
       taskOpenCount: taskCount > 0 ? taskCount : undefined,
       summaryStatus: safeString(call.summaryStatus),
+      contactKey: contactRef?.key,
       rawRef: call,
     });
   }
@@ -213,6 +217,7 @@ export function buildInboxItems({ calls, spaces, tasks }: BuildInboxParams): Inb
     const sourceId = String(id);
     const taskCount = countOpenTasks('space', sourceId);
     const status = detectStatus(session, 'space', taskCount);
+    const contactRef = buildContactRefFromSpace(session);
 
     items.push({
       id,
@@ -227,6 +232,7 @@ export function buildInboxItems({ calls, spaces, tasks }: BuildInboxParams): Inb
       error: safeString(session.error) || safeString(session.summaryError),
       taskOpenCount: taskCount > 0 ? taskCount : undefined,
       summaryStatus: safeString(session.summaryStatus),
+      contactKey: contactRef?.key,
       rawRef: session,
     });
   }
@@ -244,6 +250,12 @@ interface FilterParams {
   tab: InboxTab;
   query?: string;
   dismissedIds?: Set<string>;
+  focusKey?: string | null; // Focus mode: only show items with this contactKey
+}
+
+export interface FilterResult {
+  items: InboxItem[];
+  unfocusedCount: number; // Items hidden due to focus mode (no contactKey match)
 }
 
 export function filterInbox({
@@ -252,8 +264,10 @@ export function filterInbox({
   tab,
   query,
   dismissedIds,
-}: FilterParams): InboxItem[] {
+  focusKey,
+}: FilterParams): FilterResult {
   let filtered = items;
+  let unfocusedCount = 0;
 
   // 1) Filter by source type
   if (sourceFilter === 'calls') {
@@ -270,7 +284,14 @@ export function filterInbox({
     filtered = filtered.filter(i => !dismissedIds.has(`${i.sourceType}-${i.sourceId}`));
   }
 
-  // 4) Filter by search query
+  // 4) Filter by focus key (contact focus mode)
+  if (focusKey) {
+    const beforeFocus = filtered.length;
+    filtered = filtered.filter(i => i.contactKey === focusKey);
+    unfocusedCount = beforeFocus - filtered.length;
+  }
+
+  // 5) Filter by search query
   if (query && query.trim().length > 0) {
     const q = query.toLowerCase().trim();
     filtered = filtered.filter(i => {
@@ -281,7 +302,7 @@ export function filterInbox({
     });
   }
 
-  return filtered;
+  return { items: filtered, unfocusedCount };
 }
 
 // ═══════════════════════════════════════════════════════════════
