@@ -2,18 +2,14 @@
  * ARAS Command Palette - Global Command Center
  * Cmd/Ctrl+K to open, ESC to close
  * Premium cinematic UI with instant performance
+ * Uses DI pattern - no import-time side effects
  */
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Command, CommandStatusChip } from '@/lib/commands/command-types';
-import {
-  searchCommands,
-  groupCommands,
-  subscribeToRegistry,
-  saveLastUsedCommand,
-  getLastUsedCommands,
-} from '@/lib/commands/command-registry';
+import { groupCommands } from '@/lib/commands/command-registry';
+import { useCommandRegistry } from '@/lib/commands/command-context';
 
 // Design Tokens
 const DT = {
@@ -43,6 +39,7 @@ interface CommandPaletteProps {
 }
 
 export function CommandPalette({ userId }: CommandPaletteProps) {
+  const registry = useCommandRegistry();
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -56,17 +53,19 @@ export function CommandPalette({ userId }: CommandPaletteProps) {
 
   // Subscribe to registry changes
   useEffect(() => {
-    const unsubscribe = subscribeToRegistry(() => forceUpdate({}));
+    if (!registry) return;
+    const unsubscribe = registry.subscribe(() => forceUpdate({}));
     return unsubscribe;
-  }, []);
+  }, [registry]);
 
   // Get filtered commands
   const filteredCommands = useMemo(() => {
-    const commands = searchCommands(query);
+    if (!registry) return [];
+    const commands = registry.search(query);
     
     // Boost last used commands when no query
     if (!query.trim()) {
-      const lastUsed = getLastUsedCommands(userId);
+      const lastUsed = registry.getLastUsed(userId);
       return commands.sort((a, b) => {
         const aLastUsedIdx = lastUsed.indexOf(a.id);
         const bLastUsedIdx = lastUsed.indexOf(b.id);
@@ -85,7 +84,7 @@ export function CommandPalette({ userId }: CommandPaletteProps) {
     }
     
     return commands;
-  }, [query, userId]);
+  }, [registry, query, userId]);
 
   // Group commands for display
   const groupedCommands = useMemo(() => {
@@ -179,7 +178,7 @@ export function CommandPalette({ userId }: CommandPaletteProps) {
     
     try {
       await command.perform();
-      saveLastUsedCommand(command.id, userId);
+      registry?.saveLastUsed(command.id, userId);
       handleClose();
     } catch (err) {
       console.error('[CommandPalette] Command failed:', err);
@@ -187,7 +186,7 @@ export function CommandPalette({ userId }: CommandPaletteProps) {
     } finally {
       setIsExecuting(false);
     }
-  }, [userId, handleClose]);
+  }, [registry, userId, handleClose]);
 
   const handleInputKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {

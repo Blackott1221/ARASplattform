@@ -16,6 +16,7 @@ import type { InboxItem, SourceFilter as InboxSourceFilter } from '@/lib/inbox/t
 import { buildContactInsights, rankContacts, getBestSourceToOpen, type ContactInsight } from '@/lib/contacts/contact-insights';
 import { buildTodayTimeline, buildWeekStrip, type TimelineItem } from '@/lib/timeline/timeline';
 import { useRegisterDynamicCommands } from '@/lib/commands/use-register-commands';
+import { useCommandRegistry } from '@/lib/commands/command-context';
 import type { Command } from '@/lib/commands/command-types';
 
 // ═══════════════════════════════════════════════════════════════
@@ -384,6 +385,9 @@ interface ContactRadarEntry {
 }
 
 export function DashboardContent({ user }: DashboardContentProps) {
+  // Command palette registry (DI pattern - may be null if not in CommandProvider)
+  const commandRegistry = useCommandRegistry();
+  
   const [selectedItem, setSelectedItem] = useState<ActivityItem | null>(null);
   const [selectedDetails, setSelectedDetails] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -969,7 +973,7 @@ export function DashboardContent({ user }: DashboardContentProps) {
   }, [queryClient]);
 
   // Command Palette: Register dynamic dashboard commands
-  useRegisterDynamicCommands('dashboard-dynamic', () => {
+  useRegisterDynamicCommands(commandRegistry, 'dashboard-dynamic', () => {
     const commands: Command[] = [];
 
     // Inbox filter commands
@@ -1086,7 +1090,7 @@ export function DashboardContent({ user }: DashboardContentProps) {
     }
 
     return commands;
-  }, [focusKey, focusedContact, contactInsights, callLogs, chatSessions, openTasks, callActivities, chatActivities, handleOpenDetails]);
+  }, [commandRegistry, focusKey, focusedContact, contactInsights, callLogs, chatSessions, openTasks, callActivities, chatActivities, handleOpenDetails]);
 
   // Unified activity list - SAFE: always use safeArray to prevent spread crash
   const allActivities: ActivityItem[] = useMemo(() => {

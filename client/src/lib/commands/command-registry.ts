@@ -1,118 +1,186 @@
 /**
- * ARAS Command Registry
- * In-memory registry for commands from various sources
- * No circular imports - lib/* never imports from components/*
+ * ARAS Command Registry - Factory Pattern
+ * No module-level state, no import-time side effects
+ * Safe from TDZ issues in Safari/JSCore
  */
 
 import type { Command, CommandRegistration } from './command-types';
 
-// In-memory registry
-const registrations = new Map<string, CommandRegistration>();
-
-// Event listeners for state changes
-type Listener = () => void;
-const listeners = new Set<Listener>();
-
 // Last used command storage key
 const LAST_USED_KEY = 'aras:command-palette:last-used';
 
+// Group ordering for display
+const GROUP_ORDER = ['Navigation', 'Aktionen', 'Fokus', 'Öffnen', 'System'];
+
+type Listener = () => void;
+
 /**
- * Register commands from a source
+ * Command Registry Interface
  */
-export function registerCommands(sourceId: string, commands: Command[]): void {
-  registrations.set(sourceId, { sourceId, commands });
-  notifyListeners();
+export interface CommandRegistry {
+  register(sourceId: string, commands: Command[]): void;
+  unregister(sourceId: string): void;
+  getAll(): Command[];
+  search(query: string): Command[];
+  group(commands: Command[]): Map<string, Command[]>;
+  subscribe(listener: Listener): () => void;
+  saveLastUsed(commandId: string, userId?: string): void;
+  getLastUsed(userId?: string): string[];
 }
 
 /**
- * Unregister commands from a source
+ * Create a new command registry instance
+ * No side effects - pure factory function
  */
-export function unregisterCommands(sourceId: string): void {
-  registrations.delete(sourceId);
-  notifyListeners();
-}
+export function createCommandRegistry(): CommandRegistry {
+  const registrations = new Map<string, CommandRegistration>();
+  const listeners = new Set<Listener>();
 
-/**
- * Get all available commands
- */
-export function getAllCommands(): Command[] {
-  const allCommands: Command[] = [];
-  
-  for (const registration of registrations.values()) {
-    for (const cmd of registration.commands) {
-      // Only include available commands
-      if (!cmd.isAvailable || cmd.isAvailable()) {
-        allCommands.push(cmd);
+  function notifyListeners(): void {
+    for (const listener of listeners) {
+      try {
+        listener();
+      } catch (err) {
+        console.error('[CommandRegistry] Listener error:', err);
       }
     }
   }
-  
-  return allCommands;
-}
 
-/**
- * Search commands by query
- */
-export function searchCommands(query: string): Command[] {
-  const commands = getAllCommands();
-  
-  if (!query.trim()) {
-    return commands;
+  function register(sourceId: string, commands: Command[]): void {
+    registrations.set(sourceId, { sourceId, commands });
+    notifyListeners();
   }
-  
-  const q = query.toLowerCase().trim();
-  
-  return commands.filter(cmd => {
-    // Match title
-    if (cmd.title.toLowerCase().includes(q)) return true;
-    // Match subtitle
-    if (cmd.subtitle?.toLowerCase().includes(q)) return true;
-    // Match keywords
-    if (cmd.keywords?.some(k => k.toLowerCase().includes(q))) return true;
-    // Match group
-    if (cmd.group.toLowerCase().includes(q)) return true;
+
+  function unregister(sourceId: string): void {
+    registrations.delete(sourceId);
+    notifyListeners();
+  }
+
+  function getAll(): Command[] {
+    const allCommands: Command[] = [];
     
-    return false;
-  }).sort((a, b) => {
-    // Prioritize exact title matches
-    const aExact = a.title.toLowerCase().startsWith(q);
-    const bExact = b.title.toLowerCase().startsWith(q);
-    if (aExact && !bExact) return -1;
-    if (!aExact && bExact) return 1;
+    for (const registration of registrations.values()) {
+      for (const cmd of registration.commands) {
+        if (!cmd.isAvailable || cmd.isAvailable()) {
+          allCommands.push(cmd);
+        }
+      }
+    }
     
-    // Then by group order
-    const groupOrder = ['Navigation', 'Aktionen', 'Fokus', 'Öffnen', 'System'];
-    const aGroupIdx = groupOrder.indexOf(a.group);
-    const bGroupIdx = groupOrder.indexOf(b.group);
-    if (aGroupIdx !== bGroupIdx) return aGroupIdx - bGroupIdx;
+    return allCommands;
+  }
+
+  function search(query: string): Command[] {
+    const commands = getAll();
     
-    // Then alphabetically
-    return a.title.localeCompare(b.title, 'de');
-  });
+    if (!query.trim()) {
+      return commands;
+    }
+    
+    const q = query.toLowerCase().trim();
+    
+    return commands.filter(cmd => {
+      if (cmd.title.toLowerCase().includes(q)) return true;
+      if (cmd.subtitle?.toLowerCase().includes(q)) return true;
+      if (cmd.keywords?.some(k => k.toLowerCase().includes(q))) return true;
+      if (cmd.group.toLowerCase().includes(q)) return true;
+      return false;
+    }).sort((a, b) => {
+      const aExact = a.title.toLowerCase().startsWith(q);
+      const bExact = b.title.toLowerCase().startsWith(q);
+      if (aExact && !bExact) return -1;
+      if (!aExact && bExact) return 1;
+      
+      const aGroupIdx = GROUP_ORDER.indexOf(a.group);
+      const bGroupIdx = GROUP_ORDER.indexOf(b.group);
+      if (aGroupIdx !== bGroupIdx) return aGroupIdx - bGroupIdx;
+      
+      return a.title.localeCompare(b.title, 'de');
+    });
+  }
+
+  function group(commands: Command[]): Map<string, Command[]> {
+    const groups = new Map<string, Command[]>();
+    
+    for (const g of GROUP_ORDER) {
+      groups.set(g, []);
+    }
+    
+    for (const cmd of commands) {
+      const g = groups.get(cmd.group);
+      if (g) {
+        g.push(cmd);
+      } else {
+        groups.set(cmd.group, [cmd]);
+      }
+    }
+    
+    for (const [key, value] of groups) {
+      if (value.length === 0) {
+        groups.delete(key);
+      }
+    }
+    
+    return groups;
+  }
+
+  function subscribe(listener: Listener): () => void {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  }
+
+  function saveLastUsed(commandId: string, userId?: string): void {
+    try {
+      const key = userId ? `${LAST_USED_KEY}:${userId}` : LAST_USED_KEY;
+      const history = getLastUsed(userId);
+      const newHistory = [commandId, ...history.filter(id => id !== commandId)].slice(0, 5);
+      localStorage.setItem(key, JSON.stringify(newHistory));
+    } catch {
+      // Ignore localStorage errors
+    }
+  }
+
+  function getLastUsed(userId?: string): string[] {
+    try {
+      const key = userId ? `${LAST_USED_KEY}:${userId}` : LAST_USED_KEY;
+      const stored = localStorage.getItem(key);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  return {
+    register,
+    unregister,
+    getAll,
+    search,
+    group,
+    subscribe,
+    saveLastUsed,
+    getLastUsed,
+  };
 }
 
 /**
- * Group commands by their group
+ * Utility: Group commands (standalone, for use without registry instance)
  */
 export function groupCommands(commands: Command[]): Map<string, Command[]> {
   const groups = new Map<string, Command[]>();
-  const groupOrder = ['Navigation', 'Aktionen', 'Fokus', 'Öffnen', 'System'];
   
-  // Initialize groups in order
-  for (const group of groupOrder) {
-    groups.set(group, []);
+  for (const g of GROUP_ORDER) {
+    groups.set(g, []);
   }
   
   for (const cmd of commands) {
-    const group = groups.get(cmd.group);
-    if (group) {
-      group.push(cmd);
+    const g = groups.get(cmd.group);
+    if (g) {
+      g.push(cmd);
     } else {
       groups.set(cmd.group, [cmd]);
     }
   }
   
-  // Remove empty groups
   for (const [key, value] of groups) {
     if (value.length === 0) {
       groups.delete(key);
@@ -120,54 +188,4 @@ export function groupCommands(commands: Command[]): Map<string, Command[]> {
   }
   
   return groups;
-}
-
-/**
- * Save last used command
- */
-export function saveLastUsedCommand(commandId: string, userId?: string): void {
-  try {
-    const key = userId ? `${LAST_USED_KEY}:${userId}` : LAST_USED_KEY;
-    const history = getLastUsedCommands(userId);
-    
-    // Add to front, remove duplicates, limit to 5
-    const newHistory = [commandId, ...history.filter(id => id !== commandId)].slice(0, 5);
-    localStorage.setItem(key, JSON.stringify(newHistory));
-  } catch {
-    // Ignore localStorage errors
-  }
-}
-
-/**
- * Get last used commands
- */
-export function getLastUsedCommands(userId?: string): string[] {
-  try {
-    const key = userId ? `${LAST_USED_KEY}:${userId}` : LAST_USED_KEY;
-    const stored = localStorage.getItem(key);
-    return stored ? JSON.parse(stored) : [];
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Subscribe to registry changes
- */
-export function subscribeToRegistry(listener: Listener): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
-/**
- * Notify all listeners of changes
- */
-function notifyListeners(): void {
-  for (const listener of listeners) {
-    try {
-      listener();
-    } catch (err) {
-      console.error('[CommandRegistry] Listener error:', err);
-    }
-  }
 }

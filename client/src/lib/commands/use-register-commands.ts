@@ -1,49 +1,58 @@
 /**
- * ARAS Command Registration Hook
- * Registers commands on mount, unregisters on unmount
+ * ARAS Command Registration Hooks
+ * Dependency injection pattern - registry passed as parameter
+ * No import-time side effects
  */
 
 import { useEffect, useRef } from 'react';
 import type { Command } from './command-types';
-import { registerCommands, unregisterCommands } from './command-registry';
+import type { CommandRegistry } from './command-registry';
 
 /**
  * Hook to register commands from a component
  * Automatically cleans up on unmount
  */
-export function useRegisterCommands(sourceId: string, commands: Command[]): void {
+export function useRegisterCommands(
+  registry: CommandRegistry | null,
+  sourceId: string,
+  commands: Command[]
+): void {
   const commandsRef = useRef(commands);
   commandsRef.current = commands;
 
   useEffect(() => {
-    registerCommands(sourceId, commandsRef.current);
+    if (!registry) return;
+    registry.register(sourceId, commandsRef.current);
     
     return () => {
-      unregisterCommands(sourceId);
+      registry.unregister(sourceId);
     };
-  }, [sourceId]);
+  }, [registry, sourceId]);
 
   // Update commands when they change
   useEffect(() => {
-    registerCommands(sourceId, commands);
-  }, [sourceId, commands]);
+    if (!registry) return;
+    registry.register(sourceId, commands);
+  }, [registry, sourceId, commands]);
 }
 
 /**
  * Hook to register commands lazily (for dynamic commands)
  */
 export function useRegisterDynamicCommands(
+  registry: CommandRegistry | null,
   sourceId: string,
   getCommands: () => Command[],
   deps: React.DependencyList
 ): void {
   useEffect(() => {
+    if (!registry) return;
     const commands = getCommands();
-    registerCommands(sourceId, commands);
+    registry.register(sourceId, commands);
     
     return () => {
-      unregisterCommands(sourceId);
+      registry.unregister(sourceId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sourceId, ...deps]);
+  }, [registry, sourceId, ...deps]);
 }

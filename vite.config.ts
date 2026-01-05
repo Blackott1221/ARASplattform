@@ -6,6 +6,9 @@ import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 // Generate build ID from timestamp (can be replaced with git SHA in CI)
 const BUILD_ID = process.env.VITE_BUILD_ID || `build-${Date.now()}`;
 
+// Enable sourcemaps only when explicitly requested (for debugging production issues)
+const ENABLE_SOURCEMAPS = process.env.VITE_DEBUG_SOURCEMAP === 'true';
+
 export default defineConfig({
   define: {
     'import.meta.env.VITE_BUILD_ID': JSON.stringify(BUILD_ID),
@@ -33,6 +36,7 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    sourcemap: ENABLE_SOURCEMAPS,
   },
   server: {
     fs: {
