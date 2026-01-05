@@ -2,6 +2,8 @@
  * ARAS Command Palette Context
  * Provides registry instance via React context
  * No import-time side effects - registry created at runtime
+ * 
+ * TDZ-SAFE: Uses lazy context initialization to avoid Safari ESM issues
  */
 
 import React, { createContext, useContext, useRef, useEffect, useState, type ReactNode } from 'react';
@@ -13,7 +15,16 @@ interface CommandContextValue {
   isReady: boolean;
 }
 
-const CommandContext = createContext<CommandContextValue | null>(null);
+// TDZ-SAFE: Lazy context initialization
+// Safari's strict ESM can fail if context is accessed during module evaluation
+let _commandContext: React.Context<CommandContextValue | null> | null = null;
+
+function getCommandContext(): React.Context<CommandContextValue | null> {
+  if (!_commandContext) {
+    _commandContext = createContext<CommandContextValue | null>(null);
+  }
+  return _commandContext;
+}
 
 interface CommandProviderProps {
   children: ReactNode;
@@ -53,6 +64,7 @@ export function CommandProvider({ children, navigate }: CommandProviderProps) {
     isReady,
   };
 
+  const CommandContext = getCommandContext();
   return (
     <CommandContext.Provider value={value}>
       {children}
@@ -62,16 +74,20 @@ export function CommandProvider({ children, navigate }: CommandProviderProps) {
 
 /**
  * Hook to access the command registry
+ * TDZ-SAFE: Uses lazy context getter
  */
 export function useCommandRegistry(): CommandRegistry | null {
+  const CommandContext = getCommandContext();
   const context = useContext(CommandContext);
   return context?.registry ?? null;
 }
 
 /**
  * Hook to check if commands are ready
+ * TDZ-SAFE: Uses lazy context getter
  */
 export function useCommandsReady(): boolean {
+  const CommandContext = getCommandContext();
   const context = useContext(CommandContext);
   return context?.isReady ?? false;
 }

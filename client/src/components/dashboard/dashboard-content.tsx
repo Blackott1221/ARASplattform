@@ -4,6 +4,7 @@ import { formatDistanceToNow, isToday, isYesterday, subDays, isAfter, format, ad
 import { de } from 'date-fns/locale';
 import type { User, UserTask } from '@shared/schema';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { markModule } from '@/lib/system/module-trace';
 import { PowerResultCard } from '@/components/power/power-result-card';
 import { MissionBriefing } from '@/components/dashboard/mission-briefing';
 import { CoachTour, startDashboardTour, isTourCompleted } from '@/components/system/coach-tour';
@@ -18,6 +19,9 @@ import { buildTodayTimeline, buildWeekStrip, type TimelineItem } from '@/lib/tim
 import { useRegisterDynamicCommands } from '@/lib/commands/use-register-commands';
 import { useCommandRegistry } from '@/lib/commands/command-context';
 import type { Command } from '@/lib/commands/command-types';
+
+// Trace: all imports completed (module evaluation reached this point)
+markModule('dashboard-content:imports-done');
 
 // ═══════════════════════════════════════════════════════════════
 // SAFE HELPERS V7 (prevent crashes from null/undefined)

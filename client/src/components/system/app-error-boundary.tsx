@@ -6,6 +6,8 @@
 
 import { Component, type ReactNode } from 'react';
 import { BUILD_ID, forceHardReload } from '@/lib/system/build-id';
+import { formatTraceForDisplay } from '@/lib/system/module-trace';
+import { getRuntimeDiag } from '@/lib/system/runtime-diag';
 
 interface Props {
   children: ReactNode;
@@ -61,11 +63,29 @@ export class AppErrorBoundary extends Component<Props, State> {
   copyErrorDetails = async () => {
     if (!this.state.error) return;
     try {
+      const diag = getRuntimeDiag();
+      const trace = formatTraceForDisplay();
       const details = `ARAS Error Report
-Build: ${BUILD_ID}
-Time: ${new Date().toISOString()}
-Error: ${this.state.error.message}
-Stack: ${this.state.error.stack || 'N/A'}`;
+═══════════════════════════════════════
+BUILD: ${BUILD_ID}
+TIME: ${new Date().toISOString()}
+URL: ${diag.href}
+USER AGENT: ${diag.userAgent}
+TIMEZONE: ${diag.timezone}
+ONLINE: ${diag.onLine}
+
+ERROR
+─────
+${this.state.error.message}
+
+STACK TRACE
+───────────
+${this.state.error.stack || 'N/A'}
+
+MODULE TRACE (last 40)
+──────────────────────
+${trace}
+═══════════════════════════════════════`;
       await navigator.clipboard.writeText(details);
     } catch {
       // Ignore clipboard errors

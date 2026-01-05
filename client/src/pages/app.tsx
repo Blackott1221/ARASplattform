@@ -10,10 +10,14 @@ import { CommandPalette } from "@/components/system/command-palette";
 import { CommandProvider } from "@/lib/commands/command-context";
 import { lazyWithRetry } from "@/lib/react/lazy-with-retry";
 import { checkBuildIdAndReload } from "@/lib/system/build-id";
+import { markModule } from "@/lib/system/module-trace";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { Menu, X } from "lucide-react";
 import type { User, SubscriptionResponse } from "@shared/schema";
+
+// Trace: app.tsx loaded
+markModule('app:import');
 
 // ARAS CI Colors for loading states
 const COLORS = {
@@ -25,7 +29,14 @@ const COLORS = {
 checkBuildIdAndReload();
 
 // Lazy load pages with retry for chunk loading failures
-const Dashboard = lazyWithRetry(() => import("@/pages/dashboard"), { retries: 2 });
+// Trace each lazy import for Safari TDZ debugging
+const Dashboard = lazyWithRetry(() => {
+  markModule('route:dashboard:lazy:begin');
+  return import("@/pages/dashboard").then(m => {
+    markModule('route:dashboard:lazy:resolved');
+    return m;
+  });
+}, { retries: 2 });
 const PowerPage = lazyWithRetry(() => import("@/pages/power"), { retries: 2 });
 const CampaignsPage = lazyWithRetry(() => import("@/pages/campaigns"), { retries: 2 });
 const Contacts = lazyWithRetry(() => import('./contacts'), { retries: 2 });
