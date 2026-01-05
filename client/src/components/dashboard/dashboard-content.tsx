@@ -16,9 +16,9 @@ import { TodayOS } from '@/components/dashboard/today-os';
 import type { InboxItem, SourceFilter as InboxSourceFilter } from '@/lib/inbox/triage';
 import { buildContactInsights, rankContacts, getBestSourceToOpen, type ContactInsight } from '@/lib/contacts/contact-insights';
 import { buildTodayTimeline, buildWeekStrip, type TimelineItem } from '@/lib/timeline/timeline';
-import { useRegisterDynamicCommands } from '@/lib/commands/use-register-commands';
-import { useCommandRegistry } from '@/lib/commands/command-context';
-import type { Command } from '@/lib/commands/command-types';
+// REMOVED: Command imports cause Safari TDZ crash
+// Commands are now registered from dashboard.tsx shell, not content
+// See: lib/commands/modules/dashboard-commands.ts
 
 // Trace: all imports completed (module evaluation reached this point)
 markModule('dashboard-content:imports-done');
@@ -389,8 +389,7 @@ interface ContactRadarEntry {
 }
 
 export function DashboardContent({ user }: DashboardContentProps) {
-  // Command palette registry (DI pattern - may be null if not in CommandProvider)
-  const commandRegistry = useCommandRegistry();
+  // NOTE: Command registration moved to dashboard.tsx shell to avoid Safari TDZ
   
   const [selectedItem, setSelectedItem] = useState<ActivityItem | null>(null);
   const [selectedDetails, setSelectedDetails] = useState<any>(null);
@@ -976,125 +975,9 @@ export function DashboardContent({ user }: DashboardContentProps) {
     }
   }, [queryClient]);
 
-  // Command Palette: Register dynamic dashboard commands
-  useRegisterDynamicCommands(commandRegistry, 'dashboard-dynamic', () => {
-    const commands: Command[] = [];
-
-    // Inbox filter commands
-    commands.push(
-      {
-        id: 'inbox-action',
-        group: 'Aktionen',
-        title: 'Inbox: AKTION',
-        subtitle: 'Zeigt Inbox-Items mit Handlungsbedarf',
-        keywords: ['filter', 'aktionen', 'todo'],
-        statusChip: 'AKTION',
-        perform: () => setActiveFilter('all'),
-      },
-      {
-        id: 'inbox-pending',
-        group: 'Aktionen',
-        title: 'Inbox: IN ARBEIT',
-        subtitle: 'Zeigt laufende Verarbeitungen',
-        keywords: ['filter', 'pending', 'processing'],
-        statusChip: 'IN ARBEIT',
-        perform: () => setActiveFilter('all'),
-      },
-      {
-        id: 'inbox-failed',
-        group: 'Aktionen',
-        title: 'Inbox: FEHLGESCHLAGEN',
-        subtitle: 'Zeigt fehlgeschlagene Items',
-        keywords: ['filter', 'fehler', 'error'],
-        statusChip: 'FEHLER',
-        perform: () => setActiveFilter('all'),
-      }
-    );
-
-    // Focus commands from ContactRadar
-    if (focusKey) {
-      commands.push({
-        id: 'focus-clear',
-        group: 'Fokus',
-        title: 'Fokus beenden',
-        subtitle: focusedContact?.ref.label || 'Aktueller Fokus',
-        keywords: ['focus', 'clear', 'reset'],
-        perform: () => setFocusKey(null),
-      });
-    }
-
-    // Add top contacts as focus commands
-    const topContacts = contactInsights.slice(0, 6);
-    for (const contact of topContacts) {
-      if (contact.ref.key !== focusKey) {
-        commands.push({
-          id: `focus-${contact.ref.key}`,
-          group: 'Fokus',
-          title: `Fokus: ${contact.ref.label}`,
-          subtitle: contact.ref.hint,
-          keywords: ['focus', 'kontakt', contact.ref.label.toLowerCase()],
-          statusChip: contact.failedCount > 0 ? 'FEHLER' : contact.openTasks > 0 ? 'OFFEN' : undefined,
-          perform: () => setFocusKey(contact.ref.key),
-        });
-      }
-    }
-
-    // Recent calls (max 6)
-    const recentCalls = callLogs.slice(0, 6);
-    for (const call of recentCalls) {
-      commands.push({
-        id: `open-call-${call.id}`,
-        group: 'Öffnen',
-        title: call.contactName || call.phoneNumber || 'Anruf',
-        subtitle: call.summaryShort?.slice(0, 60) || 'Call öffnen',
-        keywords: ['call', 'anruf', (call.contactName || '').toLowerCase()],
-        statusChip: call.summaryStatus === 'failed' ? 'FEHLER' : call.summaryStatus === 'pending' ? 'IN ARBEIT' : undefined,
-        perform: () => {
-          const activity = callActivities.find(c => c.id === call.id);
-          if (activity) handleOpenDetails(activity);
-        },
-      });
-    }
-
-    // Recent spaces (max 6)
-    const recentSpaces = chatSessions.slice(0, 6);
-    for (const space of recentSpaces) {
-      commands.push({
-        id: `open-space-${space.id}`,
-        group: 'Öffnen',
-        title: space.title || 'Space Chat',
-        subtitle: space.summaryShort?.slice(0, 60) || 'Space öffnen',
-        keywords: ['space', 'chat', (space.title || '').toLowerCase()],
-        statusChip: space.summaryStatus === 'failed' ? 'FEHLER' : space.summaryStatus === 'pending' ? 'IN ARBEIT' : undefined,
-        perform: () => {
-          const activity = chatActivities.find(c => c.id === space.id);
-          if (activity) handleOpenDetails(activity);
-        },
-      });
-    }
-
-    // Open tasks (max 6)
-    const openTasksList = safeArray(openTasks).slice(0, 6);
-    for (const task of openTasksList) {
-      commands.push({
-        id: `open-task-${task.id}`,
-        group: 'Öffnen',
-        title: task.title || 'Aufgabe',
-        subtitle: task.description?.slice(0, 60),
-        keywords: ['task', 'aufgabe', (task.title || '').toLowerCase()],
-        statusChip: 'OFFEN',
-        perform: () => {
-          // Scroll to Operations panel
-          const opsPanel = document.querySelector('[data-tour="mc-ops"]');
-          if (opsPanel) {
-            opsPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        },
-      });
-    }
-
-    return commands;
-  }, [commandRegistry, focusKey, focusedContact, contactInsights, callLogs, chatSessions, openTasks, callActivities, chatActivities, handleOpenDetails]);
+  // NOTE: Dynamic dashboard commands removed to fix Safari TDZ crash
+  // Commands are now registered from dashboard.tsx shell via context callback
+  // The shell passes setActiveFilter, setFocusKey etc. to command registry
 
   // Unified activity list - SAFE: always use safeArray to prevent spread crash
   const allActivities: ActivityItem[] = useMemo(() => {
