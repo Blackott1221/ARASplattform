@@ -12,7 +12,8 @@
     "db:push": "drizzle-kit push",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "migrate:calendar": "node scripts/migrate-calendar.js"
+    "migrate:calendar": "node scripts/migrate-calendar.js",
+    "madge:circular": "npx madge --circular --extensions ts,tsx client/src"
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.4.0",

@@ -1,9 +1,11 @@
 /**
  * AppErrorBoundary - Global crash protection for ARAS AI
  * Guarantees no black screen ever - catches any render error and shows premium fallback
+ * Includes Hard Reload for cache mismatch recovery
  */
 
 import { Component, type ReactNode } from 'react';
+import { BUILD_ID, forceHardReload } from '@/lib/system/build-id';
 
 interface Props {
   children: ReactNode;
@@ -12,6 +14,7 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+  showDetails: boolean;
 }
 
 // ARAS CI Colors
@@ -24,10 +27,10 @@ const COLORS = {
 export class AppErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, showDetails: false };
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { hasError: true, error };
   }
 
@@ -43,8 +46,30 @@ export class AppErrorBoundary extends Component<Props, State> {
     window.location.reload();
   };
 
+  handleHardReload = () => {
+    forceHardReload();
+  };
+
   handleGoToLogin = () => {
     window.location.href = '/login';
+  };
+
+  toggleDetails = () => {
+    this.setState(prev => ({ showDetails: !prev.showDetails }));
+  };
+
+  copyErrorDetails = async () => {
+    if (!this.state.error) return;
+    try {
+      const details = `ARAS Error Report
+Build: ${BUILD_ID}
+Time: ${new Date().toISOString()}
+Error: ${this.state.error.message}
+Stack: ${this.state.error.stack || 'N/A'}`;
+      await navigator.clipboard.writeText(details);
+    } catch {
+      // Ignore clipboard errors
+    }
   };
 
   render() {
@@ -104,16 +129,6 @@ export class AppErrorBoundary extends Component<Props, State> {
               Bitte versuche es erneut oder melde dich neu an.
             </p>
 
-            {/* Development error details */}
-            {process.env.NODE_ENV === 'development' && this.state.error && (
-              <div 
-                className="mb-6 p-3 rounded-lg text-left text-xs font-mono overflow-auto max-h-32"
-                style={{ background: 'rgba(0,0,0,0.4)', color: '#888' }}
-              >
-                {this.state.error.message}
-              </div>
-            )}
-
             {/* Action buttons */}
             <div className="flex flex-col gap-3">
               <button
@@ -127,9 +142,9 @@ export class AppErrorBoundary extends Component<Props, State> {
               >
                 Neu laden
               </button>
-              
+
               <button
-                onClick={this.handleGoToLogin}
+                onClick={this.handleHardReload}
                 className="w-full py-3 px-6 rounded-xl text-sm font-medium transition-all hover:bg-white/[0.06]"
                 style={{ 
                   background: 'rgba(255,255,255,0.03)',
@@ -137,8 +152,47 @@ export class AppErrorBoundary extends Component<Props, State> {
                   color: COLORS.gold,
                 }}
               >
+                Hard Reload (Cache leeren)
+              </button>
+              
+              <button
+                onClick={this.handleGoToLogin}
+                className="w-full py-2 px-4 rounded-lg text-xs font-medium transition-all hover:bg-white/[0.04]"
+                style={{ 
+                  color: 'rgba(255,255,255,0.5)',
+                }}
+              >
                 Zur Anmeldung
               </button>
+            </div>
+
+            {/* Technical details toggle */}
+            <div className="mt-6 pt-4 border-t border-white/5">
+              <button
+                onClick={this.toggleDetails}
+                className="text-[10px] text-neutral-600 hover:text-neutral-500 transition-colors"
+              >
+                {this.state.showDetails ? 'Details ausblenden' : 'Technische Details'}
+              </button>
+
+              {this.state.showDetails && (
+                <div className="mt-3 text-left">
+                  <div 
+                    className="p-3 rounded-lg text-[10px] font-mono overflow-auto max-h-32 mb-2"
+                    style={{ background: 'rgba(0,0,0,0.4)', color: '#666' }}
+                  >
+                    <div className="mb-1">Build: {BUILD_ID}</div>
+                    <div className="mb-1">Time: {new Date().toISOString()}</div>
+                    <div>Error: {this.state.error?.message || 'Unknown'}</div>
+                  </div>
+                  <button
+                    onClick={this.copyErrorDetails}
+                    className="text-[9px] text-neutral-600 hover:text-neutral-500 transition-colors"
+                  >
+                    Details kopieren
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

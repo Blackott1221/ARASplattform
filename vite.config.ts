@@ -3,7 +3,13 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
+// Generate build ID from timestamp (can be replaced with git SHA in CI)
+const BUILD_ID = process.env.VITE_BUILD_ID || `build-${Date.now()}`;
+
 export default defineConfig({
+  define: {
+    'import.meta.env.VITE_BUILD_ID': JSON.stringify(BUILD_ID),
+  },
   plugins: [
     react(),
     runtimeErrorOverlay(),

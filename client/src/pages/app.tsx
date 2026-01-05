@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense, useMemo } from "react";
+import { useState, useEffect, Suspense, useMemo } from "react";
 import { useLocation } from "wouter";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
@@ -8,6 +8,8 @@ import { NewYearOverlay } from "@/components/overlays/new-year-overlay";
 import { AppErrorBoundary } from "@/components/system/app-error-boundary";
 import { CommandPalette } from "@/components/system/command-palette";
 import { useRegisterCommands } from "@/lib/commands/use-register-commands";
+import { lazyWithRetry } from "@/lib/react/lazy-with-retry";
+import { checkBuildIdAndReload } from "@/lib/system/build-id";
 import type { Command } from "@/lib/commands/command-types";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
@@ -20,15 +22,18 @@ const COLORS = {
   gold: '#e9d7c4',
 };
 
-// Lazy load pages for better performance
-const Dashboard = lazy(() => import("@/pages/dashboard"));
-const PowerPage = lazy(() => import("@/pages/power"));
-const CampaignsPage = lazy(() => import("@/pages/campaigns"));
-const Contacts = lazy(() => import('./contacts'));
-const Calendar = lazy(() => import('./calendar'));
-const LeadsPage = lazy(() => import("@/pages/leads"));
-const BillingPage = lazy(() => import("@/pages/billing"));
-const SettingsPage = lazy(() => import("@/pages/settings"));
+// Check for build ID mismatch and reload if needed (cache protection)
+checkBuildIdAndReload();
+
+// Lazy load pages with retry for chunk loading failures
+const Dashboard = lazyWithRetry(() => import("@/pages/dashboard"), { retries: 2 });
+const PowerPage = lazyWithRetry(() => import("@/pages/power"), { retries: 2 });
+const CampaignsPage = lazyWithRetry(() => import("@/pages/campaigns"), { retries: 2 });
+const Contacts = lazyWithRetry(() => import('./contacts'), { retries: 2 });
+const Calendar = lazyWithRetry(() => import('./calendar'), { retries: 2 });
+const LeadsPage = lazyWithRetry(() => import("@/pages/leads"), { retries: 2 });
+const BillingPage = lazyWithRetry(() => import("@/pages/billing"), { retries: 2 });
+const SettingsPage = lazyWithRetry(() => import("@/pages/settings"), { retries: 2 });
 
 export default function App() {
   const [location, setLocation] = useLocation();
