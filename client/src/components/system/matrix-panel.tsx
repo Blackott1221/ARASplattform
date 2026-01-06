@@ -7,6 +7,7 @@
 import { type ReactNode, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { staggerDelay, prefersReducedMotion } from '@/lib/motion/aras-motion';
+import { asArray } from '@/lib/utils/safe';
 
 export interface MatrixLine {
   label: string;
@@ -52,6 +53,9 @@ export function MatrixPanel({
   helpText,
   onHelpClick,
 }: MatrixPanelProps) {
+  // NULL-SAFE: Always work with array
+  const safeLines = asArray<MatrixLine>(lines);
+  
   const accentColor = accent === 'green' ? '#00ff9a' : '#ff6a00';
   const accentColorDim = accent === 'green' ? 'rgba(0,255,154,0.5)' : 'rgba(255,106,0,0.5)';
   const accentBg = accent === 'green' ? 'rgba(0,255,154,0.02)' : 'rgba(255,106,0,0.02)';
@@ -151,7 +155,7 @@ export function MatrixPanel({
           className="space-y-2 text-[11px]"
           style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' }}
         >
-          {lines.map((line, idx) => {
+          {safeLines.map((line, idx) => {
             const displayValue = formatValue(line.value);
             const isEmpty = displayValue === '—';
             const valueColor = line.tone 

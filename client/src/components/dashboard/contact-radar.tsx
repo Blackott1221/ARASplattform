@@ -7,6 +7,7 @@
 import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { ContactInsight } from '@/lib/contacts/contact-insights';
+import { asArray } from '@/lib/utils/safe';
 
 // Design Tokens
 const DT = {
@@ -59,13 +60,17 @@ export function ContactRadar({
   pinnedKeys,
   onTogglePin,
 }: ContactRadarProps) {
+  // NULL-SAFE: Always work with arrays
+  const safeInsights = asArray<ContactInsight>(insights);
+  const safePinnedKeys = asArray<string>(pinnedKeys);
+  
   // Separate pinned and unpinned
   const { pinned, unpinned } = useMemo(() => {
-    const pinnedSet = new Set(pinnedKeys);
+    const pinnedSet = new Set(safePinnedKeys);
     const pinnedItems: ContactInsight[] = [];
     const unpinnedItems: ContactInsight[] = [];
 
-    for (const insight of insights) {
+    for (const insight of safeInsights) {
       if (pinnedSet.has(insight.ref.key)) {
         pinnedItems.push(insight);
       } else {
@@ -74,9 +79,9 @@ export function ContactRadar({
     }
 
     return { pinned: pinnedItems, unpinned: unpinnedItems.slice(0, 8) };
-  }, [insights, pinnedKeys]);
+  }, [safeInsights, safePinnedKeys]);
 
-  const hasAnyContacts = insights.length > 0;
+  const hasAnyContacts = safeInsights.length > 0;
 
   return (
     <motion.div

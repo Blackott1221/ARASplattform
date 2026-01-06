@@ -358,10 +358,13 @@ router.get("/chat/sessions", async (req: Request, res: Response) => {
       .from(chatSessions)
       .where(eq(chatSessions.userId, userId));
 
-    return res.json(sessions.reverse());
-  } catch (error) {
+    // NULL-SAFE: Always return array, never undefined
+    const safeSessions = Array.isArray(sessions) ? sessions : [];
+    return res.json(safeSessions.reverse());
+  } catch (error: any) {
     console.error("[GET-SESSIONS-ERROR]", error);
-    return res.status(500).json({ message: "Failed to fetch sessions" });
+    // UPGRADE: Return 200 with empty array instead of 500 to keep UI alive
+    return res.status(200).json([]);
   }
 });
 

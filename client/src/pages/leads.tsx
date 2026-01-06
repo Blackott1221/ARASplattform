@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useLocation } from 'wouter';
+import { safeTrim, asArray } from '@/lib/utils/safe';
 
 // V8: Parse URL search params (wouter doesn't have useSearchParams)
 function useSearchParams(): URLSearchParams {
@@ -38,12 +39,12 @@ function getMissingFields(userProfile: any, aiProfile: any): MissingField[] {
   const missing: MissingField[] = [];
   
   // Company - fail if missing
-  if (!userProfile?.company?.trim()) {
+  if (!safeTrim(userProfile?.company)) {
     missing.push({ ...FIELD_DEFINITIONS[0], severity: 'fail' });
   }
   
   // Company Description - warn if missing, fail if too short
-  const desc = aiProfile?.companyDescription?.trim() || '';
+  const desc = safeTrim(aiProfile?.companyDescription);
   if (!desc) {
     missing.push({ ...FIELD_DEFINITIONS[1], severity: 'warn' });
   } else if (desc.length < 40) {
@@ -51,12 +52,12 @@ function getMissingFields(userProfile: any, aiProfile: any): MissingField[] {
   }
   
   // Target Audience - fail if missing
-  if (!aiProfile?.targetAudience?.trim()) {
+  if (!safeTrim(aiProfile?.targetAudience)) {
     missing.push({ ...FIELD_DEFINITIONS[2], severity: 'fail' });
   }
   
   // Services - warn if missing
-  if (!aiProfile?.services?.trim()) {
+  if (!safeTrim(aiProfile?.services)) {
     missing.push({ ...FIELD_DEFINITIONS[3], severity: 'warn' });
   }
   
@@ -242,7 +243,7 @@ function LeadsContent() {
     const sectionParam = searchParams.get('section');
     
     if (missingParam) {
-      const keys = missingParam.split(',').map(k => k.trim().replace('aiProfile.', ''));
+      const keys = missingParam.split(',').map(k => safeTrim(k).replace('aiProfile.', ''));
       setHighlightedFields(new Set(keys));
       setShowSetupBar(true);
       
@@ -385,8 +386,8 @@ function LeadsContent() {
     const updates = {
       companyDescription: editedBusiness.companyDescription,
       targetAudience: editedBusiness.targetAudience,
-      effectiveKeywords: editedBusiness.effectiveKeywords.split(',').map((k: string) => k.trim()).filter(Boolean),
-      competitors: editedBusiness.competitors.split(',').map((c: string) => c.trim()).filter(Boolean),
+      effectiveKeywords: editedBusiness.effectiveKeywords.split(',').map((k: string) => safeTrim(k)).filter(Boolean),
+      competitors: editedBusiness.competitors.split(',').map((c: string) => safeTrim(c)).filter(Boolean),
       services: editedBusiness.services,
     };
     updateAiProfileMutation.mutate(updates);
@@ -432,11 +433,11 @@ function LeadsContent() {
     });
 
     // Validation
-    if (newDataSource.type === 'text' && !newDataSource.content.trim()) {
+    if (newDataSource.type === 'text' && !safeTrim(newDataSource.content)) {
       setAddSourceError('Bitte Textinhalt eingeben');
       return;
     }
-    if (newDataSource.type === 'url' && !newDataSource.url.trim()) {
+    if (newDataSource.type === 'url' && !safeTrim(newDataSource.url)) {
       setAddSourceError('Bitte URL eingeben');
       return;
     }

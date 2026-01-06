@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import type { TimelineItem, DayStrip, TimelineCounts } from '@/lib/timeline/timeline';
+import { asArray } from '@/lib/utils/safe';
 
 // Design Tokens
 const DT = {
@@ -70,7 +71,12 @@ export function TodayOS({
   onTaskSnooze,
   onCreateTaskFromItem,
 }: TodayOSProps) {
-  const hasAnyItems = itemsTimed.length > 0 || itemsUntimed.length > 0;
+  // NULL-SAFE: Always work with arrays
+  const safeItemsTimed = asArray<TimelineItem>(itemsTimed);
+  const safeItemsUntimed = asArray<TimelineItem>(itemsUntimed);
+  const safeWeekDays = asArray<DayStrip>(weekStrip?.days);
+  
+  const hasAnyItems = safeItemsTimed.length > 0 || safeItemsUntimed.length > 0;
 
   return (
     <motion.div
