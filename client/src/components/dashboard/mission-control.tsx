@@ -16,6 +16,8 @@ import { KpiCards } from './kpi-cards';
 import { ActivityStream } from './activity-stream';
 import { ContactsDrawer } from './contacts-drawer';
 import { CallCard } from './call-card';
+import { ActionCenter } from './action-center';
+import { ArasMark } from '@/components/brand/aras-mark';
 import type { RecentCall } from '@/lib/dashboard/overview.schema';
 import { ModuleBoundary } from '@/components/system/module-boundary';
 import { asArray, isValidString, safeNumber } from '@/lib/utils/safe';
@@ -137,12 +139,7 @@ function SalesHeroCTA() {
       <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-3">
-            <div 
-              className="w-12 h-12 rounded-xl flex items-center justify-center"
-              style={{ background: `linear-gradient(135deg, ${DT.orange}, #ff8533)` }}
-            >
-              <Rocket size={24} className="text-white" />
-            </div>
+            <ArasMark size={48} animate glow />
             <div>
               <h2 className="text-xl sm:text-2xl font-bold text-white font-['Orbitron']">
                 Vertrieb starten?
@@ -640,13 +637,42 @@ export function MissionControl({ user }: MissionControlProps) {
 
           {/* Right Column - Intelligence Panels */}
           <div className="space-y-6">
-            {/* KI Prioritäten (replaces Contact Radar) */}
+            {/* Gemini Action Center - AI recommendations from calls */}
+            <ActionCenter 
+              calls={asArray<RecentCall>(data.recentCalls)} 
+              isLoading={isLoading}
+              onOpenCall={(id) => window.location.href = `/app/power?call=${id}`}
+            />
+
+            {/* KI Prioritäten - setup recommendations */}
             <KIPrioritiesPanel kpis={data.kpis} activity={asArray(data.activity)} />
 
             {/* Calendar Mini Panel */}
             <CalendarMiniPanel />
           </div>
         </div>
+
+        {/* Debug Info Bar (only in dev or with ?debug=1) */}
+        {(import.meta.env.DEV || window.location.search.includes('debug=1')) && (data as any).debug && (
+          <div 
+            className="rounded-lg p-3 mt-4"
+            style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <Activity size={12} className="text-blue-400" />
+              <span className="text-[10px] font-medium text-blue-400">DEBUG INFO</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[9px] text-white/60">
+              <div>Calls (callLogs): <span className="text-white">{(data as any).debug.callLogsCount}</span></div>
+              <div>Calls (internal): <span className="text-white">{(data as any).debug.internalCallLogsCount}</span></div>
+              <div>Total returned: <span className="text-white">{(data as any).debug.totalCallsReturned}</span></div>
+              <div>Scope: <span className="text-white">{(data as any).debug.scope}</span></div>
+            </div>
+            <div className="text-[8px] text-white/30 mt-1">
+              userId: {(data as any).debug.userId} | {(data as any).debug.timestamp}
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="text-center pt-4 border-t border-white/5">

@@ -234,6 +234,11 @@ export const RecentCallSchema = z.object({
   summary: z.string().optional(),
   sentiment: z.enum(['positive', 'neutral', 'negative']).optional(),
   nextStep: z.string().optional(),
+  // Gemini AI recommendations (cached)
+  geminiActions: z.array(z.string()).optional(),
+  geminiPriority: z.number().optional(),
+  geminiSuggestedMessage: z.string().optional(),
+  geminiRiskFlags: z.array(z.string()).optional(),
 });
 
 // ═══════════════════════════════════════════════════════════════

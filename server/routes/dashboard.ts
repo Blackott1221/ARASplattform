@@ -8,9 +8,10 @@ import { Router, Request, Response } from 'express';
 import { db } from '../db';
 import { 
   users, callLogs, campaigns, contacts, chatSessions, 
-  chatMessages, voiceTasks, feedback, calendarEvents 
+  chatMessages, voiceTasks, feedback, calendarEvents,
+  internalCallLogs
 } from '@shared/schema';
-import { eq, desc, gte, and, count, sql } from 'drizzle-orm';
+import { eq, desc, gte, and, count, sql, or, isNotNull } from 'drizzle-orm';
 
 const router = Router();
 
@@ -32,6 +33,20 @@ interface RecentCall {
   summary?: string;
   sentiment?: 'positive' | 'neutral' | 'negative';
   nextStep?: string;
+  // Gemini recommendations (cached)
+  geminiActions?: string[];
+  geminiPriority?: number;
+  geminiSuggestedMessage?: string;
+  geminiRiskFlags?: string[];
+}
+
+interface DebugInfo {
+  userId: string;
+  callLogsCount: number;
+  internalCallLogsCount: number;
+  totalCallsReturned: number;
+  scope: string;
+  timestamp: string;
 }
 
 interface DashboardOverview {
@@ -44,6 +59,7 @@ interface DashboardOverview {
   systemAlerts: any[];
   lastUpdated: string;
   errors: string[];
+  debug?: DebugInfo;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -60,6 +76,59 @@ function getDateRanges() {
 
 function safeCount(arr: any[] | null | undefined): number {
   return Array.isArray(arr) ? arr.length : 0;
+}
+
+// Robust metadata parser - handles string, object, or null
+function parseMetadata(metadata: unknown): Record<string, any> {
+  if (!metadata) return {};
+  if (typeof metadata === 'string') {
+    try {
+      return JSON.parse(metadata);
+    } catch {
+      return {};
+    }
+  }
+  if (typeof metadata === 'object') {
+    return metadata as Record<string, any>;
+  }
+  return {};
+}
+
+// Extract summary from various sources
+function extractSummary(metadata: Record<string, any>, transcript?: string | null): string {
+  // Try metadata fields first
+  const summaryFields = ['summary', 'ai_summary', 'call_summary', 'gemini_summary', 'analysis'];
+  for (const field of summaryFields) {
+    if (metadata[field] && typeof metadata[field] === 'string' && metadata[field].length > 10) {
+      return metadata[field];
+    }
+  }
+  // Fallback to transcript snippet
+  if (transcript && transcript.length > 50) {
+    return transcript.substring(0, 200) + '...';
+  }
+  return '';
+}
+
+// Extract sentiment (normalize various formats)
+function extractSentiment(metadata: Record<string, any>): 'positive' | 'neutral' | 'negative' | undefined {
+  const raw = metadata.sentiment || metadata.call_sentiment || metadata.mood;
+  if (!raw) return undefined;
+  const normalized = String(raw).toLowerCase();
+  if (normalized.includes('positive') || normalized.includes('good') || normalized.includes('positiv')) return 'positive';
+  if (normalized.includes('negative') || normalized.includes('bad') || normalized.includes('negativ')) return 'negative';
+  return 'neutral';
+}
+
+// Extract Gemini cached data
+function extractGeminiData(metadata: Record<string, any>) {
+  const gemini = metadata.gemini || metadata.ai_recommendations || {};
+  return {
+    actions: Array.isArray(gemini.actions) ? gemini.actions : [],
+    priority: typeof gemini.priority === 'number' ? gemini.priority : undefined,
+    suggestedMessage: gemini.suggestedMessage || gemini.suggested_message || undefined,
+    riskFlags: Array.isArray(gemini.riskFlags) ? gemini.riskFlags : [],
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -119,11 +188,56 @@ router.get('/overview', async (req: Request, res: Response) => {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // FETCH CALL LOGS KPIs
+  // FETCH CALL LOGS - MULTI-SOURCE (callLogs + internalCallLogs)
   // ─────────────────────────────────────────────────────────────
+  let callLogsCount = 0;
+  let internalCallLogsCount = 0;
+  
   try {
-    const allCalls = await db.select().from(callLogs).where(eq(callLogs.userId, userId));
+    // SOURCE 1: Main callLogs table (by userId)
+    const mainCalls = await db.select().from(callLogs).where(eq(callLogs.userId, userId));
+    callLogsCount = mainCalls.length;
     
+    // SOURCE 2: internalCallLogs (via internalDeals ownerUserId)
+    let internalCalls: any[] = [];
+    try {
+      // Query internalCallLogs directly - these are system-wide calls
+      // We'll include all internal calls for now (admin view)
+      const allInternalCalls = await db.select().from(internalCallLogs).limit(50);
+      internalCalls = allInternalCalls;
+      internalCallLogsCount = internalCalls.length;
+    } catch (internalErr: any) {
+      // internalCallLogs might not exist or be empty - that's OK
+      console.log('[Dashboard] internalCallLogs query skipped:', internalErr.message);
+    }
+    
+    // Combine all calls into unified format
+    const allCalls = [
+      ...mainCalls.map(c => ({
+        ...c,
+        source: 'callLogs' as const,
+        timestamp: c.createdAt,
+      })),
+      ...internalCalls.map(c => ({
+        id: c.id,
+        userId,
+        phoneNumber: c.phoneNumber || '',
+        contactName: '', // Will be enriched
+        status: c.outcome === 'REACHED' ? 'completed' : c.outcome === 'NO_ANSWER' ? 'failed' : 'initiated',
+        duration: c.durationSeconds,
+        transcript: null, // internalCallLogs doesn't have transcript
+        recordingUrl: c.recordingUrl,
+        metadata: c.rawMetadata,
+        createdAt: c.timestamp || c.createdAt,
+        source: 'internalCallLogs' as const,
+        timestamp: c.timestamp,
+        internalSummary: c.summary,
+        internalSentiment: c.sentiment,
+        contactId: c.contactId,
+      })),
+    ];
+    
+    // Filter by date ranges
     const todayCalls = allCalls.filter(c => c.timestamp && new Date(c.timestamp) >= todayStart);
     const weekCalls = allCalls.filter(c => c.timestamp && new Date(c.timestamp) >= weekStart);
     const monthCalls = allCalls.filter(c => c.timestamp && new Date(c.timestamp) >= monthStart);
@@ -150,66 +264,98 @@ router.get('/overview', async (req: Request, res: Response) => {
         : 0,
     };
 
-    // Recent calls with FULL DATA (audio, transcript, summary)
+    // Recent calls with FULL DATA (audio, transcript, summary) - TOP 20
     const recentCallsRaw = allCalls
       .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-      .slice(0, 10);
+      .slice(0, 20);
     
-    // Parse metadata for summary/sentiment/nextStep
+    // Parse and enrich each call
     for (const call of recentCallsRaw) {
-      const metadata = (call.metadata && typeof call.metadata === 'object') ? call.metadata as any : {};
+      const metadata = parseMetadata(call.metadata);
       const hasAudio = Boolean(call.recordingUrl);
-      const hasTranscript = Boolean(call.transcript && call.transcript.length > 0);
+      const hasTranscript = Boolean(call.transcript && String(call.transcript).length > 0);
       
-      // Extract summary from metadata or transcript
-      let summary = metadata.summary || metadata.ai_summary || '';
-      if (!summary && call.transcript && call.transcript.length > 100) {
-        summary = call.transcript.substring(0, 150) + '...';
+      // Extract summary (from metadata, internalSummary, or transcript)
+      let summary = extractSummary(metadata, call.transcript);
+      if (!summary && (call as any).internalSummary) {
+        summary = (call as any).internalSummary;
       }
+      
+      // Extract sentiment
+      let sentiment = extractSentiment(metadata);
+      if (!sentiment && (call as any).internalSentiment) {
+        const internalSent = String((call as any).internalSentiment).toLowerCase();
+        if (internalSent.includes('positive')) sentiment = 'positive';
+        else if (internalSent.includes('negative')) sentiment = 'negative';
+        else sentiment = 'neutral';
+      }
+      
+      // Extract Gemini cached recommendations
+      const geminiData = extractGeminiData(metadata);
       
       const recentCall: RecentCall = {
         id: String(call.id),
         startedAt: (call.createdAt || now).toISOString(),
         status: (call.status as any) || 'initiated',
         contact: {
-          id: call.leadId ? String(call.leadId) : undefined,
+          id: (call as any).leadId ? String((call as any).leadId) : (call as any).contactId || undefined,
           name: call.contactName || undefined,
           phone: call.phoneNumber || undefined,
         },
-        campaign: call.voiceAgentId ? {
-          id: String(call.voiceAgentId),
+        campaign: (call as any).voiceAgentId ? {
+          id: String((call as any).voiceAgentId),
           name: metadata.campaignName || 'Kampagne',
         } : undefined,
         duration: call.duration || undefined,
         hasAudio,
-        audioUrl: call.recordingUrl || undefined,
+        // Use proxy URL for audio (Safari CORS fix)
+        audioUrl: hasAudio ? `/api/call-logs/${call.id}/audio` : undefined,
         hasTranscript,
         transcript: call.transcript || undefined,
         summary: summary || undefined,
-        sentiment: metadata.sentiment || undefined,
-        nextStep: metadata.nextStep || metadata.next_action || undefined,
+        sentiment,
+        nextStep: metadata.nextStep || metadata.next_action || metadata.recommended_action || undefined,
+        // Gemini cached data
+        geminiActions: geminiData.actions.length > 0 ? geminiData.actions : undefined,
+        geminiPriority: geminiData.priority,
+        geminiSuggestedMessage: geminiData.suggestedMessage,
+        geminiRiskFlags: geminiData.riskFlags.length > 0 ? geminiData.riskFlags : undefined,
       };
       
       overview.recentCalls.push(recentCall);
       
-      // Also add to activity feed
-      overview.activity.push({
-        id: `call-${call.id}`,
-        type: call.status === 'completed' ? 'call_completed' : call.status === 'failed' ? 'call_failed' : 'call_started',
-        title: `Call ${call.status === 'completed' ? 'abgeschlossen' : call.status === 'failed' ? 'fehlgeschlagen' : 'gestartet'}`,
-        description: call.contactName || call.phoneNumber || 'Unbekannte Nummer',
-        timestamp: (call.createdAt || now).toISOString(),
-        metadata: { 
-          callId: call.id, 
-          duration: call.duration,
-          hasAudio,
-          hasTranscript,
-          summary: summary ? summary.substring(0, 80) : undefined,
-        },
-      });
+      // Also add to activity feed (but only first 10 calls)
+      if (overview.activity.length < 15) {
+        overview.activity.push({
+          id: `call-${call.id}`,
+          type: call.status === 'completed' ? 'call_completed' : call.status === 'failed' ? 'call_failed' : 'call_started',
+          title: `Call ${call.status === 'completed' ? 'abgeschlossen' : call.status === 'failed' ? 'fehlgeschlagen' : 'gestartet'}`,
+          description: call.contactName || call.phoneNumber || 'Kontakt',
+          timestamp: (call.createdAt || now).toISOString(),
+          metadata: { 
+            callId: call.id, 
+            duration: call.duration,
+            hasAudio,
+            hasTranscript,
+            summary: summary ? summary.substring(0, 100) : undefined,
+          },
+        });
+      }
     }
+    
+    // Add debug info
+    (overview as any).debug = {
+      userId,
+      callLogsCount,
+      internalCallLogsCount,
+      totalCallsReturned: overview.recentCalls.length,
+      scope: 'userId',
+      timestamp: now.toISOString(),
+    };
+    
   } catch (e: any) {
     errors.push('calls: ' + e.message);
+    console.error('[Dashboard] Calls fetch error:', e);
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -350,10 +496,11 @@ router.get('/overview', async (req: Request, res: Response) => {
     overview.modules.todayOS = todayTasks;
 
     // Add calendar events to Today OS
+    const todayDateStr = `${todayStart.getFullYear()}-${String(todayStart.getMonth() + 1).padStart(2, '0')}-${String(todayStart.getDate()).padStart(2, '0')}`;
     const todayEvents = await db.select().from(calendarEvents)
       .where(and(
         eq(calendarEvents.userId, userId),
-        gte(calendarEvents.startDate, todayStart.toISOString())
+        eq(calendarEvents.date, todayDateStr)
       ));
     
     for (const event of todayEvents.slice(0, 5)) {
@@ -361,8 +508,8 @@ router.get('/overview', async (req: Request, res: Response) => {
         id: `event-${event.id}`,
         type: 'meeting',
         title: event.title || 'Termin',
-        time: event.startDate || null,
-        done: false,
+        time: event.time || null,
+        done: event.status === 'completed',
         priority: 'medium',
       });
     }
