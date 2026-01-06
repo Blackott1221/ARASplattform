@@ -652,24 +652,38 @@ export function MissionControl({ user }: MissionControlProps) {
           </div>
         </div>
 
-        {/* Debug Info Bar (only in dev or with ?debug=1) */}
-        {(import.meta.env.DEV || window.location.search.includes('debug=1')) && (data as any).debug && (
+        {/* Debug Info Bar (only with ?debug=1) */}
+        {window.location.search.includes('debug=1') && (data as any).debug && (
           <div 
             className="rounded-lg p-3 mt-4"
             style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)' }}
           >
-            <div className="flex items-center gap-2 mb-2">
-              <Activity size={12} className="text-blue-400" />
-              <span className="text-[10px] font-medium text-blue-400">DEBUG INFO</span>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Activity size={12} className="text-blue-400" />
+                <span className="text-[10px] font-medium text-blue-400">DEBUG INFO</span>
+              </div>
+              {/* DATA MAPPING ERROR indicator */}
+              {(data as any).debug.totalRaw > 0 && asArray(data.recentCalls).length === 0 && (
+                <span className="text-[9px] px-2 py-0.5 rounded bg-red-500/20 text-red-400 font-medium">
+                  DATA MAPPING ERROR
+                </span>
+              )}
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[9px] text-white/60">
-              <div>Calls (callLogs): <span className="text-white">{(data as any).debug.callLogsCount}</span></div>
-              <div>Calls (internal): <span className="text-white">{(data as any).debug.internalCallLogsCount}</span></div>
-              <div>Total returned: <span className="text-white">{(data as any).debug.totalCallsReturned}</span></div>
-              <div>Scope: <span className="text-white">{(data as any).debug.scope}</span></div>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[9px] text-white/60">
+              <div>callLogs: <span className="text-white">{(data as any).debug.sources?.callLogs || 0}</span></div>
+              <div>internal: <span className="text-white">{(data as any).debug.sources?.internalCallLogs || 0}</span></div>
+              <div>totalRaw: <span className="text-white">{(data as any).debug.totalRaw || 0}</span></div>
+              <div>deduped: <span className="text-white">{(data as any).debug.totalDeduped || 0}</span></div>
+              <div>returned: <span className="text-white">{(data as any).debug.totalReturned || 0}</span></div>
             </div>
-            <div className="text-[8px] text-white/30 mt-1">
-              userId: {(data as any).debug.userId} | {(data as any).debug.timestamp}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[9px] text-white/60 mt-2">
+              <div>matchField: <span className="text-blue-300">{(data as any).debug.scope?.matchFieldUsed || 'unknown'}</span></div>
+              <div>userId: <span className="text-white/50">{(data as any).debug.userId?.substring(0, 12)}...</span></div>
+              <div>firstIds: <span className="text-white/50">{((data as any).debug.firstCallIds || []).slice(0, 2).join(', ') || 'none'}</span></div>
+            </div>
+            <div className="text-[8px] text-white/20 mt-1">
+              {(data as any).debug.timestamp}
             </div>
           </div>
         )}

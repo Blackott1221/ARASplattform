@@ -12,11 +12,26 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const router = Router();
 
-// Initialize Gemini
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || '');
+// Initialize Gemini (may be disabled if no API key)
+const GOOGLE_AI_KEY = process.env.GOOGLE_AI_API_KEY || '';
+const genAI = GOOGLE_AI_KEY ? new GoogleGenerativeAI(GOOGLE_AI_KEY) : null;
+const GEMINI_ENABLED = Boolean(genAI && GOOGLE_AI_KEY.length > 10);
 
 // Cache TTL in hours
 const CACHE_TTL_HOURS = 24;
+
+// Check if Gemini is available
+function checkGeminiAvailable(res: Response): boolean {
+  if (!GEMINI_ENABLED) {
+    res.status(503).json({ 
+      error: 'GEMINI_DISABLED', 
+      message: 'Gemini AI ist für diese Umgebung nicht konfiguriert',
+      enabled: false,
+    });
+    return false;
+  }
+  return true;
+}
 
 interface GeminiRecommendations {
   actions: string[];
@@ -33,15 +48,18 @@ interface GeminiRecommendations {
 
 router.post('/recommendations', async (req: Request, res: Response) => {
   const userId = req.session?.userId;
-  const { callId } = req.body;
+  const { callId, forceRefresh } = req.body;
 
   if (!userId) {
-    return res.status(401).json({ message: 'Unauthorized' });
+    return res.status(401).json({ error: 'UNAUTHORIZED', message: 'Unauthorized' });
   }
 
   if (!callId) {
-    return res.status(400).json({ message: 'callId required' });
+    return res.status(400).json({ error: 'MISSING_CALL_ID', message: 'callId required' });
   }
+  
+  // Check Gemini availability (but still allow cached results)
+  const geminiAvailable = GEMINI_ENABLED;
 
   try {
     // Fetch call from DB
@@ -67,17 +85,29 @@ router.post('/recommendations', async (req: Request, res: Response) => {
       }
     }
 
-    // Check cache - return if fresh
-    if (metadata.gemini?.generatedAt) {
+    // Check cache - return if fresh (unless forceRefresh)
+    if (metadata.gemini?.generatedAt && !forceRefresh) {
       const generatedAt = new Date(metadata.gemini.generatedAt);
       const hoursSinceGenerated = (Date.now() - generatedAt.getTime()) / (1000 * 60 * 60);
       
       if (hoursSinceGenerated < CACHE_TTL_HOURS) {
         return res.json({
           cached: true,
+          cacheAge: Math.round(hoursSinceGenerated * 10) / 10,
           recommendations: metadata.gemini,
+          geminiEnabled: geminiAvailable,
         });
       }
+    }
+    
+    // If Gemini is disabled and no cache, return error
+    if (!geminiAvailable) {
+      return res.status(503).json({ 
+        error: 'GEMINI_DISABLED', 
+        message: 'Gemini AI ist nicht verfügbar und keine gecachten Empfehlungen vorhanden',
+        cached: false,
+        geminiEnabled: false,
+      });
     }
 
     // Prepare context for Gemini
@@ -125,7 +155,7 @@ Generiere eine JSON-Antwort mit:
 Antworte NUR mit validem JSON, keine Erklärungen.`;
 
     // Call Gemini
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI!.getGenerativeModel({ model: 'gemini-1.5-flash' });
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
 
@@ -174,13 +204,20 @@ Antworte NUR mit validem JSON, keine Erklärungen.`;
     res.json({
       cached: false,
       recommendations,
+      geminiEnabled: true,
     });
 
   } catch (error: any) {
     console.error('[AI] Recommendations error:', error);
-    res.status(500).json({ 
-      message: 'Failed to generate recommendations', 
-      error: error.message,
+    
+    // Check if it's a Gemini API error
+    const isGeminiError = error.message?.includes('API') || error.message?.includes('quota') || error.message?.includes('key');
+    
+    res.status(isGeminiError ? 503 : 500).json({ 
+      error: isGeminiError ? 'GEMINI_API_ERROR' : 'GENERATION_FAILED',
+      message: 'Empfehlungen konnten nicht generiert werden', 
+      detail: error.message,
+      geminiEnabled: GEMINI_ENABLED,
     });
   }
 });
@@ -189,19 +226,34 @@ Antworte NUR mit validem JSON, keine Erklärungen.`;
 // BATCH RECOMMENDATIONS FOR DASHBOARD (top 5 calls)
 // ═══════════════════════════════════════════════════════════════
 
+// Status endpoint - check if Gemini is available
+router.get('/status', async (_req: Request, res: Response) => {
+  res.json({
+    geminiEnabled: GEMINI_ENABLED,
+    cacheTtlHours: CACHE_TTL_HOURS,
+  });
+});
+
 router.get('/dashboard-actions', async (req: Request, res: Response) => {
   const userId = req.session?.userId;
+  const range = req.query.range as string || '7d';
 
   if (!userId) {
-    return res.status(401).json({ message: 'Unauthorized' });
+    return res.status(401).json({ error: 'UNAUTHORIZED', message: 'Unauthorized' });
   }
 
   try {
+    // Calculate date range
+    const now = new Date();
+    let rangeStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    if (range === 'today') rangeStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    else if (range === '30d') rangeStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    
     // Get recent calls with existing Gemini recommendations
     const recentCalls = await db.select().from(callLogs)
       .where(eq(callLogs.userId, userId))
       .orderBy(callLogs.createdAt)
-      .limit(10);
+      .limit(20);
 
     const topActions: Array<{
       callId: number;
@@ -238,13 +290,18 @@ router.get('/dashboard-actions', async (req: Request, res: Response) => {
     res.json({
       actions: topActions.slice(0, 5),
       totalCalls: recentCalls.length,
+      callsWithGemini: topActions.length,
+      geminiEnabled: GEMINI_ENABLED,
+      range,
     });
 
   } catch (error: any) {
     console.error('[AI] Dashboard actions error:', error);
     res.status(500).json({ 
-      message: 'Failed to get dashboard actions', 
-      error: error.message,
+      error: 'FETCH_ERROR',
+      message: 'Dashboard-Aktionen konnten nicht geladen werden', 
+      detail: error.message,
+      geminiEnabled: GEMINI_ENABLED,
     });
   }
 });

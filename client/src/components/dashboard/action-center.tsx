@@ -4,12 +4,12 @@
  * Premium ARAS CI design
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Sparkles, ChevronRight, Phone, Mail, Calendar, 
   FileText, User, Zap, AlertTriangle, TrendingUp,
-  MessageSquare, ExternalLink, Loader2
+  MessageSquare, ExternalLink, Loader2, AlertCircle, RefreshCw
 } from 'lucide-react';
 import type { RecentCall } from '@/lib/dashboard/overview.schema';
 
@@ -26,6 +26,8 @@ interface ActionCenterProps {
   isLoading?: boolean;
   onOpenCall?: (callId: string) => void;
   onOpenContact?: (contactId: string) => void;
+  geminiEnabled?: boolean;
+  error?: string | null;
 }
 
 interface ActionItem {
@@ -188,6 +190,48 @@ function EmptyState() {
   );
 }
 
+function GeminiDisabledState() {
+  return (
+    <div className="text-center py-6">
+      <div 
+        className="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center"
+        style={{ background: 'rgba(251,191,36,0.1)' }}
+      >
+        <AlertCircle size={20} className="text-yellow-500" />
+      </div>
+      <p className="text-xs text-yellow-500/80 mb-1">Gemini nicht verfügbar</p>
+      <p className="text-[10px] text-white/30">
+        KI-Empfehlungen sind für diese Umgebung deaktiviert
+      </p>
+    </div>
+  );
+}
+
+function ErrorState({ error, onRetry }: { error: string; onRetry?: () => void }) {
+  return (
+    <div className="text-center py-6">
+      <div 
+        className="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center"
+        style={{ background: 'rgba(239,68,68,0.1)' }}
+      >
+        <AlertTriangle size={20} className="text-red-400" />
+      </div>
+      <p className="text-xs text-red-400/80 mb-1">Fehler beim Laden</p>
+      <p className="text-[10px] text-white/30 mb-3">{error}</p>
+      {onRetry && (
+        <button 
+          onClick={onRetry}
+          className="text-[10px] px-3 py-1.5 rounded-lg flex items-center gap-1 mx-auto transition-colors hover:bg-white/10"
+          style={{ color: DT.orange }}
+        >
+          <RefreshCw size={10} />
+          Erneut versuchen
+        </button>
+      )}
+    </div>
+  );
+}
+
 function LoadingSkeleton() {
   return (
     <div className="space-y-3">
@@ -206,24 +250,31 @@ function LoadingSkeleton() {
   );
 }
 
-export function ActionCenter({ calls, isLoading, onOpenCall, onOpenContact }: ActionCenterProps) {
-  // Extract top actions from calls with Gemini data
+export function ActionCenter({ calls, isLoading, onOpenCall, onOpenContact, geminiEnabled = true, error }: ActionCenterProps) {
+  // Extract top actions from calls with Gemini data - ROBUST (no undefined errors)
   const actions: ActionItem[] = [];
   
-  for (const call of calls) {
-    if (call.geminiActions && call.geminiActions.length > 0) {
+  // Safe iteration with null checks
+  const safeCalls = Array.isArray(calls) ? calls : [];
+  
+  for (const call of safeCalls) {
+    // Safe access to geminiActions
+    const geminiActions = Array.isArray(call?.geminiActions) ? call.geminiActions : [];
+    const riskFlags = Array.isArray(call?.geminiRiskFlags) ? call.geminiRiskFlags : [];
+    
+    if (geminiActions.length > 0) {
       actions.push({
-        callId: call.id,
+        callId: call.id || '',
         contactName: call.contact?.name || call.contact?.phone || 'Unbekannt',
-        action: call.geminiActions[0],
-        priority: call.geminiPriority || 50,
-        reasoning: call.geminiSuggestedMessage,
-        riskFlags: call.geminiRiskFlags,
+        action: geminiActions[0] || 'Follow-up planen',
+        priority: typeof call.geminiPriority === 'number' ? call.geminiPriority : 50,
+        reasoning: call.geminiSuggestedMessage || undefined,
+        riskFlags: riskFlags.length > 0 ? riskFlags : undefined,
       });
-    } else if (call.nextStep) {
+    } else if (call?.nextStep && typeof call.nextStep === 'string') {
       // Fallback to nextStep if no Gemini data
       actions.push({
-        callId: call.id,
+        callId: call.id || '',
         contactName: call.contact?.name || call.contact?.phone || 'Unbekannt',
         action: call.nextStep,
         priority: 50,
@@ -235,6 +286,10 @@ export function ActionCenter({ calls, isLoading, onOpenCall, onOpenContact }: Ac
   const topActions = actions
     .sort((a, b) => b.priority - a.priority)
     .slice(0, 5);
+  
+  // Determine content state
+  const hasGeminiData = actions.some(a => a.priority !== 50 || a.riskFlags);
+  const showCachedBadge = hasGeminiData && !isLoading;
 
   return (
     <motion.div
@@ -271,7 +326,7 @@ export function ActionCenter({ calls, isLoading, onOpenCall, onOpenContact }: Ac
           
           <span className="text-[9px] text-white/30 flex items-center gap-1">
             <Sparkles size={10} />
-            Gemini AI
+            {showCachedBadge ? 'Cached' : 'Gemini AI'}
           </span>
         </div>
         <p className="text-[10px] text-white/40 mt-1">
@@ -283,6 +338,10 @@ export function ActionCenter({ calls, isLoading, onOpenCall, onOpenContact }: Ac
       <div className="p-3 max-h-[400px] overflow-y-auto">
         {isLoading ? (
           <LoadingSkeleton />
+        ) : error ? (
+          <ErrorState error={error} />
+        ) : !geminiEnabled && topActions.length === 0 ? (
+          <GeminiDisabledState />
         ) : topActions.length === 0 ? (
           <EmptyState />
         ) : (

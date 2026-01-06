@@ -22,11 +22,11 @@ router.get('/:id/audio', async (req: Request, res: Response) => {
   const userId = req.session?.userId;
 
   if (!userId) {
-    return res.status(401).json({ message: 'Unauthorized' });
+    return res.status(401).json({ error: 'UNAUTHORIZED', message: 'Unauthorized' });
   }
 
   if (isNaN(callId)) {
-    return res.status(400).json({ message: 'Invalid call ID' });
+    return res.status(400).json({ error: 'INVALID_ID', message: 'Invalid call ID' });
   }
 
   try {
@@ -36,64 +36,87 @@ router.get('/:id/audio', async (req: Request, res: Response) => {
       .limit(1);
 
     if (!call) {
-      return res.status(404).json({ message: 'Call not found' });
+      return res.status(404).json({ error: 'CALL_NOT_FOUND', message: 'Call not found' });
     }
 
     // Verify ownership
     if (call.userId !== userId) {
-      return res.status(403).json({ message: 'Access denied' });
+      return res.status(403).json({ error: 'ACCESS_DENIED', message: 'Access denied' });
     }
 
     if (!call.recordingUrl) {
-      return res.status(404).json({ message: 'No recording available' });
+      return res.status(404).json({ error: 'NO_AUDIO', message: 'Keine Aufnahme gespeichert' });
+    }
+
+    // Get range header for Safari seek support
+    const rangeHeader = req.headers.range;
+    
+    // Build fetch headers
+    const fetchHeaders: Record<string, string> = {
+      'Accept': 'audio/*',
+    };
+    
+    // Forward range header to upstream if present
+    if (rangeHeader) {
+      fetchHeaders['Range'] = rangeHeader;
     }
 
     // Stream audio from external URL
-    const audioResponse = await fetch(call.recordingUrl, {
-      headers: {
-        'Accept': 'audio/*',
-      },
-    });
+    const audioResponse = await fetch(call.recordingUrl, { headers: fetchHeaders });
 
-    if (!audioResponse.ok) {
+    if (!audioResponse.ok && audioResponse.status !== 206) {
       console.error('[CallLogs] Audio fetch failed:', audioResponse.status);
-      return res.status(502).json({ message: 'Failed to fetch audio' });
+      return res.status(502).json({ error: 'UPSTREAM_ERROR', message: 'Failed to fetch audio' });
     }
 
     // Forward headers for proper streaming
     const contentType = audioResponse.headers.get('content-type') || 'audio/mpeg';
     const contentLength = audioResponse.headers.get('content-length');
+    const contentRange = audioResponse.headers.get('content-range');
+    const acceptRanges = audioResponse.headers.get('accept-ranges');
     
+    // Always set these headers for Safari compatibility
     res.setHeader('Content-Type', contentType);
-    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Accept-Ranges', acceptRanges || 'bytes');
     res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
     
-    if (contentLength) {
-      res.setHeader('Content-Length', contentLength);
-    }
-
-    // Handle range requests for seeking
-    const range = req.headers.range;
-    if (range && contentLength) {
-      const parts = range.replace(/bytes=/, '').split('-');
+    // Handle 206 Partial Content (range request response from upstream)
+    if (audioResponse.status === 206 && contentRange) {
+      res.status(206);
+      res.setHeader('Content-Range', contentRange);
+      if (contentLength) {
+        res.setHeader('Content-Length', contentLength);
+      }
+    } 
+    // Handle range request when upstream doesn't support ranges
+    else if (rangeHeader && contentLength) {
+      const totalSize = parseInt(contentLength, 10);
+      const parts = rangeHeader.replace(/bytes=/, '').split('-');
       const start = parseInt(parts[0], 10);
-      const end = parts[1] ? parseInt(parts[1], 10) : parseInt(contentLength, 10) - 1;
+      const end = parts[1] ? parseInt(parts[1], 10) : totalSize - 1;
+      const chunkSize = end - start + 1;
       
       res.status(206);
-      res.setHeader('Content-Range', `bytes ${start}-${end}/${contentLength}`);
-      res.setHeader('Content-Length', end - start + 1);
+      res.setHeader('Content-Range', `bytes ${start}-${end}/${totalSize}`);
+      res.setHeader('Content-Length', chunkSize);
+    }
+    // Normal 200 response
+    else if (contentLength) {
+      res.setHeader('Content-Length', contentLength);
     }
 
     // Pipe the audio stream
     if (audioResponse.body) {
       audioResponse.body.pipe(res);
     } else {
-      res.status(500).json({ message: 'No audio body' });
+      res.status(500).json({ error: 'NO_BODY', message: 'No audio body' });
     }
 
   } catch (error: any) {
     console.error('[CallLogs] Audio proxy error:', error);
-    res.status(500).json({ message: 'Audio streaming failed', error: error.message });
+    res.status(500).json({ error: 'STREAM_ERROR', message: 'Audio streaming failed', detail: error.message });
   }
 });
 

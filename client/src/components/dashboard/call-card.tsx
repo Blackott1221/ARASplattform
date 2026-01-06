@@ -83,17 +83,32 @@ function AudioPlayer({ audioUrl }: { audioUrl: string }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const togglePlay = () => {
-    if (!audioRef.current) return;
+    if (!audioRef.current || error) return;
     
     if (isPlaying) {
       audioRef.current.pause();
     } else {
-      audioRef.current.play();
+      audioRef.current.play().catch(e => {
+        setError('Wiedergabe fehlgeschlagen');
+        console.error('[AudioPlayer] Play error:', e);
+      });
     }
     setIsPlaying(!isPlaying);
+  };
+  
+  const handleError = () => {
+    setError('Keine Aufnahme gespeichert');
+    setLoading(false);
+  };
+  
+  const handleCanPlay = () => {
+    setLoading(false);
+    setError(null);
   };
 
   const handleTimeUpdate = () => {
@@ -114,6 +129,18 @@ function AudioPlayer({ audioUrl }: { audioUrl: string }) {
     audioRef.current.currentTime = percent * audioRef.current.duration;
   };
 
+  // Show error state
+  if (error) {
+    return (
+      <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
+        <div className="w-8 h-8 rounded-full flex items-center justify-center bg-red-500/10">
+          <Volume2 size={14} className="text-red-400" />
+        </div>
+        <span className="text-[11px] text-white/40">{error}</span>
+      </div>
+    );
+  }
+  
   return (
     <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
       <audio
@@ -122,14 +149,20 @@ function AudioPlayer({ audioUrl }: { audioUrl: string }) {
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={() => setIsPlaying(false)}
+        onError={handleError}
+        onCanPlay={handleCanPlay}
+        preload="metadata"
       />
       
       <button
         onClick={togglePlay}
-        className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-105"
+        disabled={loading}
+        className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-105 disabled:opacity-50"
         style={{ background: `linear-gradient(135deg, ${DT.orange}, #ff8533)` }}
       >
-        {isPlaying ? (
+        {loading ? (
+          <Loader2 size={14} className="text-white animate-spin" />
+        ) : isPlaying ? (
           <Pause size={14} className="text-white" />
         ) : (
           <Play size={14} className="text-white ml-0.5" />
@@ -167,10 +200,29 @@ function AudioPlayer({ audioUrl }: { audioUrl: string }) {
 export function CallCard({ call, onOpenDetails, onOpenContact }: CallCardProps) {
   const [expanded, setExpanded] = useState(false);
   
-  const timeAgo = formatDistanceToNow(new Date(call.startedAt), { 
-    addSuffix: true, 
-    locale: de 
-  });
+  // Safe date parsing
+  let timeAgo = '';
+  try {
+    const startDate = call?.startedAt ? new Date(call.startedAt) : new Date();
+    if (!isNaN(startDate.getTime())) {
+      timeAgo = formatDistanceToNow(startDate, { addSuffix: true, locale: de });
+    }
+  } catch {
+    timeAgo = '';
+  }
+  
+  // Safe accessors
+  const contactName = call?.contact?.name || call?.contact?.phone || 'Unbekannt';
+  const contactPhone = call?.contact?.phone || '';
+  const callStatus = call?.status || 'initiated';
+  const callDuration = typeof call?.duration === 'number' ? call.duration : 0;
+  const callSummary = typeof call?.summary === 'string' ? call.summary : '';
+  const callTranscript = typeof call?.transcript === 'string' ? call.transcript : '';
+  const callNextStep = typeof call?.nextStep === 'string' ? call.nextStep : '';
+  const hasAudio = Boolean(call?.hasAudio && call?.audioUrl);
+  const hasTranscript = Boolean(call?.hasTranscript && callTranscript.length > 0);
+  const hasSummary = callSummary.length > 0;
+  const hasNextStep = callNextStep.length > 0;
 
   return (
     <motion.div
@@ -207,35 +259,35 @@ export function CallCard({ call, onOpenDetails, onOpenContact }: CallCardProps) 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h4 className="text-sm font-medium text-white truncate">
-                  {call.contact?.name || call.contact?.phone || 'Unbekannt'}
+                  {contactName}
                 </h4>
-                <StatusBadge status={call.status} />
+                <StatusBadge status={callStatus} />
                 <SentimentBadge sentiment={call.sentiment} />
               </div>
               
               <div className="flex items-center gap-3 mt-1 text-[11px] text-white/50">
-                {call.contact?.phone && (
-                  <span>{call.contact.phone}</span>
+                {contactPhone && (
+                  <span>{contactPhone}</span>
                 )}
-                {call.campaign && (
+                {call?.campaign?.name && (
                   <span className="flex items-center gap-1">
                     <Zap size={10} />
                     {call.campaign.name}
                   </span>
                 )}
-                {call.duration && (
+                {callDuration > 0 && (
                   <span className="flex items-center gap-1">
                     <Clock size={10} />
-                    {formatDuration(call.duration)}
+                    {formatDuration(callDuration)}
                   </span>
                 )}
-                <span>{timeAgo}</span>
+                {timeAgo && <span>{timeAgo}</span>}
               </div>
               
-              {/* Summary Preview */}
-              {call.summary && !expanded && (
+              {/* Summary Preview - 2 lines max */}
+              {hasSummary && !expanded && (
                 <p className="text-[11px] text-white/60 mt-2 line-clamp-2">
-                  {call.summary}
+                  {callSummary.length > 150 ? callSummary.substring(0, 150) + '...' : callSummary}
                 </p>
               )}
             </div>
@@ -243,7 +295,7 @@ export function CallCard({ call, onOpenDetails, onOpenContact }: CallCardProps) 
           
           {/* Right: Expand + Actions */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            {(call.hasAudio || call.hasTranscript || call.summary) && (
+            {(hasAudio || hasTranscript || hasSummary || hasNextStep) && (
               <button
                 onClick={() => setExpanded(!expanded)}
                 className="p-2 rounded-lg hover:bg-white/10 transition-colors"
@@ -260,22 +312,28 @@ export function CallCard({ call, onOpenDetails, onOpenContact }: CallCardProps) 
         
         {/* Indicators */}
         <div className="flex items-center gap-2 mt-3">
-          {call.hasAudio && (
+          {hasAudio && (
             <div className="flex items-center gap-1 text-[9px] text-white/40 px-2 py-1 rounded bg-white/5">
               <Volume2 size={10} />
               <span>Audio</span>
             </div>
           )}
-          {call.hasTranscript && (
+          {hasTranscript && (
             <div className="flex items-center gap-1 text-[9px] text-white/40 px-2 py-1 rounded bg-white/5">
               <FileText size={10} />
               <span>Transkript</span>
             </div>
           )}
-          {call.summary && (
+          {hasSummary && (
             <div className="flex items-center gap-1 text-[9px] text-white/40 px-2 py-1 rounded bg-white/5">
               <MessageSquare size={10} />
               <span>Zusammenfassung</span>
+            </div>
+          )}
+          {hasNextStep && (
+            <div className="flex items-center gap-1 text-[9px] px-2 py-1 rounded" style={{ background: `${DT.orange}15`, color: DT.orange }}>
+              <Zap size={10} />
+              <span>Nächster Schritt</span>
             </div>
           )}
         </div>
@@ -292,7 +350,7 @@ export function CallCard({ call, onOpenDetails, onOpenContact }: CallCardProps) 
           >
             <div className="px-4 pb-4 space-y-4 border-t border-white/5 pt-4">
               {/* Audio Player */}
-              {call.hasAudio && call.audioUrl && (
+              {hasAudio && call.audioUrl && (
                 <div>
                   <h5 className="text-[10px] uppercase tracking-wider text-white/40 mb-2">
                     Aufnahme
@@ -302,19 +360,19 @@ export function CallCard({ call, onOpenDetails, onOpenContact }: CallCardProps) 
               )}
               
               {/* Summary */}
-              {call.summary && (
+              {hasSummary && (
                 <div>
                   <h5 className="text-[10px] uppercase tracking-wider text-white/40 mb-2">
                     Zusammenfassung
                   </h5>
                   <p className="text-xs text-white/70 leading-relaxed">
-                    {call.summary}
+                    {callSummary}
                   </p>
                 </div>
               )}
               
               {/* Next Step */}
-              {call.nextStep && (
+              {hasNextStep && (
                 <div 
                   className="p-3 rounded-lg"
                   style={{ background: `${DT.orange}10`, borderLeft: `3px solid ${DT.orange}` }}
@@ -323,22 +381,22 @@ export function CallCard({ call, onOpenDetails, onOpenContact }: CallCardProps) 
                     Nächster Schritt
                   </h5>
                   <p className="text-xs text-white/80">
-                    {call.nextStep}
+                    {callNextStep}
                   </p>
                 </div>
               )}
               
               {/* Transcript Preview */}
-              {call.hasTranscript && call.transcript && (
+              {hasTranscript && (
                 <div>
                   <h5 className="text-[10px] uppercase tracking-wider text-white/40 mb-2">
                     Transkript
                   </h5>
                   <div className="bg-white/5 rounded-lg p-3 max-h-32 overflow-y-auto">
                     <p className="text-[11px] text-white/60 whitespace-pre-wrap leading-relaxed">
-                      {call.transcript.length > 500 
-                        ? call.transcript.substring(0, 500) + '...' 
-                        : call.transcript
+                      {callTranscript.length > 500 
+                        ? callTranscript.substring(0, 500) + '...' 
+                        : callTranscript
                       }
                     </p>
                   </div>

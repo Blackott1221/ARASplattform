@@ -42,11 +42,51 @@ interface RecentCall {
 
 interface DebugInfo {
   userId: string;
-  callLogsCount: number;
-  internalCallLogsCount: number;
-  totalCallsReturned: number;
-  scope: string;
+  scope: ScopeResult;
+  sources: {
+    callLogs: number;
+    internalCallLogs: number;
+  };
+  totalRaw: number;
+  totalDeduped: number;
+  totalReturned: number;
+  firstCallIds: string[];
   timestamp: string;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SCOPE RESOLVER - Multi-field call matching
+// ═══════════════════════════════════════════════════════════════
+
+interface ScopeResult {
+  userId: string;
+  workspaceId?: string;
+  orgId?: string;
+  tenantId?: string;
+  matchFieldUsed: 'userId' | 'workspaceId' | 'orgId' | 'tenantId' | 'ownerId' | 'createdBy' | 'accountId';
+}
+
+function resolveScope(req: Request): ScopeResult {
+  const userId = req.session?.userId || '';
+  
+  // Try to extract additional scope from session/user
+  const workspaceId = (req.session as any)?.workspaceId;
+  const orgId = (req.session as any)?.orgId || (req.session as any)?.organizationId;
+  const tenantId = (req.session as any)?.tenantId;
+  
+  // Determine best match field
+  let matchFieldUsed: ScopeResult['matchFieldUsed'] = 'userId';
+  if (workspaceId) matchFieldUsed = 'workspaceId';
+  else if (orgId) matchFieldUsed = 'orgId';
+  else if (tenantId) matchFieldUsed = 'tenantId';
+  
+  return {
+    userId,
+    workspaceId,
+    orgId,
+    tenantId,
+    matchFieldUsed,
+  };
 }
 
 interface DashboardOverview {
@@ -188,27 +228,61 @@ router.get('/overview', async (req: Request, res: Response) => {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // FETCH CALL LOGS - MULTI-SOURCE (callLogs + internalCallLogs)
+  // RESOLVE SCOPE + FETCH CALL LOGS (Multi-source, deduped)
   // ─────────────────────────────────────────────────────────────
+  const scope = resolveScope(req);
+  const showDebug = req.query.debug === '1';
+  
   let callLogsCount = 0;
   let internalCallLogsCount = 0;
+  const seenCallIds = new Set<string>();
   
   try {
-    // SOURCE 1: Main callLogs table (by userId)
-    const mainCalls = await db.select().from(callLogs).where(eq(callLogs.userId, userId));
+    // SOURCE 1: Main callLogs table - try multiple fields in priority order
+    let mainCalls: any[] = [];
+    
+    // Priority 1: workspaceId/orgId/tenantId if available
+    if (scope.workspaceId) {
+      try {
+        mainCalls = await db.select().from(callLogs)
+          .where(sql`${callLogs.metadata}->>'workspaceId' = ${scope.workspaceId}`);
+        if (mainCalls.length > 0) scope.matchFieldUsed = 'workspaceId';
+      } catch { /* field may not exist */ }
+    }
+    
+    // Priority 2: userId (standard)
+    if (mainCalls.length === 0) {
+      mainCalls = await db.select().from(callLogs).where(eq(callLogs.userId, userId));
+      scope.matchFieldUsed = 'userId';
+    }
+    
+    // Priority 3: Fallback - check ownerId/createdBy/accountId in metadata
+    if (mainCalls.length === 0) {
+      try {
+        const fallbackCalls = await db.select().from(callLogs)
+          .where(sql`
+            ${callLogs.metadata}->>'ownerId' = ${userId} OR
+            ${callLogs.metadata}->>'createdBy' = ${userId} OR
+            ${callLogs.metadata}->>'accountId' = ${userId}
+          `);
+        if (fallbackCalls.length > 0) {
+          mainCalls = fallbackCalls;
+          scope.matchFieldUsed = 'ownerId';
+        }
+      } catch { /* SQL might fail on some DBs */ }
+    }
+    
     callLogsCount = mainCalls.length;
     
-    // SOURCE 2: internalCallLogs (via internalDeals ownerUserId)
+    // SOURCE 2: internalCallLogs (system-wide, for admin view)
     let internalCalls: any[] = [];
     try {
-      // Query internalCallLogs directly - these are system-wide calls
-      // We'll include all internal calls for now (admin view)
       const allInternalCalls = await db.select().from(internalCallLogs).limit(50);
       internalCalls = allInternalCalls;
       internalCallLogsCount = internalCalls.length;
     } catch (internalErr: any) {
-      // internalCallLogs might not exist or be empty - that's OK
-      console.log('[Dashboard] internalCallLogs query skipped:', internalErr.message);
+      // Table might not exist - OK
+      if (showDebug) console.log('[Dashboard] internalCallLogs skipped:', internalErr.message);
     }
     
     // Combine all calls into unified format
@@ -343,15 +417,22 @@ router.get('/overview', async (req: Request, res: Response) => {
       }
     }
     
-    // Add debug info
-    (overview as any).debug = {
-      userId,
-      callLogsCount,
-      internalCallLogsCount,
-      totalCallsReturned: overview.recentCalls.length,
-      scope: 'userId',
-      timestamp: now.toISOString(),
-    };
+    // Add debug info (only when ?debug=1)
+    if (showDebug) {
+      (overview as any).debug = {
+        userId,
+        scope,
+        sources: {
+          callLogs: callLogsCount,
+          internalCallLogs: internalCallLogsCount,
+        },
+        totalRaw: callLogsCount + internalCallLogsCount,
+        totalDeduped: seenCallIds.size,
+        totalReturned: overview.recentCalls.length,
+        firstCallIds: overview.recentCalls.slice(0, 3).map(c => c.id),
+        timestamp: now.toISOString(),
+      };
+    }
     
   } catch (e: any) {
     errors.push('calls: ' + e.message);
