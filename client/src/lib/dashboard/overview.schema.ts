@@ -206,6 +206,37 @@ export const ModulesSchema = z.object({
 });
 
 // ═══════════════════════════════════════════════════════════════
+// RECENT CALLS (with audio, transcript, summary)
+// ═══════════════════════════════════════════════════════════════
+
+export const RecentCallContactSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  phone: z.string().optional(),
+});
+
+export const RecentCallCampaignSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+});
+
+export const RecentCallSchema = z.object({
+  id: z.string(),
+  startedAt: z.string(),
+  status: z.enum(['running', 'completed', 'failed', 'initiated']).default('initiated'),
+  contact: RecentCallContactSchema.optional(),
+  campaign: RecentCallCampaignSchema.optional(),
+  duration: z.number().optional(),
+  hasAudio: z.boolean().default(false),
+  audioUrl: z.string().optional(),
+  hasTranscript: z.boolean().default(false),
+  transcript: z.string().optional(),
+  summary: z.string().optional(),
+  sentiment: z.enum(['positive', 'neutral', 'negative']).optional(),
+  nextStep: z.string().optional(),
+});
+
+// ═══════════════════════════════════════════════════════════════
 // SYSTEM ALERTS
 // ═══════════════════════════════════════════════════════════════
 
@@ -235,6 +266,7 @@ export const UserInfoSchema = z.object({
 export const DashboardOverviewSchema = z.object({
   user: UserInfoSchema.default({}),
   kpis: AllKpisSchema.default({}),
+  recentCalls: z.array(RecentCallSchema).default([]),
   nextActions: z.array(ActionItemSchema).default([]),
   activity: z.array(ActivityItemSchema).default([]),
   modules: ModulesSchema.default({}),
@@ -270,6 +302,9 @@ export type MatrixCell = z.infer<typeof MatrixCellSchema>;
 export type MatrixData = z.infer<typeof MatrixDataSchema>;
 export type Modules = z.infer<typeof ModulesSchema>;
 
+export type RecentCall = z.infer<typeof RecentCallSchema>;
+export type RecentCallContact = z.infer<typeof RecentCallContactSchema>;
+export type RecentCallCampaign = z.infer<typeof RecentCallCampaignSchema>;
 export type SystemAlert = z.infer<typeof SystemAlertSchema>;
 export type UserInfo = z.infer<typeof UserInfoSchema>;
 export type DashboardOverview = z.infer<typeof DashboardOverviewSchema>;
@@ -321,6 +356,7 @@ export function createDefaultOverview(userId?: string, userName?: string): Dashb
       knowledge: { totalDocuments: 0, newUploads: { today: 0, week: 0, month: 0 }, errorSources: 0 },
       quotas: { calls: { used: 0, limit: 100 }, spaces: { used: 0, limit: 10 }, storage: { used: 0, limit: 1000 } },
     },
+    recentCalls: [],
     nextActions: getSetupActions(),
     activity: [],
     modules: {

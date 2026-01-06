@@ -15,6 +15,8 @@ import { useDashboardOverview, needsSetup } from '@/lib/dashboard/use-dashboard-
 import { KpiCards } from './kpi-cards';
 import { ActivityStream } from './activity-stream';
 import { ContactsDrawer } from './contacts-drawer';
+import { CallCard } from './call-card';
+import type { RecentCall } from '@/lib/dashboard/overview.schema';
 import { ModuleBoundary } from '@/components/system/module-boundary';
 import { asArray, isValidString, safeNumber } from '@/lib/utils/safe';
 import type { User } from '@shared/schema';
@@ -334,6 +336,122 @@ function CalendarMiniPanel() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// RECENT CALLS PANEL - REAL DATA with Audio/Transcript/Summary
+// ═══════════════════════════════════════════════════════════════
+
+function RecentCallsPanel({ calls, isLoading }: { calls: RecentCall[]; isLoading: boolean }) {
+  if (isLoading) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="rounded-2xl p-5"
+        style={{ background: DT.panelBg, border: `1px solid ${DT.panelBorder}` }}
+      >
+        <div className="flex items-center gap-2 mb-4">
+          <Phone size={16} style={{ color: DT.orange }} />
+          <h3 className="text-sm font-semibold text-white">Letzte Anrufe</h3>
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-20 rounded-xl bg-white/5 animate-pulse" />
+          ))}
+        </div>
+      </motion.div>
+    );
+  }
+
+  if (calls.length === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="rounded-2xl p-6"
+        style={{ background: DT.panelBg, border: `1px solid ${DT.panelBorder}` }}
+      >
+        <div className="flex items-center gap-2 mb-4">
+          <Phone size={16} style={{ color: DT.orange }} />
+          <h3 className="text-sm font-semibold text-white">Letzte Anrufe</h3>
+        </div>
+        <div className="text-center py-8">
+          <div 
+            className="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center"
+            style={{ background: `${DT.orange}15` }}
+          >
+            <Phone size={24} style={{ color: DT.orange }} />
+          </div>
+          <p className="text-sm text-white/60 mb-2">Noch keine Anrufe</p>
+          <p className="text-xs text-white/40 mb-4">Starte deinen ersten Anruf mit ARAS Voice</p>
+          <a
+            href="/app/power/einzelanruf"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white transition-all hover:scale-105"
+            style={{ background: `linear-gradient(135deg, ${DT.orange}, #ff8533)` }}
+          >
+            <Phone size={14} />
+            Ersten Call starten
+          </a>
+        </div>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-2xl overflow-hidden"
+      style={{ background: DT.panelBg, border: `1px solid ${DT.panelBorder}` }}
+    >
+      <div className="p-4 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Phone size={16} style={{ color: DT.orange }} />
+            <h3 
+              className="text-sm font-bold uppercase tracking-wide"
+              style={{
+                background: `linear-gradient(90deg, ${DT.gold}, ${DT.orange})`,
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
+              Letzte Anrufe
+            </h3>
+          </div>
+          <a 
+            href="/app/power" 
+            className="text-[10px] text-white/50 hover:text-white/70 transition-colors flex items-center gap-1"
+          >
+            Alle in Power <ChevronRight size={12} />
+          </a>
+        </div>
+      </div>
+
+      <div className="p-4 space-y-3 max-h-[500px] overflow-y-auto">
+        {calls.slice(0, 5).map((call) => (
+          <CallCard 
+            key={call.id} 
+            call={call}
+            onOpenDetails={(id) => window.location.href = `/app/power?call=${id}`}
+            onOpenContact={(id) => window.location.href = `/app/contacts/${id}`}
+          />
+        ))}
+      </div>
+
+      {calls.length > 5 && (
+        <div className="px-4 py-3 border-t" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+          <a 
+            href="/app/power"
+            className="text-[10px] text-white/40 hover:text-white/60 transition-colors"
+          >
+            Alle {calls.length} Anrufe anzeigen →
+          </a>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
 // SESSION GATE SKELETON
 // ═══════════════════════════════════════════════════════════════
 
@@ -504,13 +622,19 @@ export function MissionControl({ user }: MissionControlProps) {
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* Left Column - Activity */}
+          {/* Left Column - Calls + Activity */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Recent Calls - REAL DATA with Audio/Transcript/Summary */}
+            <RecentCallsPanel 
+              calls={asArray<RecentCall>(data.recentCalls)} 
+              isLoading={isLoading} 
+            />
+
             {/* Activity Stream */}
             <ActivityStream 
               activities={asArray(data.activity)} 
               isLoading={isLoading}
-              maxItems={10}
+              maxItems={8}
             />
           </div>
 

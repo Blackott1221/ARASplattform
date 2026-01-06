@@ -18,9 +18,26 @@ const router = Router();
 // TYPES
 // ═══════════════════════════════════════════════════════════════
 
+interface RecentCall {
+  id: string;
+  startedAt: string;
+  status: 'running' | 'completed' | 'failed' | 'initiated';
+  contact?: { id?: string; name?: string; phone?: string };
+  campaign?: { id?: string; name?: string };
+  duration?: number;
+  hasAudio: boolean;
+  audioUrl?: string;
+  hasTranscript: boolean;
+  transcript?: string;
+  summary?: string;
+  sentiment?: 'positive' | 'neutral' | 'negative';
+  nextStep?: string;
+}
+
 interface DashboardOverview {
   user: any;
   kpis: any;
+  recentCalls: RecentCall[];
   nextActions: any[];
   activity: any[];
   modules: any;
@@ -70,6 +87,7 @@ router.get('/overview', async (req: Request, res: Response) => {
       knowledge: { totalDocuments: 0, newUploads: { today: 0, week: 0, month: 0 }, errorSources: 0 },
       quotas: { calls: { used: 0, limit: 100 }, spaces: { used: 0, limit: 10 }, storage: { used: 0, limit: 1000 } },
     },
+    recentCalls: [],
     nextActions: [],
     activity: [],
     modules: {
@@ -132,19 +150,62 @@ router.get('/overview', async (req: Request, res: Response) => {
         : 0,
     };
 
-    // Recent calls for activity
-    const recentCalls = allCalls
-      .sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime())
-      .slice(0, 5);
+    // Recent calls with FULL DATA (audio, transcript, summary)
+    const recentCallsRaw = allCalls
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+      .slice(0, 10);
     
-    for (const call of recentCalls) {
+    // Parse metadata for summary/sentiment/nextStep
+    for (const call of recentCallsRaw) {
+      const metadata = (call.metadata && typeof call.metadata === 'object') ? call.metadata as any : {};
+      const hasAudio = Boolean(call.recordingUrl);
+      const hasTranscript = Boolean(call.transcript && call.transcript.length > 0);
+      
+      // Extract summary from metadata or transcript
+      let summary = metadata.summary || metadata.ai_summary || '';
+      if (!summary && call.transcript && call.transcript.length > 100) {
+        summary = call.transcript.substring(0, 150) + '...';
+      }
+      
+      const recentCall: RecentCall = {
+        id: String(call.id),
+        startedAt: (call.createdAt || now).toISOString(),
+        status: (call.status as any) || 'initiated',
+        contact: {
+          id: call.leadId ? String(call.leadId) : undefined,
+          name: call.contactName || undefined,
+          phone: call.phoneNumber || undefined,
+        },
+        campaign: call.voiceAgentId ? {
+          id: String(call.voiceAgentId),
+          name: metadata.campaignName || 'Kampagne',
+        } : undefined,
+        duration: call.duration || undefined,
+        hasAudio,
+        audioUrl: call.recordingUrl || undefined,
+        hasTranscript,
+        transcript: call.transcript || undefined,
+        summary: summary || undefined,
+        sentiment: metadata.sentiment || undefined,
+        nextStep: metadata.nextStep || metadata.next_action || undefined,
+      };
+      
+      overview.recentCalls.push(recentCall);
+      
+      // Also add to activity feed
       overview.activity.push({
         id: `call-${call.id}`,
         type: call.status === 'completed' ? 'call_completed' : call.status === 'failed' ? 'call_failed' : 'call_started',
         title: `Call ${call.status === 'completed' ? 'abgeschlossen' : call.status === 'failed' ? 'fehlgeschlagen' : 'gestartet'}`,
-        description: call.toNumber || 'Unbekannte Nummer',
-        timestamp: call.timestamp || now.toISOString(),
-        metadata: { callId: call.id, duration: call.duration },
+        description: call.contactName || call.phoneNumber || 'Unbekannte Nummer',
+        timestamp: (call.createdAt || now).toISOString(),
+        metadata: { 
+          callId: call.id, 
+          duration: call.duration,
+          hasAudio,
+          hasTranscript,
+          summary: summary ? summary.substring(0, 80) : undefined,
+        },
       });
     }
   } catch (e: any) {
