@@ -215,11 +215,12 @@ router.get('/overview', async (req: Request, res: Response) => {
   try {
     const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
     if (user) {
+      const displayName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email?.split('@')[0] || 'User';
       overview.user = {
         id: user.id,
-        name: user.name || user.email?.split('@')[0] || 'User',
+        name: displayName,
         email: user.email || '',
-        plan: user.subscriptionTier || 'free',
+        plan: user.subscriptionPlan || 'free',
         timezone: 'Europe/Berlin',
       };
     }
@@ -492,7 +493,7 @@ router.get('/overview', async (req: Request, res: Response) => {
       .map(c => ({
         id: String(c.id),
         contactKey: String(c.id),
-        name: c.name || 'Unbekannt',
+        name: [c.firstName, c.lastName].filter(Boolean).join(' ') || c.company || 'Unbekannt',
         company: c.company || '',
         priority: 'medium' as const,
         nextAction: 'Follow-up planen',
@@ -524,7 +525,11 @@ router.get('/overview', async (req: Request, res: Response) => {
   // ─────────────────────────────────────────────────────────────
   try {
     const allSessions = await db.select().from(chatSessions).where(eq(chatSessions.userId, userId));
-    const allMessages = await db.select().from(chatMessages).where(eq(chatMessages.sessionId, userId));
+    // Get messages from user's sessions
+    const sessionIds = allSessions.map(s => s.id);
+    const allMessages = sessionIds.length > 0 
+      ? await db.select().from(chatMessages).where(sql`${chatMessages.sessionId} = ANY(${sessionIds})`)
+      : [];
     
     const activeSessions = allSessions.filter(s => s.isActive);
     const lastSession = allSessions.sort((a, b) => 
@@ -558,19 +563,20 @@ router.get('/overview', async (req: Request, res: Response) => {
   try {
     const allTasks = await db.select().from(voiceTasks).where(eq(voiceTasks.userId, userId));
     
+    // voiceTasks doesn't have dueDate/title/priority - use taskName and createdAt
     const todayTasks = allTasks
       .filter(t => {
-        if (!t.dueDate) return false;
-        const due = new Date(t.dueDate);
-        return due >= todayStart && due < new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+        if (!t.createdAt) return false;
+        const created = new Date(t.createdAt);
+        return created >= todayStart && created < new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
       })
       .map(t => ({
         id: String(t.id),
         type: 'task' as const,
-        title: t.title || 'Aufgabe',
-        time: t.dueDate || null,
+        title: t.taskName || 'Aufgabe',
+        time: t.createdAt?.toISOString() || null,
         done: t.status === 'completed',
-        priority: (t.priority as any) || 'medium',
+        priority: 'medium' as const,
         actionCta: { label: 'Erledigen', actionType: 'CREATE_TASK' as const, payload: { taskId: t.id } },
       }));
 
