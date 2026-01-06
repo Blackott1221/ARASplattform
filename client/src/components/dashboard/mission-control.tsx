@@ -1,25 +1,23 @@
 /**
  * ARAS Mission Control - Main Dashboard Component
- * The central command center with KPIs, Actions, Activity, and Intelligence Panels
- * Premium ARAS CI design with real data and interactivity
+ * The central command center - premium, data-driven, interactive
+ * UPGRADE: Session gating, safe defaults, "Vertrieb starten?" CTA
  */
 
-import React, { useState, Suspense } from 'react';
-import { motion } from 'framer-motion';
-import { RefreshCw, AlertTriangle, X } from 'lucide-react';
+import React, { useState, Suspense, lazy } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  RefreshCw, AlertTriangle, X, Rocket, Phone, Users, 
+  Calendar, Sparkles, ChevronRight, TrendingUp, Target,
+  Zap, ArrowRight, Activity
+} from 'lucide-react';
 import { useDashboardOverview, needsSetup } from '@/lib/dashboard/use-dashboard-overview';
 import { KpiCards } from './kpi-cards';
-import { NextActions } from './next-actions';
 import { ActivityStream } from './activity-stream';
-import { lazyWithRetry } from '@/lib/react/lazy-with-retry';
+import { ContactsDrawer } from './contacts-drawer';
 import { ModuleBoundary } from '@/components/system/module-boundary';
-import { asArray } from '@/lib/utils/safe';
+import { asArray, isValidString, safeNumber } from '@/lib/utils/safe';
 import type { User } from '@shared/schema';
-
-// Lazy load intelligence panels
-const ContactRadar = lazyWithRetry(() => import('./contact-radar'));
-const TodayOS = lazyWithRetry(() => import('./today-os'));
-const MatrixPanel = lazyWithRetry(() => import('@/components/system/matrix-panel'));
 
 // Design Tokens
 const DT = {
@@ -111,74 +109,325 @@ function SystemAlertBanner({ alerts, onDismiss }: {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════
+// HERO CTA PANEL - "Vertrieb starten?"
+// ═══════════════════════════════════════════════════════════════
+
+function SalesHeroCTA() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.1 }}
+      className="relative overflow-hidden rounded-2xl p-6 sm:p-8"
+      style={{
+        background: `linear-gradient(135deg, rgba(255,106,0,0.12) 0%, rgba(0,0,0,0.6) 50%, rgba(255,106,0,0.08) 100%)`,
+        border: '1px solid rgba(255,106,0,0.2)',
+        boxShadow: '0 0 40px rgba(255,106,0,0.1), inset 0 1px 0 rgba(255,255,255,0.05)',
+      }}
+    >
+      {/* Glow effect */}
+      <div 
+        className="absolute -top-24 -right-24 w-48 h-48 rounded-full blur-3xl opacity-30"
+        style={{ background: DT.orange }}
+      />
+      
+      <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+        <div className="flex-1">
+          <div className="flex items-center gap-3 mb-3">
+            <div 
+              className="w-12 h-12 rounded-xl flex items-center justify-center"
+              style={{ background: `linear-gradient(135deg, ${DT.orange}, #ff8533)` }}
+            >
+              <Rocket size={24} className="text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold text-white font-['Orbitron']">
+                Vertrieb starten?
+              </h2>
+            </div>
+          </div>
+          <p className="text-sm sm:text-base text-white/70 max-w-md">
+            Starte jetzt mit nur 1 Klick <span className="text-white font-semibold">10.000 Anrufe GLEICHZEITIG!</span>
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          <a
+            href="/app/campaigns"
+            className="group flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-white transition-all duration-300 hover:scale-[1.02]"
+            style={{
+              background: `linear-gradient(135deg, ${DT.orange}, #ff8533)`,
+              boxShadow: '0 4px 20px rgba(255,106,0,0.4)',
+            }}
+          >
+            <span>Kampagnen öffnen</span>
+            <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+          </a>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// KI PRIORITÄTEN PANEL (replaces Contact Radar)
+// ═══════════════════════════════════════════════════════════════
+
+interface KIPriority {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  action: { label: string; href: string };
+  priority: 'high' | 'medium' | 'low';
+}
+
+function KIPrioritiesPanel({ kpis, activity }: { kpis: any; activity: any[] }) {
+  // Generate AI-driven priorities based on actual data
+  const priorities: KIPriority[] = [];
+
+  // Check for setup needs
+  if (safeNumber(kpis?.contacts?.total) === 0) {
+    priorities.push({
+      id: 'import-contacts',
+      title: 'Kontakte importieren',
+      description: 'Importiere deine ersten Kontakte um mit Calls zu starten.',
+      icon: <Users size={16} style={{ color: DT.orange }} />,
+      action: { label: 'Importieren', href: '/app/contacts' },
+      priority: 'high',
+    });
+  }
+
+  if (safeNumber(kpis?.campaigns?.active) === 0 && safeNumber(kpis?.contacts?.total) > 0) {
+    priorities.push({
+      id: 'start-campaign',
+      title: 'Erste Kampagne starten',
+      description: 'Du hast Kontakte aber noch keine aktive Kampagne.',
+      icon: <Target size={16} style={{ color: DT.orange }} />,
+      action: { label: 'Erstellen', href: '/app/campaigns' },
+      priority: 'high',
+    });
+  }
+
+  if (safeNumber(kpis?.calls?.failed?.today) > 0) {
+    priorities.push({
+      id: 'retry-failed',
+      title: `${kpis.calls.failed.today} fehlgeschlagene Calls`,
+      description: 'Einige Anrufe heute waren nicht erfolgreich.',
+      icon: <Phone size={16} className="text-red-400" />,
+      action: { label: 'Prüfen', href: '/app/power' },
+      priority: 'medium',
+    });
+  }
+
+  // Add calendar suggestion if no recent activity
+  if (asArray(activity).length === 0) {
+    priorities.push({
+      id: 'connect-calendar',
+      title: 'Kalender verbinden',
+      description: 'Verbinde deinen Kalender für automatische Terminplanung.',
+      icon: <Calendar size={16} className="text-blue-400" />,
+      action: { label: 'Verbinden', href: '/app/calendar' },
+      priority: 'low',
+    });
+  }
+
+  // Default if all good
+  if (priorities.length === 0) {
+    priorities.push({
+      id: 'all-good',
+      title: 'Alles im grünen Bereich',
+      description: 'Keine dringenden Aktionen erforderlich.',
+      icon: <Sparkles size={16} className="text-green-400" />,
+      action: { label: 'Dashboard', href: '/app/dashboard' },
+      priority: 'low',
+    });
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.3, delay: 0.2 }}
+      className="rounded-2xl p-5"
+      style={{
+        background: DT.panelBg,
+        border: `1px solid ${DT.panelBorder}`,
+      }}
+    >
+      <div className="flex items-center gap-2 mb-4">
+        <Sparkles size={16} style={{ color: DT.orange }} />
+        <h3 className="text-sm font-semibold text-white">KI Prioritäten</h3>
+      </div>
+
+      <div className="space-y-3">
+        {priorities.slice(0, 4).map((item) => (
+          <div 
+            key={item.id}
+            className="flex items-start gap-3 p-3 rounded-xl transition-colors hover:bg-white/5"
+            style={{ borderLeft: `2px solid ${item.priority === 'high' ? DT.orange : item.priority === 'medium' ? '#f59e0b' : '#6b7280'}` }}
+          >
+            <div className="mt-0.5">{item.icon}</div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-white truncate">{item.title}</p>
+              <p className="text-[10px] text-white/50 mt-0.5">{item.description}</p>
+            </div>
+            <a
+              href={item.action.href}
+              className="text-[10px] px-2 py-1 rounded-md font-medium transition-colors hover:bg-white/10"
+              style={{ color: DT.orange }}
+            >
+              {item.action.label}
+            </a>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CALENDAR MINI PANEL
+// ═══════════════════════════════════════════════════════════════
+
+function CalendarMiniPanel() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.3, delay: 0.3 }}
+      className="rounded-2xl p-5"
+      style={{
+        background: DT.panelBg,
+        border: `1px solid ${DT.panelBorder}`,
+      }}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Calendar size={16} style={{ color: DT.orange }} />
+          <h3 className="text-sm font-semibold text-white">Nächste Termine</h3>
+        </div>
+        <a 
+          href="/app/calendar" 
+          className="text-[10px] text-white/50 hover:text-white/70 transition-colors flex items-center gap-1"
+        >
+          Alle <ChevronRight size={12} />
+        </a>
+      </div>
+
+      <div className="space-y-2">
+        <div className="text-center py-6">
+          <Calendar size={32} className="mx-auto mb-2 text-white/20" />
+          <p className="text-xs text-white/40">Keine Termine heute</p>
+          <a 
+            href="/app/calendar"
+            className="text-[10px] mt-2 inline-block px-3 py-1 rounded-full transition-colors hover:bg-white/10"
+            style={{ color: DT.orange }}
+          >
+            Termin anlegen
+          </a>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SESSION GATE SKELETON
+// ═══════════════════════════════════════════════════════════════
+
+function SessionLoadingSkeleton() {
+  return (
+    <div className="flex-1 min-h-0">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 space-y-6">
+        {/* Header Skeleton */}
+        <div className="animate-pulse">
+          <div className="h-3 w-16 bg-white/10 rounded mb-2" />
+          <div className="h-8 w-64 bg-white/10 rounded mb-2" />
+          <div className="h-4 w-48 bg-white/5 rounded" />
+        </div>
+
+        {/* KPI Skeleton */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="h-24 rounded-xl bg-white/5 animate-pulse" />
+          ))}
+        </div>
+
+        {/* Content Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="h-48 rounded-xl bg-white/5 animate-pulse" />
+            <div className="h-64 rounded-xl bg-white/5 animate-pulse" />
+          </div>
+          <div className="space-y-6">
+            <div className="h-48 rounded-xl bg-white/5 animate-pulse" />
+            <div className="h-48 rounded-xl bg-white/5 animate-pulse" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SessionExpiredFallback() {
+  return (
+    <div className="flex-1 min-h-0 flex items-center justify-center">
+      <div className="text-center p-8">
+        <div 
+          className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+          style={{ background: `linear-gradient(135deg, ${DT.orange}22, ${DT.orange}08)` }}
+        >
+          <AlertTriangle size={28} style={{ color: DT.orange }} />
+        </div>
+        <h2 className="text-lg font-semibold text-white mb-2">Session abgelaufen</h2>
+        <p className="text-sm text-white/50 mb-4">Bitte melde dich erneut an.</p>
+        <a
+          href="/auth"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-white transition-all hover:scale-105"
+          style={{ background: `linear-gradient(135deg, ${DT.orange}, #ff8533)` }}
+        >
+          Neu anmelden
+          <ArrowRight size={16} />
+        </a>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════════
+
 export function MissionControl({ user }: MissionControlProps) {
   const { data, isLoading, refetch, lastUpdated } = useDashboardOverview();
   const [kpiPeriod, setKpiPeriod] = useState<'today' | 'week' | 'month'>('today');
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
+  const [contactsDrawerOpen, setContactsDrawerOpen] = useState(false);
 
-  const isSetupMode = needsSetup(data);
+  // SESSION GATE: If user not valid, show appropriate fallback
+  const hasValidUser = user && isValidString(user.id);
+  
+  // Show skeleton while loading
+  if (isLoading && !data) {
+    return <SessionLoadingSkeleton />;
+  }
+
+  // Show login fallback if no valid user after loading
+  if (!hasValidUser && !isLoading) {
+    return <SessionExpiredFallback />;
+  }
+
   const visibleAlerts = asArray(data.systemAlerts).filter(a => !dismissedAlerts.has(a.id));
 
   const handleDismissAlert = (id: string) => {
     setDismissedAlerts(prev => new Set([...prev, id]));
   };
 
-  // Prepare Contact Radar props
-  const contactRadarProps = {
-    insights: asArray(data.modules.contactRadar).map(item => ({
-      ref: { key: item.contactKey, type: 'contact' as const, displayName: item.name },
-      displayName: item.name,
-      company: item.company,
-      score: item.priority === 'urgent' ? 100 : item.priority === 'high' ? 75 : 50,
-      openTasks: item.openTasks,
-      lastEvent: item.lastContact ? new Date(item.lastContact) : null,
-      failedCalls: 0,
-      pendingActions: item.pendingCalls,
-      tags: item.tags,
-    })),
-    focusKey: null,
-    onFocus: () => {},
-    onClearFocus: () => {},
-    onOpenBest: () => {},
-    pinnedKeys: [],
-    onTogglePin: () => {},
-  };
-
-  // Prepare Today OS props
-  const todayOSProps = {
-    itemsTimed: asArray(data.modules.todayOS).filter(i => i.time).map(item => ({
-      id: item.id,
-      type: item.type as any,
-      title: item.title,
-      time: item.time ? new Date(item.time) : null,
-      priority: item.priority as any,
-      done: item.done,
-      contactRef: item.contactName ? { key: item.id, displayName: item.contactName } : undefined,
-    })),
-    itemsUntimed: asArray(data.modules.todayOS).filter(i => !i.time).map(item => ({
-      id: item.id,
-      type: item.type as any,
-      title: item.title,
-      time: null,
-      priority: item.priority as any,
-      done: item.done,
-    })),
-    weekStrip: { days: [] },
-    counts: { tasks: 0, calls: 0, meetings: 0, followups: 0, deadlines: 0 },
-    focusKey: null,
-    onOpen: () => {},
-  };
-
-  // Prepare Matrix Panel props
-  const matrixLines = asArray(data.modules.matrix.cells).map(cell => ({
-    label: `${cell.category} - ${cell.status}`,
-    value: cell.count,
-    tone: cell.trend === 'up' ? 'ok' as const : cell.trend === 'down' ? 'warn' as const : 'info' as const,
-  }));
-
   return (
     <div className="flex-1 min-h-0">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 space-y-8">
         
         {/* Header */}
         <motion.div
@@ -204,15 +453,11 @@ export function MissionControl({ user }: MissionControlProps) {
               MISSION CONTROL
             </h1>
             <p className="text-xs text-neutral-400 mt-1">
-              {isSetupMode 
-                ? 'Willkommen! Starte mit den Setup-Aktionen unten.' 
-                : `Deine Kommandozentrale • ${data.user.name}`
-              }
+              Deine Kommandozentrale • {data.user.name || user?.name || 'User'}
             </p>
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Status indicator */}
             <div className="flex items-center gap-2">
               <div 
                 className="w-2 h-2 rounded-full animate-pulse"
@@ -223,7 +468,6 @@ export function MissionControl({ user }: MissionControlProps) {
               </span>
             </div>
 
-            {/* Refresh button */}
             <button
               onClick={() => refetch()}
               disabled={isLoading}
@@ -235,7 +479,6 @@ export function MissionControl({ user }: MissionControlProps) {
               />
             </button>
 
-            {/* Last updated */}
             {lastUpdated && (
               <span className="text-[9px] text-white/30">
                 {lastUpdated.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
@@ -247,68 +490,37 @@ export function MissionControl({ user }: MissionControlProps) {
         {/* System Alerts */}
         <SystemAlertBanner alerts={visibleAlerts} onDismiss={handleDismissAlert} />
 
-        {/* KPI Cards */}
+        {/* HERO CTA: Vertrieb starten? */}
+        <SalesHeroCTA />
+
+        {/* KPI Cards - nur die wichtigsten 4 */}
         <KpiCards 
           kpis={data.kpis} 
           period={kpiPeriod} 
           onPeriodChange={setKpiPeriod}
+          onContactsClick={() => setContactsDrawerOpen(true)}
         />
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* Left Column - Actions + Activity */}
+          {/* Left Column - Activity */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Next Actions */}
-            <NextActions 
-              actions={asArray(data.nextActions)} 
-              isLoading={isLoading}
-            />
-
             {/* Activity Stream */}
             <ActivityStream 
               activities={asArray(data.activity)} 
               isLoading={isLoading}
-              maxItems={8}
+              maxItems={10}
             />
           </div>
 
           {/* Right Column - Intelligence Panels */}
           <div className="space-y-6">
-            {/* Contact Radar */}
-            <ModuleBoundary name="ContactRadar">
-              <Suspense fallback={<ModuleSkeleton height={280} />}>
-                <ContactRadar {...contactRadarProps} />
-              </Suspense>
-            </ModuleBoundary>
+            {/* KI Prioritäten (replaces Contact Radar) */}
+            <KIPrioritiesPanel kpis={data.kpis} activity={asArray(data.activity)} />
 
-            {/* Today OS */}
-            <ModuleBoundary name="TodayOS">
-              <Suspense fallback={<ModuleSkeleton height={250} />}>
-                <TodayOS {...todayOSProps} />
-              </Suspense>
-            </ModuleBoundary>
-
-            {/* Matrix Panel */}
-            <ModuleBoundary name="MatrixPanel">
-              <Suspense fallback={<ModuleSkeleton height={200} />}>
-                <MatrixPanel 
-                  title="System Status"
-                  lines={matrixLines.length > 0 ? matrixLines : [
-                    { label: 'Calls heute', value: data.kpis.calls.started.today, tone: 'ok' },
-                    { label: 'Kampagnen aktiv', value: data.kpis.campaigns.active, tone: 'ok' },
-                    { label: 'Kontakte gesamt', value: data.kpis.contacts.total, tone: 'info' },
-                    { label: 'Spaces aktiv', value: data.kpis.spaces.active, tone: 'info' },
-                  ]}
-                  accent="orange"
-                  statusChip={
-                    data.errors.length > 0 
-                      ? { label: `${data.errors.length} Fehler`, tone: 'warn' }
-                      : { label: 'Alle Systeme OK', tone: 'ok' }
-                  }
-                />
-              </Suspense>
-            </ModuleBoundary>
+            {/* Calendar Mini Panel */}
+            <CalendarMiniPanel />
           </div>
         </div>
 
@@ -319,6 +531,12 @@ export function MissionControl({ user }: MissionControlProps) {
           </p>
         </div>
       </div>
+
+      {/* Contacts Drawer */}
+      <ContactsDrawer 
+        isOpen={contactsDrawerOpen} 
+        onClose={() => setContactsDrawerOpen(false)} 
+      />
     </div>
   );
 }

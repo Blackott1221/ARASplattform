@@ -22,6 +22,7 @@ interface KpiCardsProps {
   kpis: AllKpis;
   period: 'today' | 'week' | 'month';
   onPeriodChange?: (period: 'today' | 'week' | 'month') => void;
+  onContactsClick?: () => void;
 }
 
 interface KpiCardData {
@@ -33,6 +34,7 @@ interface KpiCardData {
   trend?: 'up' | 'down' | 'stable';
   trendValue?: string;
   color?: string;
+  onClick?: () => void;
 }
 
 function AnimatedCounter({ value, duration = 1000 }: { value: number; duration?: number }) {
@@ -69,13 +71,15 @@ function AnimatedCounter({ value, duration = 1000 }: { value: number; duration?:
 
 function KpiCard({ data, index }: { data: KpiCardData; index: number }) {
   const trendColor = data.trend === 'up' ? '#22c55e' : data.trend === 'down' ? '#ef4444' : '#6b7280';
+  const isClickable = !!data.onClick;
   
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: index * 0.05 }}
-      className="relative rounded-xl overflow-hidden group"
+      onClick={data.onClick}
+      className={`relative rounded-xl overflow-hidden group ${isClickable ? 'cursor-pointer' : ''}`}
       style={{
         background: DT.panelBg,
         border: `1px solid ${DT.panelBorder}`,
@@ -142,13 +146,14 @@ function KpiCard({ data, index }: { data: KpiCardData; index: number }) {
   );
 }
 
-export function KpiCards({ kpis, period, onPeriodChange }: KpiCardsProps) {
+export function KpiCards({ kpis, period, onPeriodChange, onContactsClick }: KpiCardsProps) {
   const periodData = {
     today: kpis.calls.started.today,
     week: kpis.calls.started.week,
     month: kpis.calls.started.month,
   };
 
+  // Only show the 4 most relevant KPIs (removed Spaces + Quota per user request)
   const cards: KpiCardData[] = [
     {
       id: 'calls',
@@ -179,37 +184,16 @@ export function KpiCards({ kpis, period, onPeriodChange }: KpiCardsProps) {
       trend: kpis.contacts.new[period] > 0 ? 'up' : 'stable',
       trendValue: `+${kpis.contacts.new[period]}`,
       color: '#22c55e',
+      onClick: onContactsClick, // Open drawer on click
     },
     {
-      id: 'spaces',
-      title: 'Spaces',
-      value: kpis.spaces.active,
-      subtitle: `${kpis.spaces.totalMessages} Nachrichten`,
-      icon: <MessageSquare size={18} />,
+      id: 'calendar',
+      title: 'Termine',
+      value: 0, // TODO: Connect to calendar data
+      subtitle: 'Nächste 7 Tage',
+      icon: <Database size={18} />,
       trend: 'stable',
       color: '#3b82f6',
-    },
-    {
-      id: 'knowledge',
-      title: 'Wissensdatenbank',
-      value: kpis.knowledge.totalDocuments,
-      subtitle: `${kpis.knowledge.errorSources > 0 ? kpis.knowledge.errorSources + ' Fehler' : 'Alle Quellen OK'}`,
-      icon: <Database size={18} />,
-      trend: kpis.knowledge.errorSources > 0 ? 'down' : 'stable',
-      trendValue: kpis.knowledge.errorSources > 0 ? `${kpis.knowledge.errorSources} ⚠` : undefined,
-      color: '#8b5cf6',
-    },
-    {
-      id: 'quota',
-      title: 'Quota',
-      value: kpis.quotas.calls.limit > 0 
-        ? Math.round((kpis.quotas.calls.used / kpis.quotas.calls.limit) * 100) 
-        : 0,
-      subtitle: `${kpis.quotas.calls.used}/${kpis.quotas.calls.limit} Calls`,
-      icon: <Zap size={18} />,
-      trend: kpis.quotas.calls.used > kpis.quotas.calls.limit * 0.8 ? 'down' : 'stable',
-      trendValue: `${kpis.quotas.calls.limit - kpis.quotas.calls.used} übrig`,
-      color: '#e9d7c4',
     },
   ];
 
@@ -234,8 +218,8 @@ export function KpiCards({ kpis, period, onPeriodChange }: KpiCardsProps) {
         </div>
       )}
       
-      {/* KPI Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      {/* KPI Grid - 4 cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map((card, index) => (
           <KpiCard key={card.id} data={card} index={index} />
         ))}

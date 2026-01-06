@@ -77,3 +77,56 @@ export function safeFilter<T>(
     return fallback;
   }
 }
+
+/**
+ * Safely convert to number
+ */
+export function safeNumber(v: unknown, fallback = 0): number {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string') {
+    const parsed = parseFloat(v);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+  return fallback;
+}
+
+/**
+ * Safely convert to object
+ */
+export function safeObject<T extends Record<string, unknown>>(v: unknown, fallback: T = {} as T): T {
+  if (v && typeof v === 'object' && !Array.isArray(v)) return v as T;
+  return fallback;
+}
+
+/**
+ * Safely access nested property
+ */
+export function safeNested<T>(obj: unknown, path: string, fallback: T): T {
+  try {
+    const keys = path.split('.');
+    let current: unknown = obj;
+    for (const key of keys) {
+      if (current == null || typeof current !== 'object') return fallback;
+      current = (current as Record<string, unknown>)[key];
+    }
+    return (current as T) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * Check if value is a valid non-empty string
+ */
+export function isValidString(v: unknown): v is string {
+  return typeof v === 'string' && v.trim().length > 0;
+}
+
+/**
+ * Check if user session is valid (has required id)
+ */
+export function isValidSession(user: unknown): boolean {
+  if (!user || typeof user !== 'object') return false;
+  const u = user as Record<string, unknown>;
+  return isValidString(u.id);
+}
