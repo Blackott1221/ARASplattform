@@ -419,10 +419,10 @@ export function MissionControl({ user }: MissionControlProps) {
     return <SessionExpiredFallback />;
   }
 
-  const visibleAlerts = asArray(data.systemAlerts).filter(a => !dismissedAlerts.has(a.id));
+  const visibleAlerts = asArray<{ id: string; type: string; title: string; description?: string; dismissible?: boolean }>(data.systemAlerts).filter(a => !dismissedAlerts.has(a.id));
 
   const handleDismissAlert = (id: string) => {
-    setDismissedAlerts(prev => new Set([...prev, id]));
+    setDismissedAlerts(prev => new Set(Array.from(prev).concat(id)));
   };
 
   return (
@@ -453,7 +453,7 @@ export function MissionControl({ user }: MissionControlProps) {
               MISSION CONTROL
             </h1>
             <p className="text-xs text-neutral-400 mt-1">
-              Deine Kommandozentrale • {data.user.name || user?.name || 'User'}
+              Deine Kommandozentrale • {data.user.name || user?.firstName || user?.email?.split('@')[0] || 'User'}
             </p>
           </div>
 
