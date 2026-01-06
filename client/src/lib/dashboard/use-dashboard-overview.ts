@@ -9,6 +9,7 @@ import {
   DashboardOverview, 
   parseDashboardOverview, 
   getEmptyDashboard,
+  createDefaultOverview,
   getSetupActions,
   ActionItem,
   ActivityItem,
@@ -35,6 +36,7 @@ interface UseDashboardOverviewResult {
 
 /**
  * Fetch dashboard overview from backend
+ * NEVER throws - always returns valid DashboardOverview
  */
 async function fetchDashboardOverview(): Promise<DashboardOverview> {
   try {
@@ -45,9 +47,29 @@ async function fetchDashboardOverview(): Promise<DashboardOverview> {
       },
     });
 
+    // Handle 401 - session expired
+    if (response.status === 401) {
+      const errorData = createDefaultOverview();
+      errorData.systemAlerts.push({
+        id: `auth-error-${Date.now()}`,
+        type: 'warning',
+        title: 'Session abgelaufen',
+        description: 'Bitte melde dich erneut an.',
+        service: 'auth',
+        timestamp: new Date().toISOString(),
+        dismissible: false,
+        actionCta: {
+          label: 'Neu anmelden',
+          actionType: 'NAVIGATE',
+          payload: { path: '/auth' },
+        },
+      });
+      return errorData;
+    }
+
     if (!response.ok) {
       // Don't throw - return empty dashboard with error alert
-      const errorData = getEmptyDashboard();
+      const errorData = createDefaultOverview();
       errorData.systemAlerts.push({
         id: `api-error-${Date.now()}`,
         type: 'warning',
@@ -63,9 +85,11 @@ async function fetchDashboardOverview(): Promise<DashboardOverview> {
     const json = await response.json();
     return parseDashboardOverview(json);
   } catch (error) {
-    console.error('[Dashboard] Fetch failed:', error);
-    // Return safe defaults with error alert
-    const errorData = getEmptyDashboard();
+    if (import.meta.env.DEV) {
+      console.error('[Dashboard] Fetch failed:', error);
+    }
+    // Return safe defaults with error alert - NEVER throw
+    const errorData = createDefaultOverview();
     errorData.systemAlerts.push({
       id: `fetch-error-${Date.now()}`,
       type: 'error',
@@ -104,8 +128,9 @@ export function useDashboardOverview(
     retryDelay: 1000,
   });
 
-  // Always return valid data - use defaults if query failed/loading
-  const data: DashboardOverview = query.data ?? getEmptyDashboard();
+  // Always return valid data - use createDefaultOverview if query failed/loading
+  // This NEVER crashes - createDefaultOverview always returns valid structure
+  const data: DashboardOverview = query.data ?? createDefaultOverview();
 
   return {
     data,

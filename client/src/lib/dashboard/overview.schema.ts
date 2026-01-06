@@ -225,7 +225,7 @@ export const SystemAlertSchema = z.object({
 // ═══════════════════════════════════════════════════════════════
 
 export const UserInfoSchema = z.object({
-  id: z.string(),
+  id: z.string().default('unknown'),
   name: z.string().default('User'),
   email: z.string().default(''),
   plan: z.string().default('free'),
@@ -280,32 +280,76 @@ export type DashboardOverview = z.infer<typeof DashboardOverviewSchema>;
 
 /**
  * Parse and validate dashboard data with safe defaults
- * Never throws - always returns valid data structure
+ * NEVER throws - always returns valid data structure
+ * Uses safeParse to prevent UI crashes
  */
 export function parseDashboardOverview(data: unknown): DashboardOverview {
-  try {
-    return DashboardOverviewSchema.parse(data);
-  } catch (e) {
-    console.warn('[Dashboard] Parse failed, using defaults:', e);
-    return DashboardOverviewSchema.parse({});
+  const result = DashboardOverviewSchema.safeParse(data);
+  
+  if (result.success) {
+    return result.data;
   }
+  
+  // Log in dev mode only
+  if (import.meta.env.DEV) {
+    console.warn('[Dashboard] safeParse failed:', result.error.issues);
+    console.warn('[Dashboard] Raw data snippet:', JSON.stringify(data)?.slice(0, 200));
+  }
+  
+  // Return safe defaults - never crash
+  return createDefaultOverview();
+}
+
+/**
+ * Create a fully valid default overview
+ * Used when parse fails or no data available
+ */
+export function createDefaultOverview(userId?: string, userName?: string): DashboardOverview {
+  return {
+    user: {
+      id: userId || 'unknown',
+      name: userName || 'User',
+      email: '',
+      plan: 'free',
+      timezone: 'Europe/Berlin',
+    },
+    kpis: {
+      calls: { started: { today: 0, week: 0, month: 0 }, connected: { today: 0, week: 0, month: 0 }, successful: { today: 0, week: 0, month: 0 }, failed: { today: 0, week: 0, month: 0 }, avgDuration: 0 },
+      campaigns: { active: 0, paused: 0, completed: 0, errors: 0, conversionRate: 0 },
+      contacts: { total: 0, new: { today: 0, week: 0, month: 0 }, enriched: 0, hot: 0 },
+      spaces: { active: 0, lastUsed: null, totalMessages: 0 },
+      knowledge: { totalDocuments: 0, newUploads: { today: 0, week: 0, month: 0 }, errorSources: 0 },
+      quotas: { calls: { used: 0, limit: 100 }, spaces: { used: 0, limit: 10 }, storage: { used: 0, limit: 1000 } },
+    },
+    nextActions: getSetupActions(),
+    activity: [],
+    modules: {
+      contactRadar: [],
+      todayOS: [],
+      matrix: { cells: [], summary: { healthy: 0, warning: 0, critical: 0 } },
+    },
+    systemAlerts: [],
+    lastUpdated: new Date().toISOString(),
+    errors: [],
+  };
 }
 
 /**
  * Get empty dashboard with setup actions for new users
+ * Uses createDefaultOverview to avoid any parse exceptions
  */
 export function getEmptyDashboard(user?: Partial<UserInfo>): DashboardOverview {
-  return DashboardOverviewSchema.parse({
-    user: user || {},
-    nextActions: getSetupActions(),
-    activity: [{
-      id: 'welcome',
-      type: 'system_info',
-      title: 'Willkommen bei ARAS AI',
-      description: 'Starte mit deinen ersten Aktionen um ARAS optimal zu nutzen.',
-      timestamp: new Date().toISOString(),
-    }],
-  });
+  const overview = createDefaultOverview(user?.id, user?.name);
+  overview.activity = [{
+    id: 'welcome',
+    type: 'system_info',
+    title: 'Willkommen bei ARAS AI',
+    description: 'Starte mit deinen ersten Aktionen um ARAS optimal zu nutzen.',
+    timestamp: new Date().toISOString(),
+    metadata: {},
+    actionable: false,
+  }];
+  return overview;
 }
 
 /**
