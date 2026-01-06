@@ -17,6 +17,7 @@ import bcrypt from "bcryptjs";
 import multer from "multer";
 import twilio from "twilio";
 import chatRouter from "./chat";
+import dashboardRouter from "./routes/dashboard";
 import { requireAdmin } from "./middleware/admin";
 import { getKnowledgeDigest } from "./knowledge/context-builder";
 import { checkCallLimit, checkMessageLimit } from "./middleware/usage-limits";
@@ -2100,7 +2101,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   // Old chat endpoint removed - using new ARAS AI Core v4.2 from chat.ts
 
   app.use("/api", chatRouter);
-
+  app.use("/api/dashboard", dashboardRouter);
 
   // RETELL AI VOICE CALLS
   app.post('/api/voice/retell/call', requireAuth, checkCallLimit, async (req: any, res) => {
