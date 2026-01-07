@@ -21,19 +21,30 @@ const DT = {
   panelBorder: 'rgba(255,255,255,0.06)',
 };
 
-// Toast notification (simple inline)
-function Toast({ message, type = 'success' }: { message: string; type?: 'success' | 'error' }) {
+// Toast notification (top-right, dark glass, auto-dismiss 2.4s, aria-live)
+function Toast({ message, type = 'success' }: { message: string; type?: 'success' | 'error' | 'info' }) {
+  const iconMap = {
+    success: <Check size={12} className="text-green-400" />,
+    error: <AlertCircle size={12} className="text-red-400" />,
+    info: <Sparkles size={12} style={{ color: DT.orange }} />,
+  };
+  
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      className="fixed bottom-4 right-4 z-50 px-4 py-2 rounded-xl text-xs font-medium shadow-lg"
+      initial={{ opacity: 0, y: -10, x: 10 }}
+      animate={{ opacity: 1, y: 0, x: 0 }}
+      exit={{ opacity: 0, y: -10, x: 10 }}
+      className="fixed top-4 right-4 z-50 px-4 py-2.5 rounded-xl text-xs font-medium shadow-xl flex items-center gap-2"
       style={{
-        background: type === 'error' ? 'rgba(239,68,68,0.9)' : 'rgba(34,197,94,0.9)',
+        background: 'rgba(20,20,25,0.95)',
+        border: `1px solid ${type === 'error' ? 'rgba(239,68,68,0.3)' : type === 'success' ? 'rgba(34,197,94,0.3)' : DT.panelBorder}`,
+        backdropFilter: 'blur(12px)',
         color: 'white',
       }}
+      role="alert"
+      aria-live="polite"
     >
+      {iconMap[type]}
       {message}
     </motion.div>
   );

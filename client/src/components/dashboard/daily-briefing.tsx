@@ -94,38 +94,62 @@ function MissionHero({
     mouseY.set(0);
   }, [mouseX, mouseY]);
 
-  // Format today's date
+  // Format today's date (Europe/Vienna timezone)
+  const viennaDate = new Date().toLocaleString('de-AT', { timeZone: 'Europe/Vienna' });
   const todayFormatted = format(new Date(), "dd.MM.yyyy", { locale: de });
   const lastUpdated = briefing?.generatedAt 
-    ? format(new Date(briefing.generatedAt), "HH:mm", { locale: de })
+    ? new Date(briefing.generatedAt).toLocaleTimeString('de-AT', { 
+        timeZone: 'Europe/Vienna', 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      })
     : '--:--';
   
-  const modeLabel = briefing?.mode === 'realtime' ? 'Realtime (Gemini)' : 'Cache (bis zu 6h)';
+  const modeLabel = briefing?.mode === 'realtime' ? 'Realtime (Gemini)' : 'Cache';
+  
+  // Detect mobile for breathing glow vs tilt
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   return (
     <motion.div
       ref={cardRef}
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.28, ease: 'easeOut' }}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={handleMouseLeave}
-      style={{
+      transition={{ duration: 0.32, ease: 'easeOut' }}
+      onMouseMove={!isMobile ? handleMouseMove : undefined}
+      onMouseEnter={!isMobile ? () => setIsHovered(true) : undefined}
+      onMouseLeave={!isMobile ? handleMouseLeave : undefined}
+      style={!isMobile ? {
         rotateX: rotateX,
         rotateY: rotateY,
         transformStyle: 'preserve-3d',
         perspective: 1000,
-      }}
+      } : {}}
       className="relative rounded-2xl overflow-hidden"
     >
-      {/* Animated border gradient */}
-      <div 
-        className="absolute inset-0 rounded-2xl opacity-40 pointer-events-none"
+      {/* Animated border gradient (desktop: sheen, mobile: breathing glow) */}
+      <motion.div 
+        className="absolute inset-0 rounded-2xl pointer-events-none"
+        animate={isMobile ? { 
+          opacity: [0.10, 0.18, 0.10] 
+        } : { 
+          opacity: 0.40 
+        }}
+        transition={isMobile ? { 
+          duration: 1.8, 
+          repeat: Infinity, 
+          ease: 'easeInOut' 
+        } : {}}
         style={{
           background: `linear-gradient(135deg, ${DT.gold}40, ${DT.orange}60, rgba(255,255,255,0.3), ${DT.orange}60, ${DT.gold}40)`,
           backgroundSize: '300% 300%',
-          animation: 'borderSheen 8s linear infinite',
+          animation: !isMobile ? 'borderSheen 4.8s linear infinite' : undefined,
           padding: '1px',
           mask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
           maskComposite: 'xor',
@@ -405,15 +429,25 @@ function ModeToggle({
 function SourcesDisplay({ sources }: { sources?: DailyBriefingData['sources'] }) {
   const [expanded, setExpanded] = useState(false);
   
-  if (!sources || sources.length === 0) return null;
+  // CRITICAL: Only show sources that have real URLs - never fake sources
+  const validSources = sources?.filter(s => s.url && s.url.startsWith('http')) || [];
+  
+  // If no valid sources with URLs, show "Account-Daten" indicator
+  if (validSources.length === 0) {
+    return (
+      <span className="text-[10px] text-white/30">
+        Nur Accountdaten ausgewertet
+      </span>
+    );
+  }
 
   return (
     <div className="relative">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1.5 text-[10px] text-white/40 hover:text-white/60 transition-colors"
+        className="flex items-center gap-1.5 text-[10px] text-white/40 hover:text-white/60 transition-colors focus:outline-none focus:ring-1 focus:ring-white/20 rounded"
       >
-        <span>Quellen: {sources.length}</span>
+        <span>Quellen: {validSources.length}</span>
         <ChevronRight size={10} className={`transition-transform ${expanded ? 'rotate-90' : ''}`} />
       </button>
       
@@ -421,30 +455,30 @@ function SourcesDisplay({ sources }: { sources?: DailyBriefingData['sources'] })
         <motion.div
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
-          className="absolute top-full left-0 mt-2 w-64 p-3 rounded-xl z-20"
+          className="absolute top-full left-0 mt-2 w-72 p-3 rounded-xl z-20"
           style={{
             background: 'rgba(15,15,18,0.98)',
             border: `1px solid ${DT.panelBorder}`,
             backdropFilter: 'blur(20px)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
           }}
         >
-          <p className="text-[9px] uppercase tracking-wider text-white/30 mb-2">Verwendete Quellen</p>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {sources.map((source, i) => (
-              <div key={i} className="text-[10px]">
-                <p className="text-white/70 line-clamp-1">{source.title}</p>
+          <p className="text-[9px] uppercase tracking-wider text-white/30 mb-2">Externe Quellen</p>
+          <div className="space-y-2.5 max-h-48 overflow-y-auto">
+            {validSources.map((source, i) => (
+              <div key={i} className="text-[10px] pb-2 border-b border-white/5 last:border-0 last:pb-0">
+                <a 
+                  href={source.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-white/70 hover:text-white line-clamp-1 underline underline-offset-2"
+                >
+                  {source.title}
+                </a>
                 {source.publisher && (
-                  <p className="text-white/30">{source.publisher} {source.date && `• ${source.date}`}</p>
-                )}
-                {source.url && (
-                  <a 
-                    href={source.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-white/40 hover:text-white/60 underline"
-                  >
-                    Link öffnen
-                  </a>
+                  <p className="text-white/30 mt-0.5">
+                    {source.publisher} {source.date && `• ${source.date}`}
+                  </p>
                 )}
               </div>
             ))}

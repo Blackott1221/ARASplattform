@@ -13,9 +13,13 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 const router = Router();
 
 // Initialize Gemini (may be disabled if no API key)
-const GOOGLE_AI_KEY = process.env.GOOGLE_AI_API_KEY || '';
+// CRITICAL: Use GOOGLE_GEMINI_API_KEY (primary) with fallback to GOOGLE_AI_API_KEY
+const GOOGLE_AI_KEY = process.env.GOOGLE_GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || '';
 const genAI = GOOGLE_AI_KEY ? new GoogleGenerativeAI(GOOGLE_AI_KEY) : null;
 const GEMINI_ENABLED = Boolean(genAI && GOOGLE_AI_KEY.length > 10);
+
+// Log Gemini status at startup (no key leak)
+console.log(`[AI] Gemini status: ${GEMINI_ENABLED ? 'ENABLED' : 'DISABLED (no API key configured)'}`);
 
 // Cache TTL in hours
 const CACHE_TTL_HOURS = 24;
