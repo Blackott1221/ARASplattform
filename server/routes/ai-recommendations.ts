@@ -533,10 +533,14 @@ router.post('/daily-briefing', async (req: Request, res: Response) => {
     if (force) {
       const rateCheck = checkRateLimit(userId, requestMode);
       if (!rateCheck.allowed) {
+        const retryAfterSeconds = Math.ceil((rateCheck.retryAfterMs || 0) / 1000);
+        const nextAllowedAt = new Date(Date.now() + (rateCheck.retryAfterMs || 0)).toISOString();
         return res.status(429).json({
           error: 'RATE_LIMITED',
-          message: `Bitte warte ${Math.ceil((rateCheck.retryAfterMs || 0) / 1000)}s vor der nächsten Aktualisierung`,
+          message: `Bitte warten: ${requestMode === 'realtime' ? 'Realtime' : 'Cache'} wieder möglich ab ${new Date(nextAllowedAt).toLocaleTimeString('de-AT', { timeZone: 'Europe/Vienna', hour: '2-digit', minute: '2-digit' })}`,
           retryAfterMs: rateCheck.retryAfterMs,
+          retryAfterSeconds,
+          nextAllowedAt,
         });
       }
     }
@@ -653,8 +657,11 @@ router.post('/daily-briefing', async (req: Request, res: Response) => {
       // Continue even if caching fails
     }
 
-    // Build response with geminiEnabled and expiresAt
-    const response: BriefingResponse & { expiresAt: string; meta: { geminiEnabled: boolean; rateLimit: { minIntervalSeconds: number } } } = {
+    // Build response with geminiEnabled, expiresAt, and nextAllowedAt
+    const rateLimitMs = requestMode === 'realtime' ? RATE_LIMIT_REALTIME_MS : RATE_LIMIT_CACHED_MS;
+    const nextAllowedAt = new Date(now.getTime() + rateLimitMs).toISOString();
+    
+    const response: BriefingResponse & { expiresAt: string; meta: { geminiEnabled: boolean; rateLimit: { minIntervalSeconds: number; nextAllowedAt: string } } } = {
       ...payload,
       generatedAt: now.toISOString(),
       expiresAt: expiresAt.toISOString(),
@@ -671,7 +678,8 @@ router.post('/daily-briefing', async (req: Request, res: Response) => {
         fallbackUsed,
         geminiEnabled: GEMINI_ENABLED,
         rateLimit: {
-          minIntervalSeconds: Math.floor((requestMode === 'realtime' ? RATE_LIMIT_REALTIME_MS : RATE_LIMIT_CACHED_MS) / 1000),
+          minIntervalSeconds: Math.floor(rateLimitMs / 1000),
+          nextAllowedAt,
         },
       },
     };

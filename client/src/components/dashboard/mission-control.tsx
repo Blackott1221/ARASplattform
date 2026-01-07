@@ -48,6 +48,30 @@ const SPACING = {
   radius: 16,
 };
 
+// Motion Tokens (consistent timing)
+const MOTION = {
+  fast: '160ms',
+  base: '240ms',
+  slow: '320ms',
+  drawer: '280ms',
+  backdrop: '180ms',
+  easing: 'ease-out',
+};
+
+// CSS Variables for Mission Control
+const MC_CSS_VARS = {
+  '--mc-pad': '24px',
+  '--mc-gap': '16px',
+  '--mc-radius-card': '16px',
+  '--mc-radius-btn': '14px',
+  '--mc-radius-chip': '12px',
+  '--mc-border': 'rgba(255,255,255,0.06)',
+  '--mc-glass': 'rgba(255,255,255,0.03)',
+  '--mc-text-dim': 'rgba(255,255,255,0.72)',
+  '--mc-orange': '#ff6a00',
+  '--mc-gold': '#e9d7c4',
+} as React.CSSProperties;
+
 // Focus Ring Utility - visible on dark background, mandatory for all interactive elements
 const focusRingClass = 'focus:outline-none focus:ring-2 focus:ring-[#ff6a00]/50 focus:ring-offset-2 focus:ring-offset-black/80 transition-shadow duration-120';
 

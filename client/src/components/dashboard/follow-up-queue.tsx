@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { useToast } from '../ui/toast-provider';
 
 // ARAS Design Tokens
 const DT = {
@@ -21,34 +22,6 @@ const DT = {
   panelBorder: 'rgba(255,255,255,0.06)',
 };
 
-// Toast notification (top-right, dark glass, auto-dismiss 2.4s, aria-live)
-function Toast({ message, type = 'success' }: { message: string; type?: 'success' | 'error' | 'info' }) {
-  const iconMap = {
-    success: <Check size={12} className="text-green-400" />,
-    error: <AlertCircle size={12} className="text-red-400" />,
-    info: <Sparkles size={12} style={{ color: DT.orange }} />,
-  };
-  
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -10, x: 10 }}
-      animate={{ opacity: 1, y: 0, x: 0 }}
-      exit={{ opacity: 0, y: -10, x: 10 }}
-      className="fixed top-4 right-4 z-50 px-4 py-2.5 rounded-xl text-xs font-medium shadow-xl flex items-center gap-2"
-      style={{
-        background: 'rgba(20,20,25,0.95)',
-        border: `1px solid ${type === 'error' ? 'rgba(239,68,68,0.3)' : type === 'success' ? 'rgba(34,197,94,0.3)' : DT.panelBorder}`,
-        backdropFilter: 'blur(12px)',
-        color: 'white',
-      }}
-      role="alert"
-      aria-live="polite"
-    >
-      {iconMap[type]}
-      {message}
-    </motion.div>
-  );
-}
 
 interface FollowUpItem {
   id: string;
@@ -97,7 +70,6 @@ function FollowUpCard({
   onOpenContact,
   onCopyMessage,
   onCreateTask,
-  onToast,
   taskCreationEnabled = false, // Feature flag for task creation
 }: { 
   followup: FollowUpItem;
@@ -105,10 +77,10 @@ function FollowUpCard({
   onOpenContact?: (id: string) => void;
   onCopyMessage?: (action: string, name: string) => void;
   onCreateTask?: (f: FollowUpItem) => void;
-  onToast?: (message: string, type: 'success' | 'error') => void;
   taskCreationEnabled?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
+  const { showToast } = useToast();
 
   let timeAgo = '';
   try {
@@ -122,13 +94,13 @@ function FollowUpCard({
     try {
       await navigator.clipboard.writeText(message);
       setCopied(true);
-      onToast?.('Follow-up Text kopiert', 'success');
+      showToast('Follow-up Text kopiert', 'success');
       setTimeout(() => setCopied(false), 1200);
       onCopyMessage?.(followup.action, followup.contactName);
     } catch (err) {
-      onToast?.('Kopieren nicht möglich – Browser Rechte prüfen', 'error');
+      showToast('Kopieren nicht möglich', 'error', 'Browser Rechte prüfen');
     }
-  }, [followup, onCopyMessage, onToast]);
+  }, [followup, onCopyMessage, showToast]);
 
   const handleRowClick = useCallback(() => {
     // Open contact drawer if contactId exists, otherwise open call
@@ -143,9 +115,9 @@ function FollowUpCard({
     e.stopPropagation();
     if (taskCreationEnabled && onCreateTask) {
       onCreateTask(followup);
-      onToast?.('Task erstellt', 'success');
+      showToast('Task erstellt', 'success');
     }
-  }, [followup, taskCreationEnabled, onCreateTask, onToast]);
+  }, [followup, taskCreationEnabled, onCreateTask, showToast]);
 
   const handleOpenClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -316,12 +288,6 @@ export function FollowUpQueue({
   onCreateTask,
   onGenerateFollowups,
 }: FollowUpQueueProps) {
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-
-  const handleToast = useCallback((message: string, type: 'success' | 'error') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 2500);
-  }, []);
 
   return (
     <div 
@@ -375,7 +341,6 @@ export function FollowUpQueue({
                 onOpenContact={onOpenContact}
                 onCopyMessage={onCopyMessage}
                 onCreateTask={onCreateTask}
-                onToast={handleToast}
                 taskCreationEnabled={false} // Set to true when backend is ready
               />
             ))}
@@ -394,11 +359,6 @@ export function FollowUpQueue({
           </p>
         </div>
       )}
-
-      {/* Toast */}
-      <AnimatePresence>
-        {toast && <Toast message={toast.message} type={toast.type} />}
-      </AnimatePresence>
     </div>
   );
 }

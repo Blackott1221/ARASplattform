@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { PrioritiesSkeleton, QuickWinsSkeleton, RiskFlagsSkeleton } from './daily-briefing-skeletons';
 
 // ARAS Design Tokens
 const DT = {
@@ -68,10 +69,12 @@ interface DailyBriefingProps {
 interface MissionHeroProps {
   briefing?: DailyBriefingData;
   onStartMission: () => void;
+  onRefresh?: () => void;
+  refreshing?: boolean;
   stats?: { callsCount?: number; followupsCount?: number; contactsCount?: number };
 }
 
-function MissionHero({ briefing, onStartMission, stats }: MissionHeroProps) {
+function MissionHero({ briefing, onStartMission, onRefresh, refreshing, stats }: MissionHeroProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
   
@@ -249,25 +252,46 @@ function MissionHero({ briefing, onStartMission, stats }: MissionHeroProps) {
           </span>
         </div>
 
-        {/* Stats Microline */}
+        {/* Stats Microline - Only render if data exists */}
         {(stats?.callsCount || stats?.followupsCount || stats?.contactsCount) && (
           <p className="text-[10px] text-white/30 mb-4">
             Basierend auf {stats.callsCount || 0} Calls, {stats.followupsCount || 0} Follow-ups, {stats.contactsCount || 0} Kontakten
           </p>
         )}
 
-        {/* Primary Action */}
-        <button
-          onClick={onStartMission}
-          className="group inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-200 hover:translate-y-[-1px] active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[#ff6a00]/55 focus:ring-offset-2 focus:ring-offset-black/80"
-          style={{
-            background: `linear-gradient(135deg, ${DT.orange}, #ff8533)`,
-            boxShadow: `0 4px 14px ${DT.orange}40`,
-          }}
-        >
-          Mission starten
-          <ArrowDown size={14} className="transition-transform group-hover:translate-y-0.5" />
-        </button>
+        {/* Action Buttons */}
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Primary Action */}
+          <button
+            onClick={onStartMission}
+            disabled={refreshing}
+            className="group inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-200 hover:translate-y-[-1px] active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[#ff6a00]/55 focus:ring-offset-2 focus:ring-offset-black/80 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              background: `linear-gradient(135deg, ${DT.orange}, #ff8533)`,
+              boxShadow: `0 4px 14px ${DT.orange}40`,
+            }}
+          >
+            Mission starten
+            <ArrowDown size={14} className="transition-transform group-hover:translate-y-0.5" />
+          </button>
+
+          {/* Secondary Action - Refresh */}
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              disabled={refreshing}
+              className="group inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 hover:translate-y-[-1px] active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[#ff6a00]/55 focus:ring-offset-2 focus:ring-offset-black/80 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.10)',
+                color: refreshing ? 'rgba(255,255,255,0.50)' : 'rgba(255,255,255,0.70)',
+              }}
+            >
+              <RefreshCw size={12} className={refreshing ? 'animate-spin' : ''} />
+              {refreshing ? 'Aktualisiere…' : 'Briefing aktualisieren'}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* CSS for animations */}
@@ -583,7 +607,27 @@ export function DailyBriefing({
   const [error, setError] = useState<string | null>(null);
   const [pendingMode, setPendingMode] = useState<'cached' | 'realtime'>(briefing?.mode || 'cached');
   const [highlightedPriority, setHighlightedPriority] = useState<number | null>(null);
+  const [geminiEnabled, setGeminiEnabled] = useState<boolean | null>(null);
+  const [geminiModel, setGeminiModel] = useState<string | null>(null);
   const prioritiesRef = useRef<HTMLDivElement>(null);
+
+  // Fetch Gemini status on mount
+  useEffect(() => {
+    const fetchGeminiStatus = async () => {
+      try {
+        const response = await fetch('/api/ai/status', { credentials: 'include' });
+        if (response.ok) {
+          const data = await response.json();
+          setGeminiEnabled(data.geminiEnabled);
+          setGeminiModel(data.geminiModel);
+        }
+      } catch (err) {
+        // Fallback to meta.geminiEnabled from briefing if status call fails
+        console.warn('[DailyBriefing] Failed to fetch Gemini status, using fallback');
+      }
+    };
+    fetchGeminiStatus();
+  }, []);
 
   // Sync pending mode with briefing mode when briefing updates
   useEffect(() => {
@@ -639,7 +683,13 @@ export function DailyBriefing({
   return (
     <div className="space-y-4">
       {/* Mission Hero */}
-      <MissionHero briefing={briefing} onStartMission={handleStartMission} stats={stats} />
+      <MissionHero 
+        briefing={briefing} 
+        onStartMission={handleStartMission} 
+        onRefresh={() => handleRefresh(pendingMode, true)}
+        refreshing={refreshing}
+        stats={stats} 
+      />
 
       {/* Briefing Content */}
       <motion.div
@@ -677,9 +727,8 @@ export function DailyBriefing({
               pendingMode={pendingMode}
               onModeChange={(mode) => {
                 setPendingMode(mode);
-                // Show status that next refresh will use this mode
               }}
-              geminiEnabled={true} // TODO: Get from context/config
+              geminiEnabled={geminiEnabled ?? briefing?.meta?.geminiEnabled ?? false}
             />
             
             {/* Refresh Button */}
@@ -722,7 +771,9 @@ export function DailyBriefing({
             Top Prioritäten
           </h4>
 
-          {hasPriorities ? (
+          {refreshing ? (
+            <PrioritiesSkeleton />
+          ) : hasPriorities ? (
             <div className="space-y-2">
               {briefing.topPriorities.slice(0, 5).map((priority, i) => (
                 <PriorityItem
@@ -754,18 +805,22 @@ export function DailyBriefing({
               <CheckCircle size={10} className="text-green-500" />
               Quick Wins
             </h4>
-            <div className="flex flex-wrap gap-2">
-              {briefing.quickWins.map((win, i) => (
-                <span
-                  key={`win-${i}`}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition-colors hover:bg-green-500/20 cursor-default"
-                  style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e' }}
-                >
-                  <CheckCircle size={10} />
-                  {win}
-                </span>
-              ))}
-            </div>
+            {refreshing ? (
+              <QuickWinsSkeleton />
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {briefing.quickWins.map((win, i) => (
+                  <span
+                    key={`win-${i}`}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-medium transition-colors hover:bg-green-500/20 cursor-default"
+                    style={{ background: 'rgba(34,197,94,0.1)', color: '#22c55e' }}
+                  >
+                    <CheckCircle size={10} />
+                    {win}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -778,18 +833,22 @@ export function DailyBriefing({
               <AlertTriangle size={10} className="text-red-500" />
               Risiken
             </h4>
-            <div className="flex flex-wrap gap-2">
-              {briefing.riskFlags.map((flag, i) => (
-                <span
-                  key={`risk-${i}`}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-medium"
-                  style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}
-                >
-                  <AlertTriangle size={10} />
-                  {flag}
-                </span>
-              ))}
-            </div>
+            {refreshing ? (
+              <RiskFlagsSkeleton />
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {briefing.riskFlags.map((flag, i) => (
+                  <span
+                    key={`risk-${i}`}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-medium"
+                    style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}
+                  >
+                    <AlertTriangle size={10} />
+                    {flag}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

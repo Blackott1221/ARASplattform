@@ -256,11 +256,29 @@ export function ContactDrawer({
 
   const isOpen = Boolean(contactId);
 
-  // ESC key handler + Focus management
+  // ESC key handler + Focus management + Focus trap
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
         onClose();
+        return;
+      }
+
+      // Focus trap: Tab cycling
+      if (e.key === 'Tab' && isOpen && drawerRef.current) {
+        const focusableElements = drawerRef.current.querySelectorAll(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        const firstElement = focusableElements[0] as HTMLElement;
+        const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+
+        if (e.shiftKey && document.activeElement === firstElement) {
+          e.preventDefault();
+          lastElement?.focus();
+        } else if (!e.shiftKey && document.activeElement === lastElement) {
+          e.preventDefault();
+          firstElement?.focus();
+        }
       }
     };
     
@@ -270,7 +288,10 @@ export function ContactDrawer({
       
       document.addEventListener('keydown', handleKeyDown);
       // Focus the drawer when it opens
-      setTimeout(() => drawerRef.current?.focus(), 50);
+      setTimeout(() => {
+        const firstFocusable = drawerRef.current?.querySelector('button:not([disabled])') as HTMLElement;
+        firstFocusable?.focus();
+      }, 50);
     } else {
       // Return focus to the element that opened the drawer
       if (previousActiveElement.current && typeof previousActiveElement.current.focus === 'function') {
@@ -362,26 +383,34 @@ Mit freundlichen Grüßen`;
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 z-50"
+            style={{
+              background: 'rgba(0,0,0,0.60)',
+              backdropFilter: 'blur(4px)',
+            }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 z-40"
+            aria-hidden="true"
           />
 
           {/* Drawer */}
           <motion.div
-            ref={drawerRef}
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed right-0 top-0 bottom-0 w-full max-w-md z-50 overflow-hidden outline-none"
+            transition={{ duration: 0.28, ease: 'easeOut' }}
+            className="fixed right-0 top-0 bottom-0 w-full md:w-[480px] z-51 overflow-y-auto"
             style={{
-              background: DT.panelBg,
-              borderLeft: `1px solid ${DT.panelBorder}`,
+              background: 'rgba(15,15,18,0.98)',
+              borderLeft: '1px solid rgba(255,255,255,0.08)',
+              boxShadow: '0 0 60px rgba(0,0,0,0.5)',
+              backdropFilter: 'blur(20px)',
             }}
-            tabIndex={-1}
+            ref={drawerRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="contact-drawer-title"
+            onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div 
@@ -543,7 +572,7 @@ Mit freundlichen Grüßen`;
                   className="px-6 py-4"
                   style={{ borderTop: `1px solid ${DT.panelBorder}` }}
                 >
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-between mb-6">
                     <h4 className="text-[10px] uppercase tracking-wider text-white/40">
                       Aktivitäten ({timeline.length})
                     </h4>
