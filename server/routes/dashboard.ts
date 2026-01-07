@@ -19,6 +19,18 @@ const router = Router();
 // TYPES
 // ═══════════════════════════════════════════════════════════════
 
+// Normalized Summary structure (matches Power's metadata.summary object)
+interface NormalizedSummary {
+  hasSummary: boolean;
+  outcome?: string;
+  sentiment?: 'positive' | 'neutral' | 'negative';
+  bullets?: string[];
+  objections?: string[];
+  nextStep?: string;
+  short?: string;  // 1-liner for collapsed row (max 140 chars)
+  fullText?: string;
+}
+
 interface RecentCall {
   id: string;
   startedAt: string;
@@ -30,10 +42,8 @@ interface RecentCall {
   audioUrl?: string;
   hasTranscript: boolean;
   transcript?: string;
-  hasSummary: boolean;
-  summary?: string;
-  sentiment?: 'positive' | 'neutral' | 'negative';
-  nextStep?: string;
+  // Summary as structured object (not just text)
+  summary: NormalizedSummary;
   // Gemini recommendations (cached)
   geminiActions?: string[];
   geminiPriority?: number;
@@ -135,16 +145,73 @@ function parseMetadata(metadata: unknown): Record<string, any> {
   return {};
 }
 
-// Extract summary from various sources - NEVER uses transcript!
-function extractSummary(metadata: Record<string, any>): { text: string; outcome?: string; nextStep?: string; hasSummary: boolean } {
+// Normalize summary from metadata - handles OBJECT structure like Power uses
+function normalizeSummary(metadata: Record<string, any>): NormalizedSummary {
+  const empty: NormalizedSummary = { hasSummary: false };
+  
   // Priority 1: Structured summary object (like Power uses)
+  // Keys: outcome, sentiment, keyPoints/bullets, objections, nextStep/recommendedAction
   if (metadata.summary && typeof metadata.summary === 'object') {
     const s = metadata.summary;
+    
+    // Extract outcome (various key names)
+    const outcome = s.outcome || s.summary || s.text || s.result || '';
+    
+    // Extract sentiment (normalize to enum)
+    let sentiment: 'positive' | 'neutral' | 'negative' | undefined;
+    const rawSentiment = s.sentiment || s.mood || s.tone;
+    if (rawSentiment) {
+      const normalized = String(rawSentiment).toLowerCase();
+      if (normalized.includes('positive') || normalized.includes('good') || normalized.includes('positiv')) sentiment = 'positive';
+      else if (normalized.includes('negative') || normalized.includes('bad') || normalized.includes('negativ')) sentiment = 'negative';
+      else sentiment = 'neutral';
+    }
+    
+    // Extract bullets/keyPoints
+    const bullets = Array.isArray(s.keyPoints) ? s.keyPoints 
+      : Array.isArray(s.bullets) ? s.bullets 
+      : Array.isArray(s.highlights) ? s.highlights 
+      : Array.isArray(s.key_points) ? s.key_points
+      : undefined;
+    
+    // Extract objections
+    const objections = Array.isArray(s.objections) ? s.objections 
+      : Array.isArray(s.concerns) ? s.concerns
+      : Array.isArray(s.risks) ? s.risks
+      : undefined;
+    
+    // Extract next step
+    const nextStep = s.nextStep || s.next_step || s.recommendedAction || s.recommended_action || s.action;
+    
+    // Create short version (max 140 chars)
+    let short = outcome;
+    if (!short && bullets && bullets.length > 0) {
+      short = bullets[0];
+    }
+    if (short && short.length > 140) {
+      short = short.substring(0, 137) + '...';
+    }
+    
+    // Full text for display
+    let fullText = outcome;
+    if (bullets && bullets.length > 0) {
+      fullText += '\n\n' + bullets.map((b: string) => `• ${b}`).join('\n');
+    }
+    if (nextStep) {
+      fullText += `\n\nNächster Schritt: ${nextStep}`;
+    }
+    
+    const hasSummary = Boolean(outcome || (bullets && bullets.length > 0) || nextStep);
+    
     return {
-      text: s.outcome || s.summary || s.text || '',
-      outcome: s.outcome,
-      nextStep: s.nextStep || s.next_step || s.recommendedAction,
-      hasSummary: Boolean(s.outcome || s.summary || s.text),
+      hasSummary,
+      outcome: outcome || undefined,
+      sentiment,
+      bullets,
+      objections,
+      nextStep: nextStep || undefined,
+      short: short || undefined,
+      fullText: hasSummary ? fullText : undefined,
     };
   }
   
@@ -152,26 +219,31 @@ function extractSummary(metadata: Record<string, any>): { text: string; outcome?
   const summaryFields = ['summary', 'ai_summary', 'call_summary', 'gemini_summary', 'aiSummary', 'callSummary'];
   for (const field of summaryFields) {
     if (metadata[field] && typeof metadata[field] === 'string' && metadata[field].length > 10) {
+      const text = metadata[field];
       return {
-        text: metadata[field],
         hasSummary: true,
+        outcome: text,
+        short: text.length > 140 ? text.substring(0, 137) + '...' : text,
+        fullText: text,
       };
     }
   }
   
-  // Priority 3: Nested in analysis/ai object
-  if (metadata.analysis?.summary) {
-    return { text: metadata.analysis.summary, hasSummary: true };
-  }
-  if (metadata.ai?.summary) {
-    return { text: metadata.ai.summary, hasSummary: true };
-  }
-  if (metadata.gemini?.summary) {
-    return { text: metadata.gemini.summary, hasSummary: true };
+  // Priority 3: Nested in analysis/ai/gemini object
+  const nestedSources = [metadata.analysis?.summary, metadata.ai?.summary, metadata.gemini?.summary];
+  for (const nested of nestedSources) {
+    if (nested && typeof nested === 'string' && nested.length > 10) {
+      return {
+        hasSummary: true,
+        outcome: nested,
+        short: nested.length > 140 ? nested.substring(0, 137) + '...' : nested,
+        fullText: nested,
+      };
+    }
   }
   
   // NO FALLBACK TO TRANSCRIPT - return empty
-  return { text: '', hasSummary: false };
+  return empty;
 }
 
 // Extract sentiment (normalize various formats)
@@ -371,32 +443,46 @@ router.get('/overview', async (req: Request, res: Response) => {
     // Parse and enrich each call
     for (const call of recentCallsRaw) {
       const metadata = parseMetadata(call.metadata);
-      const hasAudio = Boolean(call.recordingUrl);
+      const hasAudio = Boolean(call.recordingUrl || call.retellCallId);
       const hasTranscript = Boolean(call.transcript && String(call.transcript).length > 0);
       
-      // Extract summary - NEVER from transcript!
-      const summaryData = extractSummary(metadata);
-      let summaryText = summaryData.text;
-      let nextStepFromSummary = summaryData.nextStep;
-      let hasSummary = summaryData.hasSummary;
+      // Normalize summary - handles OBJECT structure like Power uses
+      let summary = normalizeSummary(metadata);
       
       // Fallback to internalSummary if available (from internalCallLogs)
-      if (!hasSummary && (call as any).internalSummary) {
-        summaryText = (call as any).internalSummary;
-        hasSummary = true;
+      if (!summary.hasSummary && (call as any).internalSummary) {
+        summary = {
+          hasSummary: true,
+          outcome: (call as any).internalSummary,
+          short: (call as any).internalSummary.substring(0, 140),
+          fullText: (call as any).internalSummary,
+        };
       }
       
-      // Extract sentiment
-      let sentiment = extractSentiment(metadata);
-      if (!sentiment && (call as any).internalSentiment) {
-        const internalSent = String((call as any).internalSentiment).toLowerCase();
-        if (internalSent.includes('positive')) sentiment = 'positive';
-        else if (internalSent.includes('negative')) sentiment = 'negative';
-        else sentiment = 'neutral';
+      // Extract sentiment (fallback if not in summary)
+      if (!summary.sentiment) {
+        const sentimentFromMeta = extractSentiment(metadata);
+        if (sentimentFromMeta) summary.sentiment = sentimentFromMeta;
+        else if ((call as any).internalSentiment) {
+          const internalSent = String((call as any).internalSentiment).toLowerCase();
+          if (internalSent.includes('positive')) summary.sentiment = 'positive';
+          else if (internalSent.includes('negative')) summary.sentiment = 'negative';
+          else summary.sentiment = 'neutral';
+        }
       }
       
       // Extract Gemini cached recommendations
       const geminiData = extractGeminiData(metadata);
+      
+      // Build audio URL - use same proxy as Power: /api/aras-voice/audio/:id
+      let audioUrl: string | undefined;
+      if (call.recordingUrl) {
+        // Direct recording URL exists - use call-logs proxy
+        audioUrl = `/api/call-logs/${call.id}/audio`;
+      } else if (call.retellCallId) {
+        // Use aras-voice proxy (same as Power)
+        audioUrl = `/api/aras-voice/audio/${call.retellCallId}`;
+      }
       
       const recentCall: RecentCall = {
         id: String(call.id),
@@ -413,14 +499,10 @@ router.get('/overview', async (req: Request, res: Response) => {
         } : undefined,
         duration: call.duration || undefined,
         hasAudio,
-        // Use proxy URL for audio (Safari CORS fix)
-        audioUrl: hasAudio ? `/api/call-logs/${call.id}/audio` : undefined,
+        audioUrl,
         hasTranscript,
         transcript: call.transcript || undefined,
-        hasSummary,
-        summary: summaryText || undefined,
-        sentiment,
-        nextStep: nextStepFromSummary || metadata.nextStep || metadata.next_action || metadata.recommended_action || undefined,
+        summary,
         // Gemini cached data
         geminiActions: geminiData.actions.length > 0 ? geminiData.actions : undefined,
         geminiPriority: geminiData.priority,
@@ -443,8 +525,8 @@ router.get('/overview', async (req: Request, res: Response) => {
             duration: call.duration,
             hasAudio,
             hasTranscript,
-            hasSummary,
-            summary: summaryText ? summaryText.substring(0, 100) : undefined,
+            hasSummary: summary.hasSummary,
+            summary: summary.short || undefined,
           },
         });
       }
@@ -769,9 +851,17 @@ router.get('/calls', async (req: Request, res: Response) => {
     // Transform to RecentCall format
     const calls: RecentCall[] = paginatedCalls.map(call => {
       const metadata = parseMetadata(call.metadata);
-      const callHasAudio = Boolean(call.recordingUrl);
+      const callHasAudio = Boolean(call.recordingUrl || call.retellCallId);
       const hasTranscript = Boolean(call.transcript && String(call.transcript).length > 0);
-      const summaryData = extractSummary(metadata);
+      const summary = normalizeSummary(metadata);
+      
+      // Build audio URL - use same proxy as Power
+      let audioUrl: string | undefined;
+      if (call.recordingUrl) {
+        audioUrl = `/api/call-logs/${call.id}/audio`;
+      } else if (call.retellCallId) {
+        audioUrl = `/api/aras-voice/audio/${call.retellCallId}`;
+      }
       
       return {
         id: String(call.id),
@@ -783,19 +873,16 @@ router.get('/calls', async (req: Request, res: Response) => {
         },
         duration: call.duration || undefined,
         hasAudio: callHasAudio,
-        audioUrl: callHasAudio ? `/api/call-logs/${call.id}/audio` : undefined,
+        audioUrl,
         hasTranscript,
         transcript: call.transcript || undefined,
-        hasSummary: summaryData.hasSummary,
-        summary: summaryData.text || undefined,
-        sentiment: extractSentiment(metadata),
-        nextStep: summaryData.nextStep || metadata.nextStep || undefined,
+        summary,
       };
     });
     
     // Apply hasSummary filter after processing
     const finalCalls = hasSummary !== undefined 
-      ? calls.filter(c => c.hasSummary === hasSummary)
+      ? calls.filter(c => c.summary.hasSummary === hasSummary)
       : calls;
 
     res.json({

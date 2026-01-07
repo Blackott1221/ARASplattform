@@ -220,6 +220,20 @@ export const RecentCallCampaignSchema = z.object({
   name: z.string().optional(),
 });
 
+// Normalized Summary structure (matches Power's metadata.summary object)
+export const NormalizedSummarySchema = z.object({
+  hasSummary: z.boolean().default(false),
+  outcome: z.string().optional(),
+  sentiment: z.enum(['positive', 'neutral', 'negative']).optional(),
+  bullets: z.array(z.string()).optional(),
+  objections: z.array(z.string()).optional(),
+  nextStep: z.string().optional(),
+  short: z.string().optional(),  // 1-liner for collapsed row (max 140 chars)
+  fullText: z.string().optional(),
+});
+
+export type NormalizedSummary = z.infer<typeof NormalizedSummarySchema>;
+
 export const RecentCallSchema = z.object({
   id: z.string(),
   startedAt: z.string(),
@@ -231,10 +245,8 @@ export const RecentCallSchema = z.object({
   audioUrl: z.string().optional(),
   hasTranscript: z.boolean().default(false),
   transcript: z.string().optional(),
-  hasSummary: z.boolean().default(false),
-  summary: z.string().optional(),
-  sentiment: z.enum(['positive', 'neutral', 'negative']).optional(),
-  nextStep: z.string().optional(),
+  // Summary as structured object (not just text)
+  summary: NormalizedSummarySchema.default({ hasSummary: false }),
   // Gemini AI recommendations (cached)
   geminiActions: z.array(z.string()).optional(),
   geminiPriority: z.number().optional(),

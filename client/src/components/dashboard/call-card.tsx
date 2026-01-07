@@ -216,14 +216,19 @@ export function CallCard({ call, onOpenDetails, onOpenContact }: CallCardProps) 
   const contactPhone = call?.contact?.phone || '';
   const callStatus = call?.status || 'initiated';
   const callDuration = typeof call?.duration === 'number' ? call.duration : 0;
-  const callSummary = typeof call?.summary === 'string' ? call.summary : '';
   const callTranscript = typeof call?.transcript === 'string' ? call.transcript : '';
-  const callNextStep = typeof call?.nextStep === 'string' ? call.nextStep : '';
   const hasAudio = Boolean(call?.hasAudio && call?.audioUrl);
   const hasTranscript = Boolean(call?.hasTranscript && callTranscript.length > 0);
-  // Use hasSummary from backend - NEVER derive from summary string!
-  const hasSummary = Boolean(call?.hasSummary);
-  const hasNextStep = callNextStep.length > 0;
+  
+  // Summary is now a NormalizedSummary OBJECT (not string)
+  const summary = call?.summary || { hasSummary: false };
+  const hasSummary = Boolean(summary?.hasSummary);
+  const summaryShort = summary?.short || summary?.outcome || '';
+  const summaryOutcome = summary?.outcome || '';
+  const summaryBullets = Array.isArray(summary?.bullets) ? summary.bullets : [];
+  const summaryNextStep = summary?.nextStep || '';
+  const summarySentiment = summary?.sentiment;
+  const hasNextStep = Boolean(summaryNextStep);
 
   return (
     <motion.div
@@ -263,7 +268,7 @@ export function CallCard({ call, onOpenDetails, onOpenContact }: CallCardProps) 
                   {contactName}
                 </h4>
                 <StatusBadge status={callStatus} />
-                <SentimentBadge sentiment={call.sentiment} />
+                <SentimentBadge sentiment={summarySentiment || call.sentiment} />
               </div>
               
               <div className="flex items-center gap-3 mt-1 text-[11px] text-white/50">
@@ -285,10 +290,10 @@ export function CallCard({ call, onOpenDetails, onOpenContact }: CallCardProps) 
                 {timeAgo && <span>{timeAgo}</span>}
               </div>
               
-              {/* Summary Preview - 2 lines max */}
-              {hasSummary && !expanded && (
+              {/* Summary Preview - 2 lines max (use short or outcome) */}
+              {hasSummary && !expanded && summaryShort && (
                 <p className="text-[11px] text-white/60 mt-2 line-clamp-2">
-                  {callSummary.length > 150 ? callSummary.substring(0, 150) + '...' : callSummary}
+                  {summaryShort}
                 </p>
               )}
             </div>
@@ -360,15 +365,32 @@ export function CallCard({ call, onOpenDetails, onOpenContact }: CallCardProps) 
                 </div>
               )}
               
-              {/* Summary - NEVER shows transcript! */}
+              {/* Summary - renders NormalizedSummary OBJECT with outcome/bullets/nextStep */}
               <div>
                 <h5 className="text-[10px] uppercase tracking-wider text-white/40 mb-2">
                   Zusammenfassung
                 </h5>
-                {hasSummary && callSummary ? (
-                  <p className="text-xs text-white/70 leading-relaxed">
-                    {callSummary}
-                  </p>
+                {hasSummary ? (
+                  <div className="space-y-3">
+                    {/* Outcome (Headline) */}
+                    {summaryOutcome && (
+                      <p className="text-xs text-white/80 leading-relaxed">
+                        {summaryOutcome}
+                      </p>
+                    )}
+                    
+                    {/* Bullets/Key Points */}
+                    {summaryBullets.length > 0 && (
+                      <ul className="space-y-1.5">
+                        {summaryBullets.slice(0, 6).map((bullet, i) => (
+                          <li key={i} className="flex items-start gap-2 text-[11px] text-white/60">
+                            <span className="text-white/30 mt-0.5">•</span>
+                            <span>{bullet}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 ) : call.status === 'completed' ? (
                   <div className="bg-white/5 rounded-lg p-3">
                     <p className="text-[11px] text-white/40 italic">
@@ -385,7 +407,7 @@ export function CallCard({ call, onOpenDetails, onOpenContact }: CallCardProps) 
                 )}
               </div>
               
-              {/* Next Step */}
+              {/* Next Step - from summary.nextStep */}
               {hasNextStep && (
                 <div 
                   className="p-3 rounded-lg"
@@ -395,7 +417,7 @@ export function CallCard({ call, onOpenDetails, onOpenContact }: CallCardProps) 
                     Nächster Schritt
                   </h5>
                   <p className="text-xs text-white/80">
-                    {callNextStep}
+                    {summaryNextStep}
                   </p>
                 </div>
               )}
