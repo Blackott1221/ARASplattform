@@ -12,6 +12,8 @@ import {
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { PrioritiesSkeleton, QuickWinsSkeleton, RiskFlagsSkeleton } from './daily-briefing-skeletons';
+import { formatViennaDateTime, formatViennaTime } from '@/lib/time';
+import { useCountdown } from '@/hooks/useCountdown';
 
 // ARAS Design Tokens
 const DT = {
@@ -105,22 +107,15 @@ function MissionHero({ briefing, onStartMission, onRefresh, refreshing, stats }:
     mouseY.set(0);
   }, [mouseX, mouseY]);
 
-  // Format today's date (Europe/Vienna timezone)
-  const todayFormatted = new Date().toLocaleDateString('de-AT', { 
-    timeZone: 'Europe/Vienna',
-    day: '2-digit',
-    month: '2-digit', 
-    year: 'numeric'
-  });
-  const lastUpdated = briefing?.generatedAt 
-    ? new Date(briefing.generatedAt).toLocaleTimeString('de-AT', { 
-        timeZone: 'Europe/Vienna', 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      })
-    : '--:--';
+  // Dynamic time formatting (Europe/Vienna)
+  const standFormatted = formatViennaDateTime(briefing?.generatedAt);
+  const modeLabel = briefing?.mode === 'realtime' ? 'Realtime' : 'Cache';
+  const hasSources = (briefing?.sourceCount ?? 0) > 0;
+  const sourcesLabel = hasSources ? `${briefing.sourceCount}+ Quellen` : 'Nur Accountdaten ausgewertet';
   
-  const modeLabel = briefing?.mode === 'realtime' ? 'Realtime (Gemini)' : 'Cache';
+  // Countdown to nextAllowedAt
+  const nextAllowedAt = briefing?.meta?.rateLimit?.nextAllowedAt;
+  const countdown = useCountdown(nextAllowedAt);
   
   // Detect mobile + reduced motion preference
   const [isMobile, setIsMobile] = useState(false);
@@ -235,13 +230,26 @@ function MissionHero({ briefing, onStartMission, onRefresh, refreshing, stats }:
             'Ich habe deine neuesten Calls, Follow-ups und Signale ausgewertet und daraus eine klare Mission für heute gebaut.'}
         </p>
 
-        {/* Mission Intelligence Line - WOW V8 */}
-        <div className="text-[12px] text-white/35 mb-4 leading-relaxed">
-          Stand: {todayFormatted} (Europe/Vienna) • {' '}
-          {briefing?.sourceCount && briefing.sourceCount > 0 
-            ? `${briefing.sourceCount}+ Quellen` 
-            : 'Nur Accountdaten ausgewertet'} • {' '}
-          Modus: {modeLabel}
+        {/* Mission Intelligence Line - WOW V8 Dynamic */}
+        <div className="mt-2 text-[12px] text-white/35 flex flex-wrap items-center gap-x-2 gap-y-1 leading-snug">
+          <span className="tabular-nums">Stand: {standFormatted}</span>
+          <span className="text-white/20">•</span>
+          <span>{sourcesLabel}</span>
+          <span className="text-white/20">•</span>
+          <span>Modus: {modeLabel}</span>
+          
+          {/* Countdown Segment - Only if nextAllowedAt exists */}
+          {countdown.isActive && (
+            <>
+              <span className="text-white/20">•</span>
+              <span className="tabular-nums">
+                {countdown.isReady 
+                  ? 'Nächste Aktualisierung: jetzt möglich'
+                  : `Nächste Aktualisierung in ${countdown.label} (${formatViennaTime(nextAllowedAt)} Uhr)`
+                }
+              </span>
+            </>
+          )}
         </div>
 
         {/* Stats Microline - Only render if data exists */}
