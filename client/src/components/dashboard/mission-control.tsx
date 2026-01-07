@@ -4,12 +4,12 @@
  * UPGRADE: Session gating, safe defaults, "Vertrieb starten?" CTA
  */
 
-import React, { useState, Suspense, lazy } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  RefreshCw, AlertTriangle, X, Rocket, Phone, Users, 
+  RefreshCw, AlertTriangle, X, Phone, Users, 
   Calendar, Sparkles, ChevronRight, TrendingUp, Target,
-  Zap, ArrowRight, Activity
+  Zap, ArrowRight, Activity, Filter, Search
 } from 'lucide-react';
 import { useDashboardOverview, needsSetup } from '@/lib/dashboard/use-dashboard-overview';
 import { KpiCards } from './kpi-cards';
@@ -17,6 +17,9 @@ import { ActivityStream } from './activity-stream';
 import { ContactsDrawer } from './contacts-drawer';
 import { CallCard } from './call-card';
 import { ActionCenter } from './action-center';
+import { FollowUpQueue } from './follow-up-queue';
+import { DailyBriefing } from './daily-briefing';
+import { ContactDrawer } from './contact-drawer';
 import { ArasMark } from '@/components/brand/aras-mark';
 import type { RecentCall } from '@/lib/dashboard/overview.schema';
 import { ModuleBoundary } from '@/components/system/module-boundary';
@@ -336,7 +339,11 @@ function CalendarMiniPanel() {
 // RECENT CALLS PANEL - REAL DATA with Audio/Transcript/Summary
 // ═══════════════════════════════════════════════════════════════
 
-function RecentCallsPanel({ calls, isLoading }: { calls: RecentCall[]; isLoading: boolean }) {
+function RecentCallsPanel({ calls, isLoading, onOpenContact }: { 
+  calls: RecentCall[]; 
+  isLoading: boolean;
+  onOpenContact?: (id: string) => void;
+}) {
   if (isLoading) {
     return (
       <motion.div
@@ -426,7 +433,7 @@ function RecentCallsPanel({ calls, isLoading }: { calls: RecentCall[]; isLoading
             key={call.id} 
             call={call}
             onOpenDetails={(id) => window.location.href = `/app/power?call=${id}`}
-            onOpenContact={(id) => window.location.href = `/app/contacts/${id}`}
+            onOpenContact={(id) => onOpenContact ? onOpenContact(id) : window.location.href = `/app/contacts/${id}`}
           />
         ))}
       </div>
@@ -515,6 +522,75 @@ export function MissionControl({ user }: MissionControlProps) {
   const [kpiPeriod, setKpiPeriod] = useState<'today' | 'week' | 'month'>('today');
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
   const [contactsDrawerOpen, setContactsDrawerOpen] = useState(false);
+  
+  // V4: New state for enhanced features
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
+  const [followups, setFollowups] = useState<any[]>([]);
+  const [followupsTotal, setFollowupsTotal] = useState(0);
+  const [followupsLoading, setFollowupsLoading] = useState(false);
+  const [briefing, setBriefing] = useState<any>(null);
+  const [briefingLoading, setBriefingLoading] = useState(false);
+  const [stats, setStats] = useState<any>(null);
+
+  // V4: Fetch follow-ups and briefing on mount
+  useEffect(() => {
+    const fetchFollowups = async () => {
+      setFollowupsLoading(true);
+      try {
+        const res = await fetch('/api/dashboard/followups?limit=10', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          setFollowups(data.followups || []);
+          setFollowupsTotal(data.total || 0);
+        }
+      } catch (e) { console.error('Followups fetch error:', e); }
+      finally { setFollowupsLoading(false); }
+    };
+
+    const fetchBriefing = async () => {
+      setBriefingLoading(true);
+      try {
+        const res = await fetch('/api/ai/daily-briefing', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ range: '7d' }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setBriefing(data);
+        }
+      } catch (e) { console.error('Briefing fetch error:', e); }
+      finally { setBriefingLoading(false); }
+    };
+
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('/api/dashboard/stats', { credentials: 'include' });
+        if (res.ok) {
+          setStats(await res.json());
+        }
+      } catch (e) { console.error('Stats fetch error:', e); }
+    };
+
+    fetchFollowups();
+    fetchBriefing();
+    fetchStats();
+  }, []);
+
+  const handleRefreshBriefing = async () => {
+    setBriefingLoading(true);
+    try {
+      const res = await fetch('/api/ai/daily-briefing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ range: '7d', forceRefresh: true }),
+      });
+      if (res.ok) setBriefing(await res.json());
+    } catch (e) { console.error('Briefing refresh error:', e); }
+    finally { setBriefingLoading(false); }
+  };
 
   // SESSION GATE: If user not valid, show appropriate fallback
   const hasValidUser = user && isValidString(user.id);
@@ -611,15 +687,24 @@ export function MissionControl({ user }: MissionControlProps) {
           onContactsClick={() => setContactsDrawerOpen(true)}
         />
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* V4: AI Briefing Card */}
+        <DailyBriefing 
+          briefing={briefing}
+          loading={briefingLoading}
+          onRefresh={handleRefreshBriefing}
+          onOpenCall={(id) => window.location.href = `/app/power?call=${id}`}
+        />
+
+        {/* Main Content Grid - V4 Layout: 70/30 split */}
+        <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
           
-          {/* Left Column - Calls + Activity */}
-          <div className="lg:col-span-2 space-y-6">
+          {/* Left Column (70%) - Call Intelligence Feed */}
+          <div className="lg:col-span-7 space-y-6">
             {/* Recent Calls - REAL DATA with Audio/Transcript/Summary */}
             <RecentCallsPanel 
               calls={asArray<RecentCall>(data.recentCalls)} 
-              isLoading={isLoading} 
+              isLoading={isLoading}
+              onOpenContact={(id) => setSelectedContactId(id)}
             />
 
             {/* Activity Stream */}
@@ -630,17 +715,23 @@ export function MissionControl({ user }: MissionControlProps) {
             />
           </div>
 
-          {/* Right Column - Intelligence Panels */}
-          <div className="space-y-6">
+          {/* Right Column (30%) - Intelligence Panels */}
+          <div className="lg:col-span-3 space-y-6">
+            {/* V4: Follow-Up Queue - Money Maker */}
+            <FollowUpQueue 
+              followups={followups}
+              total={followupsTotal}
+              loading={followupsLoading}
+              onOpenCall={(id) => window.location.href = `/app/power?call=${id}`}
+              onOpenContact={(id) => setSelectedContactId(id)}
+            />
+
             {/* Gemini Action Center - AI recommendations from calls */}
             <ActionCenter 
               calls={asArray<RecentCall>(data.recentCalls)} 
               isLoading={isLoading}
               onOpenCall={(id) => window.location.href = `/app/power?call=${id}`}
             />
-
-            {/* KI Prioritäten - setup recommendations */}
-            <KIPrioritiesPanel kpis={data.kpis} activity={asArray(data.activity)} />
 
             {/* Calendar Mini Panel */}
             <CalendarMiniPanel />
@@ -691,10 +782,19 @@ export function MissionControl({ user }: MissionControlProps) {
         </div>
       </div>
 
-      {/* Contacts Drawer */}
+      {/* Contacts Drawer (legacy) */}
       <ContactsDrawer 
         isOpen={contactsDrawerOpen} 
         onClose={() => setContactsDrawerOpen(false)} 
+      />
+
+      {/* V4: Contact Timeline Drawer */}
+      <ContactDrawer
+        contactId={selectedContactId}
+        onClose={() => setSelectedContactId(null)}
+        onOpenCall={(id) => window.location.href = `/app/power?call=${id}`}
+        onAddToCampaign={(id) => window.location.href = `/app/campaigns?contact=${id}`}
+        onCreateTask={(id) => window.location.href = `/app/tasks?contact=${id}`}
       />
     </div>
   );

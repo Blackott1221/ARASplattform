@@ -306,4 +306,166 @@ router.get('/dashboard-actions', async (req: Request, res: Response) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════
+// DAILY BRIEFING - AI-generated summary of priorities
+// ═══════════════════════════════════════════════════════════════
+
+interface DailyBriefing {
+  headline: string;
+  topPriorities: Array<{
+    title: string;
+    why: string;
+    callId?: string;
+    contactName?: string;
+  }>;
+  quickWins: string[];
+  riskFlags: string[];
+  generatedAt: string;
+  cached: boolean;
+}
+
+// Cache for daily briefings (userId -> briefing)
+const briefingCache = new Map<string, { briefing: DailyBriefing; expiresAt: number }>();
+const BRIEFING_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours
+
+router.post('/daily-briefing', async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const { range = '7d', forceRefresh = false } = req.body;
+    const cacheKey = `${userId}-${range}`;
+
+    // Check cache
+    if (!forceRefresh) {
+      const cached = briefingCache.get(cacheKey);
+      if (cached && cached.expiresAt > Date.now()) {
+        return res.json({ ...cached.briefing, cached: true });
+      }
+    }
+
+    // Calculate date range
+    const now = new Date();
+    const daysBack = range === 'today' ? 1 : range === '7d' ? 7 : 30;
+    const startDate = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000);
+
+    // Get recent calls
+    const recentCalls = await db.select()
+      .from(callLogs)
+      .where(and(
+        eq(callLogs.userId, userId),
+        gte(callLogs.createdAt, startDate),
+        eq(callLogs.status, 'completed')
+      ))
+      .orderBy(desc(callLogs.createdAt))
+      .limit(50);
+
+    if (recentCalls.length === 0) {
+      const emptyBriefing: DailyBriefing = {
+        headline: 'Noch keine Anrufe in diesem Zeitraum',
+        topPriorities: [],
+        quickWins: ['Ersten Anruf starten', 'Kontakte importieren'],
+        riskFlags: [],
+        generatedAt: now.toISOString(),
+        cached: false,
+      };
+      return res.json(emptyBriefing);
+    }
+
+    // Analyze calls
+    let positiveCount = 0;
+    let negativeCount = 0;
+    let withObjections = 0;
+    let withNextStep = 0;
+    const priorities: DailyBriefing['topPriorities'] = [];
+
+    for (const call of recentCalls) {
+      let metadata: Record<string, any> = {};
+      try {
+        metadata = typeof call.metadata === 'string' 
+          ? JSON.parse(call.metadata) 
+          : (call.metadata as Record<string, any>) || {};
+      } catch { metadata = {}; }
+
+      const summary = metadata.summary || {};
+      const sentiment = summary.sentiment || metadata.sentiment;
+      const nextStep = summary.nextStep || summary.next_step;
+      const objections = summary.objections || [];
+
+      if (sentiment === 'positive') positiveCount++;
+      if (sentiment === 'negative') negativeCount++;
+      if (objections.length > 0) withObjections++;
+      if (nextStep) withNextStep++;
+
+      // Add to priorities if actionable
+      if (nextStep || objections.length > 0 || sentiment === 'positive') {
+        const priority = {
+          title: call.contactName || call.phoneNumber || 'Kontakt',
+          why: nextStep 
+            ? `Nächster Schritt: ${nextStep.substring(0, 60)}` 
+            : objections.length > 0 
+              ? `Einwand: ${objections[0].substring(0, 60)}`
+              : 'Positives Gespräch - nachfassen',
+          callId: String(call.id),
+          contactName: call.contactName || undefined,
+        };
+        priorities.push(priority);
+      }
+    }
+
+    // Generate briefing (without Gemini for speed, or with Gemini if enabled)
+    let headline = '';
+    const quickWins: string[] = [];
+    const riskFlags: string[] = [];
+
+    // Build headline
+    if (positiveCount > 0 && withObjections > 0) {
+      headline = `${positiveCount} positive${positiveCount > 1 ? ' Leads' : 'r Lead'}, ${withObjections} offene${withObjections > 1 ? ' Einwände' : 'r Einwand'}`;
+    } else if (positiveCount > 0) {
+      headline = `${positiveCount} vielversprechende${positiveCount > 1 ? ' Gespräche' : 's Gespräch'} - Follow-up priorisieren`;
+    } else if (withNextStep > 0) {
+      headline = `${withNextStep} Anrufe mit konkreten nächsten Schritten`;
+    } else {
+      headline = `${recentCalls.length} Anrufe analysiert`;
+    }
+
+    // Quick wins
+    if (withNextStep > 0) quickWins.push('Follow-up Tasks erstellen');
+    if (positiveCount > 0) quickWins.push('Positive Leads priorisieren');
+    if (withObjections > 0) quickWins.push('Einwände dokumentieren');
+    if (quickWins.length === 0) quickWins.push('Gesprächsnotizen vervollständigen');
+
+    // Risk flags
+    if (negativeCount > 2) riskFlags.push(`${negativeCount} negative Gespräche - Strategie prüfen`);
+    if (withObjections > 3) riskFlags.push('Viele offene Einwände - FAQ erweitern');
+
+    const briefing: DailyBriefing = {
+      headline,
+      topPriorities: priorities.slice(0, 5),
+      quickWins: quickWins.slice(0, 3),
+      riskFlags,
+      generatedAt: now.toISOString(),
+      cached: false,
+    };
+
+    // Cache the briefing
+    briefingCache.set(cacheKey, {
+      briefing,
+      expiresAt: Date.now() + BRIEFING_CACHE_TTL,
+    });
+
+    res.json(briefing);
+
+  } catch (error: any) {
+    console.error('[AI] Daily briefing error:', error);
+    res.status(500).json({ 
+      error: 'BRIEFING_ERROR',
+      message: 'Briefing konnte nicht erstellt werden', 
+      detail: error.message,
+    });
+  }
+});
+
 export default router;

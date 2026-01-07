@@ -901,4 +901,358 @@ router.get('/calls', async (req: Request, res: Response) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════
+// FOLLOW-UP QUEUE - Prioritized next actions from calls
+// ═══════════════════════════════════════════════════════════════
+
+interface FollowUpItem {
+  id: string;
+  callId: string;
+  contactId?: string;
+  contactName: string;
+  contactPhone?: string;
+  lastCallAt: string;
+  action: string;
+  reason: string;
+  priority: number;
+  sentiment?: 'positive' | 'neutral' | 'negative';
+  hasGeminiInsights: boolean;
+}
+
+router.get('/followups', async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // Get calls from last 30 days
+    const recentCalls = await db.select()
+      .from(callLogs)
+      .where(and(
+        eq(callLogs.userId, userId),
+        gte(callLogs.createdAt, thirtyDaysAgo),
+        eq(callLogs.status, 'completed')
+      ))
+      .orderBy(desc(callLogs.createdAt))
+      .limit(100);
+
+    const followups: FollowUpItem[] = [];
+
+    for (const call of recentCalls) {
+      const metadata = parseMetadata(call.metadata);
+      const summary = normalizeSummary(metadata);
+      const geminiData = extractGeminiData(metadata);
+      
+      // Skip calls without actionable data
+      if (!summary.hasSummary && !summary.nextStep && geminiData.actions.length === 0) {
+        continue;
+      }
+
+      // Calculate priority score
+      let priority = 50;
+      
+      // Boost for positive sentiment
+      if (summary.sentiment === 'positive') priority += 30;
+      else if (summary.sentiment === 'negative') priority += 10;
+      
+      // Boost for objections (needs attention)
+      if (summary.objections && summary.objections.length > 0) priority += 20;
+      
+      // Boost for explicit next step
+      if (summary.nextStep) priority += 25;
+      
+      // Boost for Gemini insights
+      if (geminiData.priority) priority = Math.max(priority, geminiData.priority);
+      if (geminiData.actions.length > 0) priority += 15;
+
+      // Determine action text
+      let action = 'Follow-up durchführen';
+      let reason = 'Anruf abgeschlossen';
+      
+      if (summary.nextStep) {
+        action = summary.nextStep;
+        reason = 'Nächster Schritt aus Gespräch';
+      } else if (geminiData.actions.length > 0) {
+        action = geminiData.actions[0];
+        reason = 'KI-Empfehlung';
+      } else if (summary.objections && summary.objections.length > 0) {
+        action = `Einwand klären: ${summary.objections[0].substring(0, 50)}`;
+        reason = 'Offener Einwand';
+      } else if (summary.sentiment === 'positive') {
+        action = 'Positives Gespräch nachfassen';
+        reason = 'Hohe Abschlusswahrscheinlichkeit';
+      }
+
+      followups.push({
+        id: `followup-${call.id}`,
+        callId: String(call.id),
+        contactId: (call as any).leadId ? String((call as any).leadId) : undefined,
+        contactName: call.contactName || call.phoneNumber || 'Unbekannt',
+        contactPhone: call.phoneNumber || undefined,
+        lastCallAt: (call.createdAt || now).toISOString(),
+        action,
+        reason,
+        priority,
+        sentiment: summary.sentiment,
+        hasGeminiInsights: geminiData.actions.length > 0,
+      });
+    }
+
+    // Sort by priority (highest first) and limit
+    const sortedFollowups = followups
+      .sort((a, b) => b.priority - a.priority)
+      .slice(0, limit);
+
+    res.json({
+      followups: sortedFollowups,
+      total: followups.length,
+      hasMore: followups.length > limit,
+    });
+  } catch (error: any) {
+    console.error('[Dashboard] Followups fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch followups', message: error.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// CONTACT TIMELINE - Full history for a contact
+// ═══════════════════════════════════════════════════════════════
+
+interface TimelineEvent {
+  id: string;
+  type: 'call' | 'task' | 'note' | 'campaign';
+  title: string;
+  description?: string;
+  timestamp: string;
+  metadata?: Record<string, any>;
+}
+
+router.get('/contacts/:contactId/timeline', async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const { contactId } = req.params;
+  if (!contactId) {
+    return res.status(400).json({ error: 'Contact ID required' });
+  }
+
+  try {
+    // Get contact info
+    const contactData = await db.select()
+      .from(contacts)
+      .where(and(
+        eq(contacts.id, parseInt(contactId)),
+        eq(contacts.userId, userId)
+      ))
+      .limit(1);
+
+    const contact = contactData[0];
+    if (!contact) {
+      return res.status(404).json({ error: 'Contact not found' });
+    }
+
+    const timeline: TimelineEvent[] = [];
+
+    // Get calls for this contact (by phone number match or leadId)
+    const contactCalls = await db.select()
+      .from(callLogs)
+      .where(and(
+        eq(callLogs.userId, userId),
+        or(
+          contact.phone ? eq(callLogs.phoneNumber, contact.phone) : sql`false`,
+          sql`${callLogs.metadata}->>'leadId' = ${contactId}`
+        )
+      ))
+      .orderBy(desc(callLogs.createdAt))
+      .limit(20);
+
+    for (const call of contactCalls) {
+      const metadata = parseMetadata(call.metadata);
+      const summary = normalizeSummary(metadata);
+      
+      timeline.push({
+        id: `call-${call.id}`,
+        type: 'call',
+        title: call.status === 'completed' ? 'Anruf abgeschlossen' : 
+               call.status === 'failed' ? 'Anruf fehlgeschlagen' : 'Anruf',
+        description: summary.short || summary.outcome || undefined,
+        timestamp: (call.createdAt || new Date()).toISOString(),
+        metadata: {
+          callId: call.id,
+          duration: call.duration,
+          status: call.status,
+          hasAudio: Boolean(call.recordingUrl || call.retellCallId),
+          hasSummary: summary.hasSummary,
+          sentiment: summary.sentiment,
+          nextStep: summary.nextStep,
+        },
+      });
+    }
+
+    // Get tasks for this contact
+    const contactTasks = await db.select()
+      .from(voiceTasks)
+      .where(and(
+        eq(voiceTasks.userId, userId),
+        eq(voiceTasks.contactId, parseInt(contactId))
+      ))
+      .orderBy(desc(voiceTasks.createdAt))
+      .limit(10);
+
+    for (const task of contactTasks) {
+      timeline.push({
+        id: `task-${task.id}`,
+        type: 'task',
+        title: task.title || 'Aufgabe',
+        description: task.description || undefined,
+        timestamp: (task.createdAt || new Date()).toISOString(),
+        metadata: {
+          taskId: task.id,
+          status: task.status,
+          dueDate: task.dueDate,
+        },
+      });
+    }
+
+    // Sort timeline by timestamp (newest first)
+    timeline.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    // Get next step recommendation from most recent call
+    let nextStep: string | undefined;
+    let lastCallSentiment: string | undefined;
+    if (contactCalls.length > 0) {
+      const latestCall = contactCalls[0];
+      const latestMetadata = parseMetadata(latestCall.metadata);
+      const latestSummary = normalizeSummary(latestMetadata);
+      nextStep = latestSummary.nextStep;
+      lastCallSentiment = latestSummary.sentiment;
+    }
+
+    res.json({
+      contact: {
+        id: contact.id,
+        name: contact.name || contact.company || 'Unbekannt',
+        phone: contact.phone,
+        email: contact.email,
+        company: contact.company,
+        tags: contact.tags || [],
+        createdAt: contact.createdAt,
+      },
+      timeline,
+      stats: {
+        totalCalls: contactCalls.length,
+        totalTasks: contactTasks.length,
+        lastCallAt: contactCalls[0]?.createdAt?.toISOString(),
+        lastCallSentiment,
+        nextStep,
+      },
+    });
+  } catch (error: any) {
+    console.error('[Dashboard] Contact timeline error:', error);
+    res.status(500).json({ error: 'Failed to fetch timeline', message: error.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// DASHBOARD STATS - Quick stats for header chips
+// ═══════════════════════════════════════════════════════════════
+
+router.get('/stats', async (req: Request, res: Response) => {
+  const userId = (req as any).user?.id;
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+    // Calls last 7 days
+    const callsThisWeek = await db.select({ count: count() })
+      .from(callLogs)
+      .where(and(
+        eq(callLogs.userId, userId),
+        gte(callLogs.createdAt, sevenDaysAgo)
+      ));
+
+    // Calls previous 7 days (for delta)
+    const callsLastWeek = await db.select({ count: count() })
+      .from(callLogs)
+      .where(and(
+        eq(callLogs.userId, userId),
+        gte(callLogs.createdAt, fourteenDaysAgo),
+        sql`${callLogs.createdAt} < ${sevenDaysAgo}`
+      ));
+
+    // Positive leads (calls with positive sentiment)
+    const positiveCalls = await db.select()
+      .from(callLogs)
+      .where(and(
+        eq(callLogs.userId, userId),
+        gte(callLogs.createdAt, sevenDaysAgo),
+        eq(callLogs.status, 'completed')
+      ))
+      .limit(100);
+
+    let positiveCount = 0;
+    for (const call of positiveCalls) {
+      const metadata = parseMetadata(call.metadata);
+      const summary = normalizeSummary(metadata);
+      if (summary.sentiment === 'positive') positiveCount++;
+    }
+
+    // Open follow-ups (completed calls with nextStep or objections)
+    let openFollowups = 0;
+    for (const call of positiveCalls) {
+      const metadata = parseMetadata(call.metadata);
+      const summary = normalizeSummary(metadata);
+      if (summary.nextStep || (summary.objections && summary.objections.length > 0)) {
+        openFollowups++;
+      }
+    }
+
+    // Upcoming appointments (next 7 days)
+    const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const upcomingEvents = await db.select({ count: count() })
+      .from(calendarEvents)
+      .where(and(
+        eq(calendarEvents.userId, userId),
+        gte(calendarEvents.startTime, now),
+        sql`${calendarEvents.startTime} < ${nextWeek}`
+      ));
+
+    const callsCount = callsThisWeek[0]?.count || 0;
+    const callsLastCount = callsLastWeek[0]?.count || 0;
+    const callsDelta = callsCount - callsLastCount;
+
+    res.json({
+      calls: {
+        value: callsCount,
+        delta: callsDelta,
+        trend: callsDelta > 0 ? 'up' : callsDelta < 0 ? 'down' : 'stable',
+      },
+      positiveLeads: {
+        value: positiveCount,
+      },
+      openFollowups: {
+        value: openFollowups,
+      },
+      upcomingAppointments: {
+        value: upcomingEvents[0]?.count || 0,
+      },
+    });
+  } catch (error: any) {
+    console.error('[Dashboard] Stats fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch stats', message: error.message });
+  }
+});
+
 export default router;
