@@ -173,19 +173,56 @@ function ActionCard({
   );
 }
 
-function EmptyState() {
+function EmptyState({ hasCalls, onGenerate }: { hasCalls: boolean; onGenerate?: () => void }) {
+  if (hasCalls) {
+    // Has calls but no recommendations yet - show CTA to generate
+    return (
+      <div className="text-center py-6">
+        <div 
+          className="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center"
+          style={{ background: `${DT.orange}15` }}
+        >
+          <Sparkles size={20} style={{ color: DT.orange }} />
+        </div>
+        <p className="text-xs text-white/60 mb-1">Empfehlungen verfügbar</p>
+        <p className="text-[10px] text-white/40 mb-4">
+          Lasse KI-Aktionen aus deinen Calls generieren
+        </p>
+        {onGenerate && (
+          <button
+            onClick={onGenerate}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-medium text-white transition-all hover:scale-105"
+            style={{ background: `linear-gradient(135deg, ${DT.orange}, #ff8533)` }}
+          >
+            <Sparkles size={12} />
+            Jetzt generieren
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // No calls at all - show hint to make calls first
   return (
     <div className="text-center py-6">
       <div 
         className="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center"
-        style={{ background: `${DT.orange}10` }}
+        style={{ background: 'rgba(255,255,255,0.05)' }}
       >
-        <Sparkles size={20} style={{ color: DT.orange }} />
+        <Phone size={20} className="text-white/30" />
       </div>
-      <p className="text-xs text-white/50 mb-1">Keine Empfehlungen</p>
-      <p className="text-[10px] text-white/30">
-        Nach deinen nächsten Calls erscheinen hier KI-Aktionen
+      <p className="text-xs text-white/50 mb-1">Noch keine Calls</p>
+      <p className="text-[10px] text-white/30 mb-4">
+        Starte deinen ersten Anruf für KI-Empfehlungen
       </p>
+      <a
+        href="/app/power/einzelanruf"
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-medium transition-colors hover:bg-white/10"
+        style={{ color: DT.orange, border: `1px solid ${DT.orange}30` }}
+      >
+        <Phone size={12} />
+        Ersten Call starten
+      </a>
     </div>
   );
 }
@@ -343,7 +380,7 @@ export function ActionCenter({ calls, isLoading, onOpenCall, onOpenContact, gemi
         ) : !geminiEnabled && topActions.length === 0 ? (
           <GeminiDisabledState />
         ) : topActions.length === 0 ? (
-          <EmptyState />
+          <EmptyState hasCalls={safeCalls.length > 0} />
         ) : (
           <div className="space-y-2">
             {topActions.map((action, index) => (
