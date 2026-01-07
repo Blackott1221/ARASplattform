@@ -221,7 +221,8 @@ export function CallCard({ call, onOpenDetails, onOpenContact }: CallCardProps) 
   const callNextStep = typeof call?.nextStep === 'string' ? call.nextStep : '';
   const hasAudio = Boolean(call?.hasAudio && call?.audioUrl);
   const hasTranscript = Boolean(call?.hasTranscript && callTranscript.length > 0);
-  const hasSummary = callSummary.length > 0;
+  // Use hasSummary from backend - NEVER derive from summary string!
+  const hasSummary = Boolean(call?.hasSummary);
   const hasNextStep = callNextStep.length > 0;
 
   return (
@@ -359,17 +360,30 @@ export function CallCard({ call, onOpenDetails, onOpenContact }: CallCardProps) 
                 </div>
               )}
               
-              {/* Summary */}
-              {hasSummary && (
-                <div>
-                  <h5 className="text-[10px] uppercase tracking-wider text-white/40 mb-2">
-                    Zusammenfassung
-                  </h5>
+              {/* Summary - NEVER shows transcript! */}
+              <div>
+                <h5 className="text-[10px] uppercase tracking-wider text-white/40 mb-2">
+                  Zusammenfassung
+                </h5>
+                {hasSummary && callSummary ? (
                   <p className="text-xs text-white/70 leading-relaxed">
                     {callSummary}
                   </p>
-                </div>
-              )}
+                ) : call.status === 'completed' ? (
+                  <div className="bg-white/5 rounded-lg p-3">
+                    <p className="text-[11px] text-white/40 italic">
+                      Keine Zusammenfassung verfügbar
+                    </p>
+                    <p className="text-[10px] text-white/30 mt-1">
+                      KI-Zusammenfassung wird bei vollständigem Transcript generiert
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-white/30 italic">
+                    Zusammenfassung nach Call-Ende verfügbar
+                  </p>
+                )}
+              </div>
               
               {/* Next Step */}
               {hasNextStep && (

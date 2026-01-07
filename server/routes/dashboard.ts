@@ -30,6 +30,7 @@ interface RecentCall {
   audioUrl?: string;
   hasTranscript: boolean;
   transcript?: string;
+  hasSummary: boolean;
   summary?: string;
   sentiment?: 'positive' | 'neutral' | 'negative';
   nextStep?: string;
@@ -134,20 +135,43 @@ function parseMetadata(metadata: unknown): Record<string, any> {
   return {};
 }
 
-// Extract summary from various sources
-function extractSummary(metadata: Record<string, any>, transcript?: string | null): string {
-  // Try metadata fields first
-  const summaryFields = ['summary', 'ai_summary', 'call_summary', 'gemini_summary', 'analysis'];
+// Extract summary from various sources - NEVER uses transcript!
+function extractSummary(metadata: Record<string, any>): { text: string; outcome?: string; nextStep?: string; hasSummary: boolean } {
+  // Priority 1: Structured summary object (like Power uses)
+  if (metadata.summary && typeof metadata.summary === 'object') {
+    const s = metadata.summary;
+    return {
+      text: s.outcome || s.summary || s.text || '',
+      outcome: s.outcome,
+      nextStep: s.nextStep || s.next_step || s.recommendedAction,
+      hasSummary: Boolean(s.outcome || s.summary || s.text),
+    };
+  }
+  
+  // Priority 2: Plain string summary fields
+  const summaryFields = ['summary', 'ai_summary', 'call_summary', 'gemini_summary', 'aiSummary', 'callSummary'];
   for (const field of summaryFields) {
     if (metadata[field] && typeof metadata[field] === 'string' && metadata[field].length > 10) {
-      return metadata[field];
+      return {
+        text: metadata[field],
+        hasSummary: true,
+      };
     }
   }
-  // Fallback to transcript snippet
-  if (transcript && transcript.length > 50) {
-    return transcript.substring(0, 200) + '...';
+  
+  // Priority 3: Nested in analysis/ai object
+  if (metadata.analysis?.summary) {
+    return { text: metadata.analysis.summary, hasSummary: true };
   }
-  return '';
+  if (metadata.ai?.summary) {
+    return { text: metadata.ai.summary, hasSummary: true };
+  }
+  if (metadata.gemini?.summary) {
+    return { text: metadata.gemini.summary, hasSummary: true };
+  }
+  
+  // NO FALLBACK TO TRANSCRIPT - return empty
+  return { text: '', hasSummary: false };
 }
 
 // Extract sentiment (normalize various formats)
@@ -350,10 +374,16 @@ router.get('/overview', async (req: Request, res: Response) => {
       const hasAudio = Boolean(call.recordingUrl);
       const hasTranscript = Boolean(call.transcript && String(call.transcript).length > 0);
       
-      // Extract summary (from metadata, internalSummary, or transcript)
-      let summary = extractSummary(metadata, call.transcript);
-      if (!summary && (call as any).internalSummary) {
-        summary = (call as any).internalSummary;
+      // Extract summary - NEVER from transcript!
+      const summaryData = extractSummary(metadata);
+      let summaryText = summaryData.text;
+      let nextStepFromSummary = summaryData.nextStep;
+      let hasSummary = summaryData.hasSummary;
+      
+      // Fallback to internalSummary if available (from internalCallLogs)
+      if (!hasSummary && (call as any).internalSummary) {
+        summaryText = (call as any).internalSummary;
+        hasSummary = true;
       }
       
       // Extract sentiment
@@ -387,9 +417,10 @@ router.get('/overview', async (req: Request, res: Response) => {
         audioUrl: hasAudio ? `/api/call-logs/${call.id}/audio` : undefined,
         hasTranscript,
         transcript: call.transcript || undefined,
-        summary: summary || undefined,
+        hasSummary,
+        summary: summaryText || undefined,
         sentiment,
-        nextStep: metadata.nextStep || metadata.next_action || metadata.recommended_action || undefined,
+        nextStep: nextStepFromSummary || metadata.nextStep || metadata.next_action || metadata.recommended_action || undefined,
         // Gemini cached data
         geminiActions: geminiData.actions.length > 0 ? geminiData.actions : undefined,
         geminiPriority: geminiData.priority,
@@ -412,7 +443,8 @@ router.get('/overview', async (req: Request, res: Response) => {
             duration: call.duration,
             hasAudio,
             hasTranscript,
-            summary: summary ? summary.substring(0, 100) : undefined,
+            hasSummary,
+            summary: summaryText ? summaryText.substring(0, 100) : undefined,
           },
         });
       }
@@ -683,6 +715,103 @@ router.get('/overview', async (req: Request, res: Response) => {
   overview.activity = overview.activity.slice(0, 10);
 
   res.json(overview);
+});
+
+// ═══════════════════════════════════════════════════════════════
+// GET /calls - All calls with pagination and filters
+// ═══════════════════════════════════════════════════════════════
+router.get('/calls', async (req: Request, res: Response) => {
+  const userId = req.session?.userId;
+  if (!userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  // Parse query params
+  const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 20, 1), 100);
+  const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
+  const status = req.query.status as string; // completed | failed | running | initiated
+  const range = req.query.range as string; // today | 7d | 30d | all
+  const hasAudio = req.query.hasAudio === 'true' ? true : req.query.hasAudio === 'false' ? false : undefined;
+  const hasSummary = req.query.hasSummary === 'true' ? true : req.query.hasSummary === 'false' ? false : undefined;
+
+  try {
+    // Build date filter
+    const { todayStart, weekStart, monthStart } = getDateRanges();
+    let dateFilter: Date | null = null;
+    if (range === 'today') dateFilter = todayStart;
+    else if (range === '7d') dateFilter = weekStart;
+    else if (range === '30d') dateFilter = monthStart;
+
+    // Fetch calls from callLogs
+    let query = db.select().from(callLogs).where(eq(callLogs.userId, userId));
+    
+    // Get all calls first, then filter in memory (simpler than complex SQL)
+    const allCalls = await query.orderBy(desc(callLogs.createdAt));
+    
+    // Apply filters
+    let filteredCalls = allCalls;
+    
+    if (dateFilter) {
+      filteredCalls = filteredCalls.filter(c => c.createdAt && new Date(c.createdAt) >= dateFilter!);
+    }
+    if (status) {
+      filteredCalls = filteredCalls.filter(c => c.status === status);
+    }
+    if (hasAudio !== undefined) {
+      filteredCalls = filteredCalls.filter(c => Boolean(c.recordingUrl) === hasAudio);
+    }
+    
+    const total = filteredCalls.length;
+    
+    // Apply pagination
+    const paginatedCalls = filteredCalls.slice(offset, offset + limit);
+    
+    // Transform to RecentCall format
+    const calls: RecentCall[] = paginatedCalls.map(call => {
+      const metadata = parseMetadata(call.metadata);
+      const callHasAudio = Boolean(call.recordingUrl);
+      const hasTranscript = Boolean(call.transcript && String(call.transcript).length > 0);
+      const summaryData = extractSummary(metadata);
+      
+      return {
+        id: String(call.id),
+        startedAt: (call.createdAt || new Date()).toISOString(),
+        status: (call.status as any) || 'initiated',
+        contact: {
+          name: (call as any).contactName || metadata.contactName || undefined,
+          phone: call.phoneNumber || undefined,
+        },
+        duration: call.duration || undefined,
+        hasAudio: callHasAudio,
+        audioUrl: callHasAudio ? `/api/call-logs/${call.id}/audio` : undefined,
+        hasTranscript,
+        transcript: call.transcript || undefined,
+        hasSummary: summaryData.hasSummary,
+        summary: summaryData.text || undefined,
+        sentiment: extractSentiment(metadata),
+        nextStep: summaryData.nextStep || metadata.nextStep || undefined,
+      };
+    });
+    
+    // Apply hasSummary filter after processing
+    const finalCalls = hasSummary !== undefined 
+      ? calls.filter(c => c.hasSummary === hasSummary)
+      : calls;
+
+    res.json({
+      calls: finalCalls,
+      pagination: {
+        total,
+        limit,
+        offset,
+        hasMore: offset + limit < total,
+      },
+      filters: { status, range, hasAudio, hasSummary },
+    });
+  } catch (error: any) {
+    console.error('[Dashboard] Calls fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch calls', message: error.message });
+  }
 });
 
 export default router;

@@ -231,6 +231,7 @@ export const RecentCallSchema = z.object({
   audioUrl: z.string().optional(),
   hasTranscript: z.boolean().default(false),
   transcript: z.string().optional(),
+  hasSummary: z.boolean().default(false),
   summary: z.string().optional(),
   sentiment: z.enum(['positive', 'neutral', 'negative']).optional(),
   nextStep: z.string().optional(),
