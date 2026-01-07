@@ -366,3 +366,10 @@ html, body, #root {
     transform-origin: 0 0;
   }
 }
+
+/* ARAS Gradient Shift Animation */
+@keyframes arasGradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
