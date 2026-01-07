@@ -39,10 +39,17 @@ interface DailyBriefingData {
   quickWins: string[];
   riskFlags: string[];
   generatedAt: string;
+  expiresAt?: string;
   cached?: boolean;
   mode?: 'cached' | 'realtime';
   sourceCount?: number;
   sources?: Array<{ title: string; url?: string; publisher?: string; date?: string }>;
+  meta?: {
+    ttlSeconds?: number;
+    fallbackUsed?: boolean;
+    geminiEnabled?: boolean;
+    rateLimit?: { minIntervalSeconds: number; nextAllowedAt?: string };
+  };
 }
 
 interface DailyBriefingProps {
@@ -51,19 +58,20 @@ interface DailyBriefingProps {
   onRefresh?: (mode?: 'cached' | 'realtime', force?: boolean) => void;
   onOpenCall?: (callId: string) => void;
   onOpenContact?: (contactId: string) => void;
+  stats?: { callsCount?: number; followupsCount?: number; contactsCount?: number };
 }
 
 // ═══════════════════════════════════════════════════════════════
 // MISSION HERO - Premium tipping card with animated gradient
 // ═══════════════════════════════════════════════════════════════
 
-function MissionHero({ 
-  briefing, 
-  onStartMission 
-}: { 
+interface MissionHeroProps {
   briefing?: DailyBriefingData;
   onStartMission: () => void;
-}) {
+  stats?: { callsCount?: number; followupsCount?: number; contactsCount?: number };
+}
+
+function MissionHero({ briefing, onStartMission, stats }: MissionHeroProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
   
@@ -95,8 +103,12 @@ function MissionHero({
   }, [mouseX, mouseY]);
 
   // Format today's date (Europe/Vienna timezone)
-  const viennaDate = new Date().toLocaleString('de-AT', { timeZone: 'Europe/Vienna' });
-  const todayFormatted = format(new Date(), "dd.MM.yyyy", { locale: de });
+  const todayFormatted = new Date().toLocaleDateString('de-AT', { 
+    timeZone: 'Europe/Vienna',
+    day: '2-digit',
+    month: '2-digit', 
+    year: 'numeric'
+  });
   const lastUpdated = briefing?.generatedAt 
     ? new Date(briefing.generatedAt).toLocaleTimeString('de-AT', { 
         timeZone: 'Europe/Vienna', 
@@ -107,41 +119,57 @@ function MissionHero({
   
   const modeLabel = briefing?.mode === 'realtime' ? 'Realtime (Gemini)' : 'Cache';
   
-  // Detect mobile for breathing glow vs tilt
+  // Detect mobile + reduced motion preference
   const [isMobile, setIsMobile] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
     window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    
+    // Check prefers-reduced-motion
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReducedMotion(mediaQuery.matches);
+    const handleChange = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+    mediaQuery.addEventListener('change', handleChange);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      mediaQuery.removeEventListener('change', handleChange);
+    };
   }, []);
+  
+  // Disable animations when reduced motion is preferred
+  const shouldAnimate = !prefersReducedMotion;
+  const shouldTilt = !isMobile && shouldAnimate;
 
   return (
     <motion.div
       ref={cardRef}
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: shouldAnimate ? 10 : 0 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.32, ease: 'easeOut' }}
-      onMouseMove={!isMobile ? handleMouseMove : undefined}
-      onMouseEnter={!isMobile ? () => setIsHovered(true) : undefined}
-      onMouseLeave={!isMobile ? handleMouseLeave : undefined}
-      style={!isMobile ? {
+      transition={{ duration: shouldAnimate ? 0.32 : 0, ease: 'easeOut' }}
+      onMouseMove={shouldTilt ? handleMouseMove : undefined}
+      onMouseEnter={shouldTilt ? () => setIsHovered(true) : undefined}
+      onMouseLeave={shouldTilt ? handleMouseLeave : undefined}
+      style={shouldTilt ? {
         rotateX: rotateX,
         rotateY: rotateY,
         transformStyle: 'preserve-3d',
-        perspective: 1000,
+        perspective: 900,
       } : {}}
       className="relative rounded-2xl overflow-hidden"
     >
-      {/* Animated border gradient (desktop: sheen, mobile: breathing glow) */}
+      {/* Animated border gradient (desktop: sheen, mobile: breathing glow, reduced-motion: static) */}
       <motion.div 
         className="absolute inset-0 rounded-2xl pointer-events-none"
-        animate={isMobile ? { 
+        animate={shouldAnimate && isMobile ? { 
           opacity: [0.10, 0.18, 0.10] 
         } : { 
           opacity: 0.40 
         }}
-        transition={isMobile ? { 
+        transition={shouldAnimate && isMobile ? { 
           duration: 1.8, 
           repeat: Infinity, 
           ease: 'easeInOut' 
@@ -149,7 +177,7 @@ function MissionHero({
         style={{
           background: `linear-gradient(135deg, ${DT.gold}40, ${DT.orange}60, rgba(255,255,255,0.3), ${DT.orange}60, ${DT.gold}40)`,
           backgroundSize: '300% 300%',
-          animation: !isMobile ? 'borderSheen 4.8s linear infinite' : undefined,
+          animation: shouldAnimate && !isMobile ? 'borderSheen 4.8s linear infinite' : undefined,
           padding: '1px',
           mask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
           maskComposite: 'xor',
@@ -205,10 +233,8 @@ function MissionHero({
         </p>
 
         {/* Meta Row */}
-        <div className="flex flex-wrap items-center gap-3 text-[10px] text-white/40 mb-5">
-          <span>Heute: {todayFormatted}</span>
-          <span className="w-1 h-1 rounded-full bg-white/20" />
-          <span>Aktualisiert: {lastUpdated}</span>
+        <div className="flex flex-wrap items-center gap-3 text-[10px] text-white/40 mb-3">
+          <span>Stand: {todayFormatted}, {lastUpdated}</span>
           <span className="w-1 h-1 rounded-full bg-white/20" />
           <span className="flex items-center gap-1">
             Modus: {modeLabel}
@@ -223,14 +249,20 @@ function MissionHero({
           </span>
         </div>
 
+        {/* Stats Microline */}
+        {(stats?.callsCount || stats?.followupsCount || stats?.contactsCount) && (
+          <p className="text-[10px] text-white/30 mb-4">
+            Basierend auf {stats.callsCount || 0} Calls, {stats.followupsCount || 0} Follow-ups, {stats.contactsCount || 0} Kontakten
+          </p>
+        )}
+
         {/* Primary Action */}
         <button
           onClick={onStartMission}
-          className="group inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-200 hover:translate-y-[-1px] active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent"
+          className="group inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-200 hover:translate-y-[-1px] active:translate-y-0 focus:outline-none focus:ring-2 focus:ring-[#ff6a00]/55 focus:ring-offset-2 focus:ring-offset-black/80"
           style={{
             background: `linear-gradient(135deg, ${DT.orange}, #ff8533)`,
             boxShadow: `0 4px 14px ${DT.orange}40`,
-            focusRing: `${DT.gold}`,
           }}
         >
           Mission starten
@@ -545,6 +577,7 @@ export function DailyBriefing({
   onRefresh,
   onOpenCall,
   onOpenContact,
+  stats,
 }: DailyBriefingProps) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -606,7 +639,7 @@ export function DailyBriefing({
   return (
     <div className="space-y-4">
       {/* Mission Hero */}
-      <MissionHero briefing={briefing} onStartMission={handleStartMission} />
+      <MissionHero briefing={briefing} onStartMission={handleStartMission} stats={stats} />
 
       {/* Briefing Content */}
       <motion.div
@@ -772,6 +805,41 @@ export function DailyBriefing({
             </div>
           </div>
         )}
+
+        {/* Meta Strip - Bottom */}
+        <div 
+          className="px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[9px] text-white/30"
+          style={{ borderTop: `1px solid ${DT.panelBorder}` }}
+        >
+          <span>
+            Modus: <span className="text-white/50">{briefing.mode === 'realtime' ? 'Realtime' : 'Cache'}</span>
+          </span>
+          {briefing.expiresAt && (
+            <span>
+              Gültig bis: <span className="text-white/50">
+                {new Date(briefing.expiresAt).toLocaleTimeString('de-AT', { 
+                  timeZone: 'Europe/Vienna', 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                })}
+              </span>
+            </span>
+          )}
+          {briefing.meta?.fallbackUsed && (
+            <span className="px-1.5 py-0.5 rounded text-[8px] font-medium" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24' }}>
+              Fallback
+            </span>
+          )}
+          {briefing.meta?.rateLimit?.nextAllowedAt && (
+            <span className="text-white/25">
+              Nächste Aktualisierung: {new Date(briefing.meta.rateLimit.nextAllowedAt).toLocaleTimeString('de-AT', { 
+                timeZone: 'Europe/Vienna', 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              })}
+            </span>
+          )}
+        </div>
       </motion.div>
     </div>
   );

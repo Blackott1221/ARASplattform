@@ -252,10 +252,11 @@ export function ContactDrawer({
   const [stats, setStats] = useState<ContactStats | null>(null);
   const [copied, setCopied] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
+  const previousActiveElement = useRef<HTMLElement | null>(null);
 
   const isOpen = Boolean(contactId);
 
-  // ESC key handler
+  // ESC key handler + Focus management
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -264,9 +265,18 @@ export function ContactDrawer({
     };
     
     if (isOpen) {
+      // Save the element that was focused before opening
+      previousActiveElement.current = document.activeElement as HTMLElement;
+      
       document.addEventListener('keydown', handleKeyDown);
-      // Focus trap - focus the drawer when it opens
-      drawerRef.current?.focus();
+      // Focus the drawer when it opens
+      setTimeout(() => drawerRef.current?.focus(), 50);
+    } else {
+      // Return focus to the element that opened the drawer
+      if (previousActiveElement.current && typeof previousActiveElement.current.focus === 'function') {
+        previousActiveElement.current.focus();
+        previousActiveElement.current = null;
+      }
     }
     
     return () => {

@@ -653,10 +653,11 @@ router.post('/daily-briefing', async (req: Request, res: Response) => {
       // Continue even if caching fails
     }
 
-    // Build response
-    const response: BriefingResponse = {
+    // Build response with geminiEnabled and expiresAt
+    const response: BriefingResponse & { expiresAt: string; meta: { geminiEnabled: boolean; rateLimit: { minIntervalSeconds: number } } } = {
       ...payload,
       generatedAt: now.toISOString(),
+      expiresAt: expiresAt.toISOString(),
       cached: false,
       mode: requestMode,
       sourceCount: sources?.length,
@@ -668,6 +669,10 @@ router.post('/daily-briefing', async (req: Request, res: Response) => {
           callsAnalyzed: recentCalls.length,
         },
         fallbackUsed,
+        geminiEnabled: GEMINI_ENABLED,
+        rateLimit: {
+          minIntervalSeconds: Math.floor((requestMode === 'realtime' ? RATE_LIMIT_REALTIME_MS : RATE_LIMIT_CACHED_MS) / 1000),
+        },
       },
     };
 
