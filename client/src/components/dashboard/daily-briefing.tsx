@@ -235,21 +235,13 @@ function MissionHero({ briefing, onStartMission, onRefresh, refreshing, stats }:
             'Ich habe deine neuesten Calls, Follow-ups und Signale ausgewertet und daraus eine klare Mission für heute gebaut.'}
         </p>
 
-        {/* Meta Row */}
-        <div className="flex flex-wrap items-center gap-3 text-[10px] text-white/40 mb-3">
-          <span>Stand: {todayFormatted}, {lastUpdated}</span>
-          <span className="w-1 h-1 rounded-full bg-white/20" />
-          <span className="flex items-center gap-1">
-            Modus: {modeLabel}
-            <span className="group relative cursor-help">
-              <Info size={10} className="text-white/30" />
-              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 rounded bg-black/90 text-[9px] text-white/70 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                {briefing?.mode === 'realtime' 
-                  ? 'Gemini generiert live. Höhere Kosten, aktuellste Daten.'
-                  : 'Gecachte Version. Schnell, bis zu 6h alt.'}
-              </span>
-            </span>
-          </span>
+        {/* Mission Intelligence Line - WOW V8 */}
+        <div className="text-[12px] text-white/35 mb-4 leading-relaxed">
+          Stand: {todayFormatted} (Europe/Vienna) • {' '}
+          {briefing?.sourceCount && briefing.sourceCount > 0 
+            ? `${briefing.sourceCount}+ Quellen` 
+            : 'Nur Accountdaten ausgewertet'} • {' '}
+          Modus: {modeLabel}
         </div>
 
         {/* Stats Microline - Only render if data exists */}
@@ -432,12 +424,12 @@ function ModeToggle({
   currentMode,
   pendingMode,
   onModeChange,
-  geminiEnabled = true,
+  geminiEnabled,
 }: {
   currentMode: 'cached' | 'realtime';
   pendingMode: 'cached' | 'realtime';
   onModeChange: (mode: 'cached' | 'realtime') => void;
-  geminiEnabled?: boolean;
+  geminiEnabled: boolean;
 }) {
   return (
     <div className="flex items-center gap-1 p-0.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.05)' }}>
