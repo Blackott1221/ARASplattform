@@ -414,17 +414,14 @@ function RecentCallsPanel({ calls, isLoading }: { calls: RecentCall[]; isLoading
               Letzte Anrufe
             </h3>
           </div>
-          <a 
-            href="/app/power" 
-            className="text-[10px] text-white/50 hover:text-white/70 transition-colors flex items-center gap-1"
-          >
-            Alle in Power <ChevronRight size={12} />
-          </a>
+          <span className="text-[10px] text-white/30">
+            {calls.length} Anrufe
+          </span>
         </div>
       </div>
 
-      <div className="p-4 space-y-3 max-h-[500px] overflow-y-auto">
-        {calls.slice(0, 5).map((call) => (
+      <div className="p-4 space-y-3 max-h-[600px] overflow-y-auto">
+        {calls.map((call) => (
           <CallCard 
             key={call.id} 
             call={call}
@@ -434,14 +431,12 @@ function RecentCallsPanel({ calls, isLoading }: { calls: RecentCall[]; isLoading
         ))}
       </div>
 
-      {calls.length > 5 && (
-        <div className="px-4 py-3 border-t" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-          <a 
-            href="/app/power"
-            className="text-[10px] text-white/40 hover:text-white/60 transition-colors"
-          >
-            Alle {calls.length} Anrufe anzeigen →
-          </a>
+      {/* Load More / Pagination hint */}
+      {calls.length >= 20 && (
+        <div className="px-4 py-3 border-t text-center" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+          <p className="text-[10px] text-white/30">
+            Zeigt die letzten {calls.length} Anrufe • Weitere über Filter verfügbar
+          </p>
         </div>
       )}
     </motion.div>
