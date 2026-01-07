@@ -1048,7 +1048,7 @@ router.get('/contacts/:contactId/timeline', async (req: Request, res: Response) 
     const contactData = await db.select()
       .from(contacts)
       .where(and(
-        eq(contacts.id, parseInt(contactId)),
+        eq(contacts.id, contactId),
         eq(contacts.userId, userId)
       ))
       .limit(1);
@@ -1101,7 +1101,7 @@ router.get('/contacts/:contactId/timeline', async (req: Request, res: Response) 
       .from(voiceTasks)
       .where(and(
         eq(voiceTasks.userId, userId),
-        eq(voiceTasks.contactId, parseInt(contactId))
+        eq(voiceTasks.phoneNumber, contact.phone || '')
       ))
       .orderBy(desc(voiceTasks.createdAt))
       .limit(10);
@@ -1110,13 +1110,13 @@ router.get('/contacts/:contactId/timeline', async (req: Request, res: Response) 
       timeline.push({
         id: `task-${task.id}`,
         type: 'task',
-        title: task.title || 'Aufgabe',
-        description: task.description || undefined,
+        title: task.taskName || 'Aufgabe',
+        description: task.taskPrompt || undefined,
         timestamp: (task.createdAt || new Date()).toISOString(),
         metadata: {
           taskId: task.id,
           status: task.status,
-          dueDate: task.dueDate,
+          dueDate: undefined,
         },
       });
     }
@@ -1138,11 +1138,11 @@ router.get('/contacts/:contactId/timeline', async (req: Request, res: Response) 
     res.json({
       contact: {
         id: contact.id,
-        name: contact.name || contact.company || 'Unbekannt',
+        name: `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || contact.company || 'Unbekannt',
         phone: contact.phone,
         email: contact.email,
         company: contact.company,
-        tags: contact.tags || [],
+        tags: [],
         createdAt: contact.createdAt,
       },
       timeline,
@@ -1225,8 +1225,7 @@ router.get('/stats', async (req: Request, res: Response) => {
       .from(calendarEvents)
       .where(and(
         eq(calendarEvents.userId, userId),
-        gte(calendarEvents.startTime, now),
-        sql`${calendarEvents.startTime} < ${nextWeek}`
+        gte(calendarEvents.date, now.toISOString().split('T')[0])
       ));
 
     const callsCount = callsThisWeek[0]?.count || 0;
