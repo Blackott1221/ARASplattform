@@ -1,14 +1,14 @@
 /**
  * Contact Drawer - Slide-in panel with contact timeline
- * Mission Control V4
+ * Mission Control V5 — Investor-grade CRM, ESC close, expandable timeline
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, Phone, Mail, Building2, Tag, Clock, 
   MessageSquare, Calendar, ArrowRight, Play,
-  CheckCircle, AlertCircle
+  CheckCircle, AlertCircle, Copy, ChevronDown
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -58,14 +58,21 @@ interface ContactDrawerProps {
 
 function TimelineItem({ 
   event, 
-  onOpenCall 
+  onOpenCall,
+  isLast = false,
 }: { 
   event: TimelineEvent; 
   onOpenCall?: (id: string) => void;
+  isLast?: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
+
   let timeAgo = '';
+  let formattedDate = '';
   try {
-    timeAgo = formatDistanceToNow(new Date(event.timestamp), { addSuffix: true, locale: de });
+    const date = new Date(event.timestamp);
+    timeAgo = formatDistanceToNow(date, { addSuffix: true, locale: de });
+    formattedDate = format(date, "dd.MM.yyyy 'um' HH:mm", { locale: de });
   } catch { /* ignore */ }
 
   const getIcon = () => {
@@ -91,47 +98,109 @@ function TimelineItem({
     return 'rgba(255,255,255,0.4)';
   };
 
+  const hasExpandableContent = event.description || event.metadata?.bullets || event.metadata?.summary;
+
   return (
     <div className="flex gap-3 group">
-      {/* Timeline dot */}
+      {/* Timeline dot & line */}
       <div className="flex flex-col items-center">
-        <div 
-          className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
+        <button 
+          onClick={() => hasExpandableContent && setExpanded(!expanded)}
+          className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 transition-transform ${
+            hasExpandableContent ? 'cursor-pointer hover:scale-110' : ''
+          }`}
           style={{ background: `${getColor()}20`, color: getColor() }}
         >
           {getIcon()}
-        </div>
-        <div className="w-px flex-1 bg-white/10 mt-2" />
+        </button>
+        {!isLast && <div className="w-px flex-1 bg-white/10 mt-2" />}
       </div>
 
       {/* Content */}
-      <div className="flex-1 pb-6">
+      <div className={`flex-1 ${isLast ? '' : 'pb-5'}`}>
         <div className="flex items-start justify-between">
-          <div>
+          <button 
+            onClick={() => hasExpandableContent && setExpanded(!expanded)}
+            className="text-left flex-1"
+          >
             <p className="text-xs font-medium text-white/80">
               {event.title}
             </p>
             <p className="text-[10px] text-white/40 mt-0.5">
               {timeAgo}
             </p>
-          </div>
+          </button>
           
-          {event.type === 'call' && event.metadata?.callId && (
-            <button
-              onClick={() => onOpenCall?.(String(event.metadata?.callId))}
-              className="opacity-0 group-hover:opacity-100 p-1 rounded-lg transition-all hover:bg-white/10"
-            >
-              <ArrowRight size={12} className="text-white/40" />
-            </button>
-          )}
+          <div className="flex items-center gap-1">
+            {hasExpandableContent && (
+              <ChevronDown 
+                size={12} 
+                className={`text-white/30 transition-transform ${expanded ? 'rotate-180' : ''}`} 
+              />
+            )}
+            {event.type === 'call' && event.metadata?.callId && (
+              <button
+                onClick={() => onOpenCall?.(String(event.metadata?.callId))}
+                className="opacity-0 group-hover:opacity-100 p-1 rounded-lg transition-all hover:bg-white/10"
+                title="Call öffnen"
+              >
+                <ArrowRight size={12} className="text-white/40" />
+              </button>
+            )}
+          </div>
         </div>
 
-        {event.description && (
-          <p className="text-[11px] text-white/60 mt-2 line-clamp-2">
-            {event.description}
-          </p>
-        )}
+        {/* Expanded content */}
+        <AnimatePresence>
+          {expanded && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.22 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-2 pt-2 border-t border-white/5">
+                {/* Date */}
+                <p className="text-[9px] text-white/30 mb-2">{formattedDate}</p>
 
+                {/* Description */}
+                {event.description && (
+                  <p className="text-[11px] text-white/60 mb-2">
+                    {event.description}
+                  </p>
+                )}
+
+                {/* Bullets */}
+                {event.metadata?.bullets && Array.isArray(event.metadata.bullets) && (
+                  <ul className="text-[10px] text-white/50 space-y-1 mb-2">
+                    {event.metadata.bullets.map((bullet: string, i: number) => (
+                      <li key={i} className="flex items-start gap-1.5">
+                        <span className="text-white/30 mt-0.5">•</span>
+                        <span>{bullet}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {/* Outcome badge */}
+                {event.metadata?.outcome && (
+                  <span 
+                    className="inline-block px-2 py-0.5 rounded text-[9px] font-medium mb-2"
+                    style={{ 
+                      background: `${getColor()}15`, 
+                      color: getColor() 
+                    }}
+                  >
+                    {event.metadata.outcome}
+                  </span>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Next Step - always visible */}
         {event.metadata?.nextStep && (
           <div 
             className="mt-2 p-2 rounded-lg text-[10px]"
@@ -181,7 +250,62 @@ export function ContactDrawer({
   const [contact, setContact] = useState<ContactData | null>(null);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [stats, setStats] = useState<ContactStats | null>(null);
+  const [copied, setCopied] = useState(false);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const previousActiveElement = useRef<HTMLElement | null>(null);
 
+  const isOpen = Boolean(contactId);
+
+  // ESC key handler + Focus management + Focus trap
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+        return;
+      }
+
+      // Focus trap: Tab cycling
+      if (e.key === 'Tab' && isOpen && drawerRef.current) {
+        const focusableElements = drawerRef.current.querySelectorAll(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        const firstElement = focusableElements[0] as HTMLElement;
+        const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+
+        if (e.shiftKey && document.activeElement === firstElement) {
+          e.preventDefault();
+          lastElement?.focus();
+        } else if (!e.shiftKey && document.activeElement === lastElement) {
+          e.preventDefault();
+          firstElement?.focus();
+        }
+      }
+    };
+    
+    if (isOpen) {
+      // Save the element that was focused before opening
+      previousActiveElement.current = document.activeElement as HTMLElement;
+      
+      document.addEventListener('keydown', handleKeyDown);
+      // Focus the drawer when it opens
+      setTimeout(() => {
+        const firstFocusable = drawerRef.current?.querySelector('button:not([disabled])') as HTMLElement;
+        firstFocusable?.focus();
+      }, 50);
+    } else {
+      // Return focus to the element that opened the drawer
+      if (previousActiveElement.current && typeof previousActiveElement.current.focus === 'function') {
+        previousActiveElement.current.focus();
+        previousActiveElement.current = null;
+      }
+    }
+    
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
+  // Fetch data
   useEffect(() => {
     if (!contactId) {
       setContact(null);
@@ -212,7 +336,43 @@ export function ContactDrawer({
     fetchTimeline();
   }, [contactId]);
 
-  const isOpen = Boolean(contactId);
+  // Copy summary handler
+  const handleCopySummary = useCallback(async () => {
+    if (!stats?.nextStep && timeline.length === 0) return;
+    
+    const summaryParts = [];
+    if (contact?.name) summaryParts.push(`Kontakt: ${contact.name}`);
+    if (contact?.company) summaryParts.push(`Firma: ${contact.company}`);
+    if (stats?.nextStep) summaryParts.push(`\nNächster Schritt: ${stats.nextStep}`);
+    if (stats?.totalCalls) summaryParts.push(`\nAnrufe: ${stats.totalCalls}`);
+    
+    const text = summaryParts.join('\n');
+    
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      console.error('Failed to copy');
+    }
+  }, [contact, stats, timeline]);
+
+  // Generate follow-up draft
+  const handleCreateFollowupDraft = useCallback(() => {
+    if (!contact?.name) return;
+    
+    const draft = `Hallo ${contact.name},
+
+vielen Dank für unser Gespräch. ${stats?.nextStep ? `Wie besprochen: ${stats.nextStep}` : 'Ich melde mich wie vereinbart.'}
+
+Bei Fragen stehe ich gerne zur Verfügung.
+
+Mit freundlichen Grüßen`;
+    
+    navigator.clipboard.writeText(draft);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }, [contact, stats]);
 
   return (
     <AnimatePresence>
@@ -223,8 +383,14 @@ export function ContactDrawer({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 z-50"
+            style={{
+              background: 'rgba(0,0,0,0.60)',
+              backdropFilter: 'blur(4px)',
+            }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 z-40"
+            aria-hidden="true"
           />
 
           {/* Drawer */}
@@ -232,12 +398,19 @@ export function ContactDrawer({
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed right-0 top-0 bottom-0 w-full max-w-md z-50 overflow-hidden"
+            transition={{ duration: 0.28, ease: 'easeOut' }}
+            className="fixed right-0 top-0 bottom-0 w-full md:w-[480px] z-51 overflow-y-auto"
             style={{
-              background: DT.panelBg,
-              borderLeft: `1px solid ${DT.panelBorder}`,
+              background: 'rgba(15,15,18,0.98)',
+              borderLeft: '1px solid rgba(255,255,255,0.08)',
+              boxShadow: '0 0 60px rgba(0,0,0,0.5)',
+              backdropFilter: 'blur(20px)',
             }}
+            ref={drawerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="contact-drawer-title"
+            onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div 
@@ -245,17 +418,34 @@ export function ContactDrawer({
               style={{ borderBottom: `1px solid ${DT.panelBorder}` }}
             >
               <h2 
+                id="contact-drawer-title"
                 className="text-sm font-semibold uppercase tracking-wider"
                 style={{ color: DT.gold }}
               >
                 Kontakt
               </h2>
-              <button
-                onClick={onClose}
-                className="p-2 rounded-xl transition-all hover:bg-white/10"
-              >
-                <X size={16} className="text-white/60" />
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Copy Summary */}
+                <button
+                  onClick={handleCopySummary}
+                  className="p-2 rounded-xl transition-all hover:bg-white/10 focus:outline-none focus:ring-1 focus:ring-white/20"
+                  title="Zusammenfassung kopieren"
+                >
+                  {copied ? (
+                    <CheckCircle size={14} className="text-green-500" />
+                  ) : (
+                    <Copy size={14} className="text-white/40" />
+                  )}
+                </button>
+                {/* Close */}
+                <button
+                  onClick={onClose}
+                  className="p-2 rounded-xl transition-all hover:bg-white/10 focus:outline-none focus:ring-1 focus:ring-white/20"
+                  title="Schließen (ESC)"
+                >
+                  <X size={16} className="text-white/60" />
+                </button>
+              </div>
             </div>
 
             {loading ? (
@@ -382,17 +572,29 @@ export function ContactDrawer({
                   className="px-6 py-4"
                   style={{ borderTop: `1px solid ${DT.panelBorder}` }}
                 >
-                  <h4 className="text-[10px] uppercase tracking-wider text-white/40 mb-4">
-                    Aktivitäten
-                  </h4>
+                  <div className="flex items-center justify-between mb-6">
+                    <h4 className="text-[10px] uppercase tracking-wider text-white/40">
+                      Aktivitäten ({timeline.length})
+                    </h4>
+                    {timeline.length > 0 && (
+                      <button
+                        onClick={handleCreateFollowupDraft}
+                        className="text-[9px] text-white/40 hover:text-white/60 transition-colors"
+                        title="Follow-up Draft kopieren"
+                      >
+                        {copied ? 'Kopiert!' : 'Draft kopieren'}
+                      </button>
+                    )}
+                  </div>
 
                   {timeline.length > 0 ? (
                     <div>
-                      {timeline.map(event => (
+                      {timeline.map((event, index) => (
                         <TimelineItem 
                           key={event.id} 
                           event={event} 
                           onOpenCall={onOpenCall}
+                          isLast={index === timeline.length - 1}
                         />
                       ))}
                     </div>
@@ -400,6 +602,9 @@ export function ContactDrawer({
                     <div className="text-center py-8">
                       <Clock size={20} className="mx-auto text-white/20 mb-2" />
                       <p className="text-xs text-white/40">Keine Aktivitäten</p>
+                      <p className="text-[10px] text-white/30 mt-1">
+                        Starte einen Anruf um Aktivitäten zu erfassen
+                      </p>
                     </div>
                   )}
                 </div>

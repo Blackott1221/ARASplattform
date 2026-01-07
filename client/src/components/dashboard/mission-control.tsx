@@ -26,14 +26,62 @@ import { ModuleBoundary } from '@/components/system/module-boundary';
 import { asArray, isValidString, safeNumber } from '@/lib/utils/safe';
 import type { User } from '@shared/schema';
 
-// Design Tokens
+// ═══════════════════════════════════════════════════════════════
+// MISSION CONTROL DESIGN SYSTEM
+// ═══════════════════════════════════════════════════════════════
+
+// Design Tokens (ARAS CI)
 const DT = {
   orange: '#ff6a00',
   gold: '#e9d7c4',
   panelBg: 'rgba(0,0,0,0.42)',
   panelBorder: 'rgba(255,255,255,0.08)',
   glow: '0 0 0 1px rgba(255,106,0,0.18), 0 0 22px rgba(255,106,0,0.10)',
+  glowOrange: 'rgba(255,106,0,0.25)',
+  glowGold: 'rgba(233,215,196,0.18)',
 };
+
+// Spacing System (responsive)
+const SPACING = {
+  pad: { desktop: 24, tablet: 18, mobile: 16 },
+  gap: { desktop: 16, tablet: 14, mobile: 12 },
+  radius: 16,
+};
+
+// Motion Tokens (consistent timing)
+const MOTION = {
+  fast: '160ms',
+  base: '240ms',
+  slow: '320ms',
+  drawer: '280ms',
+  backdrop: '180ms',
+  easing: 'ease-out',
+};
+
+// CSS Variables for Mission Control
+const MC_CSS_VARS = {
+  '--mc-pad': '24px',
+  '--mc-gap': '16px',
+  '--mc-radius-card': '16px',
+  '--mc-radius-btn': '14px',
+  '--mc-radius-chip': '12px',
+  '--mc-border': 'rgba(255,255,255,0.06)',
+  '--mc-glass': 'rgba(255,255,255,0.03)',
+  '--mc-text-dim': 'rgba(255,255,255,0.72)',
+  '--mc-orange': '#ff6a00',
+  '--mc-gold': '#e9d7c4',
+} as React.CSSProperties;
+
+// Focus Ring Utility - visible on dark background, mandatory for all interactive elements
+const focusRingClass = 'focus:outline-none focus:ring-2 focus:ring-[#ff6a00]/50 focus:ring-offset-2 focus:ring-offset-black/80 transition-shadow duration-120';
+
+// Premium Button Utility - hover lift, active press, focus ring
+const premiumButtonClass = `
+  transition-all duration-200
+  hover:translate-y-[-1px] hover:shadow-lg
+  active:translate-y-0 active:shadow-md
+  ${focusRingClass}
+`.trim().replace(/\s+/g, ' ');
 
 interface MissionControlProps {
   user: User | null;

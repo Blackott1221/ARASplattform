@@ -6,19 +6,30 @@
 
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { callLogs, contacts } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { callLogs, contacts, dailyBriefings, users } from '@shared/schema';
+import { eq, and, gte, desc, lt } from 'drizzle-orm';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const router = Router();
 
 // Initialize Gemini (may be disabled if no API key)
-const GOOGLE_AI_KEY = process.env.GOOGLE_AI_API_KEY || '';
+// CRITICAL: Use GOOGLE_GEMINI_API_KEY (primary) with fallback to GOOGLE_AI_API_KEY
+const GOOGLE_AI_KEY = process.env.GOOGLE_GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || '';
 const genAI = GOOGLE_AI_KEY ? new GoogleGenerativeAI(GOOGLE_AI_KEY) : null;
 const GEMINI_ENABLED = Boolean(genAI && GOOGLE_AI_KEY.length > 10);
 
+// Log Gemini status at startup (no key leak)
+console.log(`[AI] Gemini status: ${GEMINI_ENABLED ? 'ENABLED' : 'DISABLED (no API key configured)'}`);
+
 // Cache TTL in hours
 const CACHE_TTL_HOURS = 24;
+
+// Rate limit tracking (in-memory, per-user)
+const rateLimitMap = new Map<string, { lastRequest: number; mode: string }>();
+const RATE_LIMIT_CACHED_MS = 5 * 60 * 1000;    // 5 min for cached mode
+const RATE_LIMIT_REALTIME_MS = 2 * 60 * 1000;  // 2 min for realtime mode
+const TTL_CACHED_MS = 6 * 60 * 60 * 1000;      // 6 hours
+const TTL_REALTIME_MS = 10 * 60 * 1000;        // 10 minutes
 
 // Check if Gemini is available
 function checkGeminiAvailable(res: Response): boolean {
@@ -307,26 +318,205 @@ router.get('/dashboard-actions', async (req: Request, res: Response) => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// DAILY BRIEFING - AI-generated summary of priorities
+// DAILY BRIEFING V5 - Realtime Gemini + DB Cache + Rate Limits
 // ═══════════════════════════════════════════════════════════════
 
-interface DailyBriefing {
+interface BriefingPayload {
   headline: string;
+  missionSummary?: string;
   topPriorities: Array<{
     title: string;
     why: string;
     callId?: string;
+    contactId?: string;
     contactName?: string;
+    impact?: string;
+    action?: string;
   }>;
   quickWins: string[];
   riskFlags: string[];
-  generatedAt: string;
-  cached: boolean;
 }
 
-// Cache for daily briefings (userId -> briefing)
-const briefingCache = new Map<string, { briefing: DailyBriefing; expiresAt: number }>();
-const BRIEFING_CACHE_TTL = 6 * 60 * 60 * 1000; // 6 hours
+interface BriefingResponse extends BriefingPayload {
+  generatedAt: string;
+  cached: boolean;
+  mode: 'cached' | 'realtime';
+  sourceCount?: number;
+  sources?: Array<{ title: string; url?: string; publisher?: string; date?: string }>;
+  meta?: {
+    ttlSeconds: number;
+    personalization?: { industry?: string; region?: string; callsAnalyzed?: number };
+    fallbackUsed?: boolean;
+  };
+}
+
+// Helper: Check rate limit
+function checkRateLimit(userId: string, mode: 'cached' | 'realtime'): { allowed: boolean; retryAfterMs?: number } {
+  const key = `${userId}-${mode}`;
+  const limit = rateLimitMap.get(key);
+  const limitMs = mode === 'realtime' ? RATE_LIMIT_REALTIME_MS : RATE_LIMIT_CACHED_MS;
+  
+  if (limit && Date.now() - limit.lastRequest < limitMs) {
+    return { allowed: false, retryAfterMs: limitMs - (Date.now() - limit.lastRequest) };
+  }
+  return { allowed: true };
+}
+
+function setRateLimit(userId: string, mode: 'cached' | 'realtime') {
+  const key = `${userId}-${mode}`;
+  rateLimitMap.set(key, { lastRequest: Date.now(), mode });
+}
+
+// Helper: Generate briefing with Gemini (realtime mode)
+async function generateGeminiBriefing(
+  userId: string,
+  callData: any[],
+  userProfile: any
+): Promise<{ payload: BriefingPayload; sources?: any[] } | null> {
+  if (!genAI || !GEMINI_ENABLED) return null;
+
+  try {
+    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    
+    // Build context from calls
+    const callSummaries = callData.slice(0, 10).map(call => {
+      let metadata: any = {};
+      try {
+        metadata = typeof call.metadata === 'string' ? JSON.parse(call.metadata) : call.metadata || {};
+      } catch {}
+      const summary = metadata.summary || {};
+      return {
+        contact: call.contactName || call.phoneNumber || 'Unbekannt',
+        sentiment: summary.sentiment || 'neutral',
+        nextStep: summary.nextStep || summary.next_step || null,
+        objections: summary.objections || [],
+        outcome: summary.outcome || null,
+      };
+    });
+
+    const systemPrompt = `Du bist ein hocheffizienter B2B-Sales-AI-Assistent für ARAS AI, eine Outbound-Calling-Plattform.
+Erstelle ein Daily Mission Briefing basierend auf den folgenden Daten.
+
+REGELN:
+- Keine Floskeln, keine Superlative
+- Jede Priority muss eine konkrete Action enthalten
+- Sprache: Deutsch, Sie-Form, modern und klar
+- Keine erfundenen Quellen - nur wenn echte URLs vorhanden sind
+
+USER KONTEXT:
+- Branche: ${userProfile?.industry || 'Nicht angegeben'}
+- Produkt: B2B Outbound Calling Platform
+- Calls analysiert: ${callData.length}
+
+CALLS (letzte ${callData.length}):
+${JSON.stringify(callSummaries, null, 2)}
+
+OUTPUT FORMAT (JSON only, keine Erklärung):
+{
+  "headline": "Kurze Headline (max 60 Zeichen)",
+  "missionSummary": "1-2 Sätze Mission Summary",
+  "topPriorities": [
+    { "title": "Kontaktname", "why": "Grund", "action": "Konkrete Aktion" }
+  ],
+  "quickWins": ["Quick Win 1", "Quick Win 2"],
+  "riskFlags": ["Risk 1 wenn vorhanden"]
+}`;
+
+    const result = await model.generateContent(systemPrompt);
+    const text = result.response.text();
+    
+    // Parse JSON from response
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+    
+    const parsed = JSON.parse(jsonMatch[0]);
+    return {
+      payload: {
+        headline: parsed.headline || 'Daily Briefing',
+        missionSummary: parsed.missionSummary,
+        topPriorities: (parsed.topPriorities || []).slice(0, 5),
+        quickWins: (parsed.quickWins || []).slice(0, 3),
+        riskFlags: parsed.riskFlags || [],
+      },
+      sources: parsed.sources || undefined,
+    };
+  } catch (error: any) {
+    console.error('[AI] Gemini briefing error:', error.message);
+    return null;
+  }
+}
+
+// Helper: Generate local briefing (fallback, no Gemini)
+function generateLocalBriefing(callData: any[]): BriefingPayload {
+  let positiveCount = 0;
+  let negativeCount = 0;
+  let withObjections = 0;
+  let withNextStep = 0;
+  const priorities: BriefingPayload['topPriorities'] = [];
+
+  for (const call of callData) {
+    let metadata: any = {};
+    try {
+      metadata = typeof call.metadata === 'string' ? JSON.parse(call.metadata) : call.metadata || {};
+    } catch {}
+
+    const summary = metadata.summary || {};
+    const sentiment = summary.sentiment || metadata.sentiment;
+    const nextStep = summary.nextStep || summary.next_step;
+    const objections = summary.objections || [];
+
+    if (sentiment === 'positive') positiveCount++;
+    if (sentiment === 'negative') negativeCount++;
+    if (objections.length > 0) withObjections++;
+    if (nextStep) withNextStep++;
+
+    if (nextStep || objections.length > 0 || sentiment === 'positive') {
+      priorities.push({
+        title: call.contactName || call.phoneNumber || 'Kontakt',
+        why: nextStep 
+          ? `Nächster Schritt: ${String(nextStep).substring(0, 60)}` 
+          : objections.length > 0 
+            ? `Einwand: ${String(objections[0]).substring(0, 60)}`
+            : 'Positives Gespräch - nachfassen',
+        callId: String(call.id),
+        contactName: call.contactName || undefined,
+        action: nextStep ? 'Follow-up durchführen' : 'Kontakt priorisieren',
+      });
+    }
+  }
+
+  // Build headline
+  let headline = '';
+  if (positiveCount > 0 && withObjections > 0) {
+    headline = `${positiveCount} positive${positiveCount > 1 ? ' Leads' : 'r Lead'}, ${withObjections} offene${withObjections > 1 ? ' Einwände' : 'r Einwand'}`;
+  } else if (positiveCount > 0) {
+    headline = `${positiveCount} vielversprechende${positiveCount > 1 ? ' Gespräche' : 's Gespräch'} - Follow-up priorisieren`;
+  } else if (withNextStep > 0) {
+    headline = `${withNextStep} Anrufe mit konkreten nächsten Schritten`;
+  } else {
+    headline = `${callData.length} Anrufe analysiert`;
+  }
+
+  // Quick wins
+  const quickWins: string[] = [];
+  if (withNextStep > 0) quickWins.push('Follow-up Tasks erstellen');
+  if (positiveCount > 0) quickWins.push('Positive Leads priorisieren');
+  if (withObjections > 0) quickWins.push('Einwände dokumentieren');
+  if (quickWins.length === 0) quickWins.push('Gesprächsnotizen vervollständigen');
+
+  // Risk flags
+  const riskFlags: string[] = [];
+  if (negativeCount > 2) riskFlags.push(`${negativeCount} negative Gespräche - Strategie prüfen`);
+  if (withObjections > 3) riskFlags.push('Viele offene Einwände - FAQ erweitern');
+
+  return {
+    headline,
+    missionSummary: `Basierend auf ${callData.length} Anrufen habe ich ${priorities.length} priorisierte Aktionen identifiziert.`,
+    topPriorities: priorities.slice(0, 5),
+    quickWins: quickWins.slice(0, 3),
+    riskFlags,
+  };
+}
 
 router.post('/daily-briefing', async (req: Request, res: Response) => {
   const userId = (req as any).user?.id;
@@ -335,21 +525,60 @@ router.post('/daily-briefing', async (req: Request, res: Response) => {
   }
 
   try {
-    const { range = '7d', forceRefresh = false } = req.body;
-    const cacheKey = `${userId}-${range}`;
+    const { mode = 'cached', force = false } = req.body;
+    const requestMode = mode === 'realtime' && GEMINI_ENABLED ? 'realtime' : 'cached';
+    const now = new Date();
 
-    // Check cache
-    if (!forceRefresh) {
-      const cached = briefingCache.get(cacheKey);
-      if (cached && cached.expiresAt > Date.now()) {
-        return res.json({ ...cached.briefing, cached: true });
+    // Check rate limit (only on force refresh)
+    if (force) {
+      const rateCheck = checkRateLimit(userId, requestMode);
+      if (!rateCheck.allowed) {
+        const retryAfterSeconds = Math.ceil((rateCheck.retryAfterMs || 0) / 1000);
+        const nextAllowedAt = new Date(Date.now() + (rateCheck.retryAfterMs || 0)).toISOString();
+        return res.status(429).json({
+          error: 'RATE_LIMITED',
+          message: `Bitte warten: ${requestMode === 'realtime' ? 'Realtime' : 'Cache'} wieder möglich ab ${new Date(nextAllowedAt).toLocaleTimeString('de-AT', { timeZone: 'Europe/Vienna', hour: '2-digit', minute: '2-digit' })}`,
+          retryAfterMs: rateCheck.retryAfterMs,
+          retryAfterSeconds,
+          nextAllowedAt,
+        });
       }
     }
 
-    // Calculate date range
-    const now = new Date();
-    const daysBack = range === 'today' ? 1 : range === '7d' ? 7 : 30;
-    const startDate = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000);
+    // Check DB cache first (unless force refresh)
+    if (!force) {
+      const [cached] = await db.select()
+        .from(dailyBriefings)
+        .where(and(
+          eq(dailyBriefings.userId, userId),
+          eq(dailyBriefings.mode, requestMode),
+          gte(dailyBriefings.expiresAt, now)
+        ))
+        .orderBy(desc(dailyBriefings.createdAt))
+        .limit(1);
+
+      if (cached && cached.payload) {
+        const response: BriefingResponse = {
+          ...cached.payload,
+          generatedAt: cached.createdAt.toISOString(),
+          cached: true,
+          mode: cached.mode as 'cached' | 'realtime',
+          sourceCount: cached.sources?.length,
+          sources: cached.sources || undefined,
+          meta: {
+            ttlSeconds: Math.floor((cached.expiresAt.getTime() - now.getTime()) / 1000),
+            personalization: cached.personalization || undefined,
+          },
+        };
+        return res.json(response);
+      }
+    }
+
+    // Set rate limit
+    setRateLimit(userId, requestMode);
+
+    // Calculate date range (7 days)
+    const startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
     // Get recent calls
     const recentCalls = await db.select()
@@ -362,110 +591,118 @@ router.post('/daily-briefing', async (req: Request, res: Response) => {
       .orderBy(desc(callLogs.createdAt))
       .limit(50);
 
+    // Handle empty state
     if (recentCalls.length === 0) {
-      const emptyBriefing: DailyBriefing = {
+      const emptyResponse: BriefingResponse = {
         headline: 'Noch keine Anrufe in diesem Zeitraum',
+        missionSummary: 'Starte deinen ersten Anruf um personalisierte Empfehlungen zu erhalten.',
         topPriorities: [],
         quickWins: ['Ersten Anruf starten', 'Kontakte importieren'],
         riskFlags: [],
         generatedAt: now.toISOString(),
         cached: false,
+        mode: requestMode,
+        meta: { ttlSeconds: 0 },
       };
-      return res.json(emptyBriefing);
+      return res.json(emptyResponse);
     }
 
-    // Analyze calls
-    let positiveCount = 0;
-    let negativeCount = 0;
-    let withObjections = 0;
-    let withNextStep = 0;
-    const priorities: DailyBriefing['topPriorities'] = [];
+    // Get user profile for personalization
+    const [userProfile] = await db.select({
+      industry: users.industry,
+      company: users.company,
+    })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
 
-    for (const call of recentCalls) {
-      let metadata: Record<string, any> = {};
-      try {
-        metadata = typeof call.metadata === 'string' 
-          ? JSON.parse(call.metadata) 
-          : (call.metadata as Record<string, any>) || {};
-      } catch { metadata = {}; }
+    // Generate briefing
+    let payload: BriefingPayload;
+    let sources: any[] | undefined;
+    let fallbackUsed = false;
 
-      const summary = metadata.summary || {};
-      const sentiment = summary.sentiment || metadata.sentiment;
-      const nextStep = summary.nextStep || summary.next_step;
-      const objections = summary.objections || [];
-
-      if (sentiment === 'positive') positiveCount++;
-      if (sentiment === 'negative') negativeCount++;
-      if (objections.length > 0) withObjections++;
-      if (nextStep) withNextStep++;
-
-      // Add to priorities if actionable
-      if (nextStep || objections.length > 0 || sentiment === 'positive') {
-        const priority = {
-          title: call.contactName || call.phoneNumber || 'Kontakt',
-          why: nextStep 
-            ? `Nächster Schritt: ${nextStep.substring(0, 60)}` 
-            : objections.length > 0 
-              ? `Einwand: ${objections[0].substring(0, 60)}`
-              : 'Positives Gespräch - nachfassen',
-          callId: String(call.id),
-          contactName: call.contactName || undefined,
-        };
-        priorities.push(priority);
+    if (requestMode === 'realtime' && GEMINI_ENABLED) {
+      const geminiResult = await generateGeminiBriefing(userId, recentCalls, userProfile);
+      if (geminiResult) {
+        payload = geminiResult.payload;
+        sources = geminiResult.sources;
+      } else {
+        // Fallback to local generation
+        payload = generateLocalBriefing(recentCalls);
+        fallbackUsed = true;
       }
-    }
-
-    // Generate briefing (without Gemini for speed, or with Gemini if enabled)
-    let headline = '';
-    const quickWins: string[] = [];
-    const riskFlags: string[] = [];
-
-    // Build headline
-    if (positiveCount > 0 && withObjections > 0) {
-      headline = `${positiveCount} positive${positiveCount > 1 ? ' Leads' : 'r Lead'}, ${withObjections} offene${withObjections > 1 ? ' Einwände' : 'r Einwand'}`;
-    } else if (positiveCount > 0) {
-      headline = `${positiveCount} vielversprechende${positiveCount > 1 ? ' Gespräche' : 's Gespräch'} - Follow-up priorisieren`;
-    } else if (withNextStep > 0) {
-      headline = `${withNextStep} Anrufe mit konkreten nächsten Schritten`;
     } else {
-      headline = `${recentCalls.length} Anrufe analysiert`;
+      payload = generateLocalBriefing(recentCalls);
     }
 
-    // Quick wins
-    if (withNextStep > 0) quickWins.push('Follow-up Tasks erstellen');
-    if (positiveCount > 0) quickWins.push('Positive Leads priorisieren');
-    if (withObjections > 0) quickWins.push('Einwände dokumentieren');
-    if (quickWins.length === 0) quickWins.push('Gesprächsnotizen vervollständigen');
+    // Calculate TTL
+    const ttlMs = requestMode === 'realtime' ? TTL_REALTIME_MS : TTL_CACHED_MS;
+    const expiresAt = new Date(now.getTime() + ttlMs);
 
-    // Risk flags
-    if (negativeCount > 2) riskFlags.push(`${negativeCount} negative Gespräche - Strategie prüfen`);
-    if (withObjections > 3) riskFlags.push('Viele offene Einwände - FAQ erweitern');
+    // Store in DB
+    try {
+      await db.insert(dailyBriefings).values({
+        userId,
+        mode: requestMode,
+        payload,
+        sources: sources || null,
+        personalization: {
+          industry: userProfile?.industry || undefined,
+          callsAnalyzed: recentCalls.length,
+        },
+        expiresAt,
+      });
+    } catch (dbError: any) {
+      console.error('[AI] Failed to cache briefing:', dbError.message);
+      // Continue even if caching fails
+    }
 
-    const briefing: DailyBriefing = {
-      headline,
-      topPriorities: priorities.slice(0, 5),
-      quickWins: quickWins.slice(0, 3),
-      riskFlags,
+    // Build response with geminiEnabled, expiresAt, and nextAllowedAt
+    const rateLimitMs = requestMode === 'realtime' ? RATE_LIMIT_REALTIME_MS : RATE_LIMIT_CACHED_MS;
+    const nextAllowedAt = new Date(now.getTime() + rateLimitMs).toISOString();
+    
+    const response: BriefingResponse & { expiresAt: string; meta: { geminiEnabled: boolean; rateLimit: { minIntervalSeconds: number; nextAllowedAt: string } } } = {
+      ...payload,
       generatedAt: now.toISOString(),
+      expiresAt: expiresAt.toISOString(),
       cached: false,
+      mode: requestMode,
+      sourceCount: sources?.length,
+      sources,
+      meta: {
+        ttlSeconds: Math.floor(ttlMs / 1000),
+        personalization: {
+          industry: userProfile?.industry || undefined,
+          callsAnalyzed: recentCalls.length,
+        },
+        fallbackUsed,
+        geminiEnabled: GEMINI_ENABLED,
+        rateLimit: {
+          minIntervalSeconds: Math.floor(rateLimitMs / 1000),
+          nextAllowedAt,
+        },
+      },
     };
 
-    // Cache the briefing
-    briefingCache.set(cacheKey, {
-      briefing,
-      expiresAt: Date.now() + BRIEFING_CACHE_TTL,
-    });
-
-    res.json(briefing);
+    res.json(response);
 
   } catch (error: any) {
     console.error('[AI] Daily briefing error:', error);
     res.status(500).json({ 
       error: 'BRIEFING_ERROR',
-      message: 'Briefing konnte nicht erstellt werden', 
+      message: 'Briefing konnte nicht erstellt werden',
       detail: error.message,
+      geminiEnabled: GEMINI_ENABLED,
     });
   }
+});
+
+// Endpoint to check Gemini availability
+router.get('/status', async (req: Request, res: Response) => {
+  res.json({
+    geminiEnabled: GEMINI_ENABLED,
+    geminiModel: GEMINI_ENABLED ? 'gemini-pro' : null,
+  });
 });
 
 export default router;
