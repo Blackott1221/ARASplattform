@@ -35,6 +35,9 @@ const DT = {
   glow: '0 0 0 1px rgba(255,106,0,0.18), 0 0 22px rgba(255,106,0,0.10)',
 };
 
+// Button focus ring utility - consistent across all Mission Control buttons
+const focusRingClass = 'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent focus:ring-white/30';
+
 interface MissionControlProps {
   user: User | null;
 }

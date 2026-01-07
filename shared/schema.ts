@@ -729,3 +729,63 @@ export const insertUserTaskSchema = createInsertSchema(userTasks).omit({
   createdAt: true,
   updatedAt: true,
 });
+
+// ============================================================================
+// DAILY BRIEFINGS - AI-generated Mission Briefings (DB-Cached)
+// ============================================================================
+// Cached Gemini-generated briefings per user with TTL
+// Mode: "cached" (6h TTL) or "realtime" (10min TTL)
+// ============================================================================
+
+export const dailyBriefings = pgTable("daily_briefings", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  
+  // Mode and caching
+  mode: varchar("mode", { enum: ["cached", "realtime"] }).default("cached").notNull(),
+  
+  // Briefing payload (JSON)
+  payload: jsonb("payload").$type<{
+    headline: string;
+    missionSummary?: string;
+    topPriorities: Array<{
+      title: string;
+      why: string;
+      callId?: string;
+      contactId?: string;
+      contactName?: string;
+      impact?: string;
+      action?: string;
+    }>;
+    quickWins: string[];
+    riskFlags: string[];
+  }>().notNull(),
+  
+  // Optional sources from Gemini grounding
+  sources: jsonb("sources").$type<Array<{
+    title: string;
+    url?: string;
+    publisher?: string;
+    date?: string;
+  }>>(),
+  
+  // Personalization context used
+  personalization: jsonb("personalization").$type<{
+    industry?: string;
+    region?: string;
+    persona?: string;
+    callsAnalyzed?: number;
+    followupsAnalyzed?: number;
+  }>(),
+  
+  // Timestamps and expiry
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+}, (table) => [
+  index("daily_briefings_user_id_idx").on(table.userId),
+  index("daily_briefings_user_mode_idx").on(table.userId, table.mode),
+  index("daily_briefings_expires_at_idx").on(table.expiresAt),
+]);
+
+export type DailyBriefing = typeof dailyBriefings.$inferSelect;
+export type InsertDailyBriefing = typeof dailyBriefings.$inferInsert;
