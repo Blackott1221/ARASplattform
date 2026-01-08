@@ -1563,77 +1563,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
           conversationContext.includes('Kampagne') && conversationContext.includes('10.000');
         
         if (isEinzelanruf && !isKampagne) {
-          promptCreationContext = `
+          // Check if user already selected a use case
+          const hasUseCase = conversationContext.includes('Bewerber') || 
+            conversationContext.includes('Tisch reservieren') || 
+            conversationContext.includes('Meeting') ||
+            conversationContext.includes('Termin') ||
+            message.includes('Bewerber') ||
+            message.includes('Tisch') ||
+            message.includes('Meeting');
+          
+          if (hasUseCase) {
+            // User has provided use case - GENERATE PROMPT IMMEDIATELY
+            promptCreationContext = `
 
-🎯 PROMPT-ERSTELLUNG MODUS (EINZELANRUF):
-Du hilfst beim Erstellen eines Prompts für einen KI-Telefonagenten (ElevenLabs).
+🎯 PROMPT JETZT GENERIEREN!
+Der User hat bereits einen Anwendungsfall genannt. GENERIERE SOFORT den fertigen Prompt!
 
-ABLAUF:
-1. Frage nach dem Anwendungsfall: "Was soll dieser Anruf bewirken?" mit Hinweis auf Schnellauswahl
-2. Sammle alle nötigen Details (Wer, Was, Wann, Besonderheiten)
-3. Sobald du genug Infos hast, generiere den fertigen Prompt
+WICHTIG: Stelle KEINE weiteren Fragen mehr! Generiere den Prompt JETZT mit allen verfügbaren Infos.
 
-WENN DU GENUG INFOS HAST, generiere den Prompt in diesem Format:
+Antworte EXAKT in diesem Format:
 
-"Hier ist dein fertiger Prompt:
+"Perfekt! Hier ist dein fertiger Prompt:
 
 \`\`\`
-Du bist ein professioneller KI-Telefonagent von [FIRMA]. 
-Deine Aufgabe: [ZIEL DES ANRUFS]
+Du bist ein professioneller KI-Telefonagent.
+Deine Aufgabe: [BASIEREND AUF USER-ANGABEN]
 
 KONTEXT:
-- Anrufer: [NAME]
-- Empfänger: [EMPFÄNGER]
-- Anlass: [ANLASS]
-- Besondere Wünsche: [WÜNSCHE]
+- Anrufer: ${userName}
+- Ziel: [AUS KONVERSATION]
+- Besonderheiten: [FALLS GENANNT]
 
-GESPRÄCHSFÜHRUNG:
-1. Begrüßung: "Guten Tag, mein Name ist [NAME]. Ich rufe an wegen..."
-2. Hauptanliegen klar formulieren
-3. Bei Rückfragen professionell reagieren
-4. Freundlich verabschieden
+GESPRÄCHSABLAUF:
+1. Freundliche Begrüßung mit Vorstellung
+2. Anliegen klar und direkt formulieren
+3. Auf Rückfragen eingehen
+4. Termin/Ergebnis bestätigen
+5. Freundliche Verabschiedung
 
-STIL: Professionell, freundlich, präzise. Keine langen Monologe.
+STIL: Professionell, freundlich, auf den Punkt.
 \`\`\`"
 
-WICHTIG: Nutze IMMER das \`\`\` Format für den Prompt!`;
+Das war's! Keine weiteren Fragen. Der "Kopieren & zu POWER" Button erscheint automatisch.`;
+          } else {
+            promptCreationContext = `
+
+🎯 PROMPT-ERSTELLUNG MODUS (EINZELANRUF):
+Der User hat Einzelanruf gewählt. Frage nach dem Anwendungsfall.
+Die 3 Buttons (Bewerber prüfen, Tisch reservieren, Meeting bestätigen) werden automatisch angezeigt.
+Warte auf die Auswahl des Users.`;
+          }
         } else if (isKampagne) {
-          promptCreationContext = `
+          // Check if user has provided campaign info
+          const hasCampaignInfo = conversationContext.includes('verkauf') || 
+            conversationContext.includes('Produkt') ||
+            conversationContext.includes('Ziel') ||
+            conversationContext.includes('Termin') ||
+            message.length > 20; // User has typed substantial info
+          
+          if (hasCampaignInfo) {
+            // User has provided info - GENERATE CAMPAIGN DATA IMMEDIATELY
+            promptCreationContext = `
 
-🎯 PROMPT-ERSTELLUNG MODUS (KAMPAGNE):
-Du hilfst beim Erstellen einer Outbound-Kampagne.
+🎯 KAMPAGNE JETZT GENERIEREN!
+Der User hat Infos zur Kampagne gegeben. GENERIERE SOFORT alle Kampagnenfelder!
 
-ABLAUF:
-1. Frage nach dem Produkt/Dienstleistung und Ziel
-2. Sammle Infos zur Zielgruppe
-3. Generiere ALLE Kampagnenfelder
+WICHTIG: Stelle KEINE weiteren Fragen mehr! Generiere JETZT mit allen verfügbaren Infos.
 
-WENN DU GENUG INFOS HAST, generiere im Format:
+Antworte EXAKT in diesem Format:
 
-"Hier sind deine Kampagnendaten:
+"Perfekt! Hier sind deine Kampagnendaten:
 
-**Kampagnenname:** [Passender Name]
+**Kampagnenname:** [Passender kreativer Name basierend auf Infos]
 
-**Produkt/Dienstleistung:** [Was wird angeboten]
+**Produkt/Dienstleistung:** [Was der User verkauft]
 
-**Ziel des Anrufs:** [Termin vereinbaren/Produktdemo/Angebot/Lead qualifizieren/etc.]
+**Ziel des Anrufs:** [Termin vereinbaren/Lead qualifizieren/etc.]
 
-**Zielgruppe:** [An wen richtet sich die Kampagne]
+**Zielgruppe:** [Basierend auf User-Angaben]
 
-**Kernbotschaft/USP:** [Unique Selling Proposition]
+**Kernbotschaft/USP:** [Unique Selling Point formulieren]
 
-**Gewünschtes Ergebnis:** [Was soll am Ende erreicht werden]
+**Gewünschtes Ergebnis:** [Konkretes Ziel]
 
-**Follow-Up Aktion:** [Nächste Schritte nach dem Anruf]
+**Follow-Up Aktion:** [Sinnvolle nächste Schritte]
 
-**Spezielle Angebote:** [Aktionen, Rabatte, Boni]
+**Spezielle Angebote:** [Falls passend, sonst 'Keine']
 
 **Häufige Einwände & Antworten:**
-- Einwand 1: [Antwort]
-- Einwand 2: [Antwort]
-- Einwand 3: [Antwort]"
+- 'Kein Interesse': [Passende Antwort]
+- 'Keine Zeit': [Passende Antwort]
+- 'Zu teuer': [Passende Antwort]"
 
-WICHTIG: Generiere IMMER alle Felder sobald du genug Infos hast!`;
+Das war's! Der "Übernehmen & zu Kampagnen" Button erscheint automatisch.`;
+          } else {
+            promptCreationContext = `
+
+🎯 KAMPAGNE-MODUS:
+Der User hat Kampagne gewählt. Frage nach: Was verkaufst du? Ziel? Zielgruppe?
+Maximal EINE Nachricht zum Sammeln der Infos, dann sofort generieren!`;
+          }
         }
       }
       
