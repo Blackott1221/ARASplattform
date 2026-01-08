@@ -132,6 +132,7 @@ export function ChatInterface() {
   const [isThinking, setIsThinking] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [thinkingPhase, setThinkingPhase] = useState(0);
+  const [isPromptLoading, setIsPromptLoading] = useState(false);
   
   const [shouldAnimateLastAiMessage, setShouldAnimateLastAiMessage] = useState(false);
   const previousMessagesLength = useRef(0);
@@ -523,8 +524,11 @@ export function ChatInterface() {
     const companyName = profileContext?.company || '';
     const industry = profileContext?.industry || '';
     
+    // Show loading state immediately
+    setIsPromptLoading(true);
+    
     // HIDDEN system prompt - User will NOT see this, only ARAS's response
-    const hiddenSystemPrompt = `[SYSTEM-ANWEISUNG - NICHT DEM USER ZEIGEN]
+    const hiddenSystemPrompt = `[PROMPT-ERSTELLUNG STARTEN]
 Du bist ARAS AI, ein intelligenter Assistent für Telefonie-Automatisierung. 
 Der User "${userName}"${companyName ? ` von "${companyName}"` : ''}${industry ? ` (Branche: ${industry})` : ''} möchte einen Prompt für einen KI-Telefonagenten erstellen.
 
@@ -534,10 +538,10 @@ WICHTIG: Antworte NUR mit dieser freundlichen Frage (ohne Erwähnung von Gemini,
 
 **Handelt es sich um einen Einzelanruf oder eine Kampagne?**
 
-🔹 **Einzelanruf** - Ein einzelnes Telefonat mit einer Person
-🔹 **Kampagne** - Mehrere Anrufe an eine Zielgruppe
+🔹 **Einzelanruf** – Ein einzelnes Telefonat mit einer Person
+🔹 **Kampagne** – bis zu 10.000 Calls gleichzeitig!
 
-Antworte einfach mit 'Einzelanruf' oder 'Kampagne'!"
+Klicke einfach auf eine Option!"
 
 Das ist ALLES was du antworten sollst - keine zusätzlichen Erklärungen.`;
 
@@ -592,6 +596,7 @@ Das ist ALLES was du antworten sollst - keine zusätzlichen Erklärungen.`;
       setIsThinking(false);
       setIsStreaming(false);
       setStreamingMessage('');
+      setIsPromptLoading(false);
       
       // Refresh messages to show the AI response
       queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
@@ -601,6 +606,7 @@ Das ist ALLES was du antworten sollst - keine zusätzlichen Erklärungen.`;
       setIsThinking(false);
       setIsStreaming(false);
       setStreamingMessage('');
+      setIsPromptLoading(false);
       toast({
         title: "Fehler",
         description: "Prompt-Erstellung konnte nicht gestartet werden",
@@ -892,7 +898,11 @@ Das ist ALLES was du antworten sollst - keine zusätzlichen Erklärungen.`;
                 className="flex flex-col sm:flex-row flex-wrap justify-center items-center gap-3 sm:gap-4 mb-8 sm:mb-12 px-3 w-full max-w-4xl"
               >
                 {SUGGESTED_PROMPTS.map((prompt, index) => {
+                  const isThisButtonLoading = prompt.action === 'create_prompt' && isPromptLoading;
+                  
                   const handleClick = () => {
+                    if (isThisButtonLoading) return; // Prevent double-click
+                    
                     if (prompt.action === 'navigate' && prompt.href) {
                       setLocation(prompt.href);
                     } else if (prompt.action === 'call') {
@@ -909,6 +919,18 @@ Das ist ALLES was du antworten sollst - keine zusätzlichen Erklärungen.`;
                   };
 
                   const getIcon = () => {
+                    // Show loading spinner for prompt creation button
+                    if (isThisButtonLoading) {
+                      return (
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                        >
+                          <Loader2 className="w-5 h-5" />
+                        </motion.div>
+                      );
+                    }
+                    
                     switch (prompt.icon) {
                       case 'grid':
                         return <LayoutGrid className="w-5 h-5" />;

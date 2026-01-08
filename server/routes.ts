@@ -1608,7 +1608,21 @@ Du bist ARAS AI®, eigenentwickeltes LLM der Schwarzott Group (Schweiz). Zentral
 Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge wie ARAS.`
       }];
       
-      recentMessages.forEach(msg => {
+      // Gemini requires first non-system message to be from user
+      // Filter out any leading assistant messages to avoid the error
+      let startIndex = 0;
+      for (let i = 0; i < recentMessages.length; i++) {
+        if (!recentMessages[i].isAi) {
+          startIndex = i;
+          break;
+        }
+        // If all messages are from AI, start from the last one
+        if (i === recentMessages.length - 1) {
+          startIndex = recentMessages.length; // Skip all
+        }
+      }
+      
+      recentMessages.slice(startIndex).forEach(msg => {
         openaiMessages.push({
           role: msg.isAi ? "assistant" : "user",
           content: msg.message
