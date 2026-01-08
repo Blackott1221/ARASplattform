@@ -40,7 +40,7 @@ const SUGGESTED_PROMPTS = [
     text: "Anweisung erstellen", 
     subtext: "KI-Instruktion definieren",
     icon: "edit",
-    action: "coming_soon",
+    action: "create_instruction",
     href: null
   },
   { 
@@ -144,6 +144,17 @@ export function ChatInterface() {
   const { toast } = useToast();
   const { user, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
+
+  // 🔥 USER PROFILE CONTEXT FOR PERSONALIZED INSTRUCTION GENERATION
+  const { data: profileContext } = useQuery({
+    queryKey: ['profile-context'],
+    queryFn: async () => {
+      const res = await fetch('/api/user/profile-context', { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!user && !authLoading,
+  });
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -506,6 +517,61 @@ export function ChatInterface() {
     }
   };
 
+  // 🔥 START INSTRUCTION CREATION FLOW - Uses chat to create ElevenLabs-optimized prompts
+  const startInstructionCreation = async () => {
+    // Build personalized context from user profile
+    const userName = profileContext?.name || (user as any)?.name || 'Nutzer';
+    const companyName = profileContext?.company || '';
+    const industry = profileContext?.industry || '';
+    const jobRole = profileContext?.jobRole || '';
+    const website = profileContext?.website || '';
+    
+    // Create the instruction creation prompt with full context
+    const instructionPrompt = `🎯 **ANWEISUNGS-ERSTELLUNG FÜR ELEVENLABS KI-TELEFONIE**
+
+Ich bin ${userName}${companyName ? ` von ${companyName}` : ''}${industry ? ` (Branche: ${industry})` : ''}${jobRole ? `, ${jobRole}` : ''}.${website ? ` Unsere Website: ${website}` : ''}
+
+Ich möchte eine **perfekte Anweisung für einen KI-Telefonagenten** erstellen. Der Agent wird über die ElevenLabs Conversational AI API telefonieren.
+
+**WICHTIG - Stelle mir zuerst folgende Fragen, um die perfekte Anweisung zu erstellen:**
+
+1. **Anrufziel**: Was ist das Hauptziel des Anrufs? (z.B. Terminvereinbarung, Bewerber-Screening, Kundenakquise, Feedback einholen)
+
+2. **Zielgruppe**: Wen ruft der Agent an? (z.B. Bewerber, potenzielle Kunden, bestehende Kunden)
+
+3. **Ton & Stil**: Wie soll der Agent klingen? (z.B. professionell-freundlich, locker, formal)
+
+4. **Wichtige Informationen**: Welche Daten muss der Agent abfragen oder mitteilen?
+
+5. **Einwandbehandlung**: Wie soll der Agent auf typische Einwände reagieren?
+
+Basierend auf meinen Antworten erstellst du dann eine **strukturierte Anweisung** die:
+- Klar definiert WER der Agent ist (Rolle, Unternehmen)
+- Das ZIEL des Anrufs beschreibt
+- Den GESPRÄCHSABLAUF vorgibt
+- BEISPIEL-PHRASEN für wichtige Momente enthält
+- Die TONALITÄT definiert
+- ABSCHLUSS-Aktionen festlegt
+
+Beginne jetzt mit der ersten Frage!`;
+
+    // Send the message to start the flow
+    try {
+      await sendMessage.mutateAsync(instructionPrompt);
+      toast({
+        title: "Anweisungs-Assistent gestartet",
+        description: "Beantworte die Fragen um deine perfekte KI-Anweisung zu erstellen.",
+      });
+    } catch (error) {
+      console.error('Error starting instruction creation:', error);
+      toast({
+        title: "Fehler",
+        description: "Anweisungs-Erstellung konnte nicht gestartet werden",
+        variant: "destructive"
+      });
+    }
+  };
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }});
@@ -794,6 +860,9 @@ export function ChatInterface() {
                       setLocation(prompt.href);
                     } else if (prompt.action === 'call') {
                       setShowCallModal(true);
+                    } else if (prompt.action === 'create_instruction') {
+                      // 🔥 START INSTRUCTION CREATION FLOW IN CHAT
+                      startInstructionCreation();
                     } else if (prompt.action === 'coming_soon') {
                       toast({
                         title: "Demnächst verfügbar",
