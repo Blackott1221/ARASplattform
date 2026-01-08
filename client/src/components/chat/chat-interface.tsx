@@ -1270,20 +1270,25 @@ Das ist ALLES. Keine weiteren Erklärungen. Die Buttons werden automatisch angez
                           setStreamingMessage('');
                           
                           const userName = profileContext?.name || (user as any)?.firstName || 'du';
+                          const companyName = profileContext?.company || '';
+                          const industry = profileContext?.industry || '';
+                          const userContext = companyName ? `von ${companyName}${industry ? ` (${industry})` : ''}` : '';
+                          
                           let useCase = '';
                           let promptTemplate = '';
                           
                           if (option.includes('Bewerber')) {
                             useCase = 'Bewerber anrufen und Verfügbarkeit/Interesse prüfen';
-                            promptTemplate = `Du bist ein professioneller KI-Telefonagent für Recruiting.
+                            promptTemplate = `Du bist ein professioneller KI-Telefonagent ${userContext} für Recruiting.
 Deine Aufgabe: Bewerber anrufen und Verfügbarkeit sowie Interesse prüfen.
 
 KONTEXT:
 - Anrufer: ${userName}
+- Firma: ${companyName || '[DEINE FIRMA]'}
 - Ziel: Bewerber-Screening
 
 GESPRÄCHSABLAUF:
-1. "Guten Tag, hier ist ${userName}. Ich rufe bezüglich Ihrer Bewerbung an."
+1. "Guten Tag, hier ist ${userName}${companyName ? ` von ${companyName}` : ''}. Ich rufe bezüglich Ihrer Bewerbung an."
 2. Interesse und aktuelle Situation erfragen
 3. Verfügbarkeit für ein Gespräch klären
 4. Bei Interesse: Termin für Folgegespräch vereinbaren
@@ -1292,33 +1297,35 @@ GESPRÄCHSABLAUF:
 STIL: Professionell, freundlich, wertschätzend.`;
                           } else if (option.includes('Tisch')) {
                             useCase = 'Tisch in einem Restaurant reservieren';
-                            promptTemplate = `Du bist ein professioneller KI-Telefonagent für Reservierungen.
+                            promptTemplate = `Du bist ein professioneller KI-Telefonagent ${userContext} für Reservierungen.
 Deine Aufgabe: Tischreservierung in einem Restaurant vornehmen.
 
 KONTEXT:
 - Anrufer: ${userName}
+- Firma: ${companyName || '[DEINE FIRMA]'}
 - Ziel: Tischreservierung
 
 GESPRÄCHSABLAUF:
-1. "Guten Tag, mein Name ist ${userName}. Ich möchte gerne einen Tisch reservieren."
+1. "Guten Tag, mein Name ist ${userName}${companyName ? ` von ${companyName}` : ''}. Ich möchte gerne einen Tisch reservieren."
 2. Datum und Uhrzeit nennen
 3. Anzahl der Personen angeben
 4. Besondere Wünsche erwähnen (z.B. Fensterplatz, ruhiger Bereich)
 5. Reservierung bestätigen lassen
-6. Freundlich bedanken und verabschieden
+6. Freundliche bedanken und verabschieden
 
 STIL: Höflich, freundlich, auf den Punkt.`;
                           } else if (option.includes('Meeting')) {
                             useCase = 'Meeting/Termin bestätigen';
-                            promptTemplate = `Du bist ein professioneller KI-Telefonagent für Terminmanagement.
+                            promptTemplate = `Du bist ein professioneller KI-Telefonagent ${userContext} für Terminmanagement.
 Deine Aufgabe: Einen vereinbarten Termin bestätigen.
 
 KONTEXT:
 - Anrufer: ${userName}
+- Firma: ${companyName || '[DEINE FIRMA]'}
 - Ziel: Terminbestätigung
 
 GESPRÄCHSABLAUF:
-1. "Guten Tag, hier ist ${userName}. Ich rufe an, um unseren Termin zu bestätigen."
+1. "Guten Tag, hier ist ${userName}${companyName ? ` von ${companyName}` : ''}. Ich rufe an, um unseren Termin zu bestätigen."
 2. Datum und Uhrzeit des Termins nennen
 3. Bestätigung einholen
 4. Bei Bedarf: Alternative Termine anbieten
