@@ -1552,68 +1552,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conversationContext = recentMessages.map(m => m.message).join(' ');
       const isPromptCreation = conversationContext.includes('PROMPT-ERSTELLUNG') || 
         conversationContext.includes('Einzelanruf') && conversationContext.includes('Kampagne') ||
+        conversationContext.includes('Was soll dieser Anruf bewirken') ||
+        conversationContext.includes('fertiger Prompt') ||
         message.includes('Einzelanruf') || message.includes('Kampagne');
+      
+      // Get user profile for personalization
+      const userProfile = await storage.getUserProfile(userId);
+      const companyName = userProfile?.company || user?.company || '';
+      const industry = userProfile?.industry || '';
+      const userContext = companyName ? `von ${companyName}${industry ? ` (${industry})` : ''}` : '';
       
       // Special prompt creation instructions
       let promptCreationContext = '';
       if (isPromptCreation) {
-        const isEinzelanruf = message.toLowerCase().includes('einzelanruf') || 
-          (conversationContext.includes('Einzelanruf') && !conversationContext.includes('Kampagne generiert'));
-        const isKampagne = message.toLowerCase().includes('kampagne') ||
-          conversationContext.includes('Kampagne') && conversationContext.includes('10.000');
+        const isEinzelanrufMode = conversationContext.includes('Einzelanruf') && 
+          (conversationContext.includes('Was soll dieser Anruf bewirken') || conversationContext.includes('Anwendungsfall'));
+        const isKampagneMode = conversationContext.includes('Kampagne') && conversationContext.includes('10.000');
         
-        if (isEinzelanruf && !isKampagne) {
-          // Check if user already selected a use case
-          const hasUseCase = conversationContext.includes('Bewerber') || 
-            conversationContext.includes('Tisch reservieren') || 
-            conversationContext.includes('Meeting') ||
-            conversationContext.includes('Termin') ||
-            message.includes('Bewerber') ||
-            message.includes('Tisch') ||
-            message.includes('Meeting');
-          
-          if (hasUseCase) {
-            // User has provided use case - GENERATE PROMPT IMMEDIATELY
+        // Check if user has described ANY use case (free text or button)
+        const hasDescribedUseCase = 
+          // Predefined use cases
+          conversationContext.includes('Bewerber') || 
+          conversationContext.includes('Tisch') || 
+          conversationContext.includes('Meeting') ||
+          conversationContext.includes('Termin') ||
+          message.includes('Bewerber') ||
+          message.includes('Tisch') ||
+          message.includes('Meeting') ||
+          message.includes('Termin') ||
+          // Free text detection - user described what they want
+          message.includes('anrufen') ||
+          message.includes('reservier') ||
+          message.includes('bestätig') ||
+          message.includes('verschieb') ||
+          message.includes('absag') ||
+          message.includes('frag') ||
+          message.includes('prüf') ||
+          message.includes('check') ||
+          message.includes('vereinbar') ||
+          message.length > 15; // User typed substantial free text
+        
+        if (isEinzelanrufMode) {
+          if (hasDescribedUseCase) {
+            // User has provided use case (button OR free text) - GENERATE PROMPT
             promptCreationContext = `
 
 🎯 PROMPT JETZT GENERIEREN!
-Der User hat bereits einen Anwendungsfall genannt. GENERIERE SOFORT den fertigen Prompt!
+Der User ist im EINZELANRUF-MODUS und hat einen Anwendungsfall beschrieben.
+GENERIERE SOFORT den fertigen Prompt basierend auf ALLEN Infos aus der Konversation!
 
-WICHTIG: Stelle KEINE weiteren Fragen mehr! Generiere den Prompt JETZT mit allen verfügbaren Infos.
+USER-KONTEXT:
+- Name: ${userName}
+- Firma: ${companyName || 'Nicht angegeben'}
+- Branche: ${industry || 'Nicht angegeben'}
 
-Antworte EXAKT in diesem Format:
+ANALYSIERE die Konversation und extrahiere:
+- WAS will der User tun? (z.B. Meeting verschieben, Termin vereinbaren, etc.)
+- MIT WEM? (Name der Person/Firma falls genannt)
+- WANN? (Datum/Uhrzeit falls genannt)
+- BESONDERHEITEN? (spezielle Wünsche)
+
+ANTWORTE EXAKT SO:
 
 "Perfekt! Hier ist dein fertiger Prompt:
 
 \`\`\`
-Du bist ein professioneller KI-Telefonagent.
-Deine Aufgabe: [BASIEREND AUF USER-ANGABEN]
+Du bist ein professioneller KI-Telefonagent ${userContext}.
+Deine Aufgabe: [EXTRAHIERT AUS KONVERSATION]
 
 KONTEXT:
 - Anrufer: ${userName}
-- Ziel: [AUS KONVERSATION]
-- Besonderheiten: [FALLS GENANNT]
+- Ziel: [KONKRETES ZIEL]
+- Empfänger: [FALLS GENANNT]
+- Details: [DATUM, UHRZEIT, BESONDERHEITEN]
 
 GESPRÄCHSABLAUF:
-1. Freundliche Begrüßung mit Vorstellung
-2. Anliegen klar und direkt formulieren
-3. Auf Rückfragen eingehen
-4. Termin/Ergebnis bestätigen
+1. "Guten Tag, hier ist ${userName}${companyName ? ` von ${companyName}` : ''}..."
+2. [ANLIEGEN KLAR FORMULIEREN]
+3. [SPEZIFISCHE SCHRITTE JE NACH ANWENDUNGSFALL]
+4. Bestätigung einholen
 5. Freundliche Verabschiedung
 
 STIL: Professionell, freundlich, auf den Punkt.
 \`\`\`"
 
-Das war's! Keine weiteren Fragen. Der "Kopieren & zu POWER" Button erscheint automatisch.`;
+WICHTIG: Generiere den Prompt JETZT! Keine weiteren Fragen!`;
           } else {
             promptCreationContext = `
 
-🎯 PROMPT-ERSTELLUNG MODUS (EINZELANRUF):
-Der User hat Einzelanruf gewählt. Frage nach dem Anwendungsfall.
-Die 3 Buttons (Bewerber prüfen, Tisch reservieren, Meeting bestätigen) werden automatisch angezeigt.
-Warte auf die Auswahl des Users.`;
+🎯 EINZELANRUF-MODUS:
+Der User hat Einzelanruf gewählt. Frage kurz nach dem Anwendungsfall.
+Sobald der User antwortet (egal ob Button oder Freitext), generiere SOFORT den Prompt!`;
           }
-        } else if (isKampagne) {
+        } else if (isKampagneMode) {
           // Check if user has provided campaign info
           const hasCampaignInfo = conversationContext.includes('verkauf') || 
             conversationContext.includes('Produkt') ||
