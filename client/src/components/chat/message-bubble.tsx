@@ -153,6 +153,7 @@ interface MessageBubbleProps {
   onSpeak?: (text: string) => void;
   isSpeaking?: boolean;
   isNew?: boolean;
+  onOptionClick?: (option: string) => void;
 }
 
 export function MessageBubble({ 
@@ -164,7 +165,8 @@ export function MessageBubble({
   messageId, 
   onSpeak, 
   isSpeaking,
-  isNew = false
+  isNew = false,
+  onOptionClick
 }: MessageBubbleProps) {
   const [displayedText, setDisplayedText] = useState(isAi && isNew ? "" : message);
   const [isTyping, setIsTyping] = useState(isAi && isNew);
@@ -201,6 +203,47 @@ export function MessageBubble({
     } catch (err) {
       console.error('Failed to copy:', err);
     }
+  };
+
+  // Detect clickable options in message (Einzelanruf/Kampagne buttons)
+  const renderClickableOptions = () => {
+    if (!onOptionClick || !isAi) return null;
+    
+    // Check if message contains Einzelanruf/Kampagne options
+    const hasEinzelanruf = message.includes('Einzelanruf');
+    const hasKampagne = message.includes('Kampagne');
+    
+    if (!hasEinzelanruf || !hasKampagne) return null;
+    
+    return (
+      <div className="flex flex-col sm:flex-row gap-3 mt-4">
+        <motion.button
+          whileHover={{ scale: 1.02, y: -2 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => onOptionClick('Einzelanruf')}
+          className="flex items-center gap-3 px-5 py-3.5 rounded-xl bg-gradient-to-r from-white/5 to-white/[0.02] border border-white/20 hover:border-[#FE9100]/50 transition-all duration-300 group"
+        >
+          <span className="text-lg">📞</span>
+          <div className="text-left">
+            <div className="text-white font-medium text-sm">Einzelanruf</div>
+            <div className="text-gray-400 text-xs">Ein einzelnes Telefonat</div>
+          </div>
+        </motion.button>
+        
+        <motion.button
+          whileHover={{ scale: 1.02, y: -2 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => onOptionClick('Kampagne')}
+          className="flex items-center gap-3 px-5 py-3.5 rounded-xl bg-gradient-to-r from-white/5 to-white/[0.02] border border-white/20 hover:border-[#FE9100]/50 transition-all duration-300 group"
+        >
+          <span className="text-lg">🚀</span>
+          <div className="text-left">
+            <div className="text-white font-medium text-sm">Kampagne</div>
+            <div className="text-gray-400 text-xs">bis zu 10.000 Calls gleichzeitig!</div>
+          </div>
+        </motion.button>
+      </div>
+    );
   };
 
   return (
@@ -259,6 +302,7 @@ export function MessageBubble({
                 {isAi && !isTyping ? (
                   <div className="space-y-2">
                     {renderMarkdown(displayedText)}
+                    {renderClickableOptions()}
                   </div>
                 ) : (
                   <div className="whitespace-pre-wrap break-words text-gray-100">

@@ -1192,6 +1192,13 @@ Das ist ALLES was du antworten sollst - keine zusätzlichen Erklärungen.`;
                       onSpeak={() => {}}
                       isSpeaking={false}
                       isNew={!!isNewAiMessage}
+                      onOptionClick={(option) => {
+                        // Send the selected option as a user message
+                        setMessage(option);
+                        setTimeout(() => {
+                          handleSendMessage();
+                        }, 100);
+                      }}
                     />
                   </motion.div>
                 );
