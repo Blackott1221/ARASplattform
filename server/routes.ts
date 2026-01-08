@@ -1556,10 +1556,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         conversationContext.includes('fertiger Prompt') ||
         message.includes('Einzelanruf') || message.includes('Kampagne');
       
-      // Get user profile for personalization
-      const userProfile = await storage.getUserProfile(userId);
-      const companyName = userProfile?.company || user?.company || '';
-      const industry = userProfile?.industry || '';
+      // Get user data for personalization (user already fetched above)
+      const companyName = (user as any)?.company || '';
+      const industry = (user as any)?.industry || '';
       const userContext = companyName ? `von ${companyName}${industry ? ` (${industry})` : ''}` : '';
       
       // Special prompt creation instructions
