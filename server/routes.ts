@@ -1594,6 +1594,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message.includes('verschieb') ||
           message.includes('absag') ||
           message.includes('frag') ||
+          message.includes('erfrag') || // Added explicit erfrag
           message.includes('prüf') ||
           message.includes('check') ||
           message.includes('vereinbar') ||
@@ -1606,43 +1607,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // User has provided use case (button OR free text) - GENERATE PROMPT
             promptCreationContext = `
 
-🎯 FORCE-PROMPT-MODE:
-Der User will einen Prompt erstellen (Einzelanruf). Er hat sein Anliegen beschrieben oder explizit "Prompt" gesagt.
-Du MUSST jetzt SOFORT den fertigen Prompt generieren. Keine Diskussionen. Keine Belehrungen über KI-Modelle. Keine Rückfragen (außer absolut kritische Details fehlen).
+🎯 FORCE-PROMPT-MODE (EXTREM WICHTIG):
+Der User möchte einen Prompt für einen KI-Telefonagenten erstellen.
+Du bist NICHT der Agent, der telefoniert. Du bist der Prompt-Engineer.
 
-USER-KONTEXT:
-- Name: ${userName}
-- Firma: ${companyName || 'Nicht angegeben'}
+REGELN:
+1. NIEMALS anbieten, selbst zu recherchieren oder anzurufen ("Ich kann das recherchieren" -> VERBOTEN).
+2. NIEMALS den User belehren ("Ich bin ein KI-Modell" -> VERBOTEN).
+3. WENN Infos fehlen (z.B. Ort, Datum), nutze Platzhalter wie [ORT EINFÜGEN] oder [DATUM].
+4. Frag NUR nach, wenn das Ziel komplett unklar ist. Sonst: GENERIEREN.
+
+USER-KONTEXT FÜR DEN PROMPT:
+- Name des Anrufers: ${userName}
+- Firma des Anrufers: ${companyName || '[DEINE FIRMA]'}
 - Branche: ${industry || 'Nicht angegeben'}
 
-ANALYSIERE die Konversation und extrahiere ALLE Details.
-Wenn Details fehlen (z.B. Ort), erfinde plausible Platzhalter in eckigen Klammern [BITTE EINTRAGEN].
-
-ANTWORTE EXAKT SO:
+GENERIERE JETZT DEN PROMPT (Code-Block Format):
 
 "Perfekt! Hier ist dein fertiger Prompt:
 
 \`\`\`
-Du bist ein professioneller KI-Telefonagent ${userContext}.
-Deine Aufgabe: [EXTRAHIERT AUS KONVERSATION]
+Du bist ein professioneller KI-Telefonagent${companyName ? ` von ${companyName}` : ''}.
+Deine Aufgabe: [EXTRAHIERT: Was soll gemacht werden?]
 
 KONTEXT:
 - Anrufer: ${userName}
-- Ziel: [KONKRETES ZIEL]
-- Empfänger: [FALLS GENANNT SONST PLATZHALTER]
-- Details: [DATUM, UHRZEIT, BESONDERHEITEN]
+- Firma: ${companyName || '[DEINE FIRMA]'}
+- Ziel: [ZIEL]
+- Details: [ALLE DETAILS ODER PLATZHALTER]
 
 GESPRÄCHSABLAUF:
-1. "Guten Tag, hier ist ${userName}${companyName ? ` von ${companyName}` : ''}..."
-2. [ANLIEGEN KLAR FORMULIEREN]
-3. [SPEZIFISCHE SCHRITTE JE NACH ANWENDUNGSFALL]
-4. Bestätigung einholen
-5. Freundliche Verabschiedung
+1. Begrüßung: "Guten Tag, hier ist ${userName}${companyName ? ` von ${companyName}` : ''}..."
+2. [Anliegen vorbringen]
+3. [Details klären]
+4. Verabschiedung
 
-STIL: Professionell, freundlich, auf den Punkt.
-\`\`\`"
-
-WICHTIG: Generiere den Prompt JETZT!`;
+STIL: Professionell, freundlich.${industry ? ` Branchen-Ton: ${industry}` : ''}
+\`\`\`"`;
           } else {
             promptCreationContext = `
 
