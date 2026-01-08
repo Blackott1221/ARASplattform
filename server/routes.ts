@@ -1550,11 +1550,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // 🔥 DETECT PROMPT CREATION CONTEXT
       const conversationContext = recentMessages.map(m => m.message).join(' ');
+      
+      // Explicit prompt requests
+      const explicitPromptRequest = 
+        message.toLowerCase().includes('prompt') || 
+        message.toLowerCase().includes('skript') ||
+        message.toLowerCase().includes('leitfaden') ||
+        conversationContext.includes('prompt erstellen');
+
       const isPromptCreation = conversationContext.includes('PROMPT-ERSTELLUNG') || 
         conversationContext.includes('Einzelanruf') && conversationContext.includes('Kampagne') ||
         conversationContext.includes('Was soll dieser Anruf bewirken') ||
         conversationContext.includes('fertiger Prompt') ||
-        message.includes('Einzelanruf') || message.includes('Kampagne');
+        message.includes('Einzelanruf') || message.includes('Kampagne') ||
+        explicitPromptRequest;
       
       // Get user data for personalization (user already fetched above)
       const companyName = (user as any)?.company || '';
@@ -1564,8 +1573,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Special prompt creation instructions
       let promptCreationContext = '';
       if (isPromptCreation) {
-        const isEinzelanrufMode = conversationContext.includes('Einzelanruf') && 
-          (conversationContext.includes('Was soll dieser Anruf bewirken') || conversationContext.includes('Anwendungsfall'));
+        const isEinzelanrufMode = conversationContext.includes('Einzelanruf') || explicitPromptRequest;
         const isKampagneMode = conversationContext.includes('Kampagne') && conversationContext.includes('10.000');
         
         // Check if user has described ANY use case (free text or button)
@@ -1589,27 +1597,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message.includes('prüf') ||
           message.includes('check') ||
           message.includes('vereinbar') ||
-          message.length > 15; // User typed substantial free text
+          message.includes('öffnungszeiten') ||
+          message.includes('erkundig') ||
+          message.length > 10; // User typed substantial free text
         
-        if (isEinzelanrufMode) {
-          if (hasDescribedUseCase) {
+        if (isEinzelanrufMode && !isKampagneMode) {
+          if (hasDescribedUseCase || explicitPromptRequest) {
             // User has provided use case (button OR free text) - GENERATE PROMPT
             promptCreationContext = `
 
-🎯 PROMPT JETZT GENERIEREN!
-Der User ist im EINZELANRUF-MODUS und hat einen Anwendungsfall beschrieben.
-GENERIERE SOFORT den fertigen Prompt basierend auf ALLEN Infos aus der Konversation!
+🎯 FORCE-PROMPT-MODE:
+Der User will einen Prompt erstellen (Einzelanruf). Er hat sein Anliegen beschrieben oder explizit "Prompt" gesagt.
+Du MUSST jetzt SOFORT den fertigen Prompt generieren. Keine Diskussionen. Keine Belehrungen über KI-Modelle. Keine Rückfragen (außer absolut kritische Details fehlen).
 
 USER-KONTEXT:
 - Name: ${userName}
 - Firma: ${companyName || 'Nicht angegeben'}
 - Branche: ${industry || 'Nicht angegeben'}
 
-ANALYSIERE die Konversation und extrahiere:
-- WAS will der User tun? (z.B. Meeting verschieben, Termin vereinbaren, etc.)
-- MIT WEM? (Name der Person/Firma falls genannt)
-- WANN? (Datum/Uhrzeit falls genannt)
-- BESONDERHEITEN? (spezielle Wünsche)
+ANALYSIERE die Konversation und extrahiere ALLE Details.
+Wenn Details fehlen (z.B. Ort), erfinde plausible Platzhalter in eckigen Klammern [BITTE EINTRAGEN].
 
 ANTWORTE EXAKT SO:
 
@@ -1622,7 +1629,7 @@ Deine Aufgabe: [EXTRAHIERT AUS KONVERSATION]
 KONTEXT:
 - Anrufer: ${userName}
 - Ziel: [KONKRETES ZIEL]
-- Empfänger: [FALLS GENANNT]
+- Empfänger: [FALLS GENANNT SONST PLATZHALTER]
 - Details: [DATUM, UHRZEIT, BESONDERHEITEN]
 
 GESPRÄCHSABLAUF:
@@ -1635,7 +1642,7 @@ GESPRÄCHSABLAUF:
 STIL: Professionell, freundlich, auf den Punkt.
 \`\`\`"
 
-WICHTIG: Generiere den Prompt JETZT! Keine weiteren Fragen!`;
+WICHTIG: Generiere den Prompt JETZT!`;
           } else {
             promptCreationContext = `
 
