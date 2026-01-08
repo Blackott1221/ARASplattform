@@ -1756,7 +1756,13 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         });
 
         // Build conversation history for Gemini format
-        const history = recentMessages.slice(-20).map(msg => ({
+        // IMPORTANT: Skip leading AI messages - Gemini requires first message to be from user
+        let filteredMessages = recentMessages.slice(-20);
+        while (filteredMessages.length > 0 && filteredMessages[0].isAi) {
+          filteredMessages = filteredMessages.slice(1);
+        }
+        
+        const history = filteredMessages.map(msg => ({
           role: msg.isAi ? "model" : "user",
           parts: [{ text: msg.message }]
         }));
