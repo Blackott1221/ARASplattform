@@ -1192,7 +1192,7 @@ Das ist ALLES was du antworten sollst - keine zusätzlichen Erklärungen.`;
                       onSpeak={() => {}}
                       isSpeaking={false}
                       isNew={!!isNewAiMessage}
-                      onOptionClick={(option) => {
+                      onOptionClick={async (option) => {
                         // Handle special redirect commands
                         if (option === '__REDIRECT_POWER__') {
                           setLocation('/app/power');
@@ -1202,6 +1202,131 @@ Das ist ALLES was du antworten sollst - keine zusätzlichen Erklärungen.`;
                           setLocation('/app/campaigns');
                           return;
                         }
+                        
+                        // Handle Einzelanruf selection - send hidden prompt for use case question
+                        if (option === 'Einzelanruf') {
+                          setIsThinking(true);
+                          setIsStreaming(true);
+                          setStreamingMessage('');
+                          
+                          const userName = profileContext?.name || (user as any)?.firstName || 'du';
+                          const hiddenPrompt = `[EINZELANRUF-MODUS]
+Der User hat "Einzelanruf" gewählt. Du MUSST jetzt EXAKT diese Antwort geben:
+
+"Super, ${userName}! 👍 Einzelanruf also.
+
+**Was soll dieser Anruf bewirken?**
+
+Wähle einen häufigen Anwendungsfall oder beschreibe deinen eigenen:"
+
+Das ist ALLES. Keine weiteren Erklärungen. Die Buttons werden automatisch angezeigt.`;
+                          
+                          try {
+                            const response = await fetch('/api/chat/messages', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              credentials: 'include',
+                              body: JSON.stringify({ message: hiddenPrompt, hideUserMessage: true }),
+                            });
+                            
+                            const reader = response.body?.getReader();
+                            const decoder = new TextDecoder();
+                            let fullMessage = '';
+                            
+                            if (reader) {
+                              while (true) {
+                                const { done, value } = await reader.read();
+                                if (done) break;
+                                const chunk = decoder.decode(value, { stream: true });
+                                for (const line of chunk.split('\n')) {
+                                  if (line.startsWith('data: ')) {
+                                    try {
+                                      const parsed = JSON.parse(line.slice(6));
+                                      if (parsed.content) {
+                                        fullMessage += parsed.content;
+                                        setStreamingMessage(fullMessage);
+                                      }
+                                    } catch {}
+                                  }
+                                }
+                              }
+                            }
+                            
+                            setIsThinking(false);
+                            setIsStreaming(false);
+                            setStreamingMessage('');
+                            queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
+                          } catch (error) {
+                            setIsThinking(false);
+                            setIsStreaming(false);
+                          }
+                          return;
+                        }
+                        
+                        // Handle Kampagne selection - send hidden prompt for campaign questions
+                        if (option === 'Kampagne') {
+                          setIsThinking(true);
+                          setIsStreaming(true);
+                          setStreamingMessage('');
+                          
+                          const userName = profileContext?.name || (user as any)?.firstName || 'du';
+                          const hiddenPrompt = `[KAMPAGNE-MODUS]
+Der User hat "Kampagne" gewählt. Du MUSST jetzt EXAKT diese Antwort geben:
+
+"Perfekt, ${userName}! 🚀 Eine Kampagne mit bis zu 10.000 Calls.
+
+Ich brauche ein paar Infos, um die perfekte Kampagne zu erstellen:
+
+**1. Was verkaufst du?** (Produkt/Dienstleistung)
+**2. Was ist das Ziel?** (z.B. Termin vereinbaren, Lead qualifizieren, Feedback einholen)
+**3. Wer ist die Zielgruppe?**
+
+Erzähl mir davon!"
+
+Das ist ALLES. Keine weiteren Erklärungen.`;
+                          
+                          try {
+                            const response = await fetch('/api/chat/messages', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              credentials: 'include',
+                              body: JSON.stringify({ message: hiddenPrompt, hideUserMessage: true }),
+                            });
+                            
+                            const reader = response.body?.getReader();
+                            const decoder = new TextDecoder();
+                            let fullMessage = '';
+                            
+                            if (reader) {
+                              while (true) {
+                                const { done, value } = await reader.read();
+                                if (done) break;
+                                const chunk = decoder.decode(value, { stream: true });
+                                for (const line of chunk.split('\n')) {
+                                  if (line.startsWith('data: ')) {
+                                    try {
+                                      const parsed = JSON.parse(line.slice(6));
+                                      if (parsed.content) {
+                                        fullMessage += parsed.content;
+                                        setStreamingMessage(fullMessage);
+                                      }
+                                    } catch {}
+                                  }
+                                }
+                              }
+                            }
+                            
+                            setIsThinking(false);
+                            setIsStreaming(false);
+                            setStreamingMessage('');
+                            queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
+                          } catch (error) {
+                            setIsThinking(false);
+                            setIsStreaming(false);
+                          }
+                          return;
+                        }
+                        
                         // Directly send the selected option via mutation
                         sendMessage.mutate(option);
                       }}
