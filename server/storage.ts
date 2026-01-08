@@ -363,22 +363,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Chat session operations
-  // NOTE: Explicitly select columns to avoid 'metadata' column error if DB not synced
   async getChatSessions(userId: string): Promise<ChatSession[]> {
-    const results = await db
-      .select({
-        id: chatSessions.id,
-        userId: chatSessions.userId,
-        title: chatSessions.title,
-        isActive: chatSessions.isActive,
-        createdAt: chatSessions.createdAt,
-        updatedAt: chatSessions.updatedAt,
-      })
+    return await db
+      .select()
       .from(chatSessions)
       .where(eq(chatSessions.userId, userId))
       .orderBy(desc(chatSessions.updatedAt));
-    // Return with null metadata for compatibility
-    return results.map(r => ({ ...r, metadata: null })) as ChatSession[];
   }
 
   async createChatSession(session: InsertChatSession): Promise<ChatSession> {
@@ -388,38 +378,23 @@ export class DatabaseStorage implements IStorage {
       .set({ isActive: false })
       .where(eq(chatSessions.userId, session.userId));
 
-    // Insert and return only columns that exist (exclude metadata)
     const [chatSession] = await db
       .insert(chatSessions)
       .values({ ...session, isActive: true })
-      .returning({
-        id: chatSessions.id,
-        userId: chatSessions.userId,
-        title: chatSessions.title,
-        isActive: chatSessions.isActive,
-        createdAt: chatSessions.createdAt,
-        updatedAt: chatSessions.updatedAt,
-      });
-    return { ...chatSession, metadata: null } as ChatSession;
+      .returning();
+    return chatSession;
   }
 
   async getActiveSession(userId: string): Promise<ChatSession | undefined> {
     const [session] = await db
-      .select({
-        id: chatSessions.id,
-        userId: chatSessions.userId,
-        title: chatSessions.title,
-        isActive: chatSessions.isActive,
-        createdAt: chatSessions.createdAt,
-        updatedAt: chatSessions.updatedAt,
-      })
+      .select()
       .from(chatSessions)
       .where(and(
         eq(chatSessions.userId, userId),
         eq(chatSessions.isActive, true)
       ))
       .orderBy(desc(chatSessions.updatedAt));
-    return session ? { ...session, metadata: null } as ChatSession : undefined;
+    return session;
   }
 
   async setActiveSession(userId: string, sessionId: number): Promise<void> {
@@ -444,34 +419,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateChatSessionMetadata(sessionId: number, metadata: any): Promise<void> {
-    // NOTE: metadata column may not exist in DB - only update updatedAt for now
-    try {
-      await db
-        .update(chatSessions)
-        .set({ metadata, updatedAt: new Date() })
-        .where(eq(chatSessions.id, sessionId));
-    } catch (error) {
-      // If metadata column doesn't exist, just update timestamp
-      await db
-        .update(chatSessions)
-        .set({ updatedAt: new Date() })
-        .where(eq(chatSessions.id, sessionId));
-    }
+    // NOTE: metadata column removed from schema - just update timestamp
+    await db
+      .update(chatSessions)
+      .set({ updatedAt: new Date() })
+      .where(eq(chatSessions.id, sessionId));
   }
 
   async getChatSessionById(sessionId: number): Promise<ChatSession | undefined> {
     const [session] = await db
-      .select({
-        id: chatSessions.id,
-        userId: chatSessions.userId,
-        title: chatSessions.title,
-        isActive: chatSessions.isActive,
-        createdAt: chatSessions.createdAt,
-        updatedAt: chatSessions.updatedAt,
-      })
+      .select()
       .from(chatSessions)
       .where(eq(chatSessions.id, sessionId));
-    return session ? { ...session, metadata: null } as ChatSession : undefined;
+    return session;
   }
 
   async archiveSession(sessionId: number): Promise<void> {
