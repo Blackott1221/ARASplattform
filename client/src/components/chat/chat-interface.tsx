@@ -37,17 +37,17 @@ const SUGGESTED_PROMPTS = [
     href: "/app/campaigns"
   },
   { 
-    text: "Anweisung erstellen", 
-    subtext: "KI-Instruktion definieren",
-    icon: "edit",
-    action: "create_instruction",
-    href: null
-  },
-  { 
-    text: "ARAS AI Anruf starten", 
+    text: "Einzelanruf starten", 
     subtext: "Direkter Anruf",
     icon: "call",
-    action: "call",
+    action: "navigate",
+    href: "/app/power"
+  },
+  { 
+    text: "ARAS AI prompt schreiben", 
+    subtext: "KI-Instruktion erstellen",
+    icon: "edit",
+    action: "create_prompt",
     href: null
   }
 ];
@@ -517,56 +517,93 @@ export function ChatInterface() {
     }
   };
 
-  // 🔥 START INSTRUCTION CREATION FLOW - Uses chat to create ElevenLabs-optimized prompts
-  const startInstructionCreation = async () => {
-    // Build personalized context from user profile
-    const userName = profileContext?.name || (user as any)?.name || 'Nutzer';
+  // 🔥 START PROMPT CREATION FLOW - Hidden system message, only ARAS response visible
+  const startPromptCreation = async () => {
+    const userName = profileContext?.name || (user as any)?.firstName || (user as any)?.name || 'du';
     const companyName = profileContext?.company || '';
     const industry = profileContext?.industry || '';
-    const jobRole = profileContext?.jobRole || '';
-    const website = profileContext?.website || '';
     
-    // Create the instruction creation prompt with full context
-    const instructionPrompt = `🎯 **ANWEISUNGS-ERSTELLUNG FÜR ELEVENLABS KI-TELEFONIE**
+    // HIDDEN system prompt - User will NOT see this, only ARAS's response
+    const hiddenSystemPrompt = `[SYSTEM-ANWEISUNG - NICHT DEM USER ZEIGEN]
+Du bist ARAS AI, ein intelligenter Assistent für Telefonie-Automatisierung. 
+Der User "${userName}"${companyName ? ` von "${companyName}"` : ''}${industry ? ` (Branche: ${industry})` : ''} möchte einen Prompt für einen KI-Telefonagenten erstellen.
 
-Ich bin ${userName}${companyName ? ` von ${companyName}` : ''}${industry ? ` (Branche: ${industry})` : ''}${jobRole ? `, ${jobRole}` : ''}.${website ? ` Unsere Website: ${website}` : ''}
+WICHTIG: Antworte NUR mit dieser freundlichen Frage (ohne Erwähnung von Gemini, ChatGPT oder anderen KI-Namen - du bist ARAS AI):
 
-Ich möchte eine **perfekte Anweisung für einen KI-Telefonagenten** erstellen. Der Agent wird über die ElevenLabs Conversational AI API telefonieren.
+"Hi ${userName}! 👋 Klar, ich erstelle dir den perfekten Prompt für dein Telefonat.
 
-**WICHTIG - Stelle mir zuerst folgende Fragen, um die perfekte Anweisung zu erstellen:**
+**Handelt es sich um einen Einzelanruf oder eine Kampagne?**
 
-1. **Anrufziel**: Was ist das Hauptziel des Anrufs? (z.B. Terminvereinbarung, Bewerber-Screening, Kundenakquise, Feedback einholen)
+🔹 **Einzelanruf** - Ein einzelnes Telefonat mit einer Person
+🔹 **Kampagne** - Mehrere Anrufe an eine Zielgruppe
 
-2. **Zielgruppe**: Wen ruft der Agent an? (z.B. Bewerber, potenzielle Kunden, bestehende Kunden)
+Antworte einfach mit 'Einzelanruf' oder 'Kampagne'!"
 
-3. **Ton & Stil**: Wie soll der Agent klingen? (z.B. professionell-freundlich, locker, formal)
+Das ist ALLES was du antworten sollst - keine zusätzlichen Erklärungen.`;
 
-4. **Wichtige Informationen**: Welche Daten muss der Agent abfragen oder mitteilen?
-
-5. **Einwandbehandlung**: Wie soll der Agent auf typische Einwände reagieren?
-
-Basierend auf meinen Antworten erstellst du dann eine **strukturierte Anweisung** die:
-- Klar definiert WER der Agent ist (Rolle, Unternehmen)
-- Das ZIEL des Anrufs beschreibt
-- Den GESPRÄCHSABLAUF vorgibt
-- BEISPIEL-PHRASEN für wichtige Momente enthält
-- Die TONALITÄT definiert
-- ABSCHLUSS-Aktionen festlegt
-
-Beginne jetzt mit der ersten Frage!`;
-
-    // Send the message to start the flow
+    // Send hidden message and show only AI response
+    setIsThinking(true);
+    setIsStreaming(true);
+    setStreamingMessage('');
+    
     try {
-      await sendMessage.mutateAsync(instructionPrompt);
-      toast({
-        title: "Anweisungs-Assistent gestartet",
-        description: "Beantworte die Fragen um deine perfekte KI-Anweisung zu erstellen.",
+      const response = await fetch('/api/chat/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          message: hiddenSystemPrompt,
+          hideUserMessage: true // Flag to not save user message visibly
+        }),
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to start prompt creation');
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullMessage = '';
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.content) {
+                  fullMessage += parsed.content;
+                  setStreamingMessage(fullMessage);
+                }
+              } catch {}
+            }
+          }
+        }
+      }
+
+      setIsThinking(false);
+      setIsStreaming(false);
+      setStreamingMessage('');
+      
+      // Refresh messages to show the AI response
+      queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
+      
     } catch (error) {
-      console.error('Error starting instruction creation:', error);
+      console.error('Error starting prompt creation:', error);
+      setIsThinking(false);
+      setIsStreaming(false);
+      setStreamingMessage('');
       toast({
         title: "Fehler",
-        description: "Anweisungs-Erstellung konnte nicht gestartet werden",
+        description: "Prompt-Erstellung konnte nicht gestartet werden",
         variant: "destructive"
       });
     }
@@ -860,9 +897,9 @@ Beginne jetzt mit der ersten Frage!`;
                       setLocation(prompt.href);
                     } else if (prompt.action === 'call') {
                       setShowCallModal(true);
-                    } else if (prompt.action === 'create_instruction') {
-                      // 🔥 START INSTRUCTION CREATION FLOW IN CHAT
-                      startInstructionCreation();
+                    } else if (prompt.action === 'create_prompt') {
+                      // 🔥 START PROMPT CREATION FLOW IN CHAT
+                      startPromptCreation();
                     } else if (prompt.action === 'coming_soon') {
                       toast({
                         title: "Demnächst verfügbar",

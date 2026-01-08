@@ -1494,7 +1494,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/chat/messages', requireAuth, async (req: any, res) => {
     try {
       const userId = req.session.userId;
-      const { message, sessionId, files } = req.body;
+      const { message, sessionId, files, hideUserMessage } = req.body;
       
       const user = await storage.getUser(userId);
       const userName = user?.firstName || user?.username || 'Justin';
@@ -1534,13 +1534,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      await storage.createChatMessage({
-        sessionId: activeSessionId,
-        userId,
-        message,
-        isAi: false,
-        timestamp: new Date()
-      });
+      // 🔥 Only save user message if NOT hidden (for system prompts that shouldn't be visible)
+      if (!hideUserMessage) {
+        await storage.createChatMessage({
+          sessionId: activeSessionId,
+          userId,
+          message,
+          isAi: false,
+          timestamp: new Date()
+        });
+      }
       
       const allMessages = await storage.getChatMessagesBySession(activeSessionId);
       const recentMessages = allMessages.slice(-30);
