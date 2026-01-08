@@ -10,6 +10,8 @@ const renderMarkdown = (text: string) => {
   const lines = text.split('\n');
   const elements: JSX.Element[] = [];
   let currentList: { items: string[]; ordered: boolean } | null = null;
+  let inCodeBlock = false;
+  let codeBlockLines: string[] = [];
   let lineIndex = 0;
 
   const flushList = () => {
@@ -25,6 +27,33 @@ const renderMarkdown = (text: string) => {
         </ListTag>
       );
       currentList = null;
+    }
+  };
+
+  const flushCodeBlock = () => {
+    if (codeBlockLines.length > 0) {
+      elements.push(
+        <div key={`codeblock-${lineIndex}`} className="my-6 rounded-xl bg-[#0F0F0F]/80 border border-white/10 overflow-hidden relative group shadow-lg backdrop-blur-sm">
+          {/* Glassmorphism gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] to-transparent pointer-events-none" />
+          
+          {/* Top accent line */}
+          <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-[#FE9100] via-[#FF5E00] to-[#FE9100] opacity-70" />
+          
+          {/* Content */}
+          <div className="relative p-5 font-mono text-[13px] text-gray-200 whitespace-pre-wrap leading-relaxed tracking-wide">
+            {codeBlockLines.join('\n')}
+          </div>
+          
+          {/* Copy hint (visible on hover) */}
+          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div className="text-[10px] text-white/40 bg-black/50 px-2 py-1 rounded-md border border-white/5">
+              Code Block
+            </div>
+          </div>
+        </div>
+      );
+      codeBlockLines = [];
     }
   };
 
@@ -74,6 +103,25 @@ const renderMarkdown = (text: string) => {
 
   lines.forEach((line, i) => {
     lineIndex = i;
+
+    // Handle Code Blocks (```)
+    if (line.trim().startsWith('```')) {
+      if (inCodeBlock) {
+        // End of block
+        inCodeBlock = false;
+        flushCodeBlock();
+      } else {
+        // Start of block
+        flushList();
+        inCodeBlock = true;
+      }
+      return;
+    }
+
+    if (inCodeBlock) {
+      codeBlockLines.push(line);
+      return;
+    }
 
     // Headers
     if (line.startsWith('### ')) {
@@ -140,6 +188,12 @@ const renderMarkdown = (text: string) => {
   });
 
   flushList();
+  
+  // If still in code block (e.g. streaming not finished), flush what we have
+  if (inCodeBlock) {
+    flushCodeBlock();
+  }
+  
   return elements;
 };
 
