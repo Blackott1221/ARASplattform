@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { MessageBubble } from "./message-bubble";
-import { Send, Mic, MicOff, Plus, MessageSquare, X, Menu, Paperclip, File, Image as ImageIcon, FileText, Clock, AlertCircle, Phone, Loader2, ArrowUp, Sparkles, Zap, ChevronRight } from "lucide-react";
+import { Send, Mic, MicOff, Plus, MessageSquare, X, Menu, Paperclip, File, Image as ImageIcon, FileText, Clock, AlertCircle, Phone, Loader2, ArrowUp, Sparkles, Zap, ChevronRight, LayoutGrid, FileEdit, PhoneCall } from "lucide-react";
+import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
@@ -28,9 +29,27 @@ const ANIMATED_TEXTS = [
 ];
 
 const SUGGESTED_PROMPTS = [
-  { text: "Was ist ARAS AI?", isCall: false },
-  { text: "Aktuelle Nachrichten", isCall: false },
-  { text: "ARAS AI Anruf starten", isCall: true }
+  { 
+    text: "Outbound Kampagne starten", 
+    subtext: "Grid öffnen (10.000 parallel)",
+    icon: "grid",
+    action: "navigate",
+    href: "/app/campaigns"
+  },
+  { 
+    text: "Anweisung erstellen", 
+    subtext: "KI-Instruktion definieren",
+    icon: "edit",
+    action: "coming_soon",
+    href: null
+  },
+  { 
+    text: "ARAS AI Anruf starten", 
+    subtext: "Direkter Anruf",
+    icon: "call",
+    action: "call",
+    href: null
+  }
 ];
 
 const CALL_TEMPLATES = [
@@ -89,6 +108,7 @@ function ThinkingPhaseIndicator() {
 }
 
 export function ChatInterface() {
+  const [, setLocation] = useLocation();
   const [message, setMessage] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [audioURL, setAudioURL] = useState<string | null>(null);
@@ -761,35 +781,143 @@ export function ChatInterface() {
                 </span>
               </motion.div>
 
-              {/* Quick Action Buttons - uniform, slim, no text wrap */}
+              {/* Premium Quick Action Buttons - Ultra High-End Design */}
               <motion.div 
                 initial={{ opacity: 0 }} 
                 animate={{ opacity: 1 }} 
                 transition={{ delay: 0.5 }}
-                className="flex flex-wrap justify-center items-center gap-2 sm:gap-3 mb-8 sm:mb-12 px-3"
+                className="flex flex-col sm:flex-row flex-wrap justify-center items-center gap-3 sm:gap-4 mb-8 sm:mb-12 px-3 w-full max-w-4xl"
               >
-                {SUGGESTED_PROMPTS.map((prompt, index) => (
-                  <motion.button
-                    key={index}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6 + index * 0.1 }}
-                    whileHover={{ scale: 1.03, y: -2 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => prompt.isCall ? setShowCallModal(true) : handleSendMessage(prompt.text)}
-                    className="px-4 py-2.5 rounded-xl text-white text-xs font-semibold whitespace-nowrap flex items-center gap-2 transition-all"
-                    style={{
-                      fontFamily: 'Orbitron, sans-serif',
-                      background: 'rgba(10, 10, 10, 0.7)',
-                      border: '1px solid rgba(254, 145, 0, 0.4)',
-                      backdropFilter: 'blur(20px)',
-                      boxShadow: '0 0 15px rgba(254, 145, 0, 0.2)',
-                    }}
-                  >
-                    <span>{prompt.text}</span>
-                    <ArrowUp className="w-3.5 h-3.5" style={{ color: '#FE9100' }} />
-                  </motion.button>
-                ))}
+                {SUGGESTED_PROMPTS.map((prompt, index) => {
+                  const handleClick = () => {
+                    if (prompt.action === 'navigate' && prompt.href) {
+                      setLocation(prompt.href);
+                    } else if (prompt.action === 'call') {
+                      setShowCallModal(true);
+                    } else if (prompt.action === 'coming_soon') {
+                      toast({
+                        title: "Demnächst verfügbar",
+                        description: "Diese Funktion wird bald freigeschaltet.",
+                      });
+                    }
+                  };
+
+                  const getIcon = () => {
+                    switch (prompt.icon) {
+                      case 'grid':
+                        return <LayoutGrid className="w-5 h-5" />;
+                      case 'edit':
+                        return <FileEdit className="w-5 h-5" />;
+                      case 'call':
+                        return <PhoneCall className="w-5 h-5" />;
+                      default:
+                        return <Sparkles className="w-5 h-5" />;
+                    }
+                  };
+
+                  return (
+                    <motion.button
+                      key={index}
+                      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ 
+                        delay: 0.6 + index * 0.15,
+                        type: "spring",
+                        stiffness: 200,
+                        damping: 20
+                      }}
+                      whileHover={{ 
+                        scale: 1.02, 
+                        y: -4,
+                        boxShadow: '0 0 40px rgba(254, 145, 0, 0.4), 0 0 80px rgba(254, 145, 0, 0.2)',
+                      }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleClick}
+                      className="group relative px-6 py-4 rounded-2xl text-white flex items-center gap-4 transition-all duration-300 w-full sm:w-auto min-w-[260px] overflow-hidden"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(20, 20, 20, 0.9) 0%, rgba(10, 10, 10, 0.95) 100%)',
+                        backdropFilter: 'blur(20px)',
+                      }}
+                    >
+                      {/* Animated Border Gradient */}
+                      <motion.div
+                        className="absolute inset-0 rounded-2xl"
+                        style={{
+                          padding: '1.5px',
+                          background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.6), rgba(233, 215, 196, 0.3), rgba(254, 145, 0, 0.6))',
+                          WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                          WebkitMaskComposite: 'xor',
+                          maskComposite: 'exclude',
+                        }}
+                        animate={{
+                          background: [
+                            'linear-gradient(135deg, rgba(254, 145, 0, 0.6), rgba(233, 215, 196, 0.3), rgba(254, 145, 0, 0.6))',
+                            'linear-gradient(225deg, rgba(233, 215, 196, 0.4), rgba(254, 145, 0, 0.6), rgba(233, 215, 196, 0.3))',
+                            'linear-gradient(315deg, rgba(254, 145, 0, 0.6), rgba(233, 215, 196, 0.3), rgba(254, 145, 0, 0.6))',
+                            'linear-gradient(135deg, rgba(254, 145, 0, 0.6), rgba(233, 215, 196, 0.3), rgba(254, 145, 0, 0.6))',
+                          ],
+                        }}
+                        transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+                      />
+
+                      {/* Glow Effect on Hover */}
+                      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                        style={{
+                          background: 'radial-gradient(ellipse at center, rgba(254, 145, 0, 0.15) 0%, transparent 70%)',
+                        }}
+                      />
+
+                      {/* Icon Container with Gradient */}
+                      <motion.div 
+                        className="relative flex items-center justify-center w-12 h-12 rounded-xl"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.2) 0%, rgba(254, 145, 0, 0.05) 100%)',
+                          border: '1px solid rgba(254, 145, 0, 0.3)',
+                        }}
+                        whileHover={{
+                          background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.3) 0%, rgba(254, 145, 0, 0.1) 100%)',
+                        }}
+                      >
+                        <motion.div
+                          animate={{
+                            color: ['#FE9100', '#e9d7c4', '#FE9100'],
+                          }}
+                          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                        >
+                          {getIcon()}
+                        </motion.div>
+                      </motion.div>
+
+                      {/* Text Content */}
+                      <div className="relative flex flex-col items-start text-left flex-1">
+                        <span 
+                          className="text-sm font-bold tracking-wide"
+                          style={{ 
+                            fontFamily: 'Orbitron, sans-serif',
+                            background: 'linear-gradient(90deg, #ffffff, #e9d7c4)',
+                            backgroundClip: 'text',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                          }}
+                        >
+                          {prompt.text}
+                        </span>
+                        <span className="text-xs text-gray-500 mt-0.5 font-medium">
+                          {prompt.subtext}
+                        </span>
+                      </div>
+
+                      {/* Arrow Indicator */}
+                      <motion.div
+                        className="relative"
+                        animate={{ x: [0, 4, 0] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                      >
+                        <ChevronRight className="w-5 h-5 text-[#FE9100] opacity-60 group-hover:opacity-100 transition-opacity" />
+                      </motion.div>
+                    </motion.button>
+                  );
+                })}
               </motion.div>
             </motion.div>
 
