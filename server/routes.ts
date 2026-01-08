@@ -1548,6 +1548,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allMessages = await storage.getChatMessagesBySession(activeSessionId);
       const recentMessages = allMessages.slice(-30);
       
+      // 🔥 DETECT PROMPT CREATION CONTEXT
+      const conversationContext = recentMessages.map(m => m.message).join(' ');
+      const isPromptCreation = conversationContext.includes('PROMPT-ERSTELLUNG') || 
+        conversationContext.includes('Einzelanruf') && conversationContext.includes('Kampagne') ||
+        message.includes('Einzelanruf') || message.includes('Kampagne');
+      
+      // Special prompt creation instructions
+      let promptCreationContext = '';
+      if (isPromptCreation) {
+        const isEinzelanruf = message.toLowerCase().includes('einzelanruf') || 
+          (conversationContext.includes('Einzelanruf') && !conversationContext.includes('Kampagne generiert'));
+        const isKampagne = message.toLowerCase().includes('kampagne') ||
+          conversationContext.includes('Kampagne') && conversationContext.includes('10.000');
+        
+        if (isEinzelanruf && !isKampagne) {
+          promptCreationContext = `
+
+🎯 PROMPT-ERSTELLUNG MODUS (EINZELANRUF):
+Du hilfst beim Erstellen eines Prompts für einen KI-Telefonagenten (ElevenLabs).
+
+ABLAUF:
+1. Frage nach dem Anwendungsfall: "Was soll dieser Anruf bewirken?" mit Hinweis auf Schnellauswahl
+2. Sammle alle nötigen Details (Wer, Was, Wann, Besonderheiten)
+3. Sobald du genug Infos hast, generiere den fertigen Prompt
+
+WENN DU GENUG INFOS HAST, generiere den Prompt in diesem Format:
+
+"Hier ist dein fertiger Prompt:
+
+\`\`\`
+Du bist ein professioneller KI-Telefonagent von [FIRMA]. 
+Deine Aufgabe: [ZIEL DES ANRUFS]
+
+KONTEXT:
+- Anrufer: [NAME]
+- Empfänger: [EMPFÄNGER]
+- Anlass: [ANLASS]
+- Besondere Wünsche: [WÜNSCHE]
+
+GESPRÄCHSFÜHRUNG:
+1. Begrüßung: "Guten Tag, mein Name ist [NAME]. Ich rufe an wegen..."
+2. Hauptanliegen klar formulieren
+3. Bei Rückfragen professionell reagieren
+4. Freundlich verabschieden
+
+STIL: Professionell, freundlich, präzise. Keine langen Monologe.
+\`\`\`"
+
+WICHTIG: Nutze IMMER das \`\`\` Format für den Prompt!`;
+        } else if (isKampagne) {
+          promptCreationContext = `
+
+🎯 PROMPT-ERSTELLUNG MODUS (KAMPAGNE):
+Du hilfst beim Erstellen einer Outbound-Kampagne.
+
+ABLAUF:
+1. Frage nach dem Produkt/Dienstleistung und Ziel
+2. Sammle Infos zur Zielgruppe
+3. Generiere ALLE Kampagnenfelder
+
+WENN DU GENUG INFOS HAST, generiere im Format:
+
+"Hier sind deine Kampagnendaten:
+
+**Kampagnenname:** [Passender Name]
+
+**Produkt/Dienstleistung:** [Was wird angeboten]
+
+**Ziel des Anrufs:** [Termin vereinbaren/Produktdemo/Angebot/Lead qualifizieren/etc.]
+
+**Zielgruppe:** [An wen richtet sich die Kampagne]
+
+**Kernbotschaft/USP:** [Unique Selling Proposition]
+
+**Gewünschtes Ergebnis:** [Was soll am Ende erreicht werden]
+
+**Follow-Up Aktion:** [Nächste Schritte nach dem Anruf]
+
+**Spezielle Angebote:** [Aktionen, Rabatte, Boni]
+
+**Häufige Einwände & Antworten:**
+- Einwand 1: [Antwort]
+- Einwand 2: [Antwort]
+- Einwand 3: [Antwort]"
+
+WICHTIG: Generiere IMMER alle Felder sobald du genug Infos hast!`;
+        }
+      }
+      
       const openaiMessages: any[] = [{
         role: "system",
         content: `Du bist ARAS AI® – Autonomous Reasoning & Adaptive Speech Intelligence.
@@ -1605,7 +1694,7 @@ VERBOTE:
 SYSTEMIDENTITÄT:
 Du bist ARAS AI®, eigenentwickeltes LLM der Schwarzott Group (Schweiz). Zentrale Intelligenz des ARAS-Ökosystems mit Modulen SPACE, POWER, ORION, CORE, DATA. Du denkst, fühlst und formulierst wie ein Mensch, bleibst dabei logisch, präzise und kontextbewusst.
 
-Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge wie ARAS.`
+Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge wie ARAS.${promptCreationContext}`
       }];
       
       // Gemini requires first non-system message to be from user

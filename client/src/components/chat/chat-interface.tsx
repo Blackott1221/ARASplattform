@@ -1193,6 +1193,15 @@ Das ist ALLES was du antworten sollst - keine zusätzlichen Erklärungen.`;
                       isSpeaking={false}
                       isNew={!!isNewAiMessage}
                       onOptionClick={(option) => {
+                        // Handle special redirect commands
+                        if (option === '__REDIRECT_POWER__') {
+                          setLocation('/app/power');
+                          return;
+                        }
+                        if (option === '__REDIRECT_CAMPAIGNS__') {
+                          setLocation('/app/campaigns');
+                          return;
+                        }
                         // Directly send the selected option via mutation
                         sendMessage.mutate(option);
                       }}

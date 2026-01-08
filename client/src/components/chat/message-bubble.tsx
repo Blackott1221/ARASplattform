@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { User, Volume2, VolumeX, Copy, Check } from "lucide-react";
+import { User, Volume2, VolumeX, Copy, Check, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -205,45 +205,133 @@ export function MessageBubble({
     }
   };
 
-  // Detect clickable options in message (Einzelanruf/Kampagne buttons)
+  // Detect clickable options in message
   const renderClickableOptions = () => {
     if (!onOptionClick || !isAi) return null;
     
-    // Check if message contains Einzelanruf/Kampagne options
-    const hasEinzelanruf = message.includes('Einzelanruf');
-    const hasKampagne = message.includes('Kampagne');
+    // 1. Initial Einzelanruf/Kampagne choice
+    const hasInitialChoice = message.includes('Einzelanruf') && message.includes('Kampagne') && message.includes('Klicke');
+    if (hasInitialChoice) {
+      return (
+        <div className="flex flex-col sm:flex-row gap-3 mt-4">
+          <motion.button
+            whileHover={{ scale: 1.02, y: -2 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => onOptionClick('Einzelanruf')}
+            className="flex items-center gap-3 px-5 py-3.5 rounded-xl bg-gradient-to-r from-white/5 to-white/[0.02] border border-white/20 hover:border-[#FE9100]/50 transition-all duration-300 group"
+          >
+            <span className="text-lg">📞</span>
+            <div className="text-left">
+              <div className="text-white font-medium text-sm">Einzelanruf</div>
+              <div className="text-gray-400 text-xs">Ein einzelnes Telefonat</div>
+            </div>
+          </motion.button>
+          
+          <motion.button
+            whileHover={{ scale: 1.02, y: -2 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => onOptionClick('Kampagne')}
+            className="flex items-center gap-3 px-5 py-3.5 rounded-xl bg-gradient-to-r from-white/5 to-white/[0.02] border border-white/20 hover:border-[#FE9100]/50 transition-all duration-300 group"
+          >
+            <span className="text-lg">🚀</span>
+            <div className="text-left">
+              <div className="text-white font-medium text-sm">Kampagne</div>
+              <div className="text-gray-400 text-xs">bis zu 10.000 Calls gleichzeitig!</div>
+            </div>
+          </motion.button>
+        </div>
+      );
+    }
     
-    if (!hasEinzelanruf || !hasKampagne) return null;
+    // 2. Einzelanruf use case selection (after user selected Einzelanruf)
+    const hasUseCaseSelection = message.includes('Anwendungsfall') || message.includes('wofür') || message.includes('Was soll');
+    if (hasUseCaseSelection && !message.includes('Kampagne')) {
+      return (
+        <div className="flex flex-col gap-2 mt-4">
+          <div className="text-xs text-gray-400 mb-1">Schnellauswahl:</div>
+          <div className="flex flex-wrap gap-2">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => onOptionClick('Bewerber prüfen - Ich möchte einen Bewerber anrufen und seine Verfügbarkeit/Interesse prüfen')}
+              className="px-4 py-2.5 rounded-lg bg-white/5 border border-white/20 hover:border-[#FE9100]/50 text-white text-sm transition-all"
+            >
+              👤 Bewerber prüfen
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => onOptionClick('Tisch reservieren - Ich möchte in einem Restaurant einen Tisch reservieren')}
+              className="px-4 py-2.5 rounded-lg bg-white/5 border border-white/20 hover:border-[#FE9100]/50 text-white text-sm transition-all"
+            >
+              🍽️ Tisch reservieren
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => onOptionClick('Meeting bestätigen - Ich möchte einen Termin/Meeting bestätigen lassen')}
+              className="px-4 py-2.5 rounded-lg bg-white/5 border border-white/20 hover:border-[#FE9100]/50 text-white text-sm transition-all"
+            >
+              📅 Meeting bestätigen
+            </motion.button>
+          </div>
+          <div className="text-xs text-gray-500 mt-2">Oder beschreibe deinen Anwendungsfall im Chat...</div>
+        </div>
+      );
+    }
     
-    return (
-      <div className="flex flex-col sm:flex-row gap-3 mt-4">
-        <motion.button
-          whileHover={{ scale: 1.02, y: -2 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => onOptionClick('Einzelanruf')}
-          className="flex items-center gap-3 px-5 py-3.5 rounded-xl bg-gradient-to-r from-white/5 to-white/[0.02] border border-white/20 hover:border-[#FE9100]/50 transition-all duration-300 group"
-        >
-          <span className="text-lg">📞</span>
-          <div className="text-left">
-            <div className="text-white font-medium text-sm">Einzelanruf</div>
-            <div className="text-gray-400 text-xs">Ein einzelnes Telefonat</div>
-          </div>
-        </motion.button>
-        
-        <motion.button
-          whileHover={{ scale: 1.02, y: -2 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => onOptionClick('Kampagne')}
-          className="flex items-center gap-3 px-5 py-3.5 rounded-xl bg-gradient-to-r from-white/5 to-white/[0.02] border border-white/20 hover:border-[#FE9100]/50 transition-all duration-300 group"
-        >
-          <span className="text-lg">🚀</span>
-          <div className="text-left">
-            <div className="text-white font-medium text-sm">Kampagne</div>
-            <div className="text-gray-400 text-xs">bis zu 10.000 Calls gleichzeitig!</div>
-          </div>
-        </motion.button>
-      </div>
-    );
+    // 3. Detect generated prompt (contains PROMPT markers or specific structure)
+    const hasGeneratedPrompt = message.includes('[PROMPT]') || message.includes('```') || 
+      (message.includes('Hier ist dein Prompt') || message.includes('fertiger Prompt'));
+    if (hasGeneratedPrompt) {
+      // Extract prompt from message
+      const promptMatch = message.match(/```[\s\S]*?```/) || message.match(/\[PROMPT\]([\s\S]*?)\[\/PROMPT\]/);
+      const promptText = promptMatch ? promptMatch[0].replace(/```/g, '').replace(/\[PROMPT\]|\[\/PROMPT\]/g, '').trim() : message;
+      
+      return (
+        <div className="flex flex-col gap-3 mt-4">
+          <motion.button
+            whileHover={{ scale: 1.02, y: -2 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={async () => {
+              await navigator.clipboard.writeText(promptText);
+              localStorage.setItem('aras_prefilled_prompt', promptText);
+              onOptionClick('__REDIRECT_POWER__');
+            }}
+            className="flex items-center justify-center gap-3 px-6 py-4 rounded-xl bg-gradient-to-r from-[#FE9100]/20 to-[#FE9100]/10 border border-[#FE9100]/50 hover:border-[#FE9100] text-white font-medium transition-all duration-300"
+          >
+            <Copy className="w-5 h-5" />
+            <span>Kopieren & zu POWER</span>
+            <ChevronRight className="w-5 h-5" />
+          </motion.button>
+        </div>
+      );
+    }
+    
+    // 4. Detect Kampagne data (contains campaign structure)
+    const hasKampagneData = message.includes('Kampagnenname') && message.includes('Ziel des Anrufs');
+    if (hasKampagneData) {
+      return (
+        <div className="flex flex-col gap-3 mt-4">
+          <motion.button
+            whileHover={{ scale: 1.02, y: -2 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => {
+              // Store campaign data in localStorage
+              localStorage.setItem('aras_prefilled_campaign', message);
+              onOptionClick('__REDIRECT_CAMPAIGNS__');
+            }}
+            className="flex items-center justify-center gap-3 px-6 py-4 rounded-xl bg-gradient-to-r from-[#FE9100]/20 to-[#FE9100]/10 border border-[#FE9100]/50 hover:border-[#FE9100] text-white font-medium transition-all duration-300"
+          >
+            <Copy className="w-5 h-5" />
+            <span>Übernehmen & zu Kampagnen</span>
+            <ChevronRight className="w-5 h-5" />
+          </motion.button>
+        </div>
+      );
+    }
+    
+    return null;
   };
 
   return (
