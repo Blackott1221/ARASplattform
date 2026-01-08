@@ -1263,6 +1263,126 @@ Das ist ALLES. Keine weiteren Erklärungen. Die Buttons werden automatisch angez
                           return;
                         }
                         
+                        // Handle USE CASE selections - send hidden prompt to generate prompt IMMEDIATELY
+                        if (option.includes('Bewerber') || option.includes('Tisch') || option.includes('Meeting')) {
+                          setIsThinking(true);
+                          setIsStreaming(true);
+                          setStreamingMessage('');
+                          
+                          const userName = profileContext?.name || (user as any)?.firstName || 'du';
+                          let useCase = '';
+                          let promptTemplate = '';
+                          
+                          if (option.includes('Bewerber')) {
+                            useCase = 'Bewerber anrufen und Verfügbarkeit/Interesse prüfen';
+                            promptTemplate = `Du bist ein professioneller KI-Telefonagent für Recruiting.
+Deine Aufgabe: Bewerber anrufen und Verfügbarkeit sowie Interesse prüfen.
+
+KONTEXT:
+- Anrufer: ${userName}
+- Ziel: Bewerber-Screening
+
+GESPRÄCHSABLAUF:
+1. "Guten Tag, hier ist ${userName}. Ich rufe bezüglich Ihrer Bewerbung an."
+2. Interesse und aktuelle Situation erfragen
+3. Verfügbarkeit für ein Gespräch klären
+4. Bei Interesse: Termin für Folgegespräch vereinbaren
+5. Freundliche Verabschiedung
+
+STIL: Professionell, freundlich, wertschätzend.`;
+                          } else if (option.includes('Tisch')) {
+                            useCase = 'Tisch in einem Restaurant reservieren';
+                            promptTemplate = `Du bist ein professioneller KI-Telefonagent für Reservierungen.
+Deine Aufgabe: Tischreservierung in einem Restaurant vornehmen.
+
+KONTEXT:
+- Anrufer: ${userName}
+- Ziel: Tischreservierung
+
+GESPRÄCHSABLAUF:
+1. "Guten Tag, mein Name ist ${userName}. Ich möchte gerne einen Tisch reservieren."
+2. Datum und Uhrzeit nennen
+3. Anzahl der Personen angeben
+4. Besondere Wünsche erwähnen (z.B. Fensterplatz, ruhiger Bereich)
+5. Reservierung bestätigen lassen
+6. Freundlich bedanken und verabschieden
+
+STIL: Höflich, freundlich, auf den Punkt.`;
+                          } else if (option.includes('Meeting')) {
+                            useCase = 'Meeting/Termin bestätigen';
+                            promptTemplate = `Du bist ein professioneller KI-Telefonagent für Terminmanagement.
+Deine Aufgabe: Einen vereinbarten Termin bestätigen.
+
+KONTEXT:
+- Anrufer: ${userName}
+- Ziel: Terminbestätigung
+
+GESPRÄCHSABLAUF:
+1. "Guten Tag, hier ist ${userName}. Ich rufe an, um unseren Termin zu bestätigen."
+2. Datum und Uhrzeit des Termins nennen
+3. Bestätigung einholen
+4. Bei Bedarf: Alternative Termine anbieten
+5. Details klären (Ort, Teilnehmer, Agenda)
+6. Freundliche Verabschiedung
+
+STIL: Professionell, effizient, verbindlich.`;
+                          }
+                          
+                          const hiddenPrompt = `[PROMPT GENERIEREN - SOFORT]
+Der User hat "${useCase}" gewählt. GENERIERE JETZT SOFORT den fertigen Prompt!
+
+ANTWORTE EXAKT SO (keine anderen Texte, keine Fragen):
+
+"Perfekt! Hier ist dein fertiger Prompt:
+
+\`\`\`
+${promptTemplate}
+\`\`\`"
+
+Das ist ALLES. Der "Kopieren & zu POWER" Button erscheint automatisch.`;
+                          
+                          try {
+                            const response = await fetch('/api/chat/messages', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              credentials: 'include',
+                              body: JSON.stringify({ message: hiddenPrompt, hideUserMessage: true }),
+                            });
+                            
+                            const reader = response.body?.getReader();
+                            const decoder = new TextDecoder();
+                            let fullMessage = '';
+                            
+                            if (reader) {
+                              while (true) {
+                                const { done, value } = await reader.read();
+                                if (done) break;
+                                const chunk = decoder.decode(value, { stream: true });
+                                for (const line of chunk.split('\n')) {
+                                  if (line.startsWith('data: ')) {
+                                    try {
+                                      const parsed = JSON.parse(line.slice(6));
+                                      if (parsed.content) {
+                                        fullMessage += parsed.content;
+                                        setStreamingMessage(fullMessage);
+                                      }
+                                    } catch {}
+                                  }
+                                }
+                              }
+                            }
+                            
+                            setIsThinking(false);
+                            setIsStreaming(false);
+                            setStreamingMessage('');
+                            queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
+                          } catch (error) {
+                            setIsThinking(false);
+                            setIsStreaming(false);
+                          }
+                          return;
+                        }
+                        
                         // Handle Kampagne selection - send hidden prompt for campaign questions
                         if (option === 'Kampagne') {
                           setIsThinking(true);
