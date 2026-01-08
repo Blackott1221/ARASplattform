@@ -1609,25 +1609,22 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       }];
       
       // Gemini requires first non-system message to be from user
-      // Filter out any leading assistant messages to avoid the error
-      let startIndex = 0;
-      for (let i = 0; i < recentMessages.length; i++) {
-        if (!recentMessages[i].isAi) {
-          startIndex = i;
-          break;
+      // Build history, ensuring we start with a user message
+      const historyMessages: Array<{role: string, content: string}> = [];
+      
+      for (const msg of recentMessages) {
+        const role = msg.isAi ? "assistant" : "user";
+        // Skip leading assistant messages (Gemini requires first to be user)
+        if (historyMessages.length === 0 && role === "assistant") {
+          continue;
         }
-        // If all messages are from AI, start from the last one
-        if (i === recentMessages.length - 1) {
-          startIndex = recentMessages.length; // Skip all
-        }
+        historyMessages.push({ role, content: msg.message });
       }
       
-      recentMessages.slice(startIndex).forEach(msg => {
-        openaiMessages.push({
-          role: msg.isAi ? "assistant" : "user",
-          content: msg.message
-        });
-      });
+      // Only add history if it starts with user (double-check)
+      if (historyMessages.length > 0 && historyMessages[0].role === "user") {
+        historyMessages.forEach(msg => openaiMessages.push(msg));
+      }
       
       let currentMessage = message;
       if (files?.length > 0) {
