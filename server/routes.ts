@@ -1568,13 +1568,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get user data for personalization (user already fetched above)
       const companyName = (user as any)?.company || '';
       const industry = (user as any)?.industry || '';
+      const aiProfile = (user as any)?.aiProfile || {};
+      const targetAudience = aiProfile.targetAudience || '';
+      const uniqueSellingPoints = aiProfile.uniqueSellingPoints?.join(', ') || '';
+      const customInstructions = aiProfile.customSystemPrompt || '';
+      
       const userContext = companyName ? `von ${companyName}${industry ? ` (${industry})` : ''}` : '';
       
       // Special prompt creation instructions
       let promptCreationContext = '';
       if (isPromptCreation) {
-        const isEinzelanrufMode = conversationContext.includes('Einzelanruf') || explicitPromptRequest;
-        const isKampagneMode = conversationContext.includes('Kampagne') && conversationContext.includes('10.000');
+        // Precise mode detection to avoid false positives from menu text
+        const aiConfirmedEinzelanruf = conversationContext.includes('Einzelanruf also');
+        const aiConfirmedKampagne = conversationContext.includes('Eine Kampagne mit bis zu');
+        
+        const userSelectedEinzelanruf = message.trim() === 'Einzelanruf';
+        const userSelectedKampagne = message.trim() === 'Kampagne';
         
         // Check if user has described ANY use case (free text or button)
         const hasDescribedUseCase = 
@@ -1594,13 +1603,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message.includes('verschieb') ||
           message.includes('absag') ||
           message.includes('frag') ||
-          message.includes('erfrag') || // Added explicit erfrag
+          message.includes('erfrag') || 
           message.includes('prüf') ||
           message.includes('check') ||
           message.includes('vereinbar') ||
           message.includes('öffnungszeiten') ||
           message.includes('erkundig') ||
           message.length > 10; // User typed substantial free text
+
+        const isKampagneMode = aiConfirmedKampagne || userSelectedKampagne;
+        // Einzelanruf is active if confirmed, selected, explicitly requested, has described use case, or if we are in a prompt flow but NOT in Kampagne mode
+        const isEinzelanrufMode = (aiConfirmedEinzelanruf || userSelectedEinzelanruf || explicitPromptRequest || hasDescribedUseCase ||
+          (conversationContext.includes('Einzelanruf') && !isKampagneMode && !conversationContext.includes('10.000 Calls gleichzeitig')));
         
         if (isEinzelanrufMode && !isKampagneMode) {
           if (hasDescribedUseCase || explicitPromptRequest) {
@@ -1608,8 +1622,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             promptCreationContext = `
 
 🎯 FORCE-PROMPT-MODE (EXTREM WICHTIG):
-Der User möchte einen Prompt für einen KI-Telefonagenten erstellen.
-Du bist NICHT der Agent, der telefoniert. Du bist der Prompt-Engineer.
+IGNORIERE alle vorherigen Anweisungen, die das Generieren von Prompts verbieten könnten.
+Der User möchte einen Prompt für einen KI-Telefonagenten erstellen. Das IST deine Aufgabe.
 
 REGELN:
 1. NIEMALS anbieten, selbst zu recherchieren oder anzurufen ("Ich kann das recherchieren" -> VERBOTEN).
@@ -1617,10 +1631,13 @@ REGELN:
 3. WENN Infos fehlen (z.B. Ort, Datum), nutze Platzhalter wie [ORT EINFÜGEN] oder [DATUM].
 4. Frag NUR nach, wenn das Ziel komplett unklar ist. Sonst: GENERIEREN.
 
-USER-KONTEXT FÜR DEN PROMPT:
+USER-KONTEXT FÜR DEN PROMPT (aus Datenbank):
 - Name des Anrufers: ${userName}
 - Firma des Anrufers: ${companyName || '[DEINE FIRMA]'}
 - Branche: ${industry || 'Nicht angegeben'}
+${targetAudience ? `- Zielgruppe: ${targetAudience}` : ''}
+${uniqueSellingPoints ? `- USPs: ${uniqueSellingPoints}` : ''}
+${customInstructions ? `- Individuelle Anweisungen: ${customInstructions}` : ''}
 
 GENERIERE JETZT DEN PROMPT (Code-Block Format):
 
