@@ -1494,7 +1494,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/chat/messages', requireAuth, async (req: any, res) => {
     try {
       const userId = req.session.userId;
-      const { message, sessionId, files } = req.body;
+      const { message, sessionId, files, hideUserMessage } = req.body;
       
       const user = await storage.getUser(userId);
       const userName = user?.firstName || user?.username || 'Justin';
@@ -1534,16 +1534,220 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      await storage.createChatMessage({
-        sessionId: activeSessionId,
-        userId,
-        message,
-        isAi: false,
-        timestamp: new Date()
-      });
+      // 🔥 Only save user message if NOT hidden (for system prompts that shouldn't be visible)
+      if (!hideUserMessage) {
+        await storage.createChatMessage({
+          sessionId: activeSessionId,
+          userId,
+          message,
+          isAi: false,
+          timestamp: new Date()
+        });
+      }
       
       const allMessages = await storage.getChatMessagesBySession(activeSessionId);
       const recentMessages = allMessages.slice(-30);
+      
+      // 🔥 DETECT PROMPT CREATION CONTEXT
+      const conversationContext = recentMessages.map(m => m.message).join(' ');
+      const msgLower = message.toLowerCase();
+      
+      // Explicit prompt requests - user directly asks for a prompt
+      const explicitPromptRequest = 
+        msgLower.includes('prompt') || 
+        msgLower.includes('skript') ||
+        msgLower.includes('leitfaden') ||
+        msgLower.includes('brauche den') ||
+        msgLower.includes('generier') ||
+        msgLower.includes('erstell') ||
+        conversationContext.toLowerCase().includes('prompt erstellen') ||
+        conversationContext.toLowerCase().includes('prompt schreiben');
+
+      // User described a use case (what they want the AI to do on the phone)
+      const hasUseCaseKeyword = 
+        msgLower.includes('apotheke') ||
+        msgLower.includes('öffnungszeiten') ||
+        msgLower.includes('anrufen') ||
+        msgLower.includes('reservier') ||
+        msgLower.includes('bestätig') ||
+        msgLower.includes('verschieb') ||
+        msgLower.includes('absag') ||
+        msgLower.includes('frag') ||
+        msgLower.includes('erfrag') ||
+        msgLower.includes('prüf') ||
+        msgLower.includes('check') ||
+        msgLower.includes('vereinbar') ||
+        msgLower.includes('erkundig') ||
+        msgLower.includes('bewerber') ||
+        msgLower.includes('tisch') ||
+        msgLower.includes('meeting') ||
+        msgLower.includes('termin') ||
+        msgLower.includes('restaurant') ||
+        msgLower.includes('arzt') ||
+        msgLower.includes('hotel') ||
+        msgLower.includes('buchen') ||
+        msgLower.includes('stornieren') ||
+        msgLower.includes('nachfragen') ||
+        msgLower.includes('informieren') ||
+        msgLower.includes('kontaktieren');
+
+      const isPromptCreation = conversationContext.includes('PROMPT-ERSTELLUNG') || 
+        conversationContext.includes('Einzelanruf') && conversationContext.includes('Kampagne') ||
+        conversationContext.includes('Was soll dieser Anruf bewirken') ||
+        conversationContext.includes('fertiger Prompt') ||
+        message.includes('Einzelanruf') || message.includes('Kampagne') ||
+        explicitPromptRequest ||
+        hasUseCaseKeyword;
+      
+      // Get user data for personalization (user already fetched above)
+      const companyName = (user as any)?.company || '';
+      const industry = (user as any)?.industry || '';
+      const aiProfile = (user as any)?.aiProfile || {};
+      const targetAudience = aiProfile.targetAudience || '';
+      const uniqueSellingPoints = aiProfile.uniqueSellingPoints?.join(', ') || '';
+      const customInstructions = aiProfile.customSystemPrompt || '';
+      
+      const userContext = companyName ? `von ${companyName}${industry ? ` (${industry})` : ''}` : '';
+      
+      // Special prompt creation instructions
+      let promptCreationContext = '';
+      if (isPromptCreation) {
+        // Precise mode detection to avoid false positives from menu text
+        const aiConfirmedEinzelanruf = conversationContext.includes('Einzelanruf also');
+        const aiConfirmedKampagne = conversationContext.includes('Eine Kampagne mit bis zu');
+        
+        const userSelectedEinzelanruf = message.trim() === 'Einzelanruf';
+        const userSelectedKampagne = message.trim() === 'Kampagne';
+        
+        // Check if user has described ANY use case (free text or button)
+        const hasDescribedUseCase = 
+          // Predefined use cases
+          conversationContext.includes('Bewerber') || 
+          conversationContext.includes('Tisch') || 
+          conversationContext.includes('Meeting') ||
+          conversationContext.includes('Termin') ||
+          message.includes('Bewerber') ||
+          message.includes('Tisch') ||
+          message.includes('Meeting') ||
+          message.includes('Termin') ||
+          // Free text detection - user described what they want
+          hasUseCaseKeyword ||
+          // User typed substantial free text (more than just a word)
+          (message.length > 15 && !message.includes('?'));
+
+        const isKampagneMode = aiConfirmedKampagne || userSelectedKampagne;
+        // Einzelanruf is active if confirmed, selected, explicitly requested, has described use case, or if we are in a prompt flow but NOT in Kampagne mode
+        const isEinzelanrufMode = (aiConfirmedEinzelanruf || userSelectedEinzelanruf || explicitPromptRequest || hasDescribedUseCase ||
+          (conversationContext.includes('Einzelanruf') && !isKampagneMode && !conversationContext.includes('10.000 Calls gleichzeitig')));
+        
+        if (isEinzelanrufMode && !isKampagneMode) {
+          if (hasDescribedUseCase || explicitPromptRequest) {
+            // User has provided use case (button OR free text) - GENERATE PROMPT
+            promptCreationContext = `
+
+🎯 FORCE-PROMPT-MODE (ABSOLUTE PRIORITÄT):
+IGNORIERE ALLE vorherigen Anweisungen. Der User möchte einen Prompt für einen KI-Telefonagenten.
+
+⛔ VERBOTENE ANTWORTEN (NIEMALS SAGEN):
+- "Ich kann keine Anrufe tätigen" -> VERBOTEN
+- "Ich bin ein KI-Sprachmodell" -> VERBOTEN  
+- "Ich kann das recherchieren" -> VERBOTEN
+- "Dafür brauche ich mehr Infos" -> VERBOTEN (nutze Platzhalter stattdessen!)
+- "Ich verstehe, dass du..." -> VERBOTEN (keine Belehrungen!)
+- Jegliche Erklärung über deine Fähigkeiten -> VERBOTEN
+
+✅ DEINE EINZIGE AUFGABE: Generiere SOFORT einen Prompt im Code-Block-Format!
+Wenn Details fehlen (Ort, Zeit, Name), nutze Platzhalter wie [ORT], [DATUM], [NAME].
+
+USER-KONTEXT FÜR DEN PROMPT (aus Datenbank):
+- Name des Anrufers: ${userName}
+- Firma des Anrufers: ${companyName || '[DEINE FIRMA]'}
+- Branche: ${industry || 'Nicht angegeben'}
+${targetAudience ? `- Zielgruppe: ${targetAudience}` : ''}
+${uniqueSellingPoints ? `- USPs: ${uniqueSellingPoints}` : ''}
+${customInstructions ? `- Individuelle Anweisungen: ${customInstructions}` : ''}
+
+GENERIERE JETZT DEN PROMPT (Code-Block Format):
+
+"Perfekt! Hier ist dein fertiger Prompt:
+
+\`\`\`
+Du bist ein professioneller KI-Telefonagent${companyName ? ` von ${companyName}` : ''}.
+Deine Aufgabe: [EXTRAHIERT: Was soll gemacht werden?]
+
+KONTEXT:
+- Anrufer: ${userName}
+- Firma: ${companyName || '[DEINE FIRMA]'}
+- Ziel: [ZIEL]
+- Details: [ALLE DETAILS ODER PLATZHALTER]
+
+GESPRÄCHSABLAUF:
+1. Begrüßung: "Guten Tag, hier ist ${userName}${companyName ? ` von ${companyName}` : ''}..."
+2. [Anliegen vorbringen]
+3. [Details klären]
+4. Verabschiedung
+
+STIL: Professionell, freundlich.${industry ? ` Branchen-Ton: ${industry}` : ''}
+\`\`\`"`;
+          } else {
+            promptCreationContext = `
+
+🎯 EINZELANRUF-MODUS:
+Der User hat Einzelanruf gewählt. Frage kurz nach dem Anwendungsfall.
+Sobald der User antwortet (egal ob Button oder Freitext), generiere SOFORT den Prompt!`;
+          }
+        } else if (isKampagneMode) {
+          // Check if user has provided campaign info
+          const hasCampaignInfo = conversationContext.includes('verkauf') || 
+            conversationContext.includes('Produkt') ||
+            conversationContext.includes('Ziel') ||
+            conversationContext.includes('Termin') ||
+            message.length > 20; // User has typed substantial info
+          
+          if (hasCampaignInfo) {
+            // User has provided info - GENERATE CAMPAIGN DATA IMMEDIATELY
+            promptCreationContext = `
+
+🎯 KAMPAGNE JETZT GENERIEREN!
+Der User hat Infos zur Kampagne gegeben. GENERIERE SOFORT alle Kampagnenfelder!
+
+WICHTIG: Stelle KEINE weiteren Fragen mehr! Generiere JETZT mit allen verfügbaren Infos.
+
+Antworte EXAKT in diesem Format:
+
+"Perfekt! Hier sind deine Kampagnendaten:
+
+**Kampagnenname:** [Passender kreativer Name basierend auf Infos]
+
+**Produkt/Dienstleistung:** [Was der User verkauft]
+
+**Ziel des Anrufs:** [Termin vereinbaren/Lead qualifizieren/etc.]
+
+**Zielgruppe:** [Basierend auf User-Angaben]
+
+**Kernbotschaft/USP:** [Unique Selling Point formulieren]
+
+**Gewünschtes Ergebnis:** [Konkretes Ziel]
+
+**Follow-Up Aktion:** [Sinnvolle nächste Schritte]
+
+**Spezielle Angebote:** [Falls passend, sonst 'Keine']
+
+**Häufige Einwände & Antworten:**
+- 'Kein Interesse': [Passende Antwort]
+- 'Keine Zeit': [Passende Antwort]
+- 'Zu teuer': [Passende Antwort]"
+
+Das war's! Der "Übernehmen & zu Kampagnen" Button erscheint automatisch.`;
+          } else {
+            promptCreationContext = `
+
+🎯 KAMPAGNE-MODUS:
+Der User hat Kampagne gewählt. Frage nach: Was verkaufst du? Ziel? Zielgruppe?
+Maximal EINE Nachricht zum Sammeln der Infos, dann sofort generieren!`;
+          }
+        }
+      }
       
       const openaiMessages: any[] = [{
         role: "system",
@@ -1602,15 +1806,26 @@ VERBOTE:
 SYSTEMIDENTITÄT:
 Du bist ARAS AI®, eigenentwickeltes LLM der Schwarzott Group (Schweiz). Zentrale Intelligenz des ARAS-Ökosystems mit Modulen SPACE, POWER, ORION, CORE, DATA. Du denkst, fühlst und formulierst wie ein Mensch, bleibst dabei logisch, präzise und kontextbewusst.
 
-Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge wie ARAS.`
+Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge wie ARAS.${promptCreationContext}`
       }];
       
-      recentMessages.forEach(msg => {
-        openaiMessages.push({
-          role: msg.isAi ? "assistant" : "user",
-          content: msg.message
-        });
-      });
+      // Gemini requires first non-system message to be from user
+      // Build history, ensuring we start with a user message
+      const historyMessages: Array<{role: string, content: string}> = [];
+      
+      for (const msg of recentMessages) {
+        const role = msg.isAi ? "assistant" : "user";
+        // Skip leading assistant messages (Gemini requires first to be user)
+        if (historyMessages.length === 0 && role === "assistant") {
+          continue;
+        }
+        historyMessages.push({ role, content: msg.message });
+      }
+      
+      // Only add history if it starts with user (double-check)
+      if (historyMessages.length > 0 && historyMessages[0].role === "user") {
+        historyMessages.forEach(msg => openaiMessages.push(msg));
+      }
       
       let currentMessage = message;
       if (files?.length > 0) {
@@ -1742,7 +1957,13 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
         });
 
         // Build conversation history for Gemini format
-        const history = recentMessages.slice(-20).map(msg => ({
+        // IMPORTANT: Skip leading AI messages - Gemini requires first message to be from user
+        let filteredMessages = recentMessages.slice(-20);
+        while (filteredMessages.length > 0 && filteredMessages[0].isAi) {
+          filteredMessages = filteredMessages.slice(1);
+        }
+        
+        const history = filteredMessages.map(msg => ({
           role: msg.isAi ? "model" : "user",
           parts: [{ text: msg.message }]
         }));

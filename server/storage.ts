@@ -419,9 +419,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateChatSessionMetadata(sessionId: number, metadata: any): Promise<void> {
+    // NOTE: metadata column removed from schema - just update timestamp
     await db
       .update(chatSessions)
-      .set({ metadata, updatedAt: new Date() })
+      .set({ updatedAt: new Date() })
       .where(eq(chatSessions.id, sessionId));
   }
 

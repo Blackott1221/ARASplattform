@@ -212,26 +212,12 @@ export const campaigns = pgTable("campaigns", {
 });
 
 // Chat sessions table
+// NOTE: metadata column removed - DB doesn't have it and causes INSERT errors
 export const chatSessions = pgTable("chat_sessions", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").notNull().references(() => users.id),
   title: varchar("title").default("New Chat"),
   isActive: boolean("is_active").default(true),
-  metadata: jsonb("metadata").$type<{
-    spaceSummary?: {
-      status: 'pending' | 'ready' | 'failed';
-      short?: string;
-      full?: {
-        outcome: string;
-        bulletPoints: string[];
-        nextStep: string;
-        sentiment: string;
-        tags: string[];
-      };
-      updatedAt?: string;
-      error?: string;
-    };
-  }>(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

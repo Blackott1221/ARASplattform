@@ -372,6 +372,34 @@ function PowerContent() {
   const [loadingCallDetails, setLoadingCallDetails] = useState(false);
   const summaryPollRef = useRef<NodeJS.Timeout | null>(null);
 
+  // 🔥 PREFILLED PROMPT FROM SPACE PAGE
+  useEffect(() => {
+    const prefilledPrompt = localStorage.getItem('aras_prefilled_prompt');
+    if (prefilledPrompt) {
+      setMessage(prefilledPrompt);
+      localStorage.removeItem('aras_prefilled_prompt'); // Clear after use
+      toast({
+        title: 'Prompt eingefügt! ✓',
+        description: 'Der generierte Prompt wurde automatisch eingefügt.',
+      });
+    }
+  }, []);
+
+  // ─────────────────────────────────────────────────────────────
+  // PRE-FILL FROM CHAT (reads localStorage on mount)
+  // ─────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const prefilledPrompt = localStorage.getItem('aras_prefilled_prompt');
+    if (prefilledPrompt) {
+      setMessage(prefilledPrompt);
+      localStorage.removeItem('aras_prefilled_prompt');
+      toast({
+        title: '✨ Prompt übernommen',
+        description: 'Dein generierter Prompt wurde eingefügt.',
+      });
+    }
+  }, []);
+
   // ─────────────────────────────────────────────────────────────
   // DATA QUERIES (real endpoints verified in server/routes.ts)
   // ─────────────────────────────────────────────────────────────

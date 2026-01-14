@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { MessageBubble } from "./message-bubble";
-import { Send, Mic, MicOff, Plus, MessageSquare, X, Menu, Paperclip, File, Image as ImageIcon, FileText, Clock, AlertCircle, Phone, Loader2, ArrowUp, Sparkles, Zap, ChevronRight } from "lucide-react";
+import { Send, Mic, MicOff, Plus, MessageSquare, X, Menu, Paperclip, File, Image as ImageIcon, FileText, Clock, AlertCircle, Phone, Loader2, ArrowUp, Sparkles, Zap, ChevronRight, LayoutGrid, FileEdit, PhoneCall, Users, User, Briefcase, UtensilsCrossed, Calendar, MessageCircle, Copy, CheckCircle, ArrowLeft } from "lucide-react";
+import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
@@ -28,9 +29,27 @@ const ANIMATED_TEXTS = [
 ];
 
 const SUGGESTED_PROMPTS = [
-  { text: "Was ist ARAS AI?", isCall: false },
-  { text: "Aktuelle Nachrichten", isCall: false },
-  { text: "ARAS AI Anruf starten", isCall: true }
+  { 
+    text: "Outbound Kampagne starten", 
+    subtext: "Grid öffnen (10.000 parallel)",
+    icon: "grid",
+    action: "navigate",
+    href: "/app/campaigns"
+  },
+  { 
+    text: "Einzelanruf starten", 
+    subtext: "Direkter Anruf",
+    icon: "call",
+    action: "navigate",
+    href: "/app/power"
+  },
+  { 
+    text: "ARAS AI prompt schreiben", 
+    subtext: "KI-Instruktion erstellen",
+    icon: "edit",
+    action: "create_prompt",
+    href: null
+  }
 ];
 
 const CALL_TEMPLATES = [
@@ -53,6 +72,31 @@ const CALL_TEMPLATES = [
     icon: "✨", 
     title: "Custom", 
     message: "" 
+  }
+];
+
+// 🔥 NEUE EINZELANRUF USE CASES
+const EINZELANRUF_USE_CASES = [
+  {
+    id: 'bewerber',
+    icon: Briefcase,
+    title: 'Bewerber prüfen',
+    description: 'Kandidaten vorqualifizieren',
+    promptHint: 'Bewerber-Screening für eine Stelle'
+  },
+  {
+    id: 'tisch',
+    icon: UtensilsCrossed,
+    title: 'Tisch reservieren',
+    description: 'Restaurant-Reservierung',
+    promptHint: 'Tischreservierung in einem Restaurant'
+  },
+  {
+    id: 'meeting',
+    icon: Calendar,
+    title: 'Meeting bestätigen',
+    description: 'Termin verifizieren',
+    promptHint: 'Meeting-Bestätigung mit einem Kontakt'
   }
 ];
 
@@ -89,6 +133,7 @@ function ThinkingPhaseIndicator() {
 }
 
 export function ChatInterface() {
+  const [, setLocation] = useLocation();
   const [message, setMessage] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [audioURL, setAudioURL] = useState<string | null>(null);
@@ -99,6 +144,16 @@ export function ChatInterface() {
   const [phoneError, setPhoneError] = useState('');
   const [callLoading, setCallLoading] = useState(false);
   const [callResult, setCallResult] = useState<any>(null);
+  
+  // 🔥 CALL WIZARD STATE
+  const [callWizardStep, setCallWizardStep] = useState<'type' | 'usecase' | 'input' | 'generating' | 'result'>('type');
+  const [selectedCallType, setSelectedCallType] = useState<'einzelanruf' | 'kampagne' | null>(null);
+  const [selectedUseCase, setSelectedUseCase] = useState<string | null>(null);
+  const [customInput, setCustomInput] = useState('');
+  const [generatedPrompt, setGeneratedPrompt] = useState('');
+  const [promptCopied, setPromptCopied] = useState(false);
+  const [wizardMessages, setWizardMessages] = useState<{role: 'user' | 'ai', content: string}[]>([]);
+  const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [displayText, setDisplayText] = useState("");
   const [isTyping, setIsTyping] = useState(true);
@@ -112,6 +167,7 @@ export function ChatInterface() {
   const [isThinking, setIsThinking] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [thinkingPhase, setThinkingPhase] = useState(0);
+  const [isPromptLoading, setIsPromptLoading] = useState(false);
   
   const [shouldAnimateLastAiMessage, setShouldAnimateLastAiMessage] = useState(false);
   const previousMessagesLength = useRef(0);
@@ -124,6 +180,17 @@ export function ChatInterface() {
   const { toast } = useToast();
   const { user, isLoading: authLoading } = useAuth();
   const queryClient = useQueryClient();
+
+  // 🔥 USER PROFILE CONTEXT FOR PERSONALIZED INSTRUCTION GENERATION
+  const { data: profileContext } = useQuery({
+    queryKey: ['profile-context'],
+    queryFn: async () => {
+      const res = await fetch('/api/user/profile-context', { credentials: 'include' });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!user && !authLoading,
+  });
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -486,6 +553,103 @@ export function ChatInterface() {
     }
   };
 
+  // 🔥 START PROMPT CREATION FLOW - Hidden system message, only ARAS response visible
+  const startPromptCreation = async () => {
+    const userName = profileContext?.name || (user as any)?.firstName || (user as any)?.name || 'du';
+    const companyName = profileContext?.company || '';
+    const industry = profileContext?.industry || '';
+    
+    // Show loading state immediately
+    setIsPromptLoading(true);
+    
+    // HIDDEN system prompt - User will NOT see this, only ARAS's response
+    const hiddenSystemPrompt = `[PROMPT-ERSTELLUNG STARTEN]
+Du bist ARAS AI, ein intelligenter Assistent für Telefonie-Automatisierung. 
+Der User "${userName}"${companyName ? ` von "${companyName}"` : ''}${industry ? ` (Branche: ${industry})` : ''} möchte einen Prompt für einen KI-Telefonagenten erstellen.
+
+WICHTIG: Antworte NUR mit dieser freundlichen Frage (ohne Erwähnung von Gemini, ChatGPT oder anderen KI-Namen - du bist ARAS AI):
+
+"Hi ${userName}! 👋 Klar, ich erstelle dir den perfekten Prompt für dein Telefonat.
+
+**Handelt es sich um einen Einzelanruf oder eine Kampagne?**
+
+🔹 **Einzelanruf** – Ein einzelnes Telefonat mit einer Person
+🔹 **Kampagne** – bis zu 10.000 Calls gleichzeitig!
+
+Klicke einfach auf eine Option!"
+
+Das ist ALLES was du antworten sollst - keine zusätzlichen Erklärungen.`;
+
+    // Send hidden message and show only AI response
+    setIsThinking(true);
+    setIsStreaming(true);
+    setStreamingMessage('');
+    
+    try {
+      const response = await fetch('/api/chat/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          message: hiddenSystemPrompt,
+          hideUserMessage: true // Flag to not save user message visibly
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to start prompt creation');
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullMessage = '';
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') continue;
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.content) {
+                  fullMessage += parsed.content;
+                  setStreamingMessage(fullMessage);
+                }
+              } catch {}
+            }
+          }
+        }
+      }
+
+      setIsThinking(false);
+      setIsStreaming(false);
+      setStreamingMessage('');
+      setIsPromptLoading(false);
+      
+      // Refresh messages to show the AI response
+      queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
+      
+    } catch (error) {
+      console.error('Error starting prompt creation:', error);
+      setIsThinking(false);
+      setIsStreaming(false);
+      setStreamingMessage('');
+      setIsPromptLoading(false);
+      toast({
+        title: "Fehler",
+        description: "Prompt-Erstellung konnte nicht gestartet werden",
+        variant: "destructive"
+      });
+    }
+  };
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }});
@@ -542,6 +706,118 @@ export function ChatInterface() {
     if (type.includes('image')) return <ImageIcon className="w-4 h-4" />;
     if (type.includes('pdf')) return <FileText className="w-4 h-4" />;
     return <File className="w-4 h-4" />;
+  };
+
+  // 🔥 CALL WIZARD FUNCTIONS
+  const resetCallWizard = () => {
+    setCallWizardStep('type');
+    setSelectedCallType(null);
+    setSelectedUseCase(null);
+    setCustomInput('');
+    setGeneratedPrompt('');
+    setPromptCopied(false);
+    setWizardMessages([]);
+    setIsGeneratingPrompt(false);
+  };
+
+  const generateCallPrompt = async (useCase: string | null, customText: string) => {
+    setIsGeneratingPrompt(true);
+    setCallWizardStep('generating');
+    
+    try {
+      const useCaseInfo = useCase ? EINZELANRUF_USE_CASES.find(u => u.id === useCase) : null;
+      const context = useCaseInfo 
+        ? `Anwendungsfall: ${useCaseInfo.title} - ${useCaseInfo.promptHint}`
+        : 'Benutzerdefinierter Anruf';
+      
+      const userInput = customText || (useCaseInfo?.promptHint || '');
+      
+      const response = await fetch('/api/chat/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          message: `Du bist ein Experte für KI-Telefonanrufe. Erstelle einen präzisen, professionellen Prompt für einen ARAS AI Einzelanruf.
+
+Kontext: ${context}
+Benutzerangabe: ${userInput}
+
+WICHTIG: Erstelle einen klaren, strukturierten Prompt der folgendes enthält:
+1. Ziel des Anrufs (1-2 Sätze)
+2. Wichtige Punkte die angesprochen werden sollen
+3. Gewünschter Ton (professionell, freundlich, etc.)
+
+Formatiere den Prompt so, dass er direkt für einen KI-Telefonanruf verwendet werden kann. Halte ihn kurz und prägnant (max. 150 Wörter).
+Antworte NUR mit dem Prompt selbst, ohne Einleitung oder Erklärung.`,
+          sessionId: null
+        })
+      });
+
+      if (!response.ok) throw new Error('Prompt generation failed');
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullPrompt = '';
+
+      while (true) {
+        const { done, value } = await reader!.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n').filter(line => line.trim() !== '');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.content) {
+                fullPrompt += data.content;
+                setGeneratedPrompt(fullPrompt);
+              }
+            } catch (e) {}
+          }
+        }
+      }
+
+      setCallWizardStep('result');
+    } catch (error) {
+      toast({
+        title: 'Fehler',
+        description: 'Prompt konnte nicht generiert werden',
+        variant: 'destructive'
+      });
+      setCallWizardStep('input');
+    } finally {
+      setIsGeneratingPrompt(false);
+    }
+  };
+
+  const copyPromptAndRedirect = async () => {
+    try {
+      await navigator.clipboard.writeText(generatedPrompt);
+      setPromptCopied(true);
+      
+      // Store prompt in localStorage for POWER page
+      localStorage.setItem('aras_prefilled_prompt', generatedPrompt);
+      
+      toast({
+        title: 'Prompt kopiert! ✓',
+        description: 'Weiterleitung zur Power-Seite...',
+      });
+      
+      // Redirect to POWER page after short delay
+      setTimeout(() => {
+        setShowCallModal(false);
+        resetCallWizard();
+        setLocation('/app/power');
+      }, 1000);
+    } catch (error) {
+      toast({
+        title: 'Kopieren fehlgeschlagen',
+        description: 'Bitte manuell kopieren',
+        variant: 'destructive'
+      });
+    }
   };
 
   const allMessages = [...messages, ...optimisticMessages];
@@ -761,35 +1037,162 @@ export function ChatInterface() {
                 </span>
               </motion.div>
 
-              {/* Quick Action Buttons - uniform, slim, no text wrap */}
+              {/* Premium Quick Action Buttons - Ultra High-End Design */}
               <motion.div 
                 initial={{ opacity: 0 }} 
                 animate={{ opacity: 1 }} 
                 transition={{ delay: 0.5 }}
-                className="flex flex-wrap justify-center items-center gap-2 sm:gap-3 mb-8 sm:mb-12 px-3"
+                className="flex flex-col sm:flex-row flex-wrap justify-center items-center gap-3 sm:gap-4 mb-8 sm:mb-12 px-3 w-full max-w-4xl"
               >
-                {SUGGESTED_PROMPTS.map((prompt, index) => (
-                  <motion.button
-                    key={index}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6 + index * 0.1 }}
-                    whileHover={{ scale: 1.03, y: -2 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => prompt.isCall ? setShowCallModal(true) : handleSendMessage(prompt.text)}
-                    className="px-4 py-2.5 rounded-xl text-white text-xs font-semibold whitespace-nowrap flex items-center gap-2 transition-all"
-                    style={{
-                      fontFamily: 'Orbitron, sans-serif',
-                      background: 'rgba(10, 10, 10, 0.7)',
-                      border: '1px solid rgba(254, 145, 0, 0.4)',
-                      backdropFilter: 'blur(20px)',
-                      boxShadow: '0 0 15px rgba(254, 145, 0, 0.2)',
-                    }}
-                  >
-                    <span>{prompt.text}</span>
-                    <ArrowUp className="w-3.5 h-3.5" style={{ color: '#FE9100' }} />
-                  </motion.button>
-                ))}
+                {SUGGESTED_PROMPTS.map((prompt, index) => {
+                  const isThisButtonLoading = prompt.action === 'create_prompt' && isPromptLoading;
+                  
+                  const handleClick = () => {
+                    if (isThisButtonLoading) return; // Prevent double-click
+                    
+                    if (prompt.action === 'navigate' && prompt.href) {
+                      setLocation(prompt.href);
+                    } else if (prompt.action === 'call') {
+                      setShowCallModal(true);
+                    } else if (prompt.action === 'create_prompt') {
+                      // 🔥 START PROMPT CREATION FLOW IN CHAT
+                      startPromptCreation();
+                    } else if (prompt.action === 'coming_soon') {
+                      toast({
+                        title: "Demnächst verfügbar",
+                        description: "Diese Funktion wird bald freigeschaltet.",
+                      });
+                    }
+                  };
+
+                  const getIcon = () => {
+                    // Show loading spinner for prompt creation button
+                    if (isThisButtonLoading) {
+                      return (
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                        >
+                          <Loader2 className="w-5 h-5" />
+                        </motion.div>
+                      );
+                    }
+                    
+                    switch (prompt.icon) {
+                      case 'grid':
+                        return <LayoutGrid className="w-5 h-5" />;
+                      case 'edit':
+                        return <FileEdit className="w-5 h-5" />;
+                      case 'call':
+                        return <PhoneCall className="w-5 h-5" />;
+                      default:
+                        return <Sparkles className="w-5 h-5" />;
+                    }
+                  };
+
+                  return (
+                    <motion.button
+                      key={index}
+                      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ 
+                        delay: 0.6 + index * 0.15,
+                        type: "spring",
+                        stiffness: 200,
+                        damping: 20
+                      }}
+                      whileHover={{ 
+                        scale: 1.02, 
+                        y: -4,
+                        boxShadow: '0 0 40px rgba(254, 145, 0, 0.4), 0 0 80px rgba(254, 145, 0, 0.2)',
+                      }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleClick}
+                      className="group relative px-6 py-4 rounded-2xl text-white flex items-center gap-4 transition-all duration-300 w-full sm:w-auto min-w-[260px] overflow-hidden"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(20, 20, 20, 0.9) 0%, rgba(10, 10, 10, 0.95) 100%)',
+                        backdropFilter: 'blur(20px)',
+                      }}
+                    >
+                      {/* Animated Border Gradient */}
+                      <motion.div
+                        className="absolute inset-0 rounded-2xl"
+                        style={{
+                          padding: '1.5px',
+                          background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.6), rgba(233, 215, 196, 0.3), rgba(254, 145, 0, 0.6))',
+                          WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                          WebkitMaskComposite: 'xor',
+                          maskComposite: 'exclude',
+                        }}
+                        animate={{
+                          background: [
+                            'linear-gradient(135deg, rgba(254, 145, 0, 0.6), rgba(233, 215, 196, 0.3), rgba(254, 145, 0, 0.6))',
+                            'linear-gradient(225deg, rgba(233, 215, 196, 0.4), rgba(254, 145, 0, 0.6), rgba(233, 215, 196, 0.3))',
+                            'linear-gradient(315deg, rgba(254, 145, 0, 0.6), rgba(233, 215, 196, 0.3), rgba(254, 145, 0, 0.6))',
+                            'linear-gradient(135deg, rgba(254, 145, 0, 0.6), rgba(233, 215, 196, 0.3), rgba(254, 145, 0, 0.6))',
+                          ],
+                        }}
+                        transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+                      />
+
+                      {/* Glow Effect on Hover */}
+                      <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                        style={{
+                          background: 'radial-gradient(ellipse at center, rgba(254, 145, 0, 0.15) 0%, transparent 70%)',
+                        }}
+                      />
+
+                      {/* Icon Container with Gradient */}
+                      <motion.div 
+                        className="relative flex items-center justify-center w-12 h-12 rounded-xl"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.2) 0%, rgba(254, 145, 0, 0.05) 100%)',
+                          border: '1px solid rgba(254, 145, 0, 0.3)',
+                        }}
+                        whileHover={{
+                          background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.3) 0%, rgba(254, 145, 0, 0.1) 100%)',
+                        }}
+                      >
+                        <motion.div
+                          animate={{
+                            color: ['#FE9100', '#e9d7c4', '#FE9100'],
+                          }}
+                          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                        >
+                          {getIcon()}
+                        </motion.div>
+                      </motion.div>
+
+                      {/* Text Content */}
+                      <div className="relative flex flex-col items-start text-left flex-1">
+                        <span 
+                          className="text-sm font-bold tracking-wide"
+                          style={{ 
+                            fontFamily: 'Orbitron, sans-serif',
+                            background: 'linear-gradient(90deg, #ffffff, #e9d7c4)',
+                            backgroundClip: 'text',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                          }}
+                        >
+                          {prompt.text}
+                        </span>
+                        <span className="text-xs text-gray-500 mt-0.5 font-medium">
+                          {prompt.subtext}
+                        </span>
+                      </div>
+
+                      {/* Arrow Indicator */}
+                      <motion.div
+                        className="relative"
+                        animate={{ x: [0, 4, 0] }}
+                        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                      >
+                        <ChevronRight className="w-5 h-5 text-[#FE9100] opacity-60 group-hover:opacity-100 transition-opacity" />
+                      </motion.div>
+                    </motion.button>
+                  );
+                })}
               </motion.div>
             </motion.div>
 
@@ -936,6 +1339,271 @@ export function ChatInterface() {
                       onSpeak={() => {}}
                       isSpeaking={false}
                       isNew={!!isNewAiMessage}
+                      onOptionClick={async (option) => {
+                        // Handle special redirect commands
+                        if (option === '__REDIRECT_POWER__') {
+                          setLocation('/app/power');
+                          return;
+                        }
+                        if (option === '__REDIRECT_CAMPAIGNS__') {
+                          setLocation('/app/campaigns');
+                          return;
+                        }
+                        
+                        // Handle Einzelanruf selection - send hidden prompt for use case question
+                        if (option === 'Einzelanruf') {
+                          setIsThinking(true);
+                          setIsStreaming(true);
+                          setStreamingMessage('');
+                          
+                          const userName = profileContext?.name || (user as any)?.firstName || 'du';
+                          const hiddenPrompt = `[EINZELANRUF-MODUS]
+Der User hat "Einzelanruf" gewählt. Du MUSST jetzt EXAKT diese Antwort geben:
+
+"Super, ${userName}! 👍 Einzelanruf also.
+
+**Was soll dieser Anruf bewirken?**
+
+Wähle einen häufigen Anwendungsfall oder beschreibe deinen eigenen:"
+
+Das ist ALLES. Keine weiteren Erklärungen. Die Buttons werden automatisch angezeigt.`;
+                          
+                          try {
+                            const response = await fetch('/api/chat/messages', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              credentials: 'include',
+                              body: JSON.stringify({ message: hiddenPrompt, hideUserMessage: true }),
+                            });
+                            
+                            const reader = response.body?.getReader();
+                            const decoder = new TextDecoder();
+                            let fullMessage = '';
+                            
+                            if (reader) {
+                              while (true) {
+                                const { done, value } = await reader.read();
+                                if (done) break;
+                                const chunk = decoder.decode(value, { stream: true });
+                                for (const line of chunk.split('\n')) {
+                                  if (line.startsWith('data: ')) {
+                                    try {
+                                      const parsed = JSON.parse(line.slice(6));
+                                      if (parsed.content) {
+                                        fullMessage += parsed.content;
+                                        setStreamingMessage(fullMessage);
+                                      }
+                                    } catch {}
+                                  }
+                                }
+                              }
+                            }
+                            
+                            setIsThinking(false);
+                            setIsStreaming(false);
+                            setStreamingMessage('');
+                            queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
+                          } catch (error) {
+                            setIsThinking(false);
+                            setIsStreaming(false);
+                          }
+                          return;
+                        }
+                        
+                        // Handle USE CASE selections - send hidden prompt to generate prompt IMMEDIATELY
+                        if (option.includes('Bewerber') || option.includes('Tisch') || option.includes('Meeting')) {
+                          setIsThinking(true);
+                          setIsStreaming(true);
+                          setStreamingMessage('');
+                          
+                          const userName = profileContext?.name || (user as any)?.firstName || 'du';
+                          const companyName = profileContext?.company || '';
+                          const industry = profileContext?.industry || '';
+                          const userContext = companyName ? `von ${companyName}${industry ? ` (${industry})` : ''}` : '';
+                          
+                          let useCase = '';
+                          let promptTemplate = '';
+                          
+                          if (option.includes('Bewerber')) {
+                            useCase = 'Bewerber anrufen und Verfügbarkeit/Interesse prüfen';
+                            promptTemplate = `Du bist ein professioneller KI-Telefonagent ${userContext} für Recruiting.
+Deine Aufgabe: Bewerber anrufen und Verfügbarkeit sowie Interesse prüfen.
+
+KONTEXT:
+- Anrufer: ${userName}
+- Firma: ${companyName || '[DEINE FIRMA]'}
+- Ziel: Bewerber-Screening
+
+GESPRÄCHSABLAUF:
+1. "Guten Tag, hier ist ${userName}${companyName ? ` von ${companyName}` : ''}. Ich rufe bezüglich Ihrer Bewerbung an."
+2. Interesse und aktuelle Situation erfragen
+3. Verfügbarkeit für ein Gespräch klären
+4. Bei Interesse: Termin für Folgegespräch vereinbaren
+5. Freundliche Verabschiedung
+
+STIL: Professionell, freundlich, wertschätzend.`;
+                          } else if (option.includes('Tisch')) {
+                            useCase = 'Tisch in einem Restaurant reservieren';
+                            promptTemplate = `Du bist ein professioneller KI-Telefonagent ${userContext} für Reservierungen.
+Deine Aufgabe: Tischreservierung in einem Restaurant vornehmen.
+
+KONTEXT:
+- Anrufer: ${userName}
+- Firma: ${companyName || '[DEINE FIRMA]'}
+- Ziel: Tischreservierung
+
+GESPRÄCHSABLAUF:
+1. "Guten Tag, mein Name ist ${userName}${companyName ? ` von ${companyName}` : ''}. Ich möchte gerne einen Tisch reservieren."
+2. Datum und Uhrzeit nennen
+3. Anzahl der Personen angeben
+4. Besondere Wünsche erwähnen (z.B. Fensterplatz, ruhiger Bereich)
+5. Reservierung bestätigen lassen
+6. Freundliche bedanken und verabschieden
+
+STIL: Höflich, freundlich, auf den Punkt.`;
+                          } else if (option.includes('Meeting')) {
+                            useCase = 'Meeting/Termin bestätigen';
+                            promptTemplate = `Du bist ein professioneller KI-Telefonagent ${userContext} für Terminmanagement.
+Deine Aufgabe: Einen vereinbarten Termin bestätigen.
+
+KONTEXT:
+- Anrufer: ${userName}
+- Firma: ${companyName || '[DEINE FIRMA]'}
+- Ziel: Terminbestätigung
+
+GESPRÄCHSABLAUF:
+1. "Guten Tag, hier ist ${userName}${companyName ? ` von ${companyName}` : ''}. Ich rufe an, um unseren Termin zu bestätigen."
+2. Datum und Uhrzeit des Termins nennen
+3. Bestätigung einholen
+4. Bei Bedarf: Alternative Termine anbieten
+5. Details klären (Ort, Teilnehmer, Agenda)
+6. Freundliche Verabschiedung
+
+STIL: Professionell, effizient, verbindlich.`;
+                          }
+                          
+                          const hiddenPrompt = `[PROMPT GENERIEREN - SOFORT]
+Der User hat "${useCase}" gewählt. GENERIERE JETZT SOFORT den fertigen Prompt!
+
+ANTWORTE EXAKT SO (keine anderen Texte, keine Fragen):
+
+"Perfekt! Hier ist dein fertiger Prompt:
+
+\`\`\`
+${promptTemplate}
+\`\`\`"
+
+Das ist ALLES. Der "Kopieren & zu POWER" Button erscheint automatisch.`;
+                          
+                          try {
+                            const response = await fetch('/api/chat/messages', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              credentials: 'include',
+                              body: JSON.stringify({ message: hiddenPrompt, hideUserMessage: true }),
+                            });
+                            
+                            const reader = response.body?.getReader();
+                            const decoder = new TextDecoder();
+                            let fullMessage = '';
+                            
+                            if (reader) {
+                              while (true) {
+                                const { done, value } = await reader.read();
+                                if (done) break;
+                                const chunk = decoder.decode(value, { stream: true });
+                                for (const line of chunk.split('\n')) {
+                                  if (line.startsWith('data: ')) {
+                                    try {
+                                      const parsed = JSON.parse(line.slice(6));
+                                      if (parsed.content) {
+                                        fullMessage += parsed.content;
+                                        setStreamingMessage(fullMessage);
+                                      }
+                                    } catch {}
+                                  }
+                                }
+                              }
+                            }
+                            
+                            setIsThinking(false);
+                            setIsStreaming(false);
+                            setStreamingMessage('');
+                            queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
+                          } catch (error) {
+                            setIsThinking(false);
+                            setIsStreaming(false);
+                          }
+                          return;
+                        }
+                        
+                        // Handle Kampagne selection - send hidden prompt for campaign questions
+                        if (option === 'Kampagne') {
+                          setIsThinking(true);
+                          setIsStreaming(true);
+                          setStreamingMessage('');
+                          
+                          const userName = profileContext?.name || (user as any)?.firstName || 'du';
+                          const hiddenPrompt = `[KAMPAGNE-MODUS]
+Der User hat "Kampagne" gewählt. Du MUSST jetzt EXAKT diese Antwort geben:
+
+"Perfekt, ${userName}! 🚀 Eine Kampagne mit bis zu 10.000 Calls.
+
+Ich brauche ein paar Infos, um die perfekte Kampagne zu erstellen:
+
+**1. Was verkaufst du?** (Produkt/Dienstleistung)
+**2. Was ist das Ziel?** (z.B. Termin vereinbaren, Lead qualifizieren, Feedback einholen)
+**3. Wer ist die Zielgruppe?**
+
+Erzähl mir davon!"
+
+Das ist ALLES. Keine weiteren Erklärungen.`;
+                          
+                          try {
+                            const response = await fetch('/api/chat/messages', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              credentials: 'include',
+                              body: JSON.stringify({ message: hiddenPrompt, hideUserMessage: true }),
+                            });
+                            
+                            const reader = response.body?.getReader();
+                            const decoder = new TextDecoder();
+                            let fullMessage = '';
+                            
+                            if (reader) {
+                              while (true) {
+                                const { done, value } = await reader.read();
+                                if (done) break;
+                                const chunk = decoder.decode(value, { stream: true });
+                                for (const line of chunk.split('\n')) {
+                                  if (line.startsWith('data: ')) {
+                                    try {
+                                      const parsed = JSON.parse(line.slice(6));
+                                      if (parsed.content) {
+                                        fullMessage += parsed.content;
+                                        setStreamingMessage(fullMessage);
+                                      }
+                                    } catch {}
+                                  }
+                                }
+                              }
+                            }
+                            
+                            setIsThinking(false);
+                            setIsStreaming(false);
+                            setStreamingMessage('');
+                            queryClient.invalidateQueries({ queryKey: ["/api/chat/messages"] });
+                          } catch (error) {
+                            setIsThinking(false);
+                            setIsStreaming(false);
+                          }
+                          return;
+                        }
+                        
+                        // Directly send the selected option via mutation
+                        sendMessage.mutate(option);
+                      }}
                     />
                   </motion.div>
                 );
@@ -1105,7 +1773,7 @@ export function ChatInterface() {
         </motion.div>
       )}
 
-      {/* 🔥 ULTRA-SPEKTAKULÄRES CALL MODAL MIT GLASSMORPHISM */}
+      {/* 🔥 NEUES CALL WIZARD MODAL - ULTRA HIGH-END DESIGN */}
       <AnimatePresence>
         {showCallModal && (
           <motion.div
@@ -1114,377 +1782,485 @@ export function ChatInterface() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
             style={{
-              background: 'rgba(0, 0, 0, 0.85)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
+              background: 'rgba(0, 0, 0, 0.9)',
+              backdropFilter: 'blur(25px)',
+              WebkitBackdropFilter: 'blur(25px)',
             }}
             onClick={(e) => {
-              // ✅ FIX: Nur schließen wenn direkt auf Hintergrund geklickt
-              if (e.target === e.currentTarget && !callLoading) {
+              if (e.target === e.currentTarget && !isGeneratingPrompt) {
                 setShowCallModal(false);
+                resetCallWizard();
               }
             }}
           >
             <motion.div
-              initial={{ scale: 0.8, y: 50, opacity: 0 }}
+              initial={{ scale: 0.85, y: 40, opacity: 0 }}
               animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.8, y: 50, opacity: 0 }}
-              transition={{ type: 'spring', damping: 20 }}
+              exit={{ scale: 0.85, y: 40, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
               className="relative w-full max-w-2xl"
             >
-              {/* 🔥 PERMANENT ANIMIERTER GRADIENT BORDER */}
+              {/* Animated Gradient Border */}
               <motion.div
                 className="absolute -inset-[3px] rounded-3xl"
                 style={{
                   background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
                   backgroundSize: '300% 100%',
-                  boxShadow: '0 0 60px rgba(254, 145, 0, 0.5)',
+                  boxShadow: '0 0 80px rgba(254, 145, 0, 0.4)',
                 }}
-                animate={{
-                  backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
-                }}
+                animate={{ backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
                 transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
               />
 
               <div
-                className="relative rounded-3xl p-8"
+                className="relative rounded-3xl p-8 overflow-hidden"
                 style={{
-                  background: 'rgba(10, 10, 10, 0.95)',
+                  background: 'rgba(8, 8, 8, 0.98)',
                   backdropFilter: 'blur(60px)',
-                  WebkitBackdropFilter: 'blur(60px)',
                 }}
               >
-                {/* ✅ FIX: Close Button mit z-index und pointer-events */}
+                {/* Close Button */}
                 <motion.button
-                  whileHover={{ scale: 1.15, rotate: 90 }}
+                  whileHover={{ scale: 1.1, rotate: 90 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!callLoading) {
-                      setShowCallModal(false);
-                      setCallResult(null);
-                      setCallFormData({ contactName: '', phoneNumber: '', message: '' });
-                      setSelectedTemplate(null);
-                      setPhoneError('');
-                    }
+                  onClick={() => {
+                    setShowCallModal(false);
+                    resetCallWizard();
                   }}
-                  disabled={callLoading}
-                  className="absolute top-6 right-6 p-2.5 rounded-full hover:bg-white/10 transition-all z-50"
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    pointerEvents: callLoading ? 'none' : 'auto',
-                  }}
+                  disabled={isGeneratingPrompt}
+                  className="absolute top-5 right-5 p-2.5 rounded-full hover:bg-white/10 transition-all z-50"
+                  style={{ background: 'rgba(255, 255, 255, 0.05)' }}
                 >
-                  <X className="w-5 h-5 text-gray-400 hover:text-white" />
+                  <X className="w-5 h-5 text-gray-400" />
                 </motion.button>
 
-                {!callResult ? (
-                  <div>
-                    {/* Header */}
-                    <div className="mb-8">
-                      <div className="flex items-center gap-4 mb-3">
-                        <motion.div 
-                          className="w-14 h-14 rounded-2xl flex items-center justify-center" 
-                          style={{
-                            background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.2), rgba(163, 78, 0, 0.2))',
-                            border: '2px solid rgba(254, 145, 0, 0.4)',
-                            boxShadow: '0 0 30px rgba(254, 145, 0, 0.3)',
-                          }}
-                          whileHover={{ scale: 1.1, rotate: 360 }}
-                          transition={{ duration: 0.6 }}
-                        >
-                          <Phone className="w-7 h-7" style={{ color: '#FE9100' }} />
-                        </motion.div>
-                        <div>
-                          <h3 
-                            className="text-4xl font-bold mb-1"
-                            style={{ 
-                              fontFamily: 'Orbitron, sans-serif',
-                              background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
-                              backgroundClip: 'text',
-                              WebkitBackgroundClip: 'text',
-                              WebkitTextFillColor: 'transparent',
-                            }}
-                          >
-                            Smart Call
-                          </h3>
-                          <p className="text-sm text-gray-500">KI-gesteuerte Anrufe in Sekunden</p>
-                        </div>
-                      </div>
-                    </div>
+                {/* Back Button (show after step 1) */}
+                {callWizardStep !== 'type' && callWizardStep !== 'generating' && (
+                  <motion.button
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      if (callWizardStep === 'usecase') setCallWizardStep('type');
+                      else if (callWizardStep === 'input') setCallWizardStep('usecase');
+                      else if (callWizardStep === 'result') setCallWizardStep('input');
+                    }}
+                    className="absolute top-5 left-5 p-2.5 rounded-full hover:bg-white/10 transition-all z-50 flex items-center gap-2"
+                    style={{ background: 'rgba(255, 255, 255, 0.05)' }}
+                  >
+                    <ArrowLeft className="w-4 h-4 text-gray-400" />
+                    <span className="text-xs text-gray-400">Zurück</span>
+                  </motion.button>
+                )}
 
-                    {/* Templates */}
-                    <div className="mb-7">
-                      <label className="block text-xs font-semibold text-gray-400 mb-3" style={{ fontFamily: 'Orbitron, sans-serif' }}>SCHNELLVORLAGEN</label>
-                      <div className="grid grid-cols-4 gap-3">
-                        {CALL_TEMPLATES.map((template, index) => (
-                          <motion.button
-                            key={index}
-                            whileHover={{ scale: 1.08, y: -4 }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => {
-                              setSelectedTemplate(index);
-                              setCallFormData({ ...callFormData, message: template.message });
-                            }}
-                            className={`relative p-5 rounded-xl transition-all ${
-                              selectedTemplate === index
-                                ? 'border-2 border-[#FE9100] shadow-lg shadow-[#FE9100]/30'
-                                : 'border border-white/10 hover:border-white/30'
-                            }`}
-                            style={{
-                              background: selectedTemplate === index 
-                                ? 'rgba(254, 145, 0, 0.1)' 
-                                : 'rgba(255, 255, 255, 0.02)',
-                              backdropFilter: 'blur(20px)',
-                            }}
-                            disabled={callLoading}
-                          >
-                            <div className="text-3xl mb-2">{template.icon}</div>
-                            <div className="text-xs text-white/90 font-medium">{template.title}</div>
-                            {selectedTemplate === index && (
-                              <motion.div
-                                initial={{ scale: 0, rotate: -180 }}
-                                animate={{ scale: 1, rotate: 0 }}
-                                className="absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center"
+                <AnimatePresence mode="wait">
+                  {/* STEP 1: Call Type Selection */}
+                  {callWizardStep === 'type' && (
+                    <motion.div
+                      key="type"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="text-center mb-10">
+                        <motion.div 
+                          className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-5"
+                          style={{
+                            background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.2), rgba(163, 78, 0, 0.15))',
+                            border: '2px solid rgba(254, 145, 0, 0.4)',
+                            boxShadow: '0 0 40px rgba(254, 145, 0, 0.3)',
+                          }}
+                          animate={{ rotate: [0, 5, -5, 0] }}
+                          transition={{ duration: 4, repeat: Infinity }}
+                        >
+                          <Phone className="w-10 h-10 text-[#FE9100]" />
+                        </motion.div>
+                        <h2 
+                          className="text-3xl font-bold mb-2"
+                          style={{ 
+                            fontFamily: 'Orbitron, sans-serif',
+                            background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
+                            backgroundClip: 'text',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                          }}
+                        >
+                          ARAS AI Anruf
+                        </h2>
+                        <p className="text-gray-500 text-sm">Wähle deinen Anruftyp</p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Einzelanruf Option */}
+                        <motion.button
+                          whileHover={{ scale: 1.03, y: -4 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => {
+                            setSelectedCallType('einzelanruf');
+                            setCallWizardStep('usecase');
+                          }}
+                          className="relative p-6 rounded-2xl text-left group overflow-hidden"
+                          style={{
+                            background: 'linear-gradient(135deg, rgba(20, 20, 20, 0.9), rgba(15, 15, 15, 0.95))',
+                            border: '1px solid rgba(254, 145, 0, 0.3)',
+                          }}
+                        >
+                          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            style={{ background: 'radial-gradient(ellipse at center, rgba(254, 145, 0, 0.1) 0%, transparent 70%)' }}
+                          />
+                          <div className="relative">
+                            <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-4"
+                              style={{
+                                background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.2), rgba(254, 145, 0, 0.05))',
+                                border: '1px solid rgba(254, 145, 0, 0.3)',
+                              }}
+                            >
+                              <User className="w-7 h-7 text-[#FE9100]" />
+                            </div>
+                            <h3 className="text-lg font-bold text-white mb-1" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                              Einzelanruf
+                            </h3>
+                            <p className="text-xs text-gray-500">Einen Kontakt anrufen</p>
+                          </div>
+                          <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#FE9100] opacity-50 group-hover:opacity-100 transition-opacity" />
+                        </motion.button>
+
+                        {/* Kampagne Option */}
+                        <motion.button
+                          whileHover={{ scale: 1.03, y: -4 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => {
+                            setShowCallModal(false);
+                            resetCallWizard();
+                            setLocation('/app/campaigns');
+                          }}
+                          className="relative p-6 rounded-2xl text-left group overflow-hidden"
+                          style={{
+                            background: 'linear-gradient(135deg, rgba(20, 20, 20, 0.9), rgba(15, 15, 15, 0.95))',
+                            border: '1px solid rgba(254, 145, 0, 0.3)',
+                          }}
+                        >
+                          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            style={{ background: 'radial-gradient(ellipse at center, rgba(254, 145, 0, 0.1) 0%, transparent 70%)' }}
+                          />
+                          <div className="relative">
+                            <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-4"
+                              style={{
+                                background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.2), rgba(254, 145, 0, 0.05))',
+                                border: '1px solid rgba(254, 145, 0, 0.3)',
+                              }}
+                            >
+                              <Users className="w-7 h-7 text-[#FE9100]" />
+                            </div>
+                            <h3 className="text-lg font-bold text-white mb-1" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                              Kampagne
+                            </h3>
+                            <p className="text-xs text-gray-500">Bis zu 10.000 parallel</p>
+                          </div>
+                          <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#FE9100] opacity-50 group-hover:opacity-100 transition-opacity" />
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* STEP 2: Use Case Selection */}
+                  {callWizardStep === 'usecase' && (
+                    <motion.div
+                      key="usecase"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="text-center mb-8 mt-6">
+                        <h2 
+                          className="text-2xl font-bold mb-2"
+                          style={{ 
+                            fontFamily: 'Orbitron, sans-serif',
+                            background: 'linear-gradient(90deg, #e9d7c4, #FE9100)',
+                            backgroundClip: 'text',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                          }}
+                        >
+                          Wofür ist der Anruf?
+                        </h2>
+                        <p className="text-gray-500 text-sm">Wähle einen Anwendungsfall oder beschreibe deinen eigenen</p>
+                      </div>
+
+                      {/* Use Case Cards */}
+                      <div className="grid grid-cols-3 gap-3 mb-6">
+                        {EINZELANRUF_USE_CASES.map((useCase, index) => {
+                          const IconComponent = useCase.icon;
+                          return (
+                            <motion.button
+                              key={useCase.id}
+                              initial={{ opacity: 0, y: 15 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.1 }}
+                              whileHover={{ scale: 1.05, y: -3 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => {
+                                setSelectedUseCase(useCase.id);
+                                setCustomInput(useCase.promptHint);
+                                setCallWizardStep('input');
+                              }}
+                              className={`relative p-5 rounded-xl text-center group transition-all ${
+                                selectedUseCase === useCase.id ? 'border-2 border-[#FE9100]' : 'border border-white/10'
+                              }`}
+                              style={{
+                                background: selectedUseCase === useCase.id 
+                                  ? 'rgba(254, 145, 0, 0.1)' 
+                                  : 'rgba(255, 255, 255, 0.02)',
+                              }}
+                            >
+                              <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
                                 style={{
-                                  background: 'linear-gradient(135deg, #FE9100, #a34e00)',
-                                  boxShadow: '0 4px 15px rgba(254, 145, 0, 0.5)',
+                                  background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.15), rgba(254, 145, 0, 0.05))',
+                                  border: '1px solid rgba(254, 145, 0, 0.25)',
                                 }}
                               >
-                                <Sparkles className="w-3 h-3 text-white" />
-                              </motion.div>
-                            )}
-                          </motion.button>
-                        ))}
+                                <IconComponent className="w-6 h-6 text-[#FE9100]" />
+                              </div>
+                              <h4 className="text-sm font-semibold text-white mb-1">{useCase.title}</h4>
+                              <p className="text-xs text-gray-500">{useCase.description}</p>
+                            </motion.button>
+                          );
+                        })}
                       </div>
-                    </div>
 
-                    {/* Form */}
-                    <div className="space-y-5">
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-400 mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>KONTAKTNAME</label>
+                      {/* Custom Input Option */}
+                      <motion.button
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.3 }}
+                        whileHover={{ scale: 1.01 }}
+                        onClick={() => {
+                          setSelectedUseCase(null);
+                          setCustomInput('');
+                          setCallWizardStep('input');
+                        }}
+                        className="w-full p-4 rounded-xl border border-dashed border-white/20 hover:border-[#FE9100]/50 transition-all flex items-center justify-center gap-3"
+                        style={{ background: 'rgba(255, 255, 255, 0.02)' }}
+                      >
+                        <MessageCircle className="w-5 h-5 text-gray-400" />
+                        <span className="text-sm text-gray-400">Eigene Beschreibung eingeben</span>
+                      </motion.button>
+                    </motion.div>
+                  )}
+
+                  {/* STEP 3: Custom Input / Details */}
+                  {callWizardStep === 'input' && (
+                    <motion.div
+                      key="input"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="text-center mb-6 mt-6">
+                        <h2 
+                          className="text-2xl font-bold mb-2"
+                          style={{ 
+                            fontFamily: 'Orbitron, sans-serif',
+                            background: 'linear-gradient(90deg, #e9d7c4, #FE9100)',
+                            backgroundClip: 'text',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                          }}
+                        >
+                          Details zum Anruf
+                        </h2>
+                        <p className="text-gray-500 text-sm">Beschreibe was ARAS AI sagen soll</p>
+                      </div>
+
+                      <div className="space-y-4">
                         <div className="relative group">
                           <motion.div
                             className="absolute -inset-[2px] rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity"
                             style={{
                               background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
                               backgroundSize: '200% 100%',
-                              boxShadow: '0 0 20px rgba(254, 145, 0, 0.3)',
                             }}
-                            animate={{
-                              backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
-                            }}
-                            transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                          />
-                          <input
-                            type="text"
-                            value={callFormData.contactName}
-                            onChange={(e) => setCallFormData({ ...callFormData, contactName: e.target.value })}
-                            placeholder="Max Mustermann"
-                            className="relative w-full px-5 py-3.5 rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none transition-all"
-                            style={{
-                              background: 'rgba(20, 20, 20, 0.9)',
-                              backdropFilter: 'blur(20px)',
-                              border: '1px solid rgba(255, 255, 255, 0.08)',
-                            }}
-                            disabled={callLoading}
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-400 mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>TELEFONNUMMER</label>
-                        <div className="relative group">
-                          <motion.div
-                            className="absolute -inset-[2px] rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity"
-                            style={{
-                              background: phoneError 
-                                ? 'rgba(239,68,68,0.6)'
-                                : 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
-                              backgroundSize: '200% 100%',
-                              boxShadow: phoneError ? '0 0 20px rgba(239,68,68,0.4)' : '0 0 20px rgba(254, 145, 0, 0.3)',
-                            }}
-                            animate={phoneError ? {} : {
-                              backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
-                            }}
-                            transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                          />
-                          <input
-                            type="tel"
-                            value={callFormData.phoneNumber}
-                            onChange={(e) => {
-                              const formatted = e.target.value.replace(/[^\d+]/g, '');
-                              setCallFormData({ ...callFormData, phoneNumber: formatted });
-                              setPhoneError(formatted && !/^\+[0-9]{10,15}$/.test(formatted) ? 'Format: +4917661119320' : '');
-                            }}
-                            placeholder="+41 79 123 45 67"
-                            className="relative w-full px-5 py-3.5 rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none transition-all font-mono"
-                            style={{
-                              background: 'rgba(20, 20, 20, 0.9)',
-                              backdropFilter: 'blur(20px)',
-                              border: phoneError ? '1px solid rgba(239,68,68,0.5)' : '1px solid rgba(255, 255, 255, 0.08)',
-                            }}
-                            disabled={callLoading}
-                          />
-                        </div>
-                        {phoneError && (
-                          <motion.p 
-                            initial={{ opacity: 0, y: -5 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="mt-2 text-xs text-red-400 font-medium"
-                          >
-                            ⚠️ {phoneError}
-                          </motion.p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-400 mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                          NACHRICHT
-                          {selectedTemplate !== null && selectedTemplate < 3 && (
-                            <span className="ml-2 text-[#FE9100]">✨ Template aktiv</span>
-                          )}
-                        </label>
-                        <div className="relative group">
-                          <motion.div
-                            className="absolute -inset-[2px] rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity"
-                            style={{
-                              background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
-                              backgroundSize: '200% 100%',
-                              boxShadow: '0 0 20px rgba(254, 145, 0, 0.3)',
-                            }}
-                            animate={{
-                              backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
-                            }}
+                            animate={{ backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
                             transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
                           />
                           <textarea
-                            value={callFormData.message}
-                            onChange={(e) => {
-                              setCallFormData({ ...callFormData, message: e.target.value });
-                              if (selectedTemplate !== 3) setSelectedTemplate(3);
-                            }}
-                            placeholder="z.B. Termin vereinbaren für nächste Woche"
-                            className="relative w-full px-5 py-3.5 rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none transition-all resize-none"
+                            value={customInput}
+                            onChange={(e) => setCustomInput(e.target.value)}
+                            placeholder="z.B. Ich möchte einen Bewerber für die Stelle als Sales Manager anrufen und seine Verfügbarkeit sowie Gehaltsvorstellungen abfragen..."
+                            className="relative w-full px-5 py-4 rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none resize-none"
                             style={{
-                              minHeight: 110,
-                              background: 'rgba(20, 20, 20, 0.9)',
-                              backdropFilter: 'blur(20px)',
+                              minHeight: 140,
+                              background: 'rgba(15, 15, 15, 0.95)',
                               border: '1px solid rgba(255, 255, 255, 0.08)',
                             }}
-                            disabled={callLoading}
+                            autoFocus
                           />
                         </div>
-                      </div>
 
-                      {/* Call Button */}
-                      <motion.div className="pt-4">
+                        {/* Generate Button */}
                         <motion.button
-                          whileHover={{ 
-                            scale: callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError ? 1 : 1.03,
-                            boxShadow: callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError 
-                              ? '0 0 0 rgba(254, 145, 0, 0)' 
-                              : '0 20px 60px rgba(254, 145, 0, 0.5)',
-                          }}
-                          whileTap={{ scale: 0.97 }}
-                          onClick={async () => {
-                            if (!callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError) {
-                              toast({ title: 'Fehlende Angaben', description: 'Bitte fülle alle Felder korrekt aus', variant: 'destructive' });
-                              return;
-                            }
-                            setCallLoading(true);
-                            try {
-                              const response = await fetch('/api/aras-voice/smart-call', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                credentials: 'include',
-                                body: JSON.stringify({ 
-                                  name: callFormData.contactName, 
-                                  phoneNumber: callFormData.phoneNumber, 
-                                  message: callFormData.message 
-                                })
-                              });
-                              const data = await response.json();
-                              if (data.success) {
-                                setCallResult({ success: true });
-                                toast({ title: 'Anruf gestartet! ✓', description: `ARAS AI ruft ${callFormData.contactName} an...` });
-                                setTimeout(() => {
-                                  setShowCallModal(false);
-                                  setCallResult(null);
-                                  setCallFormData({ contactName: '', phoneNumber: '', message: '' });
-                                  setSelectedTemplate(null);
-                                }, 2500);
-                              } else {
-                                toast({ title: 'Fehler', description: data.error || 'Anruf konnte nicht gestartet werden', variant: 'destructive' });
-                              }
-                            } catch (error: any) {
-                              toast({ title: 'Fehler', description: error?.message || 'Anruf fehlgeschlagen', variant: 'destructive' });
-                            } finally {
-                              setCallLoading(false);
-                            }
-                          }}
-                          disabled={callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || !!phoneError}
-                          className="relative w-full py-5 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3 overflow-hidden"
+                          whileHover={{ scale: customInput.trim() ? 1.02 : 1 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => generateCallPrompt(selectedUseCase, customInput)}
+                          disabled={!customInput.trim()}
+                          className="w-full py-4 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-3"
                           style={{
                             fontFamily: 'Orbitron, sans-serif',
-                            background: (callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError)
-                              ? 'rgba(255, 255, 255, 0.05)'
-                              : 'linear-gradient(90deg, rgba(254, 145, 0, 0.3), rgba(163, 78, 0, 0.3))',
+                            background: customInput.trim() 
+                              ? 'linear-gradient(90deg, rgba(254, 145, 0, 0.3), rgba(163, 78, 0, 0.25))'
+                              : 'rgba(255, 255, 255, 0.05)',
                             border: '2px solid rgba(254, 145, 0, 0.4)',
-                            opacity: (callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError) ? 0.4 : 1,
-                            boxShadow: '0 10px 40px rgba(254, 145, 0, 0.3)',
+                            opacity: customInput.trim() ? 1 : 0.4,
+                            boxShadow: customInput.trim() ? '0 10px 40px rgba(254, 145, 0, 0.3)' : 'none',
                           }}
                         >
-                          {callLoading ? (
-                            <>
-                              <Loader2 className="w-6 h-6 animate-spin" style={{ color: '#FE9100' }} />
-                              <span className="text-white">Verbinde...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Zap className="w-6 h-6" style={{ color: '#FE9100' }} />
-                              <span className="text-white">ANRUF STARTEN</span>
-                              <ChevronRight className="w-5 h-5" style={{ color: '#FE9100' }} />
-                            </>
-                          )}
+                          <Sparkles className="w-5 h-5 text-[#FE9100]" />
+                          <span className="text-white">Prompt generieren</span>
+                          <ChevronRight className="w-5 h-5 text-[#FE9100]" />
                         </motion.button>
-                      </motion.div>
-                    </div>
-                  </div>
-                ) : (
-                  <motion.div 
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="text-center py-16"
-                  >
-                    <motion.div 
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: 'spring', delay: 0.2 }}
-                      className="w-28 h-28 rounded-3xl flex items-center justify-center mx-auto mb-7"
-                      style={{
-                        background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(22, 163, 74, 0.2))',
-                        border: '3px solid rgba(34, 197, 94, 0.5)',
-                        boxShadow: '0 0 60px rgba(34, 197, 94, 0.4)',
-                      }}
-                    >
-                      <Phone className="w-12 h-12 text-green-400" />
+                      </div>
                     </motion.div>
+                  )}
+
+                  {/* STEP 4: Generating */}
+                  {callWizardStep === 'generating' && (
                     <motion.div
-                      initial={{ y: 10, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.3 }}
+                      key="generating"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="text-center py-12"
                     >
-                      <h4 className="text-3xl font-bold text-white mb-3" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                        Anruf gestartet!
-                      </h4>
-                      <p className="text-lg text-gray-400">
-                        ARAS AI verbindet sich mit <span className="text-[#FE9100] font-semibold">{callFormData.contactName}</span>
-                      </p>
+                      <motion.div
+                        className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.2), rgba(163, 78, 0, 0.15))',
+                          border: '2px solid rgba(254, 145, 0, 0.4)',
+                        }}
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                      >
+                        <Loader2 className="w-10 h-10 text-[#FE9100]" />
+                      </motion.div>
+                      <h3 className="text-xl font-bold text-white mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                        Generiere Prompt...
+                      </h3>
+                      <p className="text-sm text-gray-500 mb-6">ARAS AI erstellt den perfekten Anruf-Prompt</p>
+                      
+                      {generatedPrompt && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="text-left p-4 rounded-xl mt-4"
+                          style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.05)' }}
+                        >
+                          <p className="text-sm text-gray-400 whitespace-pre-wrap">{generatedPrompt}</p>
+                        </motion.div>
+                      )}
                     </motion.div>
-                  </motion.div>
-                )}
+                  )}
+
+                  {/* STEP 5: Result with Copy */}
+                  {callWizardStep === 'result' && (
+                    <motion.div
+                      key="result"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="text-center mb-6 mt-6">
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ type: 'spring', delay: 0.1 }}
+                          className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                          style={{
+                            background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(22, 163, 74, 0.15))',
+                            border: '2px solid rgba(34, 197, 94, 0.4)',
+                            boxShadow: '0 0 40px rgba(34, 197, 94, 0.3)',
+                          }}
+                        >
+                          <CheckCircle className="w-8 h-8 text-green-400" />
+                        </motion.div>
+                        <h2 
+                          className="text-2xl font-bold mb-2"
+                          style={{ 
+                            fontFamily: 'Orbitron, sans-serif',
+                            background: 'linear-gradient(90deg, #22c55e, #16a34a)',
+                            backgroundClip: 'text',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                          }}
+                        >
+                          Prompt erstellt!
+                        </h2>
+                        <p className="text-gray-500 text-sm">Kopiere den Prompt und starte deinen Anruf</p>
+                      </div>
+
+                      {/* Generated Prompt Display */}
+                      <div 
+                        className="p-5 rounded-xl mb-5 max-h-[200px] overflow-y-auto aras-scroll"
+                        style={{ 
+                          background: 'rgba(15, 15, 15, 0.95)', 
+                          border: '1px solid rgba(255, 255, 255, 0.1)' 
+                        }}
+                      >
+                        <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">{generatedPrompt}</p>
+                      </div>
+
+                      {/* Copy & Redirect Button */}
+                      <motion.button
+                        whileHover={{ scale: 1.02, boxShadow: '0 15px 50px rgba(254, 145, 0, 0.5)' }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={copyPromptAndRedirect}
+                        className="w-full py-4 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-3"
+                        style={{
+                          fontFamily: 'Orbitron, sans-serif',
+                          background: promptCopied 
+                            ? 'linear-gradient(90deg, rgba(34, 197, 94, 0.3), rgba(22, 163, 74, 0.25))'
+                            : 'linear-gradient(90deg, rgba(254, 145, 0, 0.3), rgba(163, 78, 0, 0.25))',
+                          border: promptCopied 
+                            ? '2px solid rgba(34, 197, 94, 0.5)'
+                            : '2px solid rgba(254, 145, 0, 0.4)',
+                          boxShadow: '0 10px 40px rgba(254, 145, 0, 0.3)',
+                        }}
+                      >
+                        {promptCopied ? (
+                          <>
+                            <CheckCircle className="w-5 h-5 text-green-400" />
+                            <span className="text-white">Kopiert! Weiterleitung...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-5 h-5 text-[#FE9100]" />
+                            <span className="text-white">Kopieren & zu POWER</span>
+                            <ChevronRight className="w-5 h-5 text-[#FE9100]" />
+                          </>
+                        )}
+                      </motion.button>
+
+                      {/* Alternative: Just copy without redirect */}
+                      <motion.button
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.3 }}
+                        onClick={async () => {
+                          await navigator.clipboard.writeText(generatedPrompt);
+                          toast({ title: 'Prompt kopiert! ✓' });
+                        }}
+                        className="w-full mt-3 py-3 rounded-xl text-sm text-gray-500 hover:text-gray-300 transition-colors"
+                      >
+                        Nur kopieren (ohne Weiterleitung)
+                      </motion.button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </motion.div>
           </motion.div>
