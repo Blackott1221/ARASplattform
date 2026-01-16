@@ -283,11 +283,11 @@ export default function Signup() {
                           <ul className="space-y-3">
                             <li className="flex items-center gap-2">
                               <Zap className="w-4 h-4 text-primary" />
-                              <span className="text-sm">{plan.aiMessagesLimit.toLocaleString()} AI Nachrichten</span>
+                              <span className="text-sm">{(plan.aiMessagesLimit || 0).toLocaleString()} AI Nachrichten</span>
                             </li>
                             <li className="flex items-center gap-2">
                               <Phone className="w-4 h-4 text-primary" />
-                              <span className="text-sm">{plan.voiceCallsLimit.toLocaleString()} Voice Calls</span>
+                              <span className="text-sm">{(plan.voiceCallsLimit || 0).toLocaleString()} Voice Calls</span>
                             </li>
                             {plan.features?.slice(0, 4).map((feature: string, i: number) => (
                               <li key={i} className="flex items-center gap-2">
