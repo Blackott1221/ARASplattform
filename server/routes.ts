@@ -1193,6 +1193,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       logger.info(`[REGISTER-PAID] User ${userId} created with trial_pending status, plan ${planId}`);
 
+      // 🔥 SET SESSION - Auto-login the user so they're logged in after Stripe redirect
+      req.session.userId = user.id;
+      req.session.user = user;
+      
+      // 🔥 TRIGGER AI RESEARCH - Same as original registration flow
+      // This runs in background while user is at Stripe checkout
+      try {
+        const { generateAIProfile } = await import('./simple-auth');
+        generateAIProfile(user.id, company || '', website || '').catch((err: any) => {
+          logger.error(`[REGISTER-PAID] AI Profile generation failed for ${userId}:`, err);
+        });
+        logger.info(`[REGISTER-PAID] AI Research triggered for ${userId}`);
+      } catch (aiError) {
+        logger.error(`[REGISTER-PAID] Failed to trigger AI research:`, aiError);
+      }
+
       // Create Stripe Checkout session with 7-day trial
       const session = await stripe.checkout.sessions.create({
         customer: customer.id,
