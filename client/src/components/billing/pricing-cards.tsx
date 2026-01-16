@@ -46,19 +46,30 @@ export function PricingCards({ subscription, onPaymentSetup, onPlanUpgrade }: Pr
   });
 
   // Map database plans to UI format with proper pricing
-  const plans = dbPlans ? dbPlans.map((plan: any) => ({
-    id: plan.id,
-    name: plan.name,
-    price: plan.price / 100, // Convert cents to euros
-    trialMessages: 0,
-    aiMessages: plan.aiMessagesLimit,
-    voiceCalls: plan.voiceCallsLimit,
-    features: plan.features || [],
-    popular: plan.id === 'ultra', // Mark Ultra as popular
-    trialAvailable: false,
-    stripePriceId: plan.stripePriceId, // Include Stripe info
-    available: plan.id === 'free' || !!plan.stripePriceId // Available if free or has Stripe config
-  })) : [];
+  // 🔥 FREE plan is only shown if user is ALREADY on FREE (grandfather clause)
+  const isCurrentlyFree = subscription?.plan === 'free';
+  
+  const plans = dbPlans ? dbPlans
+    .filter((plan: any) => {
+      // Only show FREE plan to users who are already on FREE
+      if (plan.id === 'free') {
+        return isCurrentlyFree;
+      }
+      return true;
+    })
+    .map((plan: any) => ({
+      id: plan.id,
+      name: plan.name,
+      price: plan.price / 100, // Convert cents to euros
+      trialMessages: 0,
+      aiMessages: plan.aiMessagesLimit,
+      voiceCalls: plan.voiceCallsLimit,
+      features: plan.features || [],
+      popular: plan.id === 'pro', // Mark PRO as popular (recommended entry plan)
+      trialAvailable: false,
+      stripePriceId: plan.stripePriceId, // Include Stripe info
+      available: plan.id === 'free' || !!plan.stripePriceId // Available if free or has Stripe config
+    })) : [];
 
   const handlePlanSelect = async (planId: string) => {
     const plan = plans.find((p: any) => p.id === planId);

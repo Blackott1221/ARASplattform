@@ -21,9 +21,9 @@ const TYPED_LINES = [
 
 // Auth Subtitle Lines for Typing Animation
 const AUTH_SUBLINES = [
-  "Alpha Zugang ist kostenlos.",
+  "7 Tage kostenlos testen.",
   "Dein Account bleibt auch nach dem Marktstart bestehen.",
-  "Wenn du eine E-Mail von uns bekommen hast, bist du bereits Alpha-Kunde."
+  "Starte jetzt mit ARAS PRO – der KI-Outbound-Plattform."
 ];
 
 // Live Date and Time Component with Milliseconds
@@ -337,12 +337,12 @@ function PricingSection() {
       isPopular: false
     },
     {
-      name: "ARAS Free",
-      role: "Kostenlos – dauerhaft",
+      name: "7-TAGE TRIAL",
+      role: "Alle Pläne testen",
       alphaPrice: "€0",
-      standardPrice: "€0",
-      savings: "€0",
-      features: ["2 Outbound Calls", "10 Chatnachrichten", "Zugriff auf ARAS Basic Console", "Kostenlos starten"],
+      standardPrice: "dann ab €59",
+      savings: "Risikofrei",
+      features: ["Voller Zugriff auf alle Features", "7 Tage kostenlos", "Jederzeit kündbar", "Kreditkarte erforderlich"],
       isPopular: false,
       isFree: true
     }
@@ -421,8 +421,8 @@ function PricingSection() {
 
                 {plan.isFree && (
                   <div className="bg-white/5 p-4 rounded-xl border border-white/5 min-h-[180px] flex flex-col justify-center">
-                    <div className="text-2xl font-bold text-white mb-2">Kostenlos</div>
-                    <p className="text-sm text-gray-400">Für alle Nutzer, die ARAS in kleinem Rahmen testen wollen.</p>
+                    <div className="text-2xl font-bold text-white mb-2">7 Tage Trial</div>
+                    <p className="text-sm text-gray-400">Teste alle Features risikofrei für 7 Tage.</p>
                   </div>
                 )}
               </div>
@@ -448,7 +448,7 @@ function PricingSection() {
                       : 'bg-white text-black hover:bg-gray-200'
                 }`}
               >
-                {plan.isFree ? 'Kostenlos starten' : 'Plan wählen'}
+                {plan.isFree ? '7 Tage testen' : 'Plan wählen'}
               </button>
             </motion.div>
           ))}
@@ -1403,16 +1403,16 @@ function PricingCards() {
                   color: '#e9d7c4'
                 }}
               >
-                ARAS Free
+                7-TAGE TRIAL
               </h3>
               <p className="text-white/60 mb-4">
-                Kostenlos – dauerhaft
+                Alle Pläne testen
               </p>
               <p className="text-sm text-white/50 mb-4">
-                Für alle Nutzer, die ARAS in kleinem Rahmen testen wollen.
+                Starte jetzt mit vollem Zugriff auf alle Features.
               </p>
               <ul className="space-y-2">
-                {['2 Outbound Calls', '10 Chatnachrichten', 'Zugriff auf ARAS Basic Console'].map((feature, i) => (
+                {['Voller Zugriff auf alle Features', '7 Tage kostenlos', 'Jederzeit kündbar'].map((feature, i) => (
                   <li key={i} className="flex items-center gap-2 text-sm text-white/60">
                     <CheckCircle2 className="w-4 h-4 text-[#FE9100]" />
                     {feature}
@@ -1423,6 +1423,7 @@ function PricingCards() {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              onClick={() => window.location.href = '/signup'}
               className="px-8 py-3 rounded-lg border font-semibold text-sm"
               style={{
                 fontFamily: 'Orbitron, sans-serif',
@@ -1430,8 +1431,7 @@ function PricingCards() {
                 color: '#FE9100'
               }}
             >
-              Kostenlos starten
-            </motion.button>
+              7 Tage testen
           </div>
         </div>
       </motion.div>
@@ -2565,11 +2565,11 @@ export default function AuthPage() {
                     className="text-xl font-bold mb-1 text-[#e9d7c4]"
                     style={{ fontFamily: 'Orbitron, sans-serif' }}
                   >
-                    Kostenlos
+                    7 Tage Trial
                   </div>
                   
                   <p className="text-xs text-gray-500 leading-relaxed font-medium">
-                    Keine Kreditkarte erforderlich.
+                    Jetzt starten, später zahlen.
                   </p>
                 </div>
               </motion.div>
@@ -2711,13 +2711,10 @@ export default function AuthPage() {
                 <AnimatePresence>
                   {authMode === "idle" && (
                     <div className="flex flex-col gap-3">
-                      {/* PRIMARY: Alpha Zugang beitreten – NEON GLOW */}
+                      {/* PRIMARY: 7-Tage Trial starten – NEON GLOW */}
                       <button
                         type="button"
-                        onClick={() => {
-                          setAuthMode("signup");
-                          setActiveTab("register");
-                        }}
+                        onClick={() => setLocation("/signup")}
                         className="relative w-full rounded-full overflow-hidden uppercase tracking-[0.08em] font-bold text-sm md:text-base"
                         style={{ 
                           fontFamily: "Orbitron, sans-serif", 
@@ -2751,7 +2748,7 @@ export default function AuthPage() {
                           }}
                           whileTap={{ scale: 0.97 }}
                         >
-                          Kostenlos starten
+                          7 Tage kostenlos testen
                         </motion.span>
                       </button>
 
@@ -2800,7 +2797,7 @@ export default function AuthPage() {
 
                       {/* Untertitel unter Buttons – statisch, clean */}
                       <p className="mt-2 text-[11px] text-center text-neutral-400">
-                        Alpha Zugang ist kostenlos. Dein Account bleibt auch nach dem offiziellen Marktstart bestehen.
+                        7 Tage kostenlos testen. Dein Account bleibt auch nach dem offiziellen Marktstart bestehen.
                       </p>
                     </div>
                   )}
@@ -2843,18 +2840,12 @@ export default function AuthPage() {
                     <motion.button
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.99 }}
-                      onClick={() => setActiveTab('register')}
-                      className={`flex-1 py-2.5 rounded-full font-bold text-xs transition-all ${
-                        activeTab === 'register'
-                          ? 'text-black'
-                          : 'text-gray-500 hover:text-gray-300'
-                      }`}
+                      onClick={() => setLocation('/signup')}
+                      className="flex-1 py-2.5 rounded-full font-bold text-xs transition-all text-gray-500 hover:text-gray-300"
                       style={{
                         fontFamily: 'Orbitron, sans-serif',
-                        background: activeTab === 'register'
-                          ? 'linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00)'
-                          : 'transparent',
-                        boxShadow: activeTab === 'register' ? '0 4px 15px rgba(254, 145, 0, 0.3)' : 'none'
+                        background: 'transparent',
+                        boxShadow: 'none'
                       }}
                     >
                       SIGN UP
@@ -5302,6 +5293,7 @@ function ArasLandingContent() {
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              onClick={() => window.location.href = '/signup'}
               className="px-12 py-6 rounded-xl font-black text-xl text-white mt-8"
               style={{
                 fontFamily: 'Orbitron, sans-serif',
@@ -5309,11 +5301,11 @@ function ArasLandingContent() {
                 boxShadow: '0 0 40px rgba(255, 106, 0, 0.5)'
               }}
             >
-              → JETZT KOSTENLOS STARTEN
+              → 7 TAGE KOSTENLOS TESTEN
             </motion.button>
 
             <p className="text-sm text-white/40 mt-8">
-              Begrenzte Plätze • Lebenslange Preise • Keine Vertragsbindung
+              7-Tage Trial • Lebenslange Preise • Jederzeit kündbar
             </p>
           </motion.div>
         </div>

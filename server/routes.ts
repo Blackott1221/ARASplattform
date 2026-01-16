@@ -1098,6 +1098,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ==================== STRIPE INTEGRATION ====================
+
+  // 🔥 NEW: Register with Plan - Creates user and redirects to Stripe Checkout with 7-day trial
+  app.post('/api/register-with-plan', async (req: any, res) => {
+    try {
+      if (!stripe) {
+        return res.status(500).json({ 
+          message: "Stripe is not configured. Please add STRIPE_SECRET_KEY to environment variables." 
+        });
+      }
+
+      const { 
+        username, password, email, firstName, lastName,
+        company, website, industry, role, phone, language, primaryGoal,
+        planId 
+      } = req.body;
+
+      // Validate required fields
+      if (!email || !password || !firstName || !lastName) {
+        return res.status(400).json({ message: "Email, password, first name and last name are required" });
+      }
+
+      // Validate plan - must be a paid plan (no FREE for new users!)
+      if (!planId || planId === 'free') {
+        return res.status(400).json({ 
+          message: "Bitte wählen Sie einen kostenpflichtigen Plan. Der kostenlose Plan ist für neue Registrierungen nicht mehr verfügbar." 
+        });
+      }
+
+      // Get plan details
+      const plan = await storage.getSubscriptionPlan(planId);
+      if (!plan) {
+        return res.status(404).json({ message: "Plan not found" });
+      }
+
+      if (!plan.stripePriceId) {
+        return res.status(400).json({ 
+          message: "This plan is not available for subscription yet." 
+        });
+      }
+
+      // Check if email already exists
+      const existingEmail = await storage.getUserByEmail(email);
+      if (existingEmail) {
+        return res.status(400).json({ message: "Diese E-Mail-Adresse ist bereits registriert" });
+      }
+
+      // Generate username if not provided
+      const finalUsername = username || email.split('@')[0] + '_' + Math.random().toString(36).substr(2, 4);
+      
+      // Check if username exists
+      const existingUser = await storage.getUserByUsername(finalUsername);
+      if (existingUser) {
+        return res.status(400).json({ message: "Dieser Benutzername ist bereits vergeben" });
+      }
+
+      // Hash password
+      const hashedPassword = await hashPassword(password);
+
+      // Create Stripe customer FIRST
+      const customer = await stripe.customers.create({
+        email: email,
+        name: `${firstName} ${lastName}`,
+        metadata: {
+          company: company || '',
+          industry: industry || ''
+        }
+      });
+
+      // Create user with trial_pending status
+      const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const user = await storage.createUser({
+        id: userId,
+        username: finalUsername,
+        password: hashedPassword,
+        email,
+        firstName,
+        lastName,
+        company,
+        website,
+        industry,
+        jobRole: role,
+        phone,
+        language: language || "de",
+        primaryGoal,
+        // Subscription - TRIAL PENDING (not active until checkout completes)
+        subscriptionPlan: planId,
+        subscriptionStatus: "trial_pending",
+        stripeCustomerId: customer.id,
+        aiMessagesUsed: 0,
+        voiceCallsUsed: 0,
+        hasPaymentMethod: false,
+      });
+
+      logger.info(`[REGISTER-PAID] User ${userId} created with trial_pending status, plan ${planId}`);
+
+      // Create Stripe Checkout session with 7-day trial
+      const session = await stripe.checkout.sessions.create({
+        customer: customer.id,
+        mode: 'subscription',
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price: plan.stripePriceId,
+            quantity: 1,
+          },
+        ],
+        success_url: `${process.env.APP_URL || 'http://localhost:5000'}/space?welcome=true&trial=started`,
+        cancel_url: `${process.env.APP_URL || 'http://localhost:5000'}/signup?canceled=true`,
+        metadata: {
+          userId: user.id,
+          planId: planId,
+          isNewRegistration: 'true'
+        },
+        subscription_data: {
+          trial_period_days: 7, // 🔥 7-DAY FREE TRIAL
+          metadata: {
+            userId: user.id,
+            planId: planId
+          }
+        },
+        allow_promotion_codes: true,
+      });
+
+      logger.info(`[REGISTER-PAID] Checkout session ${session.id} created for user ${userId}`);
+
+      // Return checkout URL - frontend will redirect
+      res.json({ 
+        success: true,
+        checkoutUrl: session.url,
+        sessionId: session.id,
+        userId: user.id
+      });
+
+    } catch (error: any) {
+      logger.error("[REGISTER-PAID] Error:", error);
+      res.status(500).json({ 
+        message: "Registration failed",
+        error: error.message 
+      });
+    }
+  });
   
   // Create Stripe Checkout Session for plan subscription
   app.post('/api/create-checkout-session', requireAuth, async (req: any, res) => {
@@ -1151,7 +1292,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateUserStripeInfo(userId, { stripeCustomerId: customerId });
       }
 
-      // Create checkout session
+      // Create checkout session with 7-day trial
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
         mode: 'subscription',
@@ -1169,6 +1310,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           planId: planId
         },
         subscription_data: {
+          trial_period_days: 7, // 🔥 7-DAY FREE TRIAL
           metadata: {
             userId: user.id,
             planId: planId
@@ -1223,17 +1365,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const planId = session.metadata?.planId;
           
           if (userId && planId) {
+            // Fetch subscription to check if it's in trial
+            const subscription = session.subscription ? 
+              await stripe.subscriptions.retrieve(session.subscription) : null;
+            
+            const isTrialing = subscription?.status === 'trialing';
+            const trialEnd = subscription?.trial_end ? new Date(subscription.trial_end * 1000) : null;
+            
             await storage.updateUserSubscription(userId, {
               subscriptionPlan: planId,
-              subscriptionStatus: 'active',
+              subscriptionStatus: isTrialing ? 'trialing' : 'active',
               stripeSubscriptionId: session.subscription,
               subscriptionStartDate: new Date(),
+              trialStartDate: isTrialing ? new Date() : null,
+              trialEndDate: trialEnd,
+              hasPaymentMethod: true,
             });
             
             // Reset usage counters on new subscription
             await storage.resetMonthlyUsage(userId);
             
-            logger.info(`[STRIPE-WEBHOOK] Subscription activated for user ${userId}, plan ${planId}`);
+            logger.info(`[STRIPE-WEBHOOK] Subscription ${isTrialing ? 'TRIAL' : 'ACTIVE'} for user ${userId}, plan ${planId}${trialEnd ? `, trial ends ${trialEnd.toISOString()}` : ''}`);
           }
           break;
         }

@@ -1,7 +1,9 @@
 import { Suspense, lazy } from "react";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
 import { markModule } from "@/lib/system/module-trace";
+import { TrialBanner } from "@/components/dashboard/trial-banner";
 
 // Trace: dashboard page module loaded
 markModule('dashboard:page:import');
@@ -26,6 +28,12 @@ export default function Dashboard() {
   markModule('dashboard:page:render');
   const { user, isLoading } = useAuth();
 
+  // Fetch subscription data for trial banner
+  const { data: subscription } = useQuery({
+    queryKey: ["/api/user/subscription"],
+    enabled: !!user,
+  });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full bg-black">
@@ -45,6 +53,17 @@ export default function Dashboard() {
   return (
     <ErrorBoundary fallbackTitle="Dashboard konnte nicht geladen werden">
       <div className="h-full overflow-y-auto bg-black">
+        {/* Trial Banner - shows countdown for trial users */}
+        {subscription?.status === 'trialing' && (
+          <div className="px-6 pt-6">
+            <TrialBanner
+              trialEndDate={subscription?.trialEndDate}
+              subscriptionStatus={subscription?.status || 'active'}
+              planName={subscription?.plan?.toUpperCase()}
+            />
+          </div>
+        )}
+        
         <Suspense fallback={
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FE9100]" />
