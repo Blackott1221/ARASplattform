@@ -1432,6 +1432,7 @@ function PricingCards() {
               }}
             >
               7 Tage testen
+            </motion.button>
           </div>
         </div>
       </motion.div>
