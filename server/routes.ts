@@ -1209,6 +1209,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         logger.error(`[REGISTER-PAID] Failed to trigger AI research:`, aiError);
       }
 
+      // Generate auto-login token for after Stripe redirect
+      const autoLoginToken = `alt_${Date.now()}_${Math.random().toString(36).substr(2, 16)}`;
+      await storage.updateUser(user.id, { autoLoginToken, autoLoginTokenExpires: new Date(Date.now() + 30 * 60 * 1000) }); // 30 min expiry
+
       // Create Stripe Checkout session with 7-day trial
       const session = await stripe.checkout.sessions.create({
         customer: customer.id,
@@ -1220,7 +1224,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             quantity: 1,
           },
         ],
-        success_url: `${process.env.APP_URL || 'http://localhost:5000'}/space?welcome=true&trial=started`,
+        success_url: `${process.env.APP_URL || 'http://localhost:5000'}/api/auto-login?token=${autoLoginToken}`,
         cancel_url: `${process.env.APP_URL || 'http://localhost:5000'}/signup?canceled=true`,
         metadata: {
           userId: user.id,
@@ -5282,6 +5286,49 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     } catch (error: any) {
       logger.error('[CONTACTS] Error bulk importing contacts:', error);
       res.status(500).json({ error: 'Failed to import contacts' });
+    }
+  });
+
+  // 🔥 AUTO-LOGIN ROUTE - Called after Stripe checkout to log in the user
+  app.get('/api/auto-login', async (req: any, res) => {
+    try {
+      const { token } = req.query;
+      
+      if (!token) {
+        logger.warn('[AUTO-LOGIN] No token provided');
+        return res.redirect('/auth?error=no_token');
+      }
+
+      // Find user by auto-login token
+      const allUsers = await db.select().from(users).where(eq(users.autoLoginToken, token as string));
+      const user = allUsers[0];
+      
+      if (!user) {
+        logger.warn('[AUTO-LOGIN] Invalid token:', token);
+        return res.redirect('/auth?error=invalid_token');
+      }
+
+      // Check if token is expired
+      if (user.autoLoginTokenExpires && new Date(user.autoLoginTokenExpires) < new Date()) {
+        logger.warn('[AUTO-LOGIN] Token expired for user:', user.id);
+        return res.redirect('/auth?error=token_expired');
+      }
+
+      // Set session - log in the user
+      req.session.userId = user.id;
+      req.session.user = user;
+      
+      // Clear the auto-login token (one-time use)
+      await storage.updateUser(user.id, { autoLoginToken: null, autoLoginTokenExpires: null });
+      
+      logger.info(`[AUTO-LOGIN] User ${user.id} logged in successfully via auto-login token`);
+      
+      // Redirect to /space with welcome message
+      res.redirect('/space?welcome=true&trial=started');
+      
+    } catch (error: any) {
+      logger.error('[AUTO-LOGIN] Error:', error);
+      res.redirect('/auth?error=login_failed');
     }
   });
 

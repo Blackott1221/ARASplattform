@@ -147,6 +147,10 @@ export const users = pgTable("users", {
     thirdPartySharing?: boolean;
   }>(),
   
+  // 🔐 Auto-Login Token (for Stripe redirect)
+  autoLoginToken: varchar("auto_login_token"),
+  autoLoginTokenExpires: timestamp("auto_login_token_expires"),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
