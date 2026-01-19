@@ -513,11 +513,15 @@ function PremiumFooter() {
       { name: 'ARAS AI Community', href: 'https://discord.gg/aras-ai' }
     ],
     rechtliches: [
-      { name: 'Impressum', href: 'https://platform.aras.ai/impressum' },
-      { name: 'Datenschutzerklärung', href: 'https://platform.aras.ai/privacy' },
-      { name: 'DSGVO-Compliance', href: 'https://platform.aras.ai/dsgvo' },
-      { name: 'AGB', href: 'https://platform.aras.ai/terms' },
-      { name: 'Cookie-Einstellungen', href: '#cookie-settings' }
+      { name: 'Impressum', href: 'https://www.aras-ai.com/legal-notice' },
+      { name: 'Datenschutzerklärung', href: 'https://www.aras-ai.com/privacy-policy' },
+      { name: 'AGB', href: 'https://www.aras-ai.com/terms-and-conditions' },
+      { name: 'Nutzungsbedingungen', href: 'https://www.aras-ai.com/terms-of-use' },
+      { name: 'Cookie-Richtlinie', href: 'https://www.aras-ai.com/cookie-policy' },
+      { name: 'Haftungsausschluss', href: 'https://www.aras-ai.com/disclaimer' },
+      { name: 'Risikohinweis', href: 'https://www.aras-ai.com/risk-disclosure' },
+      { name: 'KYC/AML Compliance', href: 'https://www.aras-ai.com/kycaml-compliance-notice' },
+      { name: 'Token-Bedingungen', href: 'https://www.aras-ai.com/token-terms-conditions' }
     ]
   };
 
