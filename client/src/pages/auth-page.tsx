@@ -813,7 +813,7 @@ function PremiumFooter() {
           {/* EBENE 4: Copyright */}
           <div className="border-t border-white/10 pt-8">
             <p className="text-center text-sm text-white/40">
-              © 2025 ARAS AI – KI-gestützte Vertriebsautomatisierung by Schwarzott Capital Partners AG, Zürich.
+              © 2026 ARAS AI – KI-gestützte Vertriebsautomatisierung by Schwarzott Capital Partners AG, Zürich.
               <br />
               Eigenes LLM • 500+ parallele Anrufe • DSGVO-konform • Swiss Made
             </p>
