@@ -5455,19 +5455,17 @@ export function ArasHeroSection() {
         }} />
       </div>
 
-      {/* Glowing Orbs */}
+      {/* Glowing Orbs - Hidden on small screens for performance */}
       <motion.div
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 2 }}
-        className="absolute pointer-events-none"
+        className="absolute pointer-events-none hidden sm:block"
         style={{ top: '-15%', left: '-10%' }}
       >
         <div 
-          className="rounded-full"
+          className="rounded-full w-[300px] h-[300px] md:w-[450px] md:h-[450px] lg:w-[600px] lg:h-[600px]"
           style={{
-            width: 600,
-            height: 600,
             background: 'radial-gradient(circle, rgba(254, 145, 0, 0.15) 0%, rgba(254, 145, 0, 0.05) 40%, transparent 70%)',
             filter: 'blur(60px)',
             animation: 'pulseSlow 6s ease-in-out infinite',
@@ -5478,14 +5476,12 @@ export function ArasHeroSection() {
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 2, delay: 0.5 }}
-        className="absolute pointer-events-none"
+        className="absolute pointer-events-none hidden sm:block"
         style={{ bottom: '-10%', right: '-5%' }}
       >
         <div 
-          className="rounded-full"
+          className="rounded-full w-[250px] h-[250px] md:w-[400px] md:h-[400px] lg:w-[500px] lg:h-[500px]"
           style={{
-            width: 500,
-            height: 500,
             background: 'radial-gradient(circle, rgba(233, 215, 196, 0.1) 0%, rgba(254, 145, 0, 0.05) 40%, transparent 70%)',
             filter: 'blur(50px)',
             animation: 'pulseSlow 8s ease-in-out infinite',
@@ -5494,7 +5490,7 @@ export function ArasHeroSection() {
       </motion.div>
 
       {/* Main Content */}
-      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 py-12">
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-3 sm:px-6 lg:px-8 py-6 sm:py-12">
         
         {/* Central Card with Animated Border */}
         <motion.div
@@ -5516,22 +5512,22 @@ export function ArasHeroSection() {
           }} />
           
           {/* Card Content */}
-          <div className="relative bg-[#0a0a0a]/95 backdrop-blur-xl rounded-3xl p-8 sm:p-12 lg:p-16">
+          <div className="relative bg-[#0a0a0a]/95 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-5 sm:p-8 md:p-12 lg:p-16">
             
             {/* Top Badge */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-              className="flex justify-center mb-8"
+              className="flex justify-center mb-4 sm:mb-6 md:mb-8"
             >
-              <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full border border-[#FE9100]/30 bg-[#FE9100]/5">
+              <div className="inline-flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-2 sm:py-2.5 rounded-full border border-[#FE9100]/30 bg-[#FE9100]/5">
                 <motion.div
-                  className="w-2 h-2 rounded-full bg-[#FE9100]"
+                  className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-[#FE9100]"
                   animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
                   transition={{ duration: 1.5, repeat: Infinity }}
                 />
-                <span className="text-xs sm:text-sm font-bold text-[#FE9100] tracking-widest" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                <span className="text-[10px] sm:text-xs md:text-sm font-bold text-[#FE9100] tracking-wider sm:tracking-widest" style={{ fontFamily: 'Orbitron, sans-serif' }}>
                   ALPHA PHASE • EARLY ACCESS
                 </span>
               </div>
@@ -5542,10 +5538,10 @@ export function ArasHeroSection() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.7, duration: 0.8 }}
-              className="text-center mb-6"
+              className="text-center mb-3 sm:mb-4 md:mb-6"
             >
               <h1 
-                className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black mb-4"
+                className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black mb-2 sm:mb-4"
                 style={{
                   fontFamily: 'Orbitron, sans-serif',
                   background: 'linear-gradient(135deg, #ffffff 0%, #FE9100 50%, #e9d7c4 100%)',
@@ -5566,11 +5562,11 @@ export function ArasHeroSection() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 1.2 }}
-              className="text-center mb-8"
+              className="text-center mb-4 sm:mb-6 md:mb-8"
             >
-              <div className="h-12 sm:h-14 flex items-center justify-center">
+              <div className="h-8 sm:h-10 md:h-12 lg:h-14 flex items-center justify-center">
                 <span
-                  className="text-xl sm:text-2xl md:text-3xl font-medium"
+                  className="text-base sm:text-lg md:text-xl lg:text-2xl xl:text-3xl font-medium"
                   style={{
                     fontFamily: 'Orbitron, sans-serif',
                     background: 'linear-gradient(90deg, #e9d7c4, #FE9100)',
@@ -5581,7 +5577,7 @@ export function ArasHeroSection() {
                 >
                   ARAS ist {displayedText}
                   <span 
-                    className="inline-block ml-1 w-[3px] h-[28px] bg-[#FE9100] align-middle"
+                    className="inline-block ml-1 w-[2px] sm:w-[3px] h-[18px] sm:h-[22px] md:h-[26px] lg:h-[28px] bg-[#FE9100] align-middle"
                     style={{ opacity: cursorBlink ? 1 : 0, transition: 'opacity 0.1s' }}
                   />
                 </span>
@@ -5593,35 +5589,35 @@ export function ArasHeroSection() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.5 }}
-              className="text-center max-w-2xl mx-auto mb-10"
+              className="text-center max-w-2xl mx-auto mb-6 sm:mb-8 md:mb-10"
             >
-              <p className="text-lg sm:text-xl text-white/70 leading-relaxed mb-4">
+              <p className="text-sm sm:text-base md:text-lg lg:text-xl text-white/70 leading-relaxed mb-2 sm:mb-4">
                 Natürlich klingende KI-Telefonate, präzise Automation 
                 und <span className="text-[#FE9100]">Schweizer Datensicherheit</span>.
               </p>
-              <p className="text-base text-white/50">
+              <p className="text-xs sm:text-sm md:text-base text-white/50">
                 Die Plattform für Unternehmen, die modern skalieren – nicht experimentieren.
               </p>
             </motion.div>
 
-            {/* Terminal Preview */}
+            {/* Terminal Preview - Hidden on very small screens */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 1.8 }}
-              className="max-w-xl mx-auto mb-10 p-4 bg-black/60 rounded-xl border border-[#FE9100]/20"
+              className="hidden xs:block max-w-xl mx-auto mb-6 sm:mb-8 md:mb-10 p-3 sm:p-4 bg-black/60 rounded-lg sm:rounded-xl border border-[#FE9100]/20"
             >
-              <div className="flex items-center gap-2 mb-3">
-                <span className="w-3 h-3 rounded-full bg-red-500/80" />
-                <span className="w-3 h-3 rounded-full bg-yellow-500/80" />
-                <span className="w-3 h-3 rounded-full bg-green-500/80" />
-                <span className="text-white/30 text-xs ml-3 font-mono">aras-ai-terminal</span>
+              <div className="flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
+                <span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-red-500/80" />
+                <span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-yellow-500/80" />
+                <span className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-green-500/80" />
+                <span className="text-white/30 text-[10px] sm:text-xs ml-2 sm:ml-3 font-mono">aras-ai-terminal</span>
               </div>
-              <div className="font-mono text-xs sm:text-sm text-[#FE9100]/80 space-y-1">
+              <div className="font-mono text-[10px] sm:text-xs md:text-sm text-[#FE9100]/80 space-y-0.5 sm:space-y-1">
                 <p><span className="text-green-400">$</span> aras --init-voice-agent</p>
                 <p className="text-white/50">→ Initialisiere KI-Sprachagent...</p>
-                <p className="text-white/50">→ Verbinde mit CRM...</p>
-                <p className="text-white/50">→ Lade Lead-Datenbank...</p>
+                <p className="text-white/50 hidden sm:block">→ Verbinde mit CRM...</p>
+                <p className="text-white/50 hidden sm:block">→ Lade Lead-Datenbank...</p>
                 <motion.p 
                   className="text-green-400"
                   animate={{ opacity: [1, 0.5, 1] }}
@@ -5637,14 +5633,14 @@ export function ArasHeroSection() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 2.1 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+              className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center"
             >
               {/* Primary CTA - Signup/Alpha Access */}
               <motion.button
                 whileHover={{ scale: 1.03, boxShadow: "0 0 40px rgba(254, 145, 0, 0.5)" }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setLocation('/auth')}
-                className="w-full sm:w-auto px-10 py-4 rounded-xl font-bold text-lg text-white relative overflow-hidden group"
+                className="w-full sm:w-auto px-6 sm:px-8 md:px-10 py-3 sm:py-4 rounded-lg sm:rounded-xl font-bold text-sm sm:text-base md:text-lg text-white relative overflow-hidden group"
                 style={{
                   fontFamily: 'Orbitron, sans-serif',
                   background: 'linear-gradient(135deg, #FE9100, #a34e00)',
@@ -5668,7 +5664,7 @@ export function ArasHeroSection() {
                 whileHover={{ scale: 1.03, backgroundColor: "rgba(254, 145, 0, 0.1)" }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setLocation('/auth')}
-                className="w-full sm:w-auto px-10 py-4 rounded-xl font-bold text-lg text-[#FE9100] border-2 border-[#FE9100]/50 hover:border-[#FE9100] transition-all"
+                className="w-full sm:w-auto px-6 sm:px-8 md:px-10 py-3 sm:py-4 rounded-lg sm:rounded-xl font-bold text-sm sm:text-base md:text-lg text-[#FE9100] border-2 border-[#FE9100]/50 hover:border-[#FE9100] transition-all"
                 style={{ fontFamily: 'Orbitron, sans-serif' }}
               >
                 <span className="flex items-center justify-center gap-2">
@@ -5683,24 +5679,24 @@ export function ArasHeroSection() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 2.5 }}
-              className="mt-10 pt-8 border-t border-white/10"
+              className="mt-6 sm:mt-8 md:mt-10 pt-4 sm:pt-6 md:pt-8 border-t border-white/10"
             >
-              <div className="flex flex-wrap justify-center items-center gap-6 sm:gap-10 text-white/40 text-xs sm:text-sm">
-                <div className="flex items-center gap-2">
+              <div className="grid grid-cols-2 sm:flex sm:flex-wrap justify-center items-center gap-3 sm:gap-6 md:gap-10 text-white/40 text-[10px] sm:text-xs md:text-sm">
+                <div className="flex items-center justify-center gap-1.5 sm:gap-2">
                   <span className="text-[#FE9100]">🔒</span>
-                  <span>DSGVO konform</span>
+                  <span>DSGVO</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center gap-1.5 sm:gap-2">
                   <span className="text-[#FE9100]">🇨🇭</span>
-                  <span>Swiss Hosting</span>
+                  <span>Swiss</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center gap-1.5 sm:gap-2">
                   <span className="text-[#FE9100]">⚡</span>
-                  <span>Enterprise Ready</span>
+                  <span>Enterprise</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center gap-1.5 sm:gap-2">
                   <span className="text-[#FE9100]">🎯</span>
-                  <span>99.9% Uptime</span>
+                  <span>99.9%</span>
                 </div>
               </div>
             </motion.div>
@@ -5712,12 +5708,12 @@ export function ArasHeroSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 2.8 }}
-          className="mt-12 text-center"
+          className="mt-6 sm:mt-8 md:mt-12 text-center px-4"
         >
-          <p className="text-white/20 text-xs font-mono tracking-wider">
+          <p className="text-white/20 text-[10px] sm:text-xs font-mono tracking-wider">
             ARAS AI® – Die Zukunft der KI-Kommunikation
           </p>
-          <p className="text-white/10 text-xs mt-1">
+          <p className="text-white/10 text-[10px] sm:text-xs mt-1">
             Entwickelt von der Schwarzott Group
           </p>
         </motion.div>
