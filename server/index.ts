@@ -67,6 +67,10 @@ async function migrateAIProfile() {
         ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_enriched BOOLEAN DEFAULT FALSE;
         ALTER TABLE users ADD COLUMN IF NOT EXISTS last_enrichment_date TIMESTAMP;
         
+        -- Add Password Reset fields
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_token VARCHAR(255);
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMP;
+        
         -- Create indexes if they don't exist
         IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'idx_users_company') THEN
           CREATE INDEX idx_users_company ON users(company);
