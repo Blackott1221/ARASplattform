@@ -7,8 +7,8 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 // Gemini für personalisierte E-Mails
 const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
 
-// Email-Absender (muss deine verifizierte Domain sein)
-const FROM_EMAIL = process.env.FROM_EMAIL || 'ARAS AI <noreply@plattform-aras.ai>';
+// Email-Absender - WICHTIG: plattform-aras.ai ist die einzige verifizierte Domain bei Resend!
+const FROM_EMAIL = 'ARAS AI <noreply@plattform-aras.ai>';
 const FRONTEND_URL = process.env.APP_URL || process.env.FRONTEND_URL || 'https://www.plattform-aras.ai';
 
 // ============================================

@@ -29,9 +29,10 @@ export interface SendEmailResult {
 // ═══════════════════════════════════════════════════════════════
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const EMAIL_FROM = process.env.EMAIL_FROM || 'ARAS AI <noreply@plattform-aras.ai>';
-const EMAIL_REPLY_TO = process.env.EMAIL_REPLY_TO || 'support@plattform-aras.ai';
-const APP_BASE_URL = process.env.APP_BASE_URL || 'https://www.plattform-aras.ai';
+// WICHTIG: plattform-aras.ai ist die einzige verifizierte Domain bei Resend!
+const EMAIL_FROM = 'ARAS AI <noreply@plattform-aras.ai>';
+const EMAIL_REPLY_TO = 'support@plattform-aras.ai';
+const APP_BASE_URL = 'https://www.plattform-aras.ai';
 
 // Check if email is enabled
 const EMAIL_ENABLED = !!RESEND_API_KEY;
