@@ -1,11 +1,120 @@
 import { Resend } from 'resend';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // Resend Client initialisieren
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// Gemini für personalisierte E-Mails
+const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
+
 // Email-Absender (muss deine verifizierte Domain sein)
 const FROM_EMAIL = process.env.FROM_EMAIL || 'ARAS AI <noreply@plattform-aras.ai>';
 const FRONTEND_URL = process.env.APP_URL || process.env.FRONTEND_URL || 'https://www.plattform-aras.ai';
+
+// ============================================
+// AI PROFILE INTERFACE
+// ============================================
+interface AIProfile {
+  companyDescription?: string;
+  products?: string[];
+  services?: string[];
+  targetAudience?: string;
+  brandVoice?: string;
+  competitors?: string[];
+  uniqueSellingPoints?: string[];
+  currentChallenges?: string[];
+  opportunities?: string[];
+  goals?: string[];
+  industry?: string;
+  [key: string]: any;
+}
+
+interface UserData {
+  firstName?: string;
+  lastName?: string;
+  company?: string;
+  industry?: string;
+  role?: string;
+  primaryGoal?: string;
+  aiProfile?: AIProfile | null;
+}
+
+// ============================================
+// AI-PERSONALISIERTE WILLKOMMENS-EMAIL
+// ============================================
+async function generatePersonalizedWelcomeContent(userData: UserData): Promise<{
+  subject: string;
+  greeting: string;
+  mainContent: string;
+  benefits: string[];
+  callToAction: string;
+} | null> {
+  if (!genAI || !userData.aiProfile) {
+    return null;
+  }
+
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    
+    const prompt = `Du bist ein erstklassiger Marketing-Texter für ARAS AI, eine High-End KI-Plattform für Vertrieb und Kommunikation.
+
+AUFGABE: Erstelle eine ULTRA-PERSONALISIERTE Willkommens-E-Mail für einen neuen Nutzer.
+
+USER DATEN:
+- Name: ${userData.firstName} ${userData.lastName || ''}
+- Unternehmen: ${userData.company || 'Nicht angegeben'}
+- Branche: ${userData.industry || 'Nicht angegeben'}
+- Position: ${userData.role || 'Nicht angegeben'}
+- Hauptziel: ${userData.primaryGoal?.replace(/_/g, ' ') || 'Geschäftswachstum'}
+
+RECHERCHE-ERGEBNISSE ZUM UNTERNEHMEN:
+${userData.aiProfile.companyDescription ? `Beschreibung: ${userData.aiProfile.companyDescription}` : ''}
+${userData.aiProfile.products?.length ? `Produkte: ${userData.aiProfile.products.join(', ')}` : ''}
+${userData.aiProfile.services?.length ? `Services: ${userData.aiProfile.services.join(', ')}` : ''}
+${userData.aiProfile.targetAudience ? `Zielgruppe: ${userData.aiProfile.targetAudience}` : ''}
+${userData.aiProfile.uniqueSellingPoints?.length ? `USPs: ${userData.aiProfile.uniqueSellingPoints.join(', ')}` : ''}
+${userData.aiProfile.currentChallenges?.length ? `Aktuelle Herausforderungen: ${userData.aiProfile.currentChallenges.join(', ')}` : ''}
+${userData.aiProfile.opportunities?.length ? `Chancen: ${userData.aiProfile.opportunities.join(', ')}` : ''}
+${userData.aiProfile.competitors?.length ? `Wettbewerber: ${userData.aiProfile.competitors.join(', ')}` : ''}
+
+ANFORDERUNGEN:
+1. Beziehe dich KONKRET auf das Unternehmen und die Branche
+2. Zeige, wie ARAS AI bei den spezifischen Herausforderungen helfen kann
+3. Sei begeisternd aber professionell
+4. Nutze die Recherche-Daten, um relevante Vorteile hervorzuheben
+5. Sprich den User mit Vornamen an
+6. Maximal 3-4 kurze Absätze für mainContent
+
+AUSGABE FORMAT (JSON):
+{
+  "subject": "Persönlicher, spannender Betreff mit Bezug zum Unternehmen (max 60 Zeichen)",
+  "greeting": "Personalisierte Begrüßung",
+  "mainContent": "2-3 Absätze personalisierter Inhalt mit Bezug auf Branche/Unternehmen/Ziele. HTML erlaubt für <p> und <strong>.",
+  "benefits": ["3-4 spezifische Vorteile für DIESEN User/Branche, kurz und knackig"],
+  "callToAction": "Motivierender, personalisierter Call-to-Action"
+}
+
+NUR JSON AUSGEBEN, KEIN WEITERER TEXT!`;
+
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+    
+    // Parse JSON from response
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error('[Email-AI] Could not parse JSON from Gemini response');
+      return null;
+    }
+    
+    const parsed = JSON.parse(jsonMatch[0]);
+    console.log('[Email-AI] ✅ Generated personalized welcome content for', userData.company);
+    return parsed;
+    
+  } catch (error: any) {
+    console.error('[Email-AI] Error generating personalized content:', error?.message);
+    return null;
+  }
+}
 
 // ============================================
 // 1. WILLKOMMENS-EMAIL bei Registrierung
@@ -13,17 +122,40 @@ const FRONTEND_URL = process.env.APP_URL || process.env.FRONTEND_URL || 'https:/
 export async function sendWelcomeEmail(
   to: string,
   userName: string,
-  verificationToken?: string
+  userData?: UserData
 ) {
   try {
-    const verifyLink = verificationToken 
-      ? `${FRONTEND_URL}/verify-email?token=${verificationToken}`
-      : null;
+    // Try to generate AI-personalized content
+    let personalizedContent = null;
+    if (userData?.aiProfile) {
+      personalizedContent = await generatePersonalizedWelcomeContent(userData);
+    }
+
+    const subject = personalizedContent?.subject || '🎉 Willkommen bei ARAS AI!';
+    const greeting = personalizedContent?.greeting || `Hallo ${userName},`;
+    
+    const mainContent = personalizedContent?.mainContent || `
+      <p>vielen Dank für deine Registrierung! Wir freuen uns, dich an Bord zu haben.</p>
+      <p>ARAS AI ist deine persönliche KI-Plattform für intelligente Vertriebskommunikation. 
+      Ab sofort steht dir die volle Power von künstlicher Intelligenz zur Verfügung.</p>
+    `;
+    
+    const benefits = personalizedContent?.benefits || [
+      '🤖 AI-gestützte Voice Agents für automatisierte Gespräche',
+      '📅 Intelligente Terminplanung mit Kalender-Sync',
+      '📞 Automatisierte Anrufe mit persönlicher Note',
+      '📊 Detaillierte Analytics & Insights'
+    ];
+    
+    const callToAction = personalizedContent?.callToAction || 
+      'Starte jetzt und erlebe die Zukunft der KI-Kommunikation!';
+
+    const benefitsHtml = benefits.map(b => `<li>${b}</li>`).join('\n');
 
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to,
-      subject: '🎉 Willkommen bei ARAS AI!',
+      subject,
       html: `
         <!DOCTYPE html>
         <html>
@@ -55,26 +187,44 @@ export async function sendWelcomeEmail(
                 -webkit-background-clip: text;
                 background-clip: text;
                 -webkit-text-fill-color: transparent;
-                font-size: 32px;
+                font-size: 28px;
                 margin: 0 0 20px 0;
               }
               p {
                 color: #E9D7C4;
                 font-size: 16px;
-                line-height: 1.6;
-                margin: 0 0 20px 0;
+                line-height: 1.7;
+                margin: 0 0 16px 0;
+              }
+              ul {
+                color: #E9D7C4;
+                padding-left: 0;
+                list-style: none;
+              }
+              li {
+                padding: 8px 0;
+                border-bottom: 1px solid rgba(254, 145, 0, 0.1);
+              }
+              li:last-child {
+                border-bottom: none;
               }
               .button {
                 display: inline-block;
                 padding: 16px 32px;
                 background: linear-gradient(135deg, #FE9100, #A34E00);
-                color: #000;
+                color: #000 !important;
                 text-decoration: none;
                 border-radius: 12px;
                 font-weight: bold;
                 font-size: 16px;
-                box-shadow: 0 0 15px rgba(254, 145, 0, 0.4);
+                box-shadow: 0 0 20px rgba(254, 145, 0, 0.4);
                 margin: 20px 0;
+              }
+              .cta-text {
+                font-size: 18px;
+                font-weight: 600;
+                color: #FE9100;
+                margin: 24px 0 16px 0;
               }
               .footer {
                 margin-top: 40px;
@@ -83,35 +233,34 @@ export async function sendWelcomeEmail(
                 color: #A34E00;
                 font-size: 14px;
               }
+              .highlight {
+                color: #FE9100;
+                font-weight: 600;
+              }
             </style>
           </head>
           <body>
             <div class="container">
-              <h1>Willkommen bei ARAS AI!</h1>
-              <p>Hallo ${userName},</p>
-              <p>vielen Dank für deine Registrierung! Wir freuen uns, dich an Bord zu haben.</p>
+              <h1>Willkommen bei ARAS AI! 🚀</h1>
+              <p>${greeting}</p>
               
-              ${verifyLink ? `
-                <p>Bitte bestätige deine Email-Adresse, um vollen Zugriff auf alle Features zu erhalten:</p>
-                <a href="${verifyLink}" class="button">Email bestätigen</a>
-                <p style="font-size: 14px; color: #888;">
-                  Oder kopiere diesen Link: ${verifyLink}
-                </p>
-              ` : ''}
+              ${mainContent}
               
-              <p>Mit ARAS AI erhältst du:</p>
-              <ul style="color: #E9D7C4;">
-                <li>🤖 AI-gestützte Voice Agents</li>
-                <li>📅 Intelligente Terminplanung</li>
-                <li>📞 Automatisierte Anrufe</li>
-                <li>📊 Analytics & Insights</li>
+              <p style="margin-top: 24px;"><strong>Was dich erwartet:</strong></p>
+              <ul>
+                ${benefitsHtml}
               </ul>
               
-              <p>Starte jetzt und erlebe die Zukunft der KI-Kommunikation!</p>
+              <p class="cta-text">${callToAction}</p>
+              
+              <a href="${FRONTEND_URL}/space" class="button">Jetzt ARAS AI starten →</a>
               
               <div class="footer">
                 <p>Bei Fragen: support@plattform-aras.ai</p>
                 <p>ARAS AI - Die Zukunft der KI-Kommunikation</p>
+                <p style="margin-top: 10px; font-size: 12px; color: #666;">
+                  Entwickelt von der Schwarzott Group
+                </p>
               </div>
             </div>
           </body>
@@ -124,7 +273,7 @@ export async function sendWelcomeEmail(
       return { success: false, error };
     }
 
-    console.log('[Email] Welcome email sent:', data);
+    console.log('[Email] ✅ Welcome email sent:', data?.id, personalizedContent ? '(AI-personalized)' : '(standard)');
     return { success: true, data };
   } catch (error) {
     console.error('[Email] Welcome email failed:', error);

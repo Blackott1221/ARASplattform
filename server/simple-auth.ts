@@ -10,7 +10,7 @@ import { sanitizeUser } from "@shared/schema";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { sendWelcomeEmail } from "./email";
+import { sendWelcomeEmail } from "./email-service";
 
 declare global {
   namespace Express {
@@ -537,9 +537,18 @@ Bleibe immer ARAS AI - entwickelt von der Schwarzott Group.`;
         // Don't fail registration if session creation fails
       }
 
-      // ✅ SEND WELCOME EMAIL (non-blocking, fire-and-forget)
+      // ✅ SEND AI-PERSONALIZED WELCOME EMAIL (non-blocking, fire-and-forget)
       if (email) {
-        sendWelcomeEmail(email, firstName || undefined).catch(() => {
+        const userData = {
+          firstName,
+          lastName,
+          company,
+          industry,
+          role,
+          primaryGoal,
+          aiProfile
+        };
+        sendWelcomeEmail(email, firstName || 'there', userData).catch(() => {
           // Already logged internally, just ensure no unhandled rejection
         });
       }
