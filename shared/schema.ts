@@ -147,6 +147,10 @@ export const users = pgTable("users", {
     thirdPartySharing?: boolean;
   }>(),
   
+  // 🔐 Password Reset Token
+  passwordResetToken: varchar("password_reset_token"),
+  passwordResetExpires: timestamp("password_reset_expires"),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

@@ -2999,6 +2999,17 @@ export default function AuthPage() {
                             )}
                           </motion.button>
                         </motion.div>
+
+                        {/* Passwort vergessen Link */}
+                        <div className="text-center pt-4">
+                          <button
+                            type="button"
+                            onClick={() => setLocation('/forgot-password')}
+                            className="text-sm text-white/50 hover:text-[#FE9100] transition-colors"
+                          >
+                            Passwort vergessen?
+                          </button>
+                        </div>
                       </form>
                     </motion.div>
                   ) : (

@@ -5089,5 +5089,141 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     }
   });
 
+  // ═══════════════════════════════════════════════════════════════
+  // 🔐 PASSWORD RESET ROUTES
+  // ═══════════════════════════════════════════════════════════════
+
+  // Request password reset (sends email)
+  app.post('/api/forgot-password', async (req: any, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: 'E-Mail-Adresse erforderlich' });
+      }
+
+      // Find user by email
+      const allUsers = await db.select().from(users).where(eq(users.email, email.toLowerCase().trim()));
+      const user = allUsers[0];
+      
+      if (!user) {
+        // Don't reveal if email exists - security best practice
+        logger.info(`[PASSWORD-RESET] Request for non-existent email: ${email}`);
+        return res.json({ success: true, message: 'Falls ein Account existiert, wurde eine E-Mail gesendet.' });
+      }
+
+      // Generate reset token
+      const resetToken = `prt_${Date.now()}_${Math.random().toString(36).substr(2, 24)}`;
+      const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      // Save token to user
+      await db.update(users)
+        .set({ 
+          passwordResetToken: resetToken,
+          passwordResetExpires: resetExpires
+        })
+        .where(eq(users.id, user.id));
+
+      // Send password reset email
+      const { sendPasswordResetEmail } = await import('./email-service');
+      await sendPasswordResetEmail(
+        user.email!,
+        user.firstName || user.username,
+        resetToken
+      );
+
+      logger.info(`[PASSWORD-RESET] Reset email sent to ${user.email}`);
+      res.json({ success: true, message: 'Falls ein Account existiert, wurde eine E-Mail gesendet.' });
+
+    } catch (error: any) {
+      logger.error('[PASSWORD-RESET] Error:', error);
+      res.status(500).json({ message: 'Fehler beim Senden der E-Mail' });
+    }
+  });
+
+  // Reset password with token
+  app.post('/api/reset-password', async (req: any, res) => {
+    try {
+      const { token, newPassword } = req.body;
+      
+      if (!token || !newPassword) {
+        return res.status(400).json({ message: 'Token und neues Passwort erforderlich' });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: 'Passwort muss mindestens 6 Zeichen haben' });
+      }
+
+      // Find user by reset token
+      const allUsers = await db.select().from(users).where(eq(users.passwordResetToken, token));
+      const user = allUsers[0];
+      
+      if (!user) {
+        logger.warn(`[PASSWORD-RESET] Invalid token: ${token.substring(0, 20)}...`);
+        return res.status(400).json({ message: 'Ungültiger oder abgelaufener Link' });
+      }
+
+      // Check if token is expired
+      if (user.passwordResetExpires && new Date(user.passwordResetExpires) < new Date()) {
+        logger.warn(`[PASSWORD-RESET] Expired token for user ${user.id}`);
+        return res.status(400).json({ message: 'Link ist abgelaufen. Bitte fordere einen neuen an.' });
+      }
+
+      // Hash new password
+      const bcrypt = await import('bcryptjs');
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update password and clear reset token
+      await db.update(users)
+        .set({ 
+          password: hashedPassword,
+          passwordResetToken: null,
+          passwordResetExpires: null
+        })
+        .where(eq(users.id, user.id));
+
+      // Send confirmation email
+      const { sendPasswordChangedEmail } = await import('./email-service');
+      if (user.email) {
+        await sendPasswordChangedEmail(user.email, user.firstName || user.username);
+      }
+
+      logger.info(`[PASSWORD-RESET] Password changed for user ${user.id}`);
+      res.json({ success: true, message: 'Passwort erfolgreich geändert!' });
+
+    } catch (error: any) {
+      logger.error('[PASSWORD-RESET] Error:', error);
+      res.status(500).json({ message: 'Fehler beim Zurücksetzen des Passworts' });
+    }
+  });
+
+  // Verify reset token (check if valid before showing form)
+  app.get('/api/verify-reset-token', async (req: any, res) => {
+    try {
+      const { token } = req.query;
+      
+      if (!token) {
+        return res.status(400).json({ valid: false, message: 'Token fehlt' });
+      }
+
+      const allUsers = await db.select().from(users).where(eq(users.passwordResetToken, token as string));
+      const user = allUsers[0];
+      
+      if (!user) {
+        return res.json({ valid: false, message: 'Ungültiger Link' });
+      }
+
+      if (user.passwordResetExpires && new Date(user.passwordResetExpires) < new Date()) {
+        return res.json({ valid: false, message: 'Link abgelaufen' });
+      }
+
+      res.json({ valid: true, email: user.email });
+
+    } catch (error: any) {
+      logger.error('[PASSWORD-RESET] Token verify error:', error);
+      res.status(500).json({ valid: false, message: 'Fehler bei der Überprüfung' });
+    }
+  });
+
   return httpServer;
 } 

@@ -39,26 +39,60 @@ export default function ForgotPassword() {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate password reset process for wireframe
-    setTimeout(() => {
-      setEmailSent(true);
-      setIsLoading(false);
-      toast({
-        title: "Reset Email Sent",
-        description: "Check your email for password reset instructions.",
+    try {
+      const response = await fetch('/api/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
       });
-    }, 1500);
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        setEmailSent(true);
+        toast({
+          title: "E-Mail gesendet",
+          description: "Falls ein Account existiert, wurde ein Reset-Link gesendet.",
+        });
+      } else {
+        toast({
+          title: "Fehler",
+          description: data.message || "Etwas ist schief gelaufen.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Verbindung zum Server fehlgeschlagen.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleResendEmail = () => {
+  const handleResendEmail = async () => {
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      toast({
-        title: "Email Resent",
-        description: "Password reset email has been sent again.",
+    try {
+      await fetch('/api/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
       });
-    }, 1000);
+      toast({
+        title: "E-Mail erneut gesendet",
+        description: "Falls ein Account existiert, wurde ein neuer Reset-Link gesendet.",
+      });
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Verbindung zum Server fehlgeschlagen.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -138,11 +172,11 @@ export default function ForgotPassword() {
               <div className="mb-6">
                 <Button
                   variant="ghost"
-                  onClick={() => setLocation("/login")}
+                  onClick={() => setLocation("/auth")}
                   className="p-0 h-auto text-muted-foreground hover:text-primary"
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to login
+                  Zurück zur Anmeldung
                 </Button>
               </div>
 
@@ -150,10 +184,10 @@ export default function ForgotPassword() {
                 <>
                   <div className="text-center mb-8">
                     <h1 className="text-3xl font-orbitron font-bold mb-2">
-                      <GradientText>Reset Password</GradientText>
+                      <GradientText>Passwort zurücksetzen</GradientText>
                     </h1>
                     <p className="text-muted-foreground">
-                      Enter your email address and we'll send you a link to reset your password.
+                      Gib deine E-Mail-Adresse ein und wir senden dir einen Link zum Zurücksetzen.
                     </p>
                   </div>
                   
@@ -177,7 +211,7 @@ export default function ForgotPassword() {
                           <span>Sending reset email...</span>
                         </div>
                       ) : (
-                        "Send Reset Email"
+                        "Reset-Link senden"
                       )}
                     </GlowButton>
                   </form>
@@ -190,17 +224,17 @@ export default function ForgotPassword() {
                   
                   <div>
                     <h1 className="text-3xl font-orbitron font-bold mb-2">
-                      <GradientText>Check Your Email</GradientText>
+                      <GradientText>E-Mail gesendet!</GradientText>
                     </h1>
                     <p className="text-muted-foreground">
-                      We've sent a password reset link to{" "}
-                      <span className="text-primary">{email}</span>
+                      Falls ein Account existiert, wurde ein Reset-Link an{" "}
+                      <span className="text-primary">{email}</span> gesendet.
                     </p>
                   </div>
                   
                   <div className="space-y-4">
                     <p className="text-sm text-muted-foreground">
-                      Didn't receive the email? Check your spam folder or try again.
+                      Keine E-Mail erhalten? Prüfe deinen Spam-Ordner oder versuche es erneut.
                     </p>
                     
                     <Button
@@ -215,7 +249,7 @@ export default function ForgotPassword() {
                           <span>Resending...</span>
                         </div>
                       ) : (
-                        "Resend Email"
+                        "Erneut senden"
                       )}
                     </Button>
                   </div>
@@ -224,9 +258,9 @@ export default function ForgotPassword() {
               
               <div className="mt-6 text-center">
                 <p className="text-muted-foreground">
-                  Remember your password?{" "}
-                  <Link href="/login" className="text-primary hover:text-primary/80 transition-colors">
-                    Sign in
+                  Passwort wieder eingefallen?{" "}
+                  <Link href="/auth" className="text-primary hover:text-primary/80 transition-colors">
+                    Zur Anmeldung
                   </Link>
                 </p>
               </div>
