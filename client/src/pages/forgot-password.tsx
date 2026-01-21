@@ -1,39 +1,165 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
-import { GradientText } from "@/components/ui/gradient-text";
-import { GlowButton } from "@/components/ui/glow-button";
+import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { motion } from "framer-motion";
-import { Bot, Users, Phone, ArrowRight, ArrowLeft, Mail } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation } from "wouter";
 
+// ═══════════════════════════════════════════════════════════════
+// MATRIX RAIN EFFECT
+// ═══════════════════════════════════════════════════════════════
+function MatrixRain() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const resizeCanvas = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    const chars = 'ARASAI01アラスエーアイ電話営業自動化';
+    const fontSize = 14;
+    const columns = Math.floor(canvas.width / fontSize);
+    const drops: number[] = Array(columns).fill(1);
+
+    const draw = () => {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.font = `${fontSize}px monospace`;
+
+      for (let i = 0; i < drops.length; i++) {
+        const char = chars[Math.floor(Math.random() * chars.length)];
+        const x = i * fontSize;
+        const y = drops[i] * fontSize;
+
+        // Gradient from orange to gold
+        const gradient = ctx.createLinearGradient(x, y - fontSize, x, y);
+        gradient.addColorStop(0, 'rgba(254, 145, 0, 0.1)');
+        gradient.addColorStop(0.5, 'rgba(254, 145, 0, 0.5)');
+        gradient.addColorStop(1, '#FE9100');
+        ctx.fillStyle = gradient;
+
+        ctx.fillText(char, x, y);
+
+        if (y > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0;
+        }
+        drops[i]++;
+      }
+    };
+
+    const interval = setInterval(draw, 35);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('resize', resizeCanvas);
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="fixed inset-0 pointer-events-none opacity-30"
+      style={{ zIndex: 0 }}
+    />
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TYPING ANIMATION
+// ═══════════════════════════════════════════════════════════════
+function TypingText({ text, className = "", delay = 0 }: { text: string; className?: string; delay?: number }) {
+  const [displayText, setDisplayText] = useState("");
+  const [showCursor, setShowCursor] = useState(true);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      let index = 0;
+      const interval = setInterval(() => {
+        if (index <= text.length) {
+          setDisplayText(text.slice(0, index));
+          index++;
+        } else {
+          clearInterval(interval);
+          setTimeout(() => setShowCursor(false), 1000);
+        }
+      }, 50);
+      return () => clearInterval(interval);
+    }, delay);
+    return () => clearTimeout(timeout);
+  }, [text, delay]);
+
+  return (
+    <span className={className}>
+      {displayText}
+      {showCursor && <span className="animate-pulse text-[#FE9100]">|</span>}
+    </span>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ANIMATED GRADIENT BORDER
+// ═══════════════════════════════════════════════════════════════
+function GradientBorder({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`relative ${className}`}>
+      <div className="absolute -inset-[2px] rounded-2xl bg-gradient-to-r from-[#FE9100] via-[#A34E00] to-[#FE9100] opacity-75 blur-sm animate-gradient-shift" />
+      <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-r from-[#FE9100] via-[#E9D7C4] to-[#FE9100] animate-gradient-shift" />
+      <div className="relative bg-[#0a0a0a] rounded-2xl">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GLOWING ORB
+// ═══════════════════════════════════════════════════════════════
+function GlowingOrb({ size = 300, top, left, right, bottom, delay = 0 }: { 
+  size?: number; 
+  top?: string; 
+  left?: string; 
+  right?: string; 
+  bottom?: string;
+  delay?: number;
+}) {
+  return (
+    <motion.div
+      initial={{ scale: 0, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ duration: 1.5, delay }}
+      className="absolute pointer-events-none"
+      style={{ top, left, right, bottom }}
+    >
+      <div 
+        className="rounded-full animate-pulse-slow"
+        style={{
+          width: size,
+          height: size,
+          background: 'radial-gradient(circle, rgba(254, 145, 0, 0.15) 0%, rgba(254, 145, 0, 0.05) 40%, transparent 70%)',
+          filter: 'blur(40px)',
+        }}
+      />
+    </motion.div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════════
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-
-  const features = [
-    {
-      icon: <Bot className="w-5 h-5" />,
-      title: "AI-Powered Voice Agents",
-      delay: 0,
-    },
-    {
-      icon: <Users className="w-5 h-5" />,
-      title: "Smart Lead Generation",
-      delay: 0.2,
-    },
-    {
-      icon: <Phone className="w-5 h-5" />,
-      title: "Automated Campaigns",
-      delay: 0.4,
-    },
-  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,188 +222,320 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen flex bg-background">
-      {/* Left Panel - Dynamic Content */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-background via-card to-background"></div>
-        <div className="relative z-10 p-12 flex flex-col justify-center">
-          <div className="space-y-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="text-4xl font-orbitron font-bold"
-            >
-              <GradientText>ARAS AI</GradientText>
-            </motion.div>
-            
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-lg text-muted-foreground"
-            >
-              The future of AI-powered sales automation
-            </motion.div>
-            
-            <div className="space-y-4 mt-8">
-              {features.map((feature, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: feature.delay }}
-                  className="bg-card/50 p-4 rounded-lg border border-border"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse-glow"></div>
-                    <span className="text-muted-foreground">{feature.title}</span>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+    <div className="min-h-screen relative overflow-hidden bg-[#030303]">
+      {/* Matrix Rain Background */}
+      <MatrixRain />
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.8 }}
-              className="mt-8 pt-8 border-t border-border"
-            >
-              <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                <Link href="/app" className="hover:text-primary transition-colors">
-                  <span className="flex items-center space-x-1">
-                    <span>Try Demo</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </span>
-                </Link>
-                <span>•</span>
-                <span>No credit card required</span>
-              </div>
-            </motion.div>
-          </div>
-        </div>
+      {/* Glowing Orbs */}
+      <GlowingOrb size={400} top="-10%" left="-5%" delay={0} />
+      <GlowingOrb size={300} bottom="-5%" right="-5%" delay={0.3} />
+      <GlowingOrb size={200} top="50%" left="50%" delay={0.6} />
+
+      {/* Animated Grid Lines */}
+      <div className="fixed inset-0 pointer-events-none opacity-10" style={{ zIndex: 1 }}>
+        <div className="absolute inset-0" style={{
+          backgroundImage: `
+            linear-gradient(rgba(254, 145, 0, 0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(254, 145, 0, 0.1) 1px, transparent 1px)
+          `,
+          backgroundSize: '50px 50px',
+          animation: 'grid-move 20s linear infinite',
+        }} />
       </div>
-      
-      {/* Right Panel - Forgot Password Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
+
+      {/* Main Content */}
+      <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
         <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6 }}
+          initial={{ opacity: 0, y: 30, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
           className="w-full max-w-md"
         >
-          <Card>
-            <CardContent className="p-8">
-              {/* Back Button */}
-              <div className="mb-6">
-                <Button
-                  variant="ghost"
+          <GradientBorder>
+            <div className="p-6 sm:p-8 md:p-10">
+              {/* Logo & Back */}
+              <div className="flex items-center justify-between mb-8">
+                <motion.button
+                  whileHover={{ x: -5 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => setLocation("/auth")}
-                  className="p-0 h-auto text-muted-foreground hover:text-primary"
+                  className="text-white/50 hover:text-[#FE9100] transition-colors text-sm flex items-center gap-2"
                 >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Zurück zur Anmeldung
-                </Button>
+                  <span className="text-lg">←</span>
+                  <span>Zurück</span>
+                </motion.button>
+                
+                <motion.div
+                  initial={{ opacity: 0, scale: 0 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.3, type: "spring" }}
+                  className="text-xl sm:text-2xl font-bold"
+                >
+                  <span className="bg-gradient-to-r from-[#FE9100] via-[#E9D7C4] to-[#FE9100] bg-clip-text text-transparent animate-gradient-shift bg-[length:200%_auto]">
+                    ARAS AI
+                  </span>
+                </motion.div>
               </div>
 
-              {!emailSent ? (
-                <>
-                  <div className="text-center mb-8">
-                    <h1 className="text-3xl font-orbitron font-bold mb-2">
-                      <GradientText>Passwort zurücksetzen</GradientText>
-                    </h1>
-                    <p className="text-muted-foreground">
-                      Gib deine E-Mail-Adresse ein und wir senden dir einen Link zum Zurücksetzen.
-                    </p>
-                  </div>
-                  
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    <div>
-                      <Label htmlFor="email">Email</Label>
-                      <Input 
-                        id="email" 
-                        type="email" 
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="Enter your email"
-                        required
-                      />
+              <AnimatePresence mode="wait">
+                {!emailSent ? (
+                  <motion.div
+                    key="form"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    {/* Title */}
+                    <div className="text-center mb-8">
+                      <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3">
+                        <span className="bg-gradient-to-r from-white via-[#FE9100] to-white bg-clip-text text-transparent">
+                          <TypingText text="Passwort vergessen?" delay={500} />
+                        </span>
+                      </h1>
+                      <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 1.5 }}
+                        className="text-white/50 text-sm sm:text-base"
+                      >
+                        Kein Problem. Wir senden dir einen Reset-Link.
+                      </motion.p>
                     </div>
-                    
-                    <GlowButton type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? (
-                        <div className="flex items-center space-x-2">
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          <span>Sending reset email...</span>
+
+                    {/* Form */}
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.5 }}
+                      >
+                        <label className="block text-white/70 text-sm mb-2 font-medium">
+                          E-Mail Adresse
+                        </label>
+                        <div className={`relative transition-all duration-300 ${isFocused ? 'transform scale-[1.02]' : ''}`}>
+                          <div className={`absolute -inset-[1px] rounded-xl bg-gradient-to-r from-[#FE9100] to-[#A34E00] opacity-0 transition-opacity duration-300 ${isFocused ? 'opacity-100' : ''}`} />
+                          <input
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            onFocus={() => setIsFocused(true)}
+                            onBlur={() => setIsFocused(false)}
+                            placeholder="deine@email.de"
+                            required
+                            className="relative w-full px-4 py-4 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-transparent transition-all duration-300"
+                          />
                         </div>
-                      ) : (
-                        "Reset-Link senden"
-                      )}
-                    </GlowButton>
-                  </form>
-                </>
-              ) : (
-                <div className="text-center space-y-6">
-                  <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                    <Mail className="w-8 h-8 text-primary" />
-                  </div>
-                  
-                  <div>
-                    <h1 className="text-3xl font-orbitron font-bold mb-2">
-                      <GradientText>E-Mail gesendet!</GradientText>
-                    </h1>
-                    <p className="text-muted-foreground">
-                      Falls ein Account existiert, wurde ein Reset-Link an{" "}
-                      <span className="text-primary">{email}</span> gesendet.
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      Keine E-Mail erhalten? Prüfe deinen Spam-Ordner oder versuche es erneut.
-                    </p>
-                    
-                    <Button
-                      variant="outline"
-                      onClick={handleResendEmail}
-                      disabled={isLoading}
-                      className="w-full"
+                      </motion.div>
+
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.7 }}
+                      >
+                        <motion.button
+                          type="submit"
+                          disabled={isLoading}
+                          whileHover={{ scale: 1.02, boxShadow: "0 0 30px rgba(254, 145, 0, 0.5)" }}
+                          whileTap={{ scale: 0.98 }}
+                          className="w-full py-4 px-6 bg-gradient-to-r from-[#FE9100] to-[#A34E00] rounded-xl text-white font-bold text-lg relative overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <span className="relative z-10 flex items-center justify-center gap-2">
+                            {isLoading ? (
+                              <>
+                                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                <span>Wird gesendet...</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>Reset-Link anfordern</span>
+                                <motion.span
+                                  animate={{ x: [0, 5, 0] }}
+                                  transition={{ repeat: Infinity, duration: 1.5 }}
+                                >
+                                  →
+                                </motion.span>
+                              </>
+                            )}
+                          </span>
+                          <div className="absolute inset-0 bg-gradient-to-r from-[#A34E00] to-[#FE9100] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                        </motion.button>
+                      </motion.div>
+                    </form>
+
+                    {/* Terminal-style info */}
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 1 }}
+                      className="mt-8 p-4 bg-black/50 rounded-xl border border-[#FE9100]/20"
                     >
-                      {isLoading ? (
-                        <div className="flex items-center space-x-2">
-                          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                          <span>Resending...</span>
-                        </div>
-                      ) : (
-                        "Erneut senden"
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              )}
-              
-              <div className="mt-6 text-center">
-                <p className="text-muted-foreground">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="w-2 h-2 rounded-full bg-red-500" />
+                        <span className="w-2 h-2 rounded-full bg-yellow-500" />
+                        <span className="w-2 h-2 rounded-full bg-green-500" />
+                        <span className="text-white/30 text-xs ml-2 font-mono">terminal</span>
+                      </div>
+                      <div className="font-mono text-xs text-[#FE9100]/70 space-y-1">
+                        <p><span className="text-green-400">$</span> aras --password-reset</p>
+                        <p className="text-white/50">→ Gib deine E-Mail ein</p>
+                        <p className="text-white/50">→ Prüfe dein Postfach</p>
+                        <p className="text-white/50">→ Klicke den Link</p>
+                        <p className="text-green-400 animate-pulse">_ Bereit...</p>
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="success"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.5 }}
+                    className="text-center"
+                  >
+                    {/* Success Animation */}
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", delay: 0.2 }}
+                      className="w-24 h-24 mx-auto mb-6 relative"
+                    >
+                      <div className="absolute inset-0 bg-[#FE9100]/20 rounded-full animate-ping" />
+                      <div className="absolute inset-0 bg-gradient-to-br from-[#FE9100] to-[#A34E00] rounded-full flex items-center justify-center">
+                        <motion.span
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ delay: 0.5, type: "spring" }}
+                          className="text-4xl"
+                        >
+                          ✓
+                        </motion.span>
+                      </div>
+                    </motion.div>
+
+                    <h2 className="text-2xl sm:text-3xl font-bold mb-3">
+                      <span className="bg-gradient-to-r from-[#FE9100] to-[#E9D7C4] bg-clip-text text-transparent">
+                        <TypingText text="E-Mail unterwegs!" delay={300} />
+                      </span>
+                    </h2>
+
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 1 }}
+                      className="text-white/50 mb-2"
+                    >
+                      Falls ein Account existiert, haben wir einen Reset-Link an
+                    </motion.p>
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 1.2 }}
+                      className="text-[#FE9100] font-mono mb-6"
+                    >
+                      {email}
+                    </motion.p>
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 1.4 }}
+                      className="text-white/50 mb-8"
+                    >
+                      gesendet.
+                    </motion.p>
+
+                    <div className="space-y-4">
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 1.6 }}
+                        className="p-4 bg-white/5 rounded-xl border border-white/10"
+                      >
+                        <p className="text-white/70 text-sm">
+                          Keine E-Mail erhalten? Prüfe deinen <span className="text-[#FE9100]">Spam-Ordner</span> oder versuche es erneut.
+                        </p>
+                      </motion.div>
+
+                      <motion.button
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 1.8 }}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={handleResendEmail}
+                        disabled={isLoading}
+                        className="w-full py-3 px-6 border border-[#FE9100]/50 rounded-xl text-[#FE9100] font-medium hover:bg-[#FE9100]/10 transition-all disabled:opacity-50"
+                      >
+                        {isLoading ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <span className="w-4 h-4 border-2 border-[#FE9100]/30 border-t-[#FE9100] rounded-full animate-spin" />
+                            Wird gesendet...
+                          </span>
+                        ) : (
+                          "Erneut senden"
+                        )}
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Footer Link */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 2 }}
+                className="mt-8 pt-6 border-t border-white/10 text-center"
+              >
+                <p className="text-white/40 text-sm">
                   Passwort wieder eingefallen?{" "}
-                  <Link href="/auth" className="text-primary hover:text-primary/80 transition-colors">
+                  <Link href="/auth" className="text-[#FE9100] hover:text-[#E9D7C4] transition-colors font-medium">
                     Zur Anmeldung
                   </Link>
                 </p>
-              </div>
+              </motion.div>
+            </div>
+          </GradientBorder>
 
-              {/* Mobile Demo Link */}
-              <div className="lg:hidden mt-6 pt-6 border-t border-border text-center">
-                <Link href="/app" className="text-sm text-primary hover:text-primary/80 transition-colors">
-                  <span className="flex items-center justify-center space-x-1">
-                    <span>Try Demo</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </span>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Bottom Branding */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 2.2 }}
+            className="mt-8 text-center"
+          >
+            <p className="text-white/20 text-xs font-mono">
+              ARAS AI® – Die Zukunft der KI-Kommunikation
+            </p>
+            <p className="text-white/10 text-xs mt-1">
+              Entwickelt von der Schwarzott Group
+            </p>
+          </motion.div>
         </motion.div>
       </div>
+
+      {/* CSS Animations */}
+      <style>{`
+        @keyframes gradient-shift {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        .animate-gradient-shift {
+          animation: gradient-shift 3s ease infinite;
+        }
+        @keyframes pulse-slow {
+          0%, 100% { opacity: 0.5; transform: scale(1); }
+          50% { opacity: 0.8; transform: scale(1.05); }
+        }
+        .animate-pulse-slow {
+          animation: pulse-slow 4s ease-in-out infinite;
+        }
+        @keyframes grid-move {
+          0% { transform: translate(0, 0); }
+          100% { transform: translate(50px, 50px); }
+        }
+      `}</style>
     </div>
   );
 }
