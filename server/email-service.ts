@@ -325,10 +325,10 @@ export async function sendPasswordResetEmail(
                     <!-- Main Content -->
                     <tr>
                       <td style="padding: 0 40px 30px 40px;">
-                        <p style="color: #E9D7C4; font-size: 18px; line-height: 1.6; margin: 0 0 10px 0;">
+                        <p style="color: #ffffff; font-size: 18px; line-height: 1.6; margin: 0 0 10px 0;">
                           Hallo <strong style="color: #FE9100;">${userName}</strong>,
                         </p>
-                        <p style="color: #a0a0a0; font-size: 16px; line-height: 1.7; margin: 0 0 30px 0;">
+                        <p style="color: #d0d0d0; font-size: 16px; line-height: 1.7; margin: 0 0 30px 0;">
                           wir haben eine Anfrage erhalten, dein Passwort zurückzusetzen. Keine Sorge, das passiert den Besten! 😊
                         </p>
                         
@@ -343,7 +343,7 @@ export async function sendPasswordResetEmail(
                           </tr>
                         </table>
                         
-                        <p style="color: #666; font-size: 13px; text-align: center; margin: 0 0 30px 0; word-break: break-all;">
+                        <p style="color: #999; font-size: 13px; text-align: center; margin: 0 0 30px 0; word-break: break-all;">
                           Oder kopiere diesen Link:<br>
                           <a href="${resetLink}" style="color: #FE9100; text-decoration: underline;">${resetLink}</a>
                         </p>
@@ -353,7 +353,7 @@ export async function sendPasswordResetEmail(
                     <!-- Info Box -->
                     <tr>
                       <td style="padding: 0 40px 30px 40px;">
-                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: rgba(254, 145, 0, 0.08); border-radius: 16px; border: 1px solid rgba(254, 145, 0, 0.2);">
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: rgba(254, 145, 0, 0.12); border-radius: 16px; border: 1px solid rgba(254, 145, 0, 0.3);">
                           <tr>
                             <td style="padding: 24px;">
                               <p style="color: #FE9100; font-size: 14px; font-weight: 600; margin: 0 0 12px 0;">
@@ -361,17 +361,17 @@ export async function sendPasswordResetEmail(
                               </p>
                               <table role="presentation" cellspacing="0" cellpadding="0">
                                 <tr>
-                                  <td style="padding: 6px 0; color: #E9D7C4; font-size: 14px;">
+                                  <td style="padding: 6px 0; color: #ffffff; font-size: 14px;">
                                     <span style="color: #FE9100; margin-right: 8px;">⏱️</span> Link ist 1 Stunde gültig
                                   </td>
                                 </tr>
                                 <tr>
-                                  <td style="padding: 6px 0; color: #E9D7C4; font-size: 14px;">
+                                  <td style="padding: 6px 0; color: #ffffff; font-size: 14px;">
                                     <span style="color: #FE9100; margin-right: 8px;">🔒</span> Dein aktuelles Passwort bleibt aktiv
                                   </td>
                                 </tr>
                                 <tr>
-                                  <td style="padding: 6px 0; color: #E9D7C4; font-size: 14px;">
+                                  <td style="padding: 6px 0; color: #ffffff; font-size: 14px;">
                                     <span style="color: #FE9100; margin-right: 8px;">❓</span> Nicht angefragt? Einfach ignorieren
                                   </td>
                                 </tr>
@@ -384,17 +384,17 @@ export async function sendPasswordResetEmail(
                     
                     <!-- Footer -->
                     <tr>
-                      <td style="padding: 30px 40px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+                      <td style="padding: 30px 40px; border-top: 1px solid rgba(255, 255, 255, 0.15);">
                         <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                           <tr>
                             <td align="center">
-                              <p style="color: #666; font-size: 13px; margin: 0 0 8px 0;">
+                              <p style="color: #aaa; font-size: 13px; margin: 0 0 8px 0;">
                                 Fragen? Schreib uns: <a href="mailto:support@plattform-aras.ai" style="color: #FE9100; text-decoration: none;">support@plattform-aras.ai</a>
                               </p>
-                              <p style="color: #444; font-size: 12px; margin: 0;">
+                              <p style="color: #888; font-size: 12px; margin: 0;">
                                 ARAS AI – Die Zukunft der KI-Kommunikation
                               </p>
-                              <p style="color: #333; font-size: 11px; margin: 10px 0 0 0;">
+                              <p style="color: #666; font-size: 11px; margin: 10px 0 0 0;">
                                 Entwickelt von der Schwarzott Group
                               </p>
                             </td>
