@@ -301,95 +301,112 @@ export async function sendPasswordResetEmail(
         <html>
           <head>
             <meta charset="utf-8">
-            <style>
-              body { 
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                background: linear-gradient(to bottom, #0a0a0a, #151515);
-                margin: 0;
-                padding: 20px;
-              }
-              .container {
-                max-width: 600px;
-                margin: 0 auto;
-                background: linear-gradient(135deg, rgba(10, 10, 10, 0.98), rgba(20, 20, 20, 0.98));
-                border: 2px solid transparent;
-                background-image: 
-                  linear-gradient(135deg, rgba(10,10,10,0.98), rgba(20,20,20,0.98)), 
-                  linear-gradient(135deg, #FE9100, #E9D7C4);
-                background-origin: border-box;
-                background-clip: padding-box, border-box;
-                border-radius: 16px;
-                padding: 40px;
-                box-shadow: 0 0 40px rgba(254, 145, 0, 0.2);
-              }
-              h1 {
-                background: linear-gradient(135deg, #E9D7C4, #FE9100, #A34E00);
-                -webkit-background-clip: text;
-                background-clip: text;
-                -webkit-text-fill-color: transparent;
-                font-size: 32px;
-                margin: 0 0 20px 0;
-              }
-              p {
-                color: #E9D7C4;
-                font-size: 16px;
-                line-height: 1.6;
-                margin: 0 0 20px 0;
-              }
-              .button {
-                display: inline-block;
-                padding: 16px 32px;
-                background: linear-gradient(135deg, #FE9100, #A34E00);
-                color: #000;
-                text-decoration: none;
-                border-radius: 12px;
-                font-weight: bold;
-                font-size: 16px;
-                box-shadow: 0 0 15px rgba(254, 145, 0, 0.4);
-                margin: 20px 0;
-              }
-              .warning {
-                background: rgba(254, 145, 0, 0.1);
-                border: 1px solid rgba(254, 145, 0, 0.3);
-                border-radius: 8px;
-                padding: 15px;
-                margin: 20px 0;
-                color: #FE9100;
-              }
-              .footer {
-                margin-top: 40px;
-                padding-top: 20px;
-                border-top: 1px solid rgba(233, 215, 196, 0.2);
-                color: #A34E00;
-                font-size: 14px;
-              }
-            </style>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Passwort zurücksetzen</title>
           </head>
-          <body>
-            <div class="container">
-              <h1>Passwort zurücksetzen</h1>
-              <p>Hallo ${userName},</p>
-              <p>du hast angefragt, dein Passwort zurückzusetzen.</p>
-              
-              <p>Klicke auf den folgenden Button, um ein neues Passwort zu setzen:</p>
-              <a href="${resetLink}" class="button">Passwort zurücksetzen</a>
-              
-              <p style="font-size: 14px; color: #888;">
-                Oder kopiere diesen Link: ${resetLink}
-              </p>
-              
-              <div class="warning">
-                ⚠️ <strong>Wichtig:</strong><br>
-                • Dieser Link ist 1 Stunde gültig<br>
-                • Falls du diese Anfrage nicht gestellt hast, ignoriere diese Email<br>
-                • Dein aktuelles Passwort bleibt bis zum Reset aktiv
-              </div>
-              
-              <div class="footer">
-                <p>Bei Fragen: support@plattform-aras.ai</p>
-                <p>ARAS AI - Die Zukunft der KI-Kommunikation</p>
-              </div>
-            </div>
+          <body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #0a0a0a;">
+              <tr>
+                <td align="center" style="padding: 40px 20px;">
+                  <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; background: linear-gradient(135deg, #141414 0%, #1a1a1a 100%); border-radius: 24px; border: 1px solid rgba(254, 145, 0, 0.3); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(254, 145, 0, 0.1);">
+                    
+                    <!-- Header with Logo -->
+                    <tr>
+                      <td align="center" style="padding: 40px 40px 20px 40px;">
+                        <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #FE9100, #A34E00); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(254, 145, 0, 0.3);">
+                          <span style="font-size: 40px;">🔐</span>
+                        </div>
+                        <h1 style="margin: 0; font-size: 32px; font-weight: 700; background: linear-gradient(135deg, #ffffff, #FE9100); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+                          Passwort zurücksetzen
+                        </h1>
+                      </td>
+                    </tr>
+                    
+                    <!-- Main Content -->
+                    <tr>
+                      <td style="padding: 0 40px 30px 40px;">
+                        <p style="color: #E9D7C4; font-size: 18px; line-height: 1.6; margin: 0 0 10px 0;">
+                          Hallo <strong style="color: #FE9100;">${userName}</strong>,
+                        </p>
+                        <p style="color: #a0a0a0; font-size: 16px; line-height: 1.7; margin: 0 0 30px 0;">
+                          wir haben eine Anfrage erhalten, dein Passwort zurückzusetzen. Keine Sorge, das passiert den Besten! 😊
+                        </p>
+                        
+                        <!-- CTA Button -->
+                        <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 auto 30px auto;">
+                          <tr>
+                            <td align="center" style="background: linear-gradient(135deg, #FE9100, #A34E00); border-radius: 14px; box-shadow: 0 8px 25px rgba(254, 145, 0, 0.4);">
+                              <a href="${resetLink}" target="_blank" style="display: inline-block; padding: 18px 45px; color: #000000; font-size: 16px; font-weight: 700; text-decoration: none; letter-spacing: 0.5px;">
+                                🔑 Neues Passwort setzen
+                              </a>
+                            </td>
+                          </tr>
+                        </table>
+                        
+                        <p style="color: #666; font-size: 13px; text-align: center; margin: 0 0 30px 0; word-break: break-all;">
+                          Oder kopiere diesen Link:<br>
+                          <a href="${resetLink}" style="color: #FE9100; text-decoration: underline;">${resetLink}</a>
+                        </p>
+                      </td>
+                    </tr>
+                    
+                    <!-- Info Box -->
+                    <tr>
+                      <td style="padding: 0 40px 30px 40px;">
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: rgba(254, 145, 0, 0.08); border-radius: 16px; border: 1px solid rgba(254, 145, 0, 0.2);">
+                          <tr>
+                            <td style="padding: 24px;">
+                              <p style="color: #FE9100; font-size: 14px; font-weight: 600; margin: 0 0 12px 0;">
+                                ℹ️ Gut zu wissen:
+                              </p>
+                              <table role="presentation" cellspacing="0" cellpadding="0">
+                                <tr>
+                                  <td style="padding: 6px 0; color: #E9D7C4; font-size: 14px;">
+                                    <span style="color: #FE9100; margin-right: 8px;">⏱️</span> Link ist 1 Stunde gültig
+                                  </td>
+                                </tr>
+                                <tr>
+                                  <td style="padding: 6px 0; color: #E9D7C4; font-size: 14px;">
+                                    <span style="color: #FE9100; margin-right: 8px;">🔒</span> Dein aktuelles Passwort bleibt aktiv
+                                  </td>
+                                </tr>
+                                <tr>
+                                  <td style="padding: 6px 0; color: #E9D7C4; font-size: 14px;">
+                                    <span style="color: #FE9100; margin-right: 8px;">❓</span> Nicht angefragt? Einfach ignorieren
+                                  </td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                      <td style="padding: 30px 40px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                          <tr>
+                            <td align="center">
+                              <p style="color: #666; font-size: 13px; margin: 0 0 8px 0;">
+                                Fragen? Schreib uns: <a href="mailto:support@plattform-aras.ai" style="color: #FE9100; text-decoration: none;">support@plattform-aras.ai</a>
+                              </p>
+                              <p style="color: #444; font-size: 12px; margin: 0;">
+                                ARAS AI – Die Zukunft der KI-Kommunikation
+                              </p>
+                              <p style="color: #333; font-size: 11px; margin: 10px 0 0 0;">
+                                Entwickelt von der Schwarzott Group
+                              </p>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    
+                  </table>
+                </td>
+              </tr>
+            </table>
           </body>
         </html>
       `
