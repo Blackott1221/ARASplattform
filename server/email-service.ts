@@ -110,7 +110,7 @@ export async function sendWelcomeEmail(
               <p>Starte jetzt und erlebe die Zukunft der KI-Kommunikation!</p>
               
               <div class="footer">
-                <p>Bei Fragen: support@arasai.com</p>
+                <p>Bei Fragen: support@plattform-aras.ai</p>
                 <p>ARAS AI - Die Zukunft der KI-Kommunikation</p>
               </div>
             </div>
@@ -237,7 +237,7 @@ export async function sendPasswordResetEmail(
               </div>
               
               <div class="footer">
-                <p>Bei Fragen: support@arasai.com</p>
+                <p>Bei Fragen: support@plattform-aras.ai</p>
                 <p>ARAS AI - Die Zukunft der KI-Kommunikation</p>
               </div>
             </div>
@@ -341,12 +341,12 @@ export async function sendPasswordChangedEmail(
               
               <p><strong>Falls du diese Änderung nicht durchgeführt hast:</strong></p>
               <ul style="color: #E9D7C4;">
-                <li>Kontaktiere sofort unseren Support: support@arasai.com</li>
+                <li>Kontaktiere sofort unseren Support: support@plattform-aras.ai</li>
                 <li>Setze dein Passwort erneut zurück</li>
               </ul>
               
               <div class="footer">
-                <p>Bei Fragen: support@arasai.com</p>
+                <p>Bei Fragen: support@plattform-aras.ai</p>
                 <p>ARAS AI - Die Zukunft der KI-Kommunikation</p>
               </div>
             </div>
