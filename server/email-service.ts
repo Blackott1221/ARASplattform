@@ -336,7 +336,7 @@ export async function sendPasswordResetEmail(
                         <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 auto 30px auto;">
                           <tr>
                             <td align="center" style="background: linear-gradient(135deg, #FE9100, #A34E00); border-radius: 14px; box-shadow: 0 8px 25px rgba(254, 145, 0, 0.4);">
-                              <a href="${resetLink}" target="_blank" style="display: inline-block; padding: 18px 45px; color: #000000; font-size: 16px; font-weight: 700; text-decoration: none; letter-spacing: 0.5px;">
+                              <a href="${resetLink}" target="_blank" style="display: inline-block; padding: 18px 45px; color: #ffffff; font-size: 16px; font-weight: 700; text-decoration: none; letter-spacing: 0.5px; text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
                                 🔑 Neues Passwort setzen
                               </a>
                             </td>
