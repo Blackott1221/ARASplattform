@@ -310,41 +310,40 @@ function LiveCallWindow() {
 function PricingSection() {
   const plans = [
     {
+      name: "FREE",
+      role: "ARAS Free",
+      price: "Kostenlos",
+      priceValue: 0,
+      features: ["2 Outbound Calls", "10 Chatnachrichten", "Zugriff auf ARAS Basic Console"],
+      isPopular: false,
+      isFree: true
+    },
+    {
       name: "STARTER",
       role: "ARAS Pro",
-      alphaPrice: "€59",
-      standardPrice: "€1.990",
-      savings: "€1.931",
+      price: "CHF 59",
+      priceValue: 59,
       features: ["100 Outbound Calls pro Monat", "500 Chatnachrichten", "ARAS Konsole (Basic)", "Automatische Zusammenfassungen", "E-Mail Support"],
-      isPopular: false
+      isPopular: false,
+      isFree: false
     },
     {
       name: "PRO",
       role: "ARAS Ultra",
-      alphaPrice: "€249",
-      standardPrice: "€4.990",
-      savings: "€4.741",
+      price: "CHF 249",
+      priceValue: 249,
       features: ["1.000 Outbound Calls pro Monat", "10.000 Chatnachrichten", "ARAS Voice Model (erweitert)", "Mehrbenutzerzugang", "Erweiterte Analysen", "Priorisierter Support"],
-      isPopular: true
+      isPopular: true,
+      isFree: false
     },
     {
       name: "ENTERPRISE",
       role: "ARAS Ultimate",
-      alphaPrice: "€1990",
-      standardPrice: "€19.990",
-      savings: "€18.000",
+      price: "CHF 1.990",
+      priceValue: 1990,
       features: ["10.000 Outbound Calls pro Monat", "Unbegrenzte Chatnachrichten", "Dediziertes ARAS Enterprise-LLM", "API & CRM Integrationen", "Swiss Hosting", "24/7 Support", "Early Access zu neuen Modulen"],
-      isPopular: false
-    },
-    {
-      name: "ARAS Free",
-      role: "Kostenlos – dauerhaft",
-      alphaPrice: "€0",
-      standardPrice: "€0",
-      savings: "€0",
-      features: ["2 Outbound Calls", "10 Chatnachrichten", "Zugriff auf ARAS Basic Console", "Kostenlos starten"],
       isPopular: false,
-      isFree: true
+      isFree: false
     }
   ];
 
@@ -358,22 +357,16 @@ function PricingSection() {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <h2 className="text-4xl md:text-5xl font-black mb-6 bg-clip-text text-transparent bg-gradient-to-r from-[#e9d7c4] via-[#FE9100] to-[#a34e00]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-            Die ARAS Alpha-Vorteile
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black mb-4 sm:mb-6 bg-clip-text text-transparent bg-gradient-to-r from-[#e9d7c4] via-[#FE9100] to-[#a34e00]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+            ARAS Pricing
           </h2>
-          <div className="space-y-2 text-lg md:text-xl font-light text-white/80">
-            <p className="text-[#FE9100] font-bold uppercase tracking-wider text-sm mb-4">Die Alpha-Phase ist streng limitiert</p>
-            <p>Alle Nutzer, die heute testen, behalten ihre aktuellen Preise – <span className="text-[#FE9100] font-bold">dauerhaft</span>.</p>
-            <p className="text-white/50 text-base">Die zukünftigen Enterprise-Preise werden am 01.01.2026 aktiviert.</p>
-            <p className="text-green-400 font-bold flex items-center justify-center gap-2">
-              <ShieldCheck className="w-5 h-5" />
-              Ihr Zugang bleibt geschützt.
-            </p>
-          </div>
+          <p className="text-base sm:text-lg md:text-xl text-white/70 max-w-2xl mx-auto">
+            Wähle den Plan, der zu deinem Unternehmen passt.
+          </p>
         </motion.div>
 
         {/* Pricing Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {plans.map((plan, i) => (
             <motion.div
               key={i}
@@ -381,71 +374,65 @@ function PricingSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className={`relative rounded-2xl p-6 flex flex-col h-full ${
+              className={`relative rounded-2xl p-4 sm:p-6 flex flex-col h-full ${
                 plan.isPopular 
-                  ? 'bg-gradient-to-b from-[#FE9100]/10 to-black border-[#FE9100] shadow-[0_0_30px_rgba(254,145,0,0.15)]' 
-                  : 'bg-[#111] border-white/10'
-              } border`}
+                  ? 'bg-gradient-to-b from-[#FE9100]/15 to-[#0a0a0a] border-[#FE9100] shadow-[0_0_40px_rgba(254,145,0,0.2)]' 
+                  : 'bg-[#0a0a0a] border-white/10 hover:border-white/20'
+              } border transition-all duration-300`}
             >
               {plan.isPopular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#FE9100] text-black text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                  ⭐ Beliebteste Wahl
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#FE9100] to-[#ffaa33] text-black text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-lg">
+                  ⭐ Beliebt
                 </div>
               )}
 
               {/* Header */}
-              <div className="mb-6">
-                <div className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">{plan.name}</div>
-                <h3 className="text-2xl font-bold text-white mb-4" style={{ fontFamily: 'Orbitron, sans-serif' }}>{plan.role}</h3>
+              <div className="mb-4 sm:mb-6">
+                <div className="text-[10px] sm:text-xs font-bold text-[#FE9100]/70 uppercase tracking-widest mb-1">{plan.name}</div>
+                <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-3 sm:mb-4" style={{ fontFamily: 'Orbitron, sans-serif' }}>{plan.role}</h3>
                 
-                {!plan.isFree && (
-                  <div className="space-y-4 bg-white/5 p-4 rounded-xl border border-white/5">
-                    <div>
-                      <div className="text-[10px] text-[#FE9100] font-bold uppercase">Alpha-Preis (Jetzt)</div>
-                      <div className="text-2xl font-bold text-white">{plan.alphaPrice}<span className="text-sm font-normal text-gray-500">/ Monat</span></div>
-                      <div className="text-[10px] text-green-400">Preisgarantie aktiv</div>
-                    </div>
-                    
-                    <div className="pt-3 border-t border-white/10">
-                      <div className="text-[10px] text-gray-500 uppercase">Standard ab 01.01.2026</div>
-                      <div className="text-lg font-bold text-gray-500 line-through Decoration-red-500">{plan.standardPrice}</div>
-                    </div>
-
-                    <div className="bg-[#FE9100]/10 p-2 rounded text-center border border-[#FE9100]/20">
-                      <div className="text-[10px] text-white/70">Ihre Ersparnis</div>
-                      <div className="text-[#FE9100] font-bold">{plan.savings}</div>
-                      <div className="text-[10px] text-white/50">monatlich</div>
-                    </div>
+                {/* Price Display */}
+                <div className="bg-white/5 p-3 sm:p-4 rounded-xl border border-white/5">
+                  <div className="flex items-baseline gap-1">
+                    <span className={`text-2xl sm:text-3xl font-black ${plan.isFree ? 'text-green-400' : 'text-white'}`}>
+                      {plan.isFree ? 'Kostenlos' : plan.price}
+                    </span>
+                    {!plan.isFree && (
+                      <span className="text-xs sm:text-sm text-gray-500">/ Monat</span>
+                    )}
                   </div>
-                )}
-
-                {plan.isFree && (
-                  <div className="bg-white/5 p-4 rounded-xl border border-white/5 min-h-[180px] flex flex-col justify-center">
-                    <div className="text-2xl font-bold text-white mb-2">Kostenlos</div>
-                    <p className="text-sm text-gray-400">Für alle Nutzer, die ARAS in kleinem Rahmen testen wollen.</p>
-                  </div>
-                )}
+                  <p className="text-[10px] sm:text-xs text-gray-400 mt-2">
+                    {plan.isFree 
+                      ? 'Perfekt zum Testen' 
+                      : plan.priceValue < 100 
+                        ? 'Ideal für Einsteiger'
+                        : plan.priceValue < 1000
+                          ? 'Für wachsende Teams'
+                          : 'Enterprise-Lösung'
+                    }
+                  </p>
+                </div>
               </div>
 
               {/* Features */}
-              <div className="space-y-3 mb-8 flex-grow">
+              <div className="space-y-2 sm:space-y-3 mb-6 sm:mb-8 flex-grow">
                 <div className="text-[10px] font-bold text-gray-500 uppercase mb-2">Enthalten</div>
                 {plan.features.map((feature, idx) => (
-                  <div key={idx} className="flex items-start gap-2 text-sm text-gray-300">
-                    <Check className="w-4 h-4 text-[#FE9100] shrink-0 mt-0.5" />
-                    <span className="text-xs">{feature}</span>
+                  <div key={idx} className="flex items-start gap-2 text-gray-300">
+                    <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#FE9100] shrink-0 mt-0.5" />
+                    <span className="text-[11px] sm:text-xs">{feature}</span>
                   </div>
                 ))}
               </div>
 
               {/* CTA */}
               <button 
-                className={`w-full py-3 rounded-lg font-bold text-sm transition-all ${
+                className={`w-full py-2.5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 ${
                   plan.isPopular 
-                    ? 'bg-[#FE9100] text-black hover:bg-[#ffaa33] shadow-[0_0_15px_rgba(254,145,0,0.3)]' 
+                    ? 'bg-gradient-to-r from-[#FE9100] to-[#ffaa33] text-black hover:shadow-[0_0_25px_rgba(254,145,0,0.4)] transform hover:scale-[1.02]' 
                     : plan.isFree
-                      ? 'bg-white/10 text-white hover:bg-white/20'
-                      : 'bg-white text-black hover:bg-gray-200'
+                      ? 'bg-white/10 text-white hover:bg-white/20 border border-white/10'
+                      : 'bg-white text-black hover:bg-gray-100'
                 }`}
               >
                 {plan.isFree ? 'Kostenlos starten' : 'Plan wählen'}
@@ -813,7 +800,7 @@ function PremiumFooter() {
           {/* EBENE 4: Copyright */}
           <div className="border-t border-white/10 pt-8">
             <p className="text-center text-sm text-white/40">
-              © 2026 ARAS AI – KI-gestützte Vertriebsautomatisierung by Schwarzott Capital Partners AG, Zürich.
+              © 2025 ARAS AI – KI-gestützte Vertriebsautomatisierung by Schwarzott Capital Partners AG, Zürich.
               <br />
               Eigenes LLM • 500+ parallele Anrufe • DSGVO-konform • Swiss Made
             </p>
@@ -994,10 +981,12 @@ In der Alpha sind die Werte kontrolliert limitiert, um Qualität sicherzustellen
     },
     {
       id: 9,
-      question: "Wie werden die Preise in der Alpha garantiert?",
-      answer: `Jeder Nutzer, der sich in der Alpha registriert, erhält einen unveränderbaren Preisanker.
+      question: "Welche Zahlungsmethoden werden akzeptiert?",
+      answer: `Wir akzeptieren alle gängigen Zahlungsmethoden:
 
-Auch wenn die Enterprise-Preise ab dem 01.01.2026 aktiviert werden, bleibt Ihr Tarif stabil.`
+• Kreditkarte (Visa, Mastercard, Amex)
+• SEPA-Lastschrift
+• Banküberweisung (Enterprise)`
     },
     {
       id: 10,
@@ -1144,9 +1133,9 @@ function PricingCards() {
       id: 'starter',
       name: 'STARTER',
       subtitle: 'ARAS Pro',
-      alphaPrice: 59,
-      futurePrice: 1990,
-      savings: 1931,
+      price: 59,
+      currency: 'CHF',
+      description: 'Ideal für Einsteiger',
       features: [
         '100 Outbound Calls pro Monat',
         '500 Chatnachrichten',
@@ -1160,9 +1149,9 @@ function PricingCards() {
       id: 'pro',
       name: 'PRO',
       subtitle: 'ARAS Ultra',
-      alphaPrice: 249,
-      futurePrice: 4990,
-      savings: 4741,
+      price: 249,
+      currency: 'CHF',
+      description: 'Für wachsende Teams',
       features: [
         '1.000 Outbound Calls pro Monat',
         '10.000 Chatnachrichten',
@@ -1177,9 +1166,9 @@ function PricingCards() {
       id: 'enterprise',
       name: 'ENTERPRISE',
       subtitle: 'ARAS Ultimate',
-      alphaPrice: 1990,
-      futurePrice: 19990,
-      savings: 18000,
+      price: 1990,
+      currency: 'CHF',
+      description: 'Enterprise-Lösung',
       features: [
         '10.000 Outbound Calls pro Monat',
         'Unbegrenzte Chatnachrichten',
@@ -1272,11 +1261,8 @@ function PricingCards() {
                 {plan.subtitle}
               </p>
 
-              {/* Alpha Price */}
-              <div className="mb-6">
-                <div className="text-xs text-white/50 uppercase tracking-wider mb-2">
-                  Alpha-Preis (jetzt)
-                </div>
+              {/* Price Display */}
+              <div className="mb-8">
                 <motion.div
                   animate={{
                     textShadow: [
@@ -1289,63 +1275,18 @@ function PricingCards() {
                   className="flex items-baseline gap-2"
                 >
                   <span
-                    className="text-5xl font-black"
+                    className="text-4xl sm:text-5xl font-black"
                     style={{
                       fontFamily: 'Orbitron, sans-serif',
                       color: '#e9d7c4'
                     }}
                   >
-                    €{plan.alphaPrice}
+                    {plan.currency} {plan.price.toLocaleString()}
                   </span>
                   <span className="text-white/50">/ Monat</span>
                 </motion.div>
-                <p className="text-xs text-white/50 mt-2">
-                  Ihre Preisgarantie bleibt bestehen.
-                </p>
-              </div>
-
-              {/* Future Price */}
-              <motion.div
-                initial={{ opacity: 0, y: 5 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.3 }}
-                className="mb-6 p-4 rounded-xl"
-                style={{
-                  background: 'rgba(254, 145, 0, 0.05)',
-                  border: '1px solid rgba(254, 145, 0, 0.2)'
-                }}
-              >
-                <div className="text-xs text-white/50 uppercase tracking-wider mb-1">
-                  Standardpreis ab 01.01.2026
-                </div>
-                <div className="text-2xl font-bold text-white/40 line-through">
-                  €{plan.futurePrice.toLocaleString()}
-                </div>
-              </motion.div>
-
-              {/* Savings */}
-              <div className="mb-8 p-4 rounded-xl" style={{
-                background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.1), rgba(255, 215, 0, 0.1))',
-                border: '1px solid rgba(254, 145, 0, 0.3)'
-              }}>
-                <div className="text-xs text-[#FE9100] font-bold uppercase tracking-wider mb-1">
-                  Ihre Ersparnis
-                </div>
-                <div
-                  className="text-xl font-black"
-                  style={{
-                    fontFamily: 'Orbitron, sans-serif',
-                    background: 'linear-gradient(135deg, #FE9100, #ffd700)',
-                    backgroundClip: 'text',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent'
-                  }}
-                >
-                  €{plan.savings.toLocaleString()} monatlich
-                </div>
-                <p className="text-xs text-white/60 mt-1">
-                  dauerhaft geschützt
+                <p className="text-sm text-white/50 mt-3">
+                  {plan.description}
                 </p>
               </div>
 
@@ -1470,13 +1411,13 @@ function PricingCards() {
                   color: '#e9d7c4'
                 }}
               >
-                Plan wechseln zu {plans.find(p => p.id === selectedPlan)?.subtitle}
+                {plans.find(p => p.id === selectedPlan)?.subtitle}
               </h3>
               <p className="text-white/70 mb-6 leading-relaxed">
-                Ihr Alpha-Preis von €{plans.find(p => p.id === selectedPlan)?.alphaPrice} bleibt dauerhaft erhalten.
+                CHF {plans.find(p => p.id === selectedPlan)?.price.toLocaleString()} / Monat
               </p>
               <p className="text-sm text-white/60 mb-8">
-                Sie sparen <span className="text-[#FE9100] font-bold">€{plans.find(p => p.id === selectedPlan)?.savings.toLocaleString()}</span> monatlich im Vergleich zum Standardpreis ab 2026.
+                {plans.find(p => p.id === selectedPlan)?.description}
               </p>
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -4657,22 +4598,11 @@ export default function AuthPage() {
                   WebkitTextFillColor: 'transparent'
                 }}
               >
-                Die ARAS Alpha-Vorteile
+                ARAS Pricing
               </h2>
-              <div className="text-xl text-white/70 max-w-4xl mx-auto leading-relaxed space-y-3">
-                <p className="font-semibold text-white/80">
-                  Die Alpha-Phase ist streng limitiert.
-                </p>
-                <p>
-                  Alle Nutzer, die heute testen, behalten ihre aktuellen Preise – dauerhaft.
-                </p>
-                <p>
-                  Die zukünftigen Enterprise-Preise werden am 01.01.2026 aktiviert.
-                </p>
-                <p className="text-[#FE9100] font-bold">
-                  Ihr Zugang bleibt geschützt.
-                </p>
-              </div>
+              <p className="text-xl text-white/70 max-w-2xl mx-auto">
+                Wähle den Plan, der zu deinem Unternehmen passt.
+              </p>
             </motion.div>
 
             {/* Pricing Cards */}
@@ -4693,13 +4623,13 @@ export default function AuthPage() {
                   color: '#e9d7c4'
                 }}
               >
-                Alpha ist begrenzt. Preise sind es auch.
+                Transparent. Fair. Swiss Made.
               </h3>
               <p className="text-lg text-white/70 max-w-3xl mx-auto leading-relaxed">
-                Alle registrierten Nutzer behalten ihre Alpha-Preise – selbst wenn ARAS 2026 auf Enterprise-Niveau skaliert.
+                Keine versteckten Kosten. Jederzeit kündbar.
                 <br />
                 <span className="text-white/80 font-semibold">
-                  Das ist unsere Zusage an alle, die uns jetzt unterstützen.
+                  Starte kostenlos und upgrade wenn du bereit bist.
                 </span>
               </p>
             </motion.div>
@@ -5035,18 +4965,18 @@ function ArasLandingContent() {
             className="text-center mb-20"
           >
             <h2 className="text-5xl font-black mb-6" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-              Alpha-Phase: Du behältst deine Preise
+              Unsere Pläne
             </h2>
             <p className="text-xl text-white/70">
-              auch wenn wir 2026 erhöhen.
+              Transparent und fair – für jede Unternehmensgrösse.
             </p>
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-8 mb-16">
             {[
-              { name: "Starter", finalPrice: "€1.990", alphaPrice: "€59", calls: "1.000", features: ["Zusammenfassungen", "Voller Plattformzugang"] },
-              { name: "Pro", finalPrice: "€4.990", alphaPrice: "€249", calls: "2.500", features: ["200 parallel", "CRM-Integration", "Individuelle Stimme"] },
-              { name: "Enterprise", finalPrice: "€19.990", alphaPrice: "€1.990", calls: "30.000", features: ["500 parallel", "Eigene Instanz", "24/7 Onboarding"] }
+              { name: "ARAS Pro", price: "CHF 59", calls: "100", features: ["Zusammenfassungen", "Voller Plattformzugang"] },
+              { name: "ARAS Ultra", price: "CHF 249", calls: "1.000", features: ["200 parallel", "CRM-Integration", "Individuelle Stimme"] },
+              { name: "ARAS Ultimate", price: "CHF 1.990", calls: "10.000", features: ["500 parallel", "Eigene Instanz", "24/7 Onboarding"] }
             ].map((plan, i) => (
               <motion.div
                 key={i}
@@ -5057,27 +4987,23 @@ function ArasLandingContent() {
                 whileHover={{ scale: 1.02, y: -5 }}
                 className="relative p-8 rounded-2xl"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(255, 106, 0, 0.05), rgba(0, 0, 0, 0.8))',
-                  border: '2px solid #ff6a00',
-                  boxShadow: '0 10px 40px rgba(255, 106, 0, 0.15)'
+                  background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.05), rgba(0, 0, 0, 0.8))',
+                  border: '2px solid #FE9100',
+                  boxShadow: '0 10px 40px rgba(254, 145, 0, 0.15)'
                 }}
               >
-                <div className="inline-block px-4 py-1 rounded-full bg-[#ff6a00] text-xs font-bold mb-6">
-                  FINALER PREIS 2026
-                </div>
                 <h3 className="text-3xl font-black mb-4" style={{ fontFamily: 'Orbitron, sans-serif' }}>
                   {plan.name}
                 </h3>
-                <p className="text-4xl font-black text-white/40 line-through mb-2">{plan.finalPrice}</p>
                 <div className="flex items-baseline gap-2 mb-6">
-                  <p className="text-5xl font-black text-[#ff6a00]">{plan.alphaPrice}</p>
-                  <CheckCircle2 className="w-6 h-6 text-green-500" />
+                  <p className="text-4xl font-black text-[#FE9100]">{plan.price}</p>
+                  <span className="text-white/50">/ Monat</span>
                 </div>
                 <p className="text-sm text-white/60 mb-6">{plan.calls} Anrufe pro Monat</p>
                 <div className="space-y-3">
                   {plan.features.map((f, idx) => (
                     <div key={idx} className="flex items-center gap-2">
-                      <div className="w-1 h-1 rounded-full bg-[#ff6a00]" />
+                      <div className="w-1 h-1 rounded-full bg-[#FE9100]" />
                       <p className="text-sm text-white/70">{f}</p>
                     </div>
                   ))}
@@ -5092,15 +5018,15 @@ function ArasLandingContent() {
             viewport={{ once: true }}
             className="text-center p-10 rounded-2xl"
             style={{
-              background: 'linear-gradient(135deg, rgba(255, 106, 0, 0.1), transparent)',
-              border: '1px solid rgba(255, 106, 0, 0.3)'
+              background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.1), transparent)',
+              border: '1px solid rgba(254, 145, 0, 0.3)'
             }}
           >
             <p className="text-2xl font-bold mb-4" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-              Warum?
+              Kostenlos testen
             </p>
             <p className="text-xl text-white/80">
-              Wir suchen ehrliches Feedback, keine kurzfristigen Einnahmen.
+              Starte mit ARAS Free – 2 Calls, 10 Nachrichten, keine Kreditkarte.
             </p>
           </motion.div>
         </div>
