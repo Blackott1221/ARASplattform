@@ -62,7 +62,7 @@ Halte es kurz (max 250 Wörter), auf Deutsch, und fokussiert auf Aktionen.`;
     
     // Fallback to Gemini
     if (gemini) {
-      const model = gemini.getGenerativeModel({ model: "gemini-pro" });
+      const model = gemini.getGenerativeModel({ model: "gemini-2.0-flash" });
       const result = await model.generateContent(prompt);
       return result.response.text() || "Keine Insights verfügbar.";
     }
@@ -109,7 +109,7 @@ Auf Deutsch, max 150 Wörter.`;
     }
     
     if (gemini) {
-      const model = gemini.getGenerativeModel({ model: "gemini-pro" });
+      const model = gemini.getGenerativeModel({ model: "gemini-2.0-flash" });
       const result = await model.generateContent(prompt);
       return result.response.text() || "Keine Analyse verfügbar.";
     }
@@ -153,7 +153,7 @@ Auf Deutsch, präzise formuliert.`;
     }
     
     if (gemini) {
-      const model = gemini.getGenerativeModel({ model: "gemini-pro" });
+      const model = gemini.getGenerativeModel({ model: "gemini-2.0-flash" });
       const result = await model.generateContent(prompt);
       const text = result.response.text() || "";
       return text.split('\n').filter(line => line.trim().match(/^\d+\./));

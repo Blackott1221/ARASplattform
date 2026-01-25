@@ -68,7 +68,7 @@ router.post('/chat', async (req: Request, res: Response) => {
       });
     }
 
-    const model = gemini.getGenerativeModel({ model: 'gemini-1.5-pro' });
+    const model = gemini.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
     // Build conversation context
     const conversationHistory = messages.map(m => 

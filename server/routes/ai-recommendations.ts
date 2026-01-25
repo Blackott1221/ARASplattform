@@ -376,7 +376,7 @@ async function generateGeminiBriefing(
   if (!genAI || !GEMINI_ENABLED) return null;
 
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
     
     // Build context from calls
     const callSummaries = callData.slice(0, 10).map(call => {
@@ -701,7 +701,7 @@ router.post('/daily-briefing', async (req: Request, res: Response) => {
 router.get('/status', async (req: Request, res: Response) => {
   res.json({
     geminiEnabled: GEMINI_ENABLED,
-    geminiModel: GEMINI_ENABLED ? 'gemini-pro' : null,
+    geminiModel: GEMINI_ENABLED ? 'gemini-2.0-flash' : null,
   });
 });
 

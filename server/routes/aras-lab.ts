@@ -162,7 +162,7 @@ async function parseIntent(transcript: string): Promise<ParsedIntent> {
   }
 
   try {
-    const model = gemini.getGenerativeModel({ model: 'gemini-1.5-pro' });
+    const model = gemini.getGenerativeModel({ model: 'gemini-2.0-flash' });
     
     const prompt = `Du bist ein Intent-Parser für einen Voice Assistant. Analysiere den folgenden Sprachbefehl und extrahiere die Absicht.
 
@@ -281,7 +281,7 @@ async function generateResponse(transcript: string, intent: ParsedIntent, action
   }
 
   try {
-    const model = gemini.getGenerativeModel({ model: 'gemini-1.5-pro' });
+    const model = gemini.getGenerativeModel({ model: 'gemini-2.0-flash' });
     
     const context = actionResult 
       ? `Aktion ausgeführt: ${actionResult.message}${actionResult.data ? ` (${JSON.stringify(actionResult.data)})` : ''}`
@@ -312,7 +312,7 @@ async function generateSummary(transcript: string, response: string, intent: Par
   }
 
   try {
-    const model = gemini.getGenerativeModel({ model: 'gemini-1.5-pro' });
+    const model = gemini.getGenerativeModel({ model: 'gemini-2.0-flash' });
     
     const prompt = `Erstelle eine kurze Zusammenfassung der Konversation.
 
