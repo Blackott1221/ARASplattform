@@ -8,6 +8,7 @@ import { de } from 'date-fns/locale';
 import { ClarificationChat } from '@/components/power/clarification-chat';
 import { PowerResultCard } from '@/components/power/power-result-card';
 import { ContactAutoSuggest } from '@/components/power/contact-auto-suggest';
+import { PromptGeneratorChat } from '@/components/power/prompt-generator-chat';
 
 // ═══════════════════════════════════════════════════════════════
 // DESIGN TOKENS (2026 Control Room - Premium Micro-UX)
@@ -371,6 +372,9 @@ function PowerContent() {
   const [selectedCallDetails, setSelectedCallDetails] = useState<any>(null);
   const [loadingCallDetails, setLoadingCallDetails] = useState(false);
   const summaryPollRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Prompt Generator Chat state
+  const [showPromptGenerator, setShowPromptGenerator] = useState(false);
 
   // ─────────────────────────────────────────────────────────────
   // DATA QUERIES (real endpoints verified in server/routes.ts)
@@ -1106,7 +1110,21 @@ Time: ${persistentError.timestamp}`}
 
               {/* Message */}
               <div>
-                <label className="block text-[11px] font-medium text-neutral-500 mb-2 uppercase tracking-wide">Nachricht / Anweisung *</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[11px] font-medium text-neutral-500 uppercase tracking-wide">Nachricht / Anweisung *</label>
+                  <button
+                    onClick={() => setShowPromptGenerator(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-wide transition-all hover:scale-105 active:scale-95"
+                    style={{
+                      background: `linear-gradient(135deg, ${DT.orange}, ${DT.goldDark})`,
+                      color: '#000',
+                      boxShadow: '0 2px 8px rgba(255,106,0,0.25)'
+                    }}
+                  >
+                    <span style={{ fontSize: '12px' }}>✨</span>
+                    KI-Assistent
+                  </button>
+                </div>
                 <textarea
                   value={message}
                   onChange={e => setMessage(e.target.value)}
@@ -1641,6 +1659,14 @@ Time: ${persistentError.timestamp}`}
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Prompt Generator Chat */}
+        <PromptGeneratorChat
+          isOpen={showPromptGenerator}
+          onClose={() => setShowPromptGenerator(false)}
+          onInsertPrompt={(prompt) => setMessage(prompt)}
+          initialContext={contactName}
+        />
 
       </div>
     </div>
