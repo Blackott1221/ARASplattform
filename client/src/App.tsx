@@ -43,6 +43,9 @@ import BlogPost from "@/pages/blog-post";
 // Investor Pages (hidden, not in menu)
 import InvestorSchwabPage from "@/pages/app/investor/schwab";
 
+// ARAS Lab (hidden, experimental voice interface)
+import ArasLab from "@/pages/aras-lab";
+
 // 🎯 INTERNAL CRM SYSTEM - Command Center (admin/staff only)
 import InternalDashboard from "@/pages/internal/dashboard";
 import InternalContacts from "@/pages/internal/contacts";
@@ -214,6 +217,10 @@ function Router() {
             window.location.href = '/internal/dashboard';
             return null;
           }} />
+          
+          {/* 🧪 ARAS LAB - Experimental Voice Interface (hidden) */}
+          <Route path="/app/aras-lab" component={ArasLab} />
+          <Route path="/aras-lab" component={ArasLab} />
           
         </>
       )}
