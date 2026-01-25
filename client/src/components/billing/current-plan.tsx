@@ -47,7 +47,7 @@ export function CurrentPlan({ user, subscription }: CurrentPlanProps) {
   return (
     <div className="mb-8">
       <h2 className="text-2xl font-orbitron font-bold mb-6">
-        <GradientText>Current Plan</GradientText>
+        <GradientText>Aktueller Plan</GradientText>
       </h2>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -83,8 +83,8 @@ export function CurrentPlan({ user, subscription }: CurrentPlanProps) {
                   </div>
                 ) : (
                   <div>
-                    <p className="text-2xl font-bold">€{planDetails.price}</p>
-                    <p className="text-sm text-muted-foreground">{planDetails.price === 0 ? '' : 'per month'}</p>
+                    <p className="text-2xl font-bold">CHF {planDetails.price}</p>
+                    <p className="text-sm text-muted-foreground">{planDetails.price === 0 ? '' : 'pro Monat'}</p>
                   </div>
                 )}
               </div>
@@ -93,7 +93,7 @@ export function CurrentPlan({ user, subscription }: CurrentPlanProps) {
             <div className="pt-4 border-t border-border space-y-4">
               <div>
                 <div className="flex items-center justify-between text-sm mb-2">
-                  <span>{isTrialUser ? 'Trial Messages Used' : 'AI Messages Used'}</span>
+                  <span>{isTrialUser ? 'Test-Nachrichten verwendet' : 'KI-Nachrichten verwendet'}</span>
                   <span className={isTrialUser && trialMessagesRemaining <= 2 ? 'text-yellow-600 font-medium' : ''}>
                     {isTrialUser ? trialMessagesUsed : (subscription?.aiMessagesUsed || 0)} / {planDetails.aiMessages || '∞'}
                     {isTrialUser && trialMessagesRemaining === 0 && (
@@ -106,7 +106,7 @@ export function CurrentPlan({ user, subscription }: CurrentPlanProps) {
               
               <div>
                 <div className="flex items-center justify-between text-sm mb-2">
-                  <span>Voice Calls Used</span>
+                  <span>Anrufe verwendet</span>
                   <span>
                     {subscription?.voiceCallsUsed || 0} / {planDetails.voiceCalls || '∞'}
                   </span>
