@@ -227,11 +227,17 @@ export function PricingCards({ subscription, onPaymentSetup, onPlanUpgrade }: Pr
     );
   }
 
+  // Get current plan price for upgrade/downgrade logic
+  const currentPlanData = plans.find((p: any) => p.id === subscription?.plan);
+  const currentPlanPrice = currentPlanData?.price || 0;
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
       {plans.map((plan: any, index: number) => {
         const isCurrentPlan = subscription?.plan === plan.id && subscription?.status === "active";
         const isFree = plan.id === 'free';
+        const isDowngrade = plan.price < currentPlanPrice;
+        const isUpgrade = plan.price > currentPlanPrice;
         
         return (
           <motion.div
@@ -262,39 +268,34 @@ export function PricingCards({ subscription, onPaymentSetup, onPlanUpgrade }: Pr
             )}
 
             {/* Card Content */}
-            <div className="p-5 pt-6 flex flex-col h-full">
+            <div className="p-4 sm:p-5 pt-5 sm:pt-6 flex flex-col h-full">
               {/* Plan Name */}
-              <h3 className="text-base font-bold text-white mb-1">
+              <h3 className="text-sm sm:text-base font-bold text-white mb-1">
                 {plan.name}
               </h3>
               
               {/* Price */}
-              <div className="mb-5">
-                <span className={`text-2xl font-bold ${isFree ? 'text-emerald-400' : 'text-white'}`}>
+              <div className="mb-4 sm:mb-5">
+                <span className={`text-xl sm:text-2xl font-bold ${isFree ? 'text-emerald-400' : 'text-white'}`}>
                   {isFree ? 'Kostenlos' : `CHF ${plan.price}`}
                 </span>
                 {!isFree && (
-                  <span className="text-xs text-gray-500 ml-1">/ Monat</span>
+                  <span className="text-[10px] sm:text-xs text-gray-500 ml-1">/ Monat</span>
                 )}
               </div>
 
-              {/* Features */}
-              <div className="flex-grow mb-5">
+              {/* Features - alle anzeigen */}
+              <div className="flex-grow mb-4 sm:mb-5">
                 <div className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
                   Enthalten
                 </div>
-                <ul className="space-y-2">
-                  {plan.features.slice(0, 6).map((feature: string, i: number) => (
+                <ul className="space-y-1.5 sm:space-y-2">
+                  {plan.features.map((feature: string, i: number) => (
                     <li key={i} className="flex items-start gap-2">
-                      <Check className="w-3.5 h-3.5 text-[#FE9100] flex-shrink-0 mt-0.5" />
-                      <span className="text-xs text-gray-400 leading-tight">{feature}</span>
+                      <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#FE9100] flex-shrink-0 mt-0.5" />
+                      <span className="text-[11px] sm:text-xs text-gray-400 leading-tight">{feature}</span>
                     </li>
                   ))}
-                  {plan.features.length > 6 && (
-                    <li className="text-xs text-gray-500 pl-5">
-                      +{plan.features.length - 6} weitere...
-                    </li>
-                  )}
                 </ul>
               </div>
 
@@ -302,10 +303,10 @@ export function PricingCards({ subscription, onPaymentSetup, onPlanUpgrade }: Pr
               <button
                 onClick={() => !isCurrentPlan && handlePlanSelect(plan.id)}
                 disabled={isLoading === plan.id || isCurrentPlan || (isFree && subscription?.plan === 'free')}
-                className={`w-full py-2.5 px-4 rounded-lg text-xs font-semibold uppercase tracking-wide transition-all duration-200 ${
+                className={`w-full py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg text-[10px] sm:text-xs font-semibold uppercase tracking-wide transition-all duration-200 ${
                   isCurrentPlan
                     ? 'bg-[#FE9100]/10 text-[#FE9100] border border-[#FE9100]/30 cursor-default'
-                    : isFree
+                    : isDowngrade
                       ? 'bg-transparent text-gray-400 border border-white/10 hover:border-white/20 hover:text-white'
                       : !plan.available
                         ? 'bg-white/5 text-gray-500 border border-white/5 cursor-not-allowed'
@@ -319,10 +320,10 @@ export function PricingCards({ subscription, onPaymentSetup, onPlanUpgrade }: Pr
                   </span>
                 ) : isCurrentPlan ? (
                   'Aktueller Plan'
-                ) : isFree ? (
-                  subscription?.plan === 'free' ? 'Aktueller Plan' : 'Downgrade'
                 ) : !plan.available ? (
                   'Bald verfügbar'
+                ) : isDowngrade ? (
+                  'Downgrade'
                 ) : (
                   'Upgraden'
                 )}
