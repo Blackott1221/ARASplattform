@@ -1755,9 +1755,9 @@ export default function AuthPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Countdown to 01.01.2026
+  // Countdown to 01.03.2026
   useEffect(() => {
-    const targetDate = new Date('2026-01-01T00:00:00').getTime();
+    const targetDate = new Date('2026-03-01T00:00:00').getTime();
     const interval = setInterval(() => {
       const now = new Date().getTime();
       const distance = targetDate - now;
@@ -2540,7 +2540,7 @@ export default function AuthPage() {
                       className="text-xl font-bold text-[#FE9100]"
                       style={{ fontFamily: 'Orbitron, sans-serif' }}
                     >
-                      01.01.26
+                      01.03.26
                     </span>
                   </div>
                   
