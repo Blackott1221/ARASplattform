@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Sparkles, Copy, Check, ArrowRight } from 'lucide-react';
+import { X, Send, Copy, Check, ArrowRight } from 'lucide-react';
 
 // ARAS CI Colors
 const CI = {
@@ -35,8 +35,17 @@ export function PromptGeneratorChat({
   const [generatedPrompt, setGeneratedPrompt] = useState('');
   const [copied, setCopied] = useState(false);
   const [step, setStep] = useState(0);
+  const [selectedQuickAction, setSelectedQuickAction] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Quick action templates
+  const quickActions = [
+    { id: 'termin', label: 'Termin verschieben', prompt: 'Ich möchte einen bestehenden Termin verschieben oder einen neuen Termin vereinbaren.' },
+    { id: 'bewerber', label: 'Bewerber prüfen', prompt: 'Ich möchte einen Bewerber kontaktieren und seine Verfügbarkeit bzw. Interesse prüfen.' },
+    { id: 'angebot', label: 'Angebot präsentieren', prompt: 'Ich möchte ein Angebot oder Produkt präsentieren und Interesse wecken.' },
+    { id: 'nachfassen', label: 'Nachfassen', prompt: 'Ich möchte bei einem bestehenden Kontakt nachfassen und den aktuellen Stand erfragen.' }
+  ];
 
   // Initial system message when chat opens
   useEffect(() => {
@@ -183,24 +192,13 @@ export function PromptGeneratorChat({
               background: 'rgba(255,106,0,0.03)'
             }}
           >
-            <div className="flex items-center gap-3">
-              <div 
-                className="w-10 h-10 rounded-xl flex items-center justify-center"
-                style={{ 
-                  background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
-                  boxShadow: '0 4px 12px rgba(255,106,0,0.3)'
-                }}
-              >
-                <Sparkles className="w-5 h-5 text-black" />
-              </div>
-              <div>
-                <h2 className="text-base font-bold" style={{ color: CI.gold }}>
-                  Anweisung erstellen
-                </h2>
-                <p className="text-xs text-neutral-500">
-                  KI-gestützte Prompt-Generierung
-                </p>
-              </div>
+            <div>
+              <h2 className="text-base font-bold" style={{ color: CI.gold }}>
+                Anweisung erstellen
+              </h2>
+              <p className="text-xs text-neutral-500">
+                KI-gestützte Prompt-Generierung
+              </p>
             </div>
             <button
               onClick={handleClose}
@@ -209,6 +207,46 @@ export function PromptGeneratorChat({
               <X className="w-4 h-4 text-neutral-400" />
             </button>
           </div>
+
+          {/* Quick Actions - Show only at start */}
+          {messages.length === 1 && !isLoading && (
+            <div className="px-5 pb-2">
+              <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-3">Schnellauswahl</p>
+              <div className="grid grid-cols-2 gap-2">
+                {quickActions.map((action, index) => (
+                  <motion.button
+                    key={action.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.08 }}
+                    onClick={() => {
+                      setSelectedQuickAction(action.id);
+                      setInput(action.prompt);
+                      setTimeout(() => handleSend(), 100);
+                    }}
+                    className="relative overflow-hidden px-4 py-3 rounded-xl text-left text-xs font-medium transition-all hover:scale-[1.02] active:scale-[0.98] group"
+                    style={{
+                      background: selectedQuickAction === action.id 
+                        ? `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`
+                        : 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      color: selectedQuickAction === action.id ? '#000' : CI.gold
+                    }}
+                  >
+                    {/* Typing animation line */}
+                    <motion.div
+                      className="absolute bottom-0 left-0 h-[2px]"
+                      style={{ background: `linear-gradient(90deg, ${CI.orange}, ${CI.goldDark})` }}
+                      initial={{ width: '0%' }}
+                      whileHover={{ width: '100%' }}
+                      transition={{ duration: 0.3 }}
+                    />
+                    {action.label}
+                  </motion.button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-5 space-y-4 min-h-[300px] max-h-[400px]">

@@ -1114,15 +1114,14 @@ Time: ${persistentError.timestamp}`}
                   <label className="text-[11px] font-medium text-neutral-500 uppercase tracking-wide">Nachricht / Anweisung *</label>
                   <button
                     onClick={() => setShowPromptGenerator(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-wide transition-all hover:scale-105 active:scale-95"
+                    className="px-3 py-1.5 rounded-lg text-[10px] font-semibold uppercase tracking-wide transition-all hover:scale-105 active:scale-95"
                     style={{
                       background: `linear-gradient(135deg, ${DT.orange}, ${DT.goldDark})`,
                       color: '#000',
                       boxShadow: '0 2px 8px rgba(255,106,0,0.25)'
                     }}
                   >
-                    <span style={{ fontSize: '12px' }}>✨</span>
-                    KI-Assistent
+                    ANWEISUNG erstellen
                   </button>
                 </div>
                 <textarea
