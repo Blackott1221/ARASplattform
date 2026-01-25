@@ -228,7 +228,7 @@ export function PricingCards({ subscription, onPaymentSetup, onPlanUpgrade }: Pr
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
       {plans.map((plan: any, index: number) => {
         const isCurrentPlan = subscription?.plan === plan.id && subscription?.status === "active";
         const isFree = plan.id === 'free';
@@ -236,206 +236,97 @@ export function PricingCards({ subscription, onPaymentSetup, onPlanUpgrade }: Pr
         return (
           <motion.div
             key={plan.id}
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: index * 0.1, ease: [0.25, 0.8, 0.25, 1] }}
-            whileHover={{ scale: 1.02, y: -5 }}
-            className="relative group"
+            transition={{ duration: 0.4, delay: index * 0.08 }}
+            whileHover={{ y: -3 }}
+            className={`relative rounded-xl border transition-all duration-300 ${
+              isCurrentPlan 
+                ? 'border-[#FE9100]/60 bg-[#FE9100]/5' 
+                : plan.popular
+                  ? 'border-[#FE9100]/40 bg-[#0d0d0d]'
+                  : 'border-white/10 bg-[#0a0a0a] hover:border-white/20'
+            }`}
           >
-            {/* Animated Border */}
-            <motion.div
-              className="absolute inset-0 rounded-2xl opacity-60 group-hover:opacity-100 transition-opacity"
-              style={{
-                background: plan.popular 
-                  ? 'linear-gradient(135deg, #FE9100, #ffd700, #FE9100)' 
-                  : isCurrentPlan
-                    ? 'linear-gradient(135deg, #22c55e, #10b981, #22c55e)'
-                    : 'linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00, #e9d7c4)',
-                backgroundSize: '300% 300%',
-                padding: '1.5px',
-                borderRadius: '16px'
-              }}
-              animate={{
-                backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
-              }}
-              transition={{
-                duration: 8,
-                repeat: Infinity,
-                ease: 'linear'
-              }}
-            >
-              <div className="w-full h-full rounded-2xl" style={{ background: '#0a0a0a' }} />
-            </motion.div>
+            {/* Badge - nur für aktuellen Plan oder beliebten Plan */}
+            {(isCurrentPlan || plan.popular) && (
+              <div className="absolute -top-2.5 left-4 z-10">
+                <span className={`px-3 py-1 text-[10px] font-semibold uppercase tracking-wider rounded ${
+                  isCurrentPlan 
+                    ? 'bg-[#FE9100] text-black' 
+                    : 'bg-[#FE9100]/20 text-[#FE9100] border border-[#FE9100]/30'
+                }`}>
+                  {isCurrentPlan ? 'Aktuell' : 'Beliebt'}
+                </span>
+              </div>
+            )}
 
             {/* Card Content */}
-            <div 
-              className="relative rounded-2xl p-6 h-full flex flex-col"
-              style={{ 
-                background: plan.popular 
-                  ? 'linear-gradient(135deg, rgba(254, 145, 0, 0.08), rgba(10, 10, 10, 0.95))'
-                  : 'rgba(10, 10, 10, 0.9)',
-                backdropFilter: 'blur(20px)'
-              }}
-            >
-              {/* Badges */}
-              {plan.popular && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10"
-                >
-                  <div
-                    className="px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1.5"
-                    style={{
-                      fontFamily: 'Orbitron, sans-serif',
-                      background: 'linear-gradient(135deg, #FE9100, #ffd700)',
-                      color: '#000',
-                      boxShadow: '0 4px 20px rgba(254, 145, 0, 0.4)'
-                    }}
-                  >
-                    <Sparkles className="w-3 h-3" />
-                    BELIEBT
-                  </div>
-                </motion.div>
-              )}
+            <div className="p-5 pt-6 flex flex-col h-full">
+              {/* Plan Name */}
+              <h3 className="text-base font-bold text-white mb-1">
+                {plan.name}
+              </h3>
               
-              {isFree && !isCurrentPlan && (
-                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
-                  <div className="px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500 text-white">
-                    KOSTENLOS
-                  </div>
-                </div>
-              )}
-              
-              {isCurrentPlan && (
-                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
-                  <div 
-                    className="px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1.5"
-                    style={{
-                      background: 'linear-gradient(135deg, #22c55e, #10b981)',
-                      color: '#fff',
-                      boxShadow: '0 4px 20px rgba(34, 197, 94, 0.4)'
-                    }}
-                  >
-                    <Check className="w-3 h-3" />
-                    AKTUELL
-                  </div>
-                </div>
-              )}
-
-              {/* Plan Header */}
-              <div className="mb-6 pt-4">
-                <h3 
-                  className="text-xl font-black mb-2"
-                  style={{
-                    fontFamily: 'Orbitron, sans-serif',
-                    color: '#e9d7c4'
-                  }}
-                >
-                  {plan.name}
-                </h3>
-                
-                {/* Price Display - CHF */}
-                <motion.div
-                  animate={{
-                    textShadow: plan.popular ? [
-                      '0 0 0px rgba(254, 145, 0, 0)',
-                      '0 0 10px rgba(254, 145, 0, 0.4)',
-                      '0 0 0px rgba(254, 145, 0, 0)'
-                    ] : undefined
-                  }}
-                  transition={{ duration: 3, repeat: Infinity }}
-                  className="flex items-baseline gap-2"
-                >
-                  <span 
-                    className="text-3xl font-black"
-                    style={{
-                      fontFamily: 'Orbitron, sans-serif',
-                      color: isFree ? '#22c55e' : '#FE9100'
-                    }}
-                  >
-                    {isFree ? 'Kostenlos' : `CHF ${plan.price}`}
-                  </span>
-                  {!isFree && (
-                    <span className="text-sm text-gray-500">/ Monat</span>
-                  )}
-                </motion.div>
+              {/* Price */}
+              <div className="mb-5">
+                <span className={`text-2xl font-bold ${isFree ? 'text-emerald-400' : 'text-white'}`}>
+                  {isFree ? 'Kostenlos' : `CHF ${plan.price}`}
+                </span>
+                {!isFree && (
+                  <span className="text-xs text-gray-500 ml-1">/ Monat</span>
+                )}
               </div>
 
               {/* Features */}
-              <div className="flex-grow mb-6">
-                <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-3">
+              <div className="flex-grow mb-5">
+                <div className="text-[9px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
                   Enthalten
                 </div>
-                <ul className="space-y-2.5">
-                  {plan.features.map((feature: string, i: number) => (
-                    <li key={i} className="flex items-start gap-2.5">
-                      <Check className="w-4 h-4 text-[#FE9100] flex-shrink-0 mt-0.5" />
-                      <span className="text-sm text-gray-300">{feature}</span>
+                <ul className="space-y-2">
+                  {plan.features.slice(0, 6).map((feature: string, i: number) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <Check className="w-3.5 h-3.5 text-[#FE9100] flex-shrink-0 mt-0.5" />
+                      <span className="text-xs text-gray-400 leading-tight">{feature}</span>
                     </li>
                   ))}
+                  {plan.features.length > 6 && (
+                    <li className="text-xs text-gray-500 pl-5">
+                      +{plan.features.length - 6} weitere...
+                    </li>
+                  )}
                 </ul>
               </div>
 
-              {/* CTA Button */}
-              {isCurrentPlan ? (
-                <motion.button
-                  disabled
-                  className="w-full py-3 rounded-xl font-bold text-sm uppercase tracking-wider border border-green-500/50 text-green-400 bg-green-500/10"
-                  style={{ fontFamily: 'Orbitron, sans-serif' }}
-                >
-                  Aktueller Plan
-                </motion.button>
-              ) : isFree ? (
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handlePlanSelect(plan.id)}
-                  disabled={isLoading === plan.id || subscription?.plan === 'free'}
-                  className="w-full py-3 rounded-xl font-bold text-sm uppercase tracking-wider border border-white/20 text-white/80 hover:border-white/40 hover:bg-white/5 transition-all disabled:opacity-50"
-                  style={{ fontFamily: 'Orbitron, sans-serif' }}
-                >
-                  {isLoading === plan.id ? "Wird geladen..." : 
-                   subscription?.plan === 'free' ? "Aktueller Plan" : "Zu Free wechseln"}
-                </motion.button>
-              ) : !plan.available ? (
-                <motion.button
-                  disabled
-                  className="w-full py-3 rounded-xl font-bold text-sm uppercase tracking-wider border border-white/10 text-white/40 bg-white/5"
-                  style={{ fontFamily: 'Orbitron, sans-serif' }}
-                >
-                  Bald verfügbar
-                </motion.button>
-              ) : (
-                <motion.button
-                  whileHover={{ scale: 1.03, y: -2 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handlePlanSelect(plan.id)}
-                  disabled={isLoading === plan.id}
-                  className="w-full py-3 rounded-xl font-bold text-sm uppercase tracking-wider transition-all disabled:opacity-50"
-                  style={{
-                    fontFamily: 'Orbitron, sans-serif',
-                    background: plan.popular 
-                      ? 'linear-gradient(135deg, #FE9100, #ffd700)'
-                      : plan.id === 'ultimate'
-                        ? 'linear-gradient(135deg, #a855f7, #3b82f6)'
-                        : 'linear-gradient(135deg, #FE9100, #a34e00)',
-                    color: '#000',
-                    boxShadow: plan.popular 
-                      ? '0 4px 20px rgba(254, 145, 0, 0.3)'
-                      : '0 4px 16px rgba(254, 145, 0, 0.2)'
-                  }}
-                >
-                  {isLoading === plan.id ? (
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="animate-spin w-4 h-4 border-2 border-black border-t-transparent rounded-full" />
-                      <span>Wird geladen...</span>
-                    </div>
-                  ) : (
-                    "Jetzt upgraden"
-                  )}
-                </motion.button>
-              )}
+              {/* Button */}
+              <button
+                onClick={() => !isCurrentPlan && handlePlanSelect(plan.id)}
+                disabled={isLoading === plan.id || isCurrentPlan || (isFree && subscription?.plan === 'free')}
+                className={`w-full py-2.5 px-4 rounded-lg text-xs font-semibold uppercase tracking-wide transition-all duration-200 ${
+                  isCurrentPlan
+                    ? 'bg-[#FE9100]/10 text-[#FE9100] border border-[#FE9100]/30 cursor-default'
+                    : isFree
+                      ? 'bg-transparent text-gray-400 border border-white/10 hover:border-white/20 hover:text-white'
+                      : !plan.available
+                        ? 'bg-white/5 text-gray-500 border border-white/5 cursor-not-allowed'
+                        : 'bg-[#FE9100] text-black hover:bg-[#ff9f1a] active:scale-[0.98]'
+                }`}
+              >
+                {isLoading === plan.id ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    Laden...
+                  </span>
+                ) : isCurrentPlan ? (
+                  'Aktueller Plan'
+                ) : isFree ? (
+                  subscription?.plan === 'free' ? 'Aktueller Plan' : 'Downgrade'
+                ) : !plan.available ? (
+                  'Bald verfügbar'
+                ) : (
+                  'Upgraden'
+                )}
+              </button>
             </div>
           </motion.div>
         );
