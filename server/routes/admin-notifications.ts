@@ -1,20 +1,15 @@
 // ============================================================================
-// ARAS Command Center - Real-time Notifications API
+// ARAS Command Center - Notifications API (Enhanced)
 // ============================================================================
-// Push notifications, alerts, and real-time updates
+// Real-time notifications with SSE and DB persistence
 // ============================================================================
 
 import { Router } from "express";
-import { db } from "../db";
-import { users, leads, callLogs, n8nEmailLogs } from "@shared/schema";
-import { eq, desc, and, gte, sql, count } from "drizzle-orm";
+import { notificationService, notificationEmitter } from "../services/notification.service";
 import { requireAdmin } from "../middleware/admin";
 import { logger } from "../logger";
 
 const router = Router();
-
-// In-memory notification store (in production, use Redis)
-const notificationStore: Map<string, any[]> = new Map();
 
 // ============================================================================
 // GET /notifications - Get user's notifications
@@ -23,22 +18,18 @@ const notificationStore: Map<string, any[]> = new Map();
 router.get("/notifications", requireAdmin, async (req: any, res) => {
   try {
     const userId = req.session.userId;
-    const { unreadOnly = "false", limit = "20" } = req.query;
+    const { limit, unreadOnly } = req.query;
 
-    // Generate real-time notifications from system events
-    const notifications = await generateNotifications(userId);
+    const notifications = await notificationService.getForUser(userId, {
+      limit: limit ? Number(limit) : 50,
+      unreadOnly: unreadOnly === "true",
+    });
 
-    // Filter unread if requested
-    const filtered = unreadOnly === "true" 
-      ? notifications.filter(n => !n.read)
-      : notifications;
-
-    // Apply limit
-    const limited = filtered.slice(0, parseInt(limit as string) || 20);
+    const unreadCount = await notificationService.getUnreadCount(userId);
 
     res.json({
-      data: limited,
-      unreadCount: notifications.filter(n => !n.read).length,
+      data: notifications,
+      unreadCount,
       total: notifications.length,
     });
   } catch (error: any) {
@@ -48,45 +39,34 @@ router.get("/notifications", requireAdmin, async (req: any, res) => {
 });
 
 // ============================================================================
-// GET /notifications/count - Get unread count (fast endpoint for polling)
+// GET /notifications/count - Get unread count
 // ============================================================================
 
 router.get("/notifications/count", requireAdmin, async (req: any, res) => {
   try {
-    const notifications = await generateNotifications(req.session.userId);
-    const unreadCount = notifications.filter(n => !n.read).length;
-
-    res.json({ 
-      unreadCount,
-      hasUrgent: notifications.some(n => n.priority === "urgent" && !n.read),
-    });
+    const userId = req.session.userId;
+    const count = await notificationService.getUnreadCount(userId);
+    res.json({ count });
   } catch (error: any) {
-    logger.error("[NOTIFICATIONS] Error counting:", error);
-    res.status(500).json({ error: "Failed to count notifications" });
+    logger.error("[NOTIFICATIONS] Count error:", error);
+    res.status(500).json({ error: "Failed to fetch count" });
   }
 });
 
 // ============================================================================
-// POST /notifications/:id/read - Mark notification as read
+// POST /notifications/:id/read - Mark single notification as read
 // ============================================================================
 
 router.post("/notifications/:id/read", requireAdmin, async (req: any, res) => {
   try {
-    const { id } = req.params;
+    const notificationId = Number(req.params.id);
     const userId = req.session.userId;
 
-    // Store read status
-    const userNotifications = notificationStore.get(userId) || [];
-    const notification = userNotifications.find(n => n.id === id);
-    if (notification) {
-      notification.read = true;
-      notification.readAt = new Date();
-    }
-
+    await notificationService.markAsRead(notificationId, userId);
     res.json({ success: true });
   } catch (error: any) {
-    logger.error("[NOTIFICATIONS] Error marking read:", error);
-    res.status(500).json({ error: "Failed to mark notification as read" });
+    logger.error("[NOTIFICATIONS] Mark read error:", error);
+    res.status(500).json({ error: "Failed to mark as read" });
   }
 });
 
@@ -97,213 +77,110 @@ router.post("/notifications/:id/read", requireAdmin, async (req: any, res) => {
 router.post("/notifications/read-all", requireAdmin, async (req: any, res) => {
   try {
     const userId = req.session.userId;
-    const userNotifications = notificationStore.get(userId) || [];
-    
-    userNotifications.forEach(n => {
-      n.read = true;
-      n.readAt = new Date();
-    });
-
-    res.json({ success: true, marked: userNotifications.length });
+    const count = await notificationService.markAllAsRead(userId);
+    res.json({ success: true, count });
   } catch (error: any) {
-    logger.error("[NOTIFICATIONS] Error marking all read:", error);
+    logger.error("[NOTIFICATIONS] Mark all read error:", error);
     res.status(500).json({ error: "Failed to mark all as read" });
   }
 });
 
 // ============================================================================
-// GET /notifications/stream - Server-Sent Events for real-time notifications
+// GET /notifications/stream - SSE for real-time notifications
 // ============================================================================
 
-router.get("/notifications/stream", requireAdmin, async (req: any, res) => {
+router.get("/notifications/stream", requireAdmin, (req: any, res) => {
+  // Set SSE headers
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("X-Accel-Buffering", "no");
 
   const userId = req.session.userId;
 
-  // Send initial connection
-  res.write(`data: ${JSON.stringify({ type: "connected", userId })}\n\n`);
+  // Send initial connection message
+  res.write(`data: ${JSON.stringify({ type: "connected", timestamp: new Date() })}\n\n`);
 
-  // Check for new notifications every 10 seconds
-  const interval = setInterval(async () => {
-    try {
-      const notifications = await generateNotifications(userId);
-      const unread = notifications.filter(n => !n.read);
-      
-      if (unread.length > 0) {
-        res.write(`data: ${JSON.stringify({ 
-          type: "update", 
-          unreadCount: unread.length,
-          latest: unread[0],
-        })}\n\n`);
+  // Handler for new notifications
+  const onNewNotification = (notification: any) => {
+    // Only send if for this user or broadcast (null recipientId)
+    if (!notification.recipientId || notification.recipientId === userId) {
+      try {
+        res.write(`data: ${JSON.stringify({ type: "new", notification })}\n\n`);
+      } catch (err) {
+        logger.warn("[SSE] Failed to send notification");
       }
-    } catch (err) {
-      logger.error("[NOTIFICATIONS] SSE error:", err);
     }
-  }, 10000);
+  };
+
+  // Handler for notification read
+  const onNotificationRead = (data: any) => {
+    if (data.userId === userId) {
+      try {
+        res.write(`data: ${JSON.stringify({ type: "read", id: data.id })}\n\n`);
+      } catch (err) {
+        logger.warn("[SSE] Failed to send read update");
+      }
+    }
+  };
+
+  // Handler for all notifications read
+  const onAllRead = (data: any) => {
+    if (data.userId === userId) {
+      try {
+        res.write(`data: ${JSON.stringify({ type: "all-read", count: data.count })}\n\n`);
+      } catch (err) {
+        logger.warn("[SSE] Failed to send all-read update");
+      }
+    }
+  };
 
   // Heartbeat every 30 seconds
   const heartbeat = setInterval(() => {
-    res.write(`data: ${JSON.stringify({ type: "heartbeat" })}\n\n`);
+    try {
+      res.write(`data: ${JSON.stringify({ type: "heartbeat", timestamp: new Date() })}\n\n`);
+    } catch (err) {
+      clearInterval(heartbeat);
+    }
   }, 30000);
 
+  // Subscribe to events
+  notificationEmitter.on("new-notification", onNewNotification);
+  notificationEmitter.on("notification-read", onNotificationRead);
+  notificationEmitter.on("all-notifications-read", onAllRead);
+
+  // Cleanup on connection close
   req.on("close", () => {
-    clearInterval(interval);
     clearInterval(heartbeat);
+    notificationEmitter.off("new-notification", onNewNotification);
+    notificationEmitter.off("notification-read", onNotificationRead);
+    notificationEmitter.off("all-notifications-read", onAllRead);
+    logger.info("[SSE] Notification stream connection closed");
   });
+
+  logger.info("[SSE] Notification stream connection opened", { userId });
 });
 
 // ============================================================================
-// Helper: Generate notifications from system events
+// POST /notifications/test - Create test notification (dev only)
 // ============================================================================
 
-async function generateNotifications(userId: string): Promise<any[]> {
-  const notifications: any[] = [];
-  const now = new Date();
-  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const lastHour = new Date(now.getTime() - 60 * 60 * 1000);
-
+router.post("/notifications/test", requireAdmin, async (req: any, res) => {
   try {
-    // 1. New user registrations (last 24h)
-    const [newUsersCount] = await db
-      .select({ count: count() })
-      .from(users)
-      .where(gte(users.createdAt, yesterday));
+    const { notificationType, title, message } = req.body;
 
-    if (newUsersCount && newUsersCount.count > 0) {
-      notifications.push({
-        id: `new_users_${now.toDateString()}`,
-        type: "info",
-        category: "users",
-        title: "New Registrations",
-        message: `${newUsersCount.count} new user${newUsersCount.count > 1 ? "s" : ""} registered today`,
-        icon: "user-plus",
-        color: "#10B981",
-        priority: "normal",
-        read: false,
-        timestamp: now,
-        action: {
-          label: "View Users",
-          url: "/admin-dashboard/users",
-        },
-      });
-    }
-
-    // 2. New leads (last 24h)
-    const [newLeadsCount] = await db
-      .select({ count: count() })
-      .from(leads)
-      .where(gte(leads.createdAt, yesterday));
-
-    if (newLeadsCount && newLeadsCount.count > 0) {
-      notifications.push({
-        id: `new_leads_${now.toDateString()}`,
-        type: "success",
-        category: "leads",
-        title: "New Leads",
-        message: `${newLeadsCount.count} new lead${newLeadsCount.count > 1 ? "s" : ""} captured`,
-        icon: "trending-up",
-        color: "#8B5CF6",
-        priority: newLeadsCount.count > 10 ? "high" : "normal",
-        read: false,
-        timestamp: now,
-        action: {
-          label: "View Leads",
-          url: "/admin-dashboard/leads",
-        },
-      });
-    }
-
-    // 3. Failed calls (last hour)
-    const [failedCallsCount] = await db
-      .select({ count: count() })
-      .from(callLogs)
-      .where(
-        and(
-          gte(callLogs.createdAt, lastHour),
-          eq(callLogs.status, "failed")
-        )
-      );
-
-    if (failedCallsCount && failedCallsCount.count > 0) {
-      notifications.push({
-        id: `failed_calls_${now.getTime()}`,
-        type: "warning",
-        category: "calls",
-        title: "Failed Calls Alert",
-        message: `${failedCallsCount.count} call${failedCallsCount.count > 1 ? "s" : ""} failed in the last hour`,
-        icon: "phone-off",
-        color: "#EF4444",
-        priority: "high",
-        read: false,
-        timestamp: now,
-        action: {
-          label: "View Calls",
-          url: "/admin-dashboard/calls",
-        },
-      });
-    }
-
-    // 4. Email delivery status
-    const [emailStats] = await db
-      .select({ 
-        total: count(),
-        failed: sql<number>`COUNT(*) FILTER (WHERE ${n8nEmailLogs.status} = 'failed')`,
-      })
-      .from(n8nEmailLogs)
-      .where(gte(n8nEmailLogs.sentAt, yesterday));
-
-    if (emailStats && emailStats.failed > 0) {
-      notifications.push({
-        id: `email_failures_${now.toDateString()}`,
-        type: "error",
-        category: "emails",
-        title: "Email Delivery Issues",
-        message: `${emailStats.failed} email${emailStats.failed > 1 ? "s" : ""} failed to deliver`,
-        icon: "mail-x",
-        color: "#EF4444",
-        priority: "urgent",
-        read: false,
-        timestamp: now,
-        action: {
-          label: "Check Emails",
-          url: "/admin-dashboard/emails",
-        },
-      });
-    }
-
-    // 5. System status notification
-    notifications.push({
-      id: "system_status",
-      type: "info",
-      category: "system",
-      title: "System Status",
-      message: "All systems operational",
-      icon: "check-circle",
-      color: "#10B981",
-      priority: "low",
-      read: true,
-      timestamp: now,
+    const notification = await notificationService.create({
+      notificationType: notificationType || "SYSTEM_ALERT",
+      title: title || "Test Notification",
+      message: message || "This is a test notification",
+      recipientId: req.session.userId,
     });
 
-    // Sort by timestamp (newest first) and priority
-    notifications.sort((a, b) => {
-      const priorityOrder: Record<string, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
-      const aPriority = priorityOrder[a.priority as string] ?? 2;
-      const bPriority = priorityOrder[b.priority as string] ?? 2;
-      if (aPriority !== bPriority) {
-        return aPriority - bPriority;
-      }
-      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-    });
-
-  } catch (error) {
-    logger.error("[NOTIFICATIONS] Error generating:", error);
+    res.json({ success: true, notification });
+  } catch (error: any) {
+    logger.error("[NOTIFICATIONS] Test error:", error);
+    res.status(500).json({ error: "Failed to create test notification" });
   }
-
-  return notifications;
-}
+});
 
 export default router;

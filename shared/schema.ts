@@ -1078,3 +1078,31 @@ export const adminActivityLog = pgTable("admin_activity_log", {
 
 export type AdminActivityLog = typeof adminActivityLog.$inferSelect;
 export type InsertAdminActivityLog = typeof adminActivityLog.$inferInsert;
+
+// ============================================================================
+// COMMAND CENTER - Admin Notifications
+// ============================================================================
+
+export const adminNotifications = pgTable("admin_notifications", {
+  id: serial("id").primaryKey(),
+  recipientId: text("recipient_id"), // NULL = all admins
+  type: text("type").notNull(), // 'info' | 'success' | 'warning' | 'error'
+  category: text("category").notNull(), // 'user' | 'billing' | 'system' | 'call'
+  title: text("title").notNull(),
+  message: text("message"),
+  icon: text("icon"),
+  color: text("color"),
+  actionUrl: text("action_url"),
+  actionLabel: text("action_label"),
+  metadata: jsonb("metadata").$type<Record<string, any>>(),
+  isRead: boolean("is_read").default(false).notNull(),
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("admin_notifications_recipient_idx").on(table.recipientId),
+  index("admin_notifications_read_idx").on(table.isRead),
+  index("admin_notifications_created_idx").on(table.createdAt),
+]);
+
+export type AdminNotification = typeof adminNotifications.$inferSelect;
+export type InsertAdminNotification = typeof adminNotifications.$inferInsert;
