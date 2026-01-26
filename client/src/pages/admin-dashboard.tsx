@@ -10,6 +10,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { N8NEmailDashboard } from "@/components/admin/N8NEmailDashboard";
 import { CommandCenterLayout } from "@/components/admin/CommandCenterLayout";
+import { UserDeepDivePanel } from "@/components/admin/UserDeepDivePanel";
 
 // ═══════════════════════════════════════════════════════════════
 // ARAS COMMAND CENTER v4.0 - Redesigned Admin Dashboard (2026-01)
@@ -92,6 +93,9 @@ export default function AdminDashboard() {
   const [formPlan, setFormPlan] = useState('free');
   const [formStatus, setFormStatus] = useState('active');
   const [formPassword, setFormPassword] = useState('');
+  
+  // Deep-Dive Panel state
+  const [deepDiveUserId, setDeepDiveUserId] = useState<string | null>(null);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -399,34 +403,40 @@ export default function AdminDashboard() {
             ) : selectedTable.id === 'users' ? (
               <div className="divide-y divide-white/10">
                 {filteredData.map((user: any) => (
-                  <div key={user.id} className="p-4 flex items-center gap-4">
-                    {/* Avatar */}
-                    <div className="relative">
-                      <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center font-bold">
-                        {(user.username?.[0] || '?').toUpperCase()}
+                  <div key={user.id} className="p-4 flex items-center gap-4 hover:bg-white/5 transition-colors">
+                    {/* Clickable User Info - Opens Deep-Dive Panel */}
+                    <div 
+                      className="flex items-center gap-4 flex-1 cursor-pointer"
+                      onClick={() => setDeepDiveUserId(user.id)}
+                    >
+                      {/* Avatar */}
+                      <div className="relative">
+                        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center font-bold">
+                          {(user.username?.[0] || '?').toUpperCase()}
+                        </div>
+                        <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#0a0a0b] ${
+                          isOnline(user.id) ? 'bg-emerald-400' : 'bg-zinc-600'
+                        }`} />
                       </div>
-                      <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#0a0a0b] ${
-                        isOnline(user.id) ? 'bg-emerald-400' : 'bg-zinc-600'
-                      }`} />
-                    </div>
 
-                    {/* Info */}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{user.username}</span>
-                        <span className="text-xs px-2 py-0.5 rounded bg-[#FE9100]/20 text-[#FE9100]">
-                          {user.subscriptionPlan || 'free'}
-                        </span>
-                        <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
-                          {user.subscriptionStatus || 'active'}
-                        </span>
-                        {isOnline(user.id) && (
-                          <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
-                            ONLINE
+                      {/* Info */}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{user.username}</span>
+                          <span className="text-xs px-2 py-0.5 rounded bg-[#FE9100]/20 text-[#FE9100]">
+                            {user.subscriptionPlan || 'free'}
                           </span>
-                        )}
+                          <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
+                            {user.subscriptionStatus || 'active'}
+                          </span>
+                          {isOnline(user.id) && (
+                            <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
+                              ONLINE
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-white/40">{user.email}</div>
                       </div>
-                      <div className="text-xs text-white/40">{user.email}</div>
                     </div>
 
                     {/* Stats */}
@@ -736,6 +746,12 @@ export default function AdminDashboard() {
         </div>,
         document.body
       )}
+
+      {/* User Deep-Dive Panel */}
+      <UserDeepDivePanel 
+        userId={deepDiveUserId} 
+        onClose={() => setDeepDiveUserId(null)} 
+      />
     </CommandCenterLayout>
   );
 }
