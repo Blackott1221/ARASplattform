@@ -194,8 +194,10 @@ function Router() {
           <Route path="/leads" component={AppPage} />
           <Route path="/app/leads" component={AppPage} />
           <Route path="/admin" component={AdminDashboard} />
+          <Route path="/admin-dashboard/:rest*" component={AdminDashboard} />
           <Route path="/admin-dashboard" component={AdminDashboard} />
           <Route path="/app/admin" component={AdminDashboard} />
+          <Route path="/app/admin-dashboard/:rest*" component={AdminDashboard} />
           <Route path="/app/admin-dashboard" component={AdminDashboard} />
           <Route path="/campaigns" component={Campaigns} />
           <Route path="/app/campaigns" component={Campaigns} />
