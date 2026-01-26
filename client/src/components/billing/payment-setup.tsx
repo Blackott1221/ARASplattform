@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
   PaymentElement,
@@ -11,15 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { CreditCard, Shield, Check } from "lucide-react";
+import { CreditCard, Shield, Check, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
-
-// Initialize Stripe with environment guard
-const stripePublicKey = import.meta.env.VITE_STRIPE_PUBLIC_KEY;
-if (!stripePublicKey) {
-  console.error("VITE_STRIPE_PUBLIC_KEY environment variable is not set");
-}
-const stripePromise = stripePublicKey ? loadStripe(stripePublicKey) : null;
+import { getStripe, isStripeConfigured } from "@/lib/stripe";
+import type { Stripe } from "@stripe/stripe-js";
 
 interface PaymentSetupProps {
   isOpen: boolean;
@@ -216,7 +210,27 @@ function PaymentSetupForm({ onSuccess, onClose }: { onSuccess: () => void; onClo
 export function PaymentSetup({ isOpen, onClose, onSuccess, selectedPlan }: PaymentSetupProps) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [stripeInstance, setStripeInstance] = useState<Stripe | null>(null);
+  const [stripeError, setStripeError] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Load Stripe safely
+  useEffect(() => {
+    if (isOpen && !stripeInstance && !stripeError) {
+      getStripe()
+        .then((stripe) => {
+          if (stripe) {
+            setStripeInstance(stripe);
+          } else {
+            setStripeError("Payment system not available");
+          }
+        })
+        .catch((err) => {
+          console.error("[PaymentSetup] Stripe load error:", err);
+          setStripeError("Failed to load payment system");
+        });
+    }
+  }, [isOpen, stripeInstance, stripeError]);
 
   // Get plan details based on selectedPlan
   const getPlanDetails = (planId?: string | null) => {
@@ -323,13 +337,21 @@ export function PaymentSetup({ isOpen, onClose, onSuccess, selectedPlan }: Payme
             </CardContent>
           </Card>
 
-          {isLoading ? (
+          {stripeError ? (
+            <div className="flex flex-col items-center justify-center py-8 space-y-4">
+              <AlertTriangle className="w-12 h-12 text-yellow-500" />
+              <p className="text-center text-muted-foreground">{stripeError}</p>
+              <p className="text-center text-sm text-muted-foreground">
+                Please try again later or contact support.
+              </p>
+            </div>
+          ) : isLoading || !stripeInstance ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
             </div>
           ) : clientSecret ? (
             <Elements
-              stripe={stripePromise}
+              stripe={stripeInstance}
               options={{
                 clientSecret,
                 appearance: {

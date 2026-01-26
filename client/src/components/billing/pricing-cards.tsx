@@ -10,10 +10,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import type { SubscriptionResponse } from "@shared/schema";
-import { loadStripe } from "@stripe/stripe-js";
 import { useQuery } from "@tanstack/react-query";
-
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+import { getStripe } from "@/lib/stripe";
 
 interface PricingCardsProps {
   subscription?: SubscriptionResponse;
