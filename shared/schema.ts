@@ -779,3 +779,53 @@ export const dailyBriefings = pgTable("daily_briefings", {
 
 export type DailyBriefing = typeof dailyBriefings.$inferSelect;
 export type InsertDailyBriefing = typeof dailyBriefings.$inferInsert;
+
+// ============================================================================
+// N8N EMAIL LOGS - Track all emails sent via N8N workflows
+// ============================================================================
+// Logs all emails sent from N8N workflows for admin dashboard tracking
+// Receives webhook data from N8N after each email send
+// ============================================================================
+
+export const n8nEmailLogs = pgTable("n8n_email_logs", {
+  id: serial("id").primaryKey(),
+  
+  // Email Data (from webhook)
+  recipient: text("recipient").notNull(),
+  recipientName: text("recipient_name"),
+  subject: text("subject").notNull(),
+  content: text("content"), // Optional: Email content or summary
+  htmlContent: text("html_content"), // Optional: Full HTML body
+  
+  // Status & Tracking
+  status: text("status").notNull().default("sent"), // 'pending' | 'sent' | 'delivered' | 'opened' | 'clicked' | 'bounced' | 'failed'
+  
+  // N8N Workflow Reference
+  workflowId: text("workflow_id"), // "26fcYVxGxAlswgcW"
+  workflowName: text("workflow_name"), // "ARAS Mail DEV"
+  executionId: text("execution_id"), // N8N execution ID
+  
+  // Metadata (flexible additional data)
+  metadata: jsonb("metadata").$type<{
+    tags?: string[];
+    campaign?: string;
+    template?: string;
+    variables?: Record<string, any>;
+    provider?: string;
+    errorMessage?: string;
+    [key: string]: any;
+  }>(),
+  
+  // Timestamps
+  sentAt: timestamp("sent_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("n8n_email_logs_recipient_idx").on(table.recipient),
+  index("n8n_email_logs_workflow_idx").on(table.workflowId),
+  index("n8n_email_logs_status_idx").on(table.status),
+  index("n8n_email_logs_sent_at_idx").on(table.sentAt),
+]);
+
+export type N8nEmailLog = typeof n8nEmailLogs.$inferSelect;
+export type InsertN8nEmailLog = typeof n8nEmailLogs.$inferInsert;

@@ -8,6 +8,7 @@ import {
   Zap, Crown, Star, Sparkles, Mail, Building2, AlertCircle, Wifi, Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { N8NEmailDashboard } from "@/components/admin/N8NEmailDashboard";
 
 // ═══════════════════════════════════════════════════════════════
 // ARAS ADMIN DASHBOARD v3.3 - PORTAL MODAL + ALL PLANS (2024-12-29)
@@ -15,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const DB_TABLES = [
   { id: 'users', name: 'Users', icon: Users, color: '#FE9100' },
+  { id: 'n8n_emails', name: 'N8N Emails', icon: Mail, color: '#FF6A00' },
   { id: 'leads', name: 'Leads', icon: TrendingUp, color: '#10B981' },
   { id: 'calendar_events', name: 'Calendar', icon: Calendar, color: '#F59E0B' },
   { id: 'contacts', name: 'Contacts', icon: Building2, color: '#8B5CF6' },
@@ -393,6 +395,10 @@ export default function AdminDashboard() {
           <div className="rounded-xl bg-white/5 border border-white/10 overflow-hidden">
             {isLoading ? (
               <div className="p-10 text-center text-white/40">Loading...</div>
+            ) : selectedTable.id === 'n8n_emails' ? (
+              <div className="p-6">
+                <N8NEmailDashboard />
+              </div>
             ) : selectedTable.id === 'users' ? (
               <div className="divide-y divide-white/10">
                 {filteredData.map((user: any) => (

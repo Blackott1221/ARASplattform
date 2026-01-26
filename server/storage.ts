@@ -11,9 +11,9 @@ import {
   usageTracking,
   twilioSettings,
   userTasks,
+  contacts,
   type User,
   type UpsertUser,
-  type Lead,
   type InsertLead,
   type Campaign,
   type InsertCampaign,
@@ -58,6 +58,7 @@ export interface IStorage {
   startUserTrial(userId: string, trialData: { paymentMethodId: string; trialEndDate: string; hasPaymentMethod: boolean }): Promise<User>;
   updateUserProfile(userId: string, profileData: any): Promise<User>;
   updateUserThread(userId: string, threadId: string): Promise<User>;
+  updateUser(userId: string, updates: Partial<UpsertUser>): Promise<User>;
   
   // Subscription operations
   getSubscriptionStatus(userId: string): Promise<any>;
@@ -171,6 +172,10 @@ export interface IStorage {
   
   // User Data Sources (Knowledge Base)
   getUserDataSources(userId: string): Promise<any[]>;
+  
+  // Contact operations
+  getUserContacts(userId: string): Promise<any[]>;
+  updateContact(contactId: string, updates: any): Promise<any>;
   
   // User Tasks (Dashboard Operations)
   listUserTasks(userId: string, filters?: {
@@ -786,6 +791,15 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async updateUser(userId: string, updates: Partial<UpsertUser>): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
   async updateUserSubscription(userId: string, subscriptionData: any): Promise<void> {
     await db
       .update(users)
@@ -1337,6 +1351,16 @@ export class DatabaseStorage implements IStorage {
   async createContact(userId: string, name: string, phoneNumber: string) {
     // Since we don't have a contacts table yet, just return the data
     return { name, phoneNumber, userId };
+  }
+
+  async updateContact(contactId: string, updates: any) {
+    // Update contact in contacts table
+    const [updated] = await db
+      .update(contacts)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(contacts.id, contactId))
+      .returning();
+    return updated;
   }
   
   async getCallHistoryByPhone(userId: string, phoneNumber: string) {

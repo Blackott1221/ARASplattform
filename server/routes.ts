@@ -3,7 +3,7 @@ import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { client, db } from "./db";
-import { campaigns, chatMessages, chatSessions, contacts, calendarEvents, leads, subscriptionPlans, users, usageTracking, voiceAgents, callLogs } from "@shared/schema";
+import { campaigns, chatMessages, chatSessions, contacts, calendarEvents, leads, subscriptionPlans, users, usageTracking, voiceAgents, callLogs, n8nEmailLogs } from "@shared/schema";
 import { logger } from "./logger";
 import { PerformanceMonitor, performanceMiddleware } from "./performance-monitor";
 import { insertLeadSchema, insertCampaignSchema, insertChatMessageSchema, insertContactSchema, sanitizeUser } from "@shared/schema";
@@ -22,6 +22,7 @@ import callLogsRouter from "./routes/call-logs";
 import aiRecommendationsRouter from "./routes/ai-recommendations";
 import promptGeneratorRouter from "./routes/prompt-generator";
 import arasLabRouter from "./routes/aras-lab";
+import n8nAdminRouter from "./routes/n8n-admin";
 import { requireAdmin } from "./middleware/admin";
 import { getKnowledgeDigest } from "./knowledge/context-builder";
 import { checkCallLimit, checkMessageLimit } from "./middleware/usage-limits";
@@ -590,7 +591,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Quick test: try to call the method
       let testResult = { success: false, count: 0, error: null as string | null };
-      if (hasMethod) {
+      if (hasMethod && userId) {
         try {
           const sources = await storage.getUserDataSources(userId);
           testResult = { success: true, count: sources.length, error: null };
@@ -793,11 +794,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Also test storage.getUserDataSources to verify it works
       let storageTest = { count: 0, error: null as string | null };
-      try {
-        const storageSources = await storage.getUserDataSources(canonicalUserId);
-        storageTest.count = storageSources.length;
-      } catch (e: any) {
-        storageTest.error = e.message;
+      if (canonicalUserId) {
+        try {
+          const storageSources = await storage.getUserDataSources(canonicalUserId);
+          storageTest.count = storageSources.length;
+        } catch (e: any) {
+          storageTest.error = e.message;
+        }
       }
       
       res.json({
@@ -1291,6 +1294,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       logger.error('[STRIPE-WEBHOOK] Error processing webhook:', error);
       res.status(500).json({ error: 'Webhook processing failed' });
+    }
+  });
+
+  // ==========================================
+  // N8N WEBHOOK - Email Tracking
+  // ==========================================
+  app.post('/api/n8n/webhook/email', express.json(), async (req: any, res) => {
+    try {
+      logger.info('[N8N-WEBHOOK] Incoming email webhook', {
+        headers: req.headers,
+        bodyKeys: req.body ? Object.keys(req.body) : []
+      });
+
+      // 1. Validate webhook secret
+      const secret = req.headers['x-webhook-secret'];
+      const expectedSecret = process.env.N8N_WEBHOOK_SECRET || 'aras-n8n-secret-2024';
+
+      if (!secret || secret !== expectedSecret) {
+        logger.warn('[N8N-WEBHOOK] Unauthorized - invalid or missing secret');
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      // 2. Parse and validate request body
+      const {
+        recipient,
+        recipientName,
+        subject,
+        content,
+        htmlContent,
+        status,
+        timestamp,
+        workflowName,
+        workflowId,
+        executionId,
+        metadata
+      } = req.body;
+
+      // 3. Validate required fields
+      if (!recipient || !subject) {
+        logger.warn('[N8N-WEBHOOK] Missing required fields', { recipient, subject });
+        return res.status(400).json({ 
+          error: 'Missing required fields: recipient, subject' 
+        });
+      }
+
+      logger.info('[N8N-WEBHOOK] Valid request', {
+        recipient,
+        subject,
+        workflowName,
+        workflowId,
+        status: status || 'sent'
+      });
+
+      // 4. Insert into database
+      const [inserted] = await db.insert(n8nEmailLogs).values({
+        recipient,
+        recipientName: recipientName || null,
+        subject,
+        content: content || null,
+        htmlContent: htmlContent || null,
+        status: status || 'sent',
+        workflowId: workflowId || null,
+        workflowName: workflowName || null,
+        executionId: executionId || null,
+        metadata: metadata || null,
+        sentAt: timestamp ? new Date(timestamp) : new Date(),
+      }).returning();
+
+      logger.info('[N8N-WEBHOOK] Email log saved successfully', {
+        id: inserted.id,
+        recipient: inserted.recipient,
+        subject: inserted.subject
+      });
+
+      // 5. Success response
+      return res.status(201).json({
+        success: true,
+        id: inserted.id,
+        message: 'Email log created'
+      });
+
+    } catch (error: any) {
+      logger.error('[N8N-WEBHOOK] Error processing webhook:', error);
+      return res.status(500).json({
+        error: 'Webhook processing failed',
+        message: error.message
+      });
     }
   });
 
@@ -2303,6 +2393,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   app.use("/api/ai", aiRecommendationsRouter);
   app.use("/api/prompt-generator", promptGeneratorRouter);
   app.use("/api/aras-lab", arasLabRouter);
+  app.use("/api/admin/n8n", n8nAdminRouter);
 
   // RETELL AI VOICE CALLS
   app.post('/api/voice/retell/call', requireAuth, checkCallLimit, async (req: any, res) => {
@@ -3902,7 +3993,8 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       }
       
       // 🎯 Generate ARAS Core Summary if not already exists
-      let callSummary = finalCallData.metadata?.summary || null;
+      const metadata = finalCallData.metadata as any || {};
+      let callSummary = metadata?.summary || null;
       
       if (!callSummary && finalCallData.transcript && finalCallData.status === 'completed') {
         try {
@@ -3916,16 +4008,16 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
           // Baue User-Kontext
           const userContext = user ? {
             userName: user.firstName || user.username,
-            company: user.company,
-            industry: user.industry
+            company: user.company || undefined,
+            industry: user.industry || undefined
           } : undefined;
           
           // Baue Contact-Kontext falls vorhanden
           let contactContext;
-          if (finalCallData.metadata?.contactId) {
+          if (metadata?.contactId) {
             try {
               const contacts = await storage.getUserContacts(userId);
-              const contact = contacts.find((c: any) => c.id === finalCallData.metadata.contactId);
+              const contact = contacts.find((c: any) => c.id === metadata.contactId);
               if (contact) {
                 contactContext = {
                   name: `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || contact.company,
@@ -3951,23 +4043,23 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
             
             // Speichere Summary in metadata
             const updatedMetadata = { 
-              ...finalCallData.metadata, 
+              ...metadata, 
               summary: callSummary 
             };
             await storage.updateCallLog(callId, { metadata: updatedMetadata });
             
             // 🔥 Wenn contactId vorhanden: Füge kurze Notiz zu Kontakt hinzu
-            if (finalCallData.metadata?.contactId && contactContext) {
+            if (metadata?.contactId && contactContext) {
               try {
                 const contacts = await storage.getUserContacts(userId);
-                const contact = contacts.find((c: any) => c.id === finalCallData.metadata.contactId);
+                const contact = contacts.find((c: any) => c.id === metadata.contactId);
                 
-                if (contact) {
+                if (contact && finalCallData.createdAt) {
                   const callDate = new Date(finalCallData.createdAt).toLocaleDateString('de-DE');
                   const summaryNote = `\n\nLetzter Anruf (${callDate}):\n- Ergebnis: ${callSummary.outcome}\n- Nächster Schritt: ${callSummary.nextStep}`;
                   
                   const updatedNotes = (contact.notes || '') + summaryNote;
-                  await storage.updateContact(finalCallData.metadata.contactId, { notes: updatedNotes });
+                  await storage.updateContact(metadata.contactId, { notes: updatedNotes });
                   
                   logger.info('[CALL-DETAILS] ✅ Summary zu Kontakt-Notizen hinzugefügt');
                 }
