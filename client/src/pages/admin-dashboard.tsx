@@ -1,11 +1,13 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { 
   Users, Database, Calendar, Phone, MessageSquare, 
   Megaphone, Bug, TrendingUp, Search, Trash2, RefreshCw, 
   Shield, Clock, Key, CreditCard, RotateCcw, X, Check, Eye,
-  Zap, Crown, Star, Sparkles, Mail, Building2, AlertCircle, Wifi, Loader2
+  Zap, Crown, Star, Sparkles, Mail, Building2, AlertCircle, Wifi, Loader2,
+  Activity, UserPlus, Settings, Download, ListTodo, MessageCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { N8NEmailDashboard } from "@/components/admin/N8NEmailDashboard";
@@ -81,8 +83,17 @@ function extractArray(data: any): any[] {
 }
 
 export default function AdminDashboard() {
+  const [location] = useLocation();
   const [selectedTable, setSelectedTable] = useState(DB_TABLES[0]);
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Determine active section from URL
+  const activeSection = useMemo(() => {
+    const path = location.replace("/admin-dashboard", "").replace("/app/admin-dashboard", "").replace(/^\//, "");
+    return path || "dashboard";
+  }, [location]);
+  
+  console.log("[AdminDashboard] Location:", location, "Active section:", activeSection);
   
   // Modal state - explicitly typed for clarity
   const [modalOpen, setModalOpen] = useState(false);
@@ -320,15 +331,303 @@ export default function AdminDashboard() {
       )
     : [];
 
+  // ═══════════════════════════════════════════════════════════════
+  // SECTION CONTENT BASED ON URL
+  // ═══════════════════════════════════════════════════════════════
+  const renderSectionContent = () => {
+    switch (activeSection) {
+      case "activity":
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-white">Activity Feed</h1>
+                <p className="text-sm text-white/40 mt-1">Live-Übersicht aller Admin-Aktionen</p>
+              </div>
+            </div>
+            <div className="p-12 rounded-xl bg-white/5 border border-white/10 text-center">
+              <Activity className="w-12 h-12 mx-auto mb-4 text-emerald-500/50" />
+              <p className="text-white/60 font-medium">Activity Feed</p>
+              <p className="text-white/40 text-sm mt-2">Real-time updates werden hier angezeigt</p>
+            </div>
+          </div>
+        );
+      
+      case "leads":
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-white">Leads</h1>
+                <p className="text-sm text-white/40 mt-1">Sales Leads und Pipeline verwalten</p>
+              </div>
+            </div>
+            <div className="p-12 rounded-xl bg-white/5 border border-white/10 text-center">
+              <TrendingUp className="w-12 h-12 mx-auto mb-4 text-violet-500/50" />
+              <p className="text-white/60 font-medium">{stats?.leads || 0} Leads</p>
+              <p className="text-white/40 text-sm mt-2">Lead-Management wird hier angezeigt</p>
+            </div>
+          </div>
+        );
+      
+      case "contacts":
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-white">Contacts</h1>
+                <p className="text-sm text-white/40 mt-1">Geschäftskontakte verwalten</p>
+              </div>
+            </div>
+            <div className="p-12 rounded-xl bg-white/5 border border-white/10 text-center">
+              <Building2 className="w-12 h-12 mx-auto mb-4 text-cyan-500/50" />
+              <p className="text-white/60 font-medium">Contacts</p>
+              <p className="text-white/40 text-sm mt-2">Kontaktverwaltung wird hier angezeigt</p>
+            </div>
+          </div>
+        );
+      
+      case "emails":
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-[#FF6A00] to-[#FFB200] bg-clip-text text-transparent">
+                  N8N Email Automation
+                </h1>
+                <p className="text-sm text-white/40 mt-1">Überwachung und Steuerung der automatisierten E-Mail-Workflows</p>
+              </div>
+            </div>
+            <N8NEmailDashboard />
+          </div>
+        );
+      
+      case "calls":
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-white">Voice Calls</h1>
+                <p className="text-sm text-white/40 mt-1">Call-Historie und Aufnahmen</p>
+              </div>
+            </div>
+            <div className="p-12 rounded-xl bg-white/5 border border-white/10 text-center">
+              <Phone className="w-12 h-12 mx-auto mb-4 text-red-500/50" />
+              <p className="text-white/60 font-medium">{stats?.callLogs || 0} Calls</p>
+              <p className="text-white/40 text-sm mt-2">Call-Logs werden hier angezeigt</p>
+            </div>
+          </div>
+        );
+      
+      case "campaigns":
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-white">Campaigns</h1>
+                <p className="text-sm text-white/40 mt-1">Marketing-Kampagnen verwalten</p>
+              </div>
+            </div>
+            <div className="p-12 rounded-xl bg-white/5 border border-white/10 text-center">
+              <Megaphone className="w-12 h-12 mx-auto mb-4 text-pink-500/50" />
+              <p className="text-white/60 font-medium">Campaigns</p>
+              <p className="text-white/40 text-sm mt-2">Kampagnen-Management wird hier angezeigt</p>
+            </div>
+          </div>
+        );
+      
+      case "chats":
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-white">AI Chats</h1>
+                <p className="text-sm text-white/40 mt-1">Chat-Sessions und Konversationen</p>
+              </div>
+            </div>
+            <div className="p-12 rounded-xl bg-white/5 border border-white/10 text-center">
+              <MessageCircle className="w-12 h-12 mx-auto mb-4 text-cyan-500/50" />
+              <p className="text-white/60 font-medium">AI Chats</p>
+              <p className="text-white/40 text-sm mt-2">Chat-Verlauf wird hier angezeigt</p>
+            </div>
+          </div>
+        );
+      
+      case "agents":
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-white">Voice Agents</h1>
+                <p className="text-sm text-white/40 mt-1">KI-Voice-Agenten konfigurieren</p>
+              </div>
+            </div>
+            <div className="p-12 rounded-xl bg-white/5 border border-white/10 text-center">
+              <Zap className="w-12 h-12 mx-auto mb-4 text-orange-500/50" />
+              <p className="text-white/60 font-medium">Voice Agents</p>
+              <p className="text-white/40 text-sm mt-2">Agent-Konfiguration wird hier angezeigt</p>
+            </div>
+          </div>
+        );
+      
+      case "feedback":
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-white">Feedback & Bugs</h1>
+                <p className="text-sm text-white/40 mt-1">User-Feedback und Bug-Reports</p>
+              </div>
+            </div>
+            <div className="p-12 rounded-xl bg-white/5 border border-white/10 text-center">
+              <Bug className="w-12 h-12 mx-auto mb-4 text-rose-500/50" />
+              <p className="text-white/60 font-medium">{stats?.feedback || 0} Feedback Items</p>
+              <p className="text-white/40 text-sm mt-2">Feedback-Übersicht wird hier angezeigt</p>
+            </div>
+          </div>
+        );
+      
+      case "plans":
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-white">Subscription Plans</h1>
+                <p className="text-sm text-white/40 mt-1">Abo-Pläne verwalten</p>
+              </div>
+            </div>
+            <div className="p-12 rounded-xl bg-white/5 border border-white/10 text-center">
+              <Crown className="w-12 h-12 mx-auto mb-4 text-amber-500/50" />
+              <p className="text-white/60 font-medium">Subscription Plans</p>
+              <p className="text-white/40 text-sm mt-2">Plan-Verwaltung wird hier angezeigt</p>
+            </div>
+          </div>
+        );
+      
+      case "team-chat":
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-white">Team Chat</h1>
+                <p className="text-sm text-white/40 mt-1">Interner Team-Chat</p>
+              </div>
+            </div>
+            <div className="p-12 rounded-xl bg-white/5 border border-white/10 text-center">
+              <MessageSquare className="w-12 h-12 mx-auto mb-4 text-blue-500/50" />
+              <p className="text-white/60 font-medium">Team Chat</p>
+              <p className="text-white/40 text-sm mt-2">Team-Kommunikation wird hier angezeigt</p>
+            </div>
+          </div>
+        );
+      
+      case "tasks":
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-white">Tasks</h1>
+                <p className="text-sm text-white/40 mt-1">Interne Aufgaben und TODOs</p>
+              </div>
+            </div>
+            <div className="p-12 rounded-xl bg-white/5 border border-white/10 text-center">
+              <ListTodo className="w-12 h-12 mx-auto mb-4 text-indigo-500/50" />
+              <p className="text-white/60 font-medium">Tasks</p>
+              <p className="text-white/40 text-sm mt-2">Aufgabenverwaltung wird hier angezeigt</p>
+            </div>
+          </div>
+        );
+      
+      case "staff":
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-white">Staff Management</h1>
+                <p className="text-sm text-white/40 mt-1">Team-Mitglieder verwalten</p>
+              </div>
+            </div>
+            <div className="p-12 rounded-xl bg-white/5 border border-white/10 text-center">
+              <Shield className="w-12 h-12 mx-auto mb-4 text-emerald-500/50" />
+              <p className="text-white/60 font-medium">Staff Management</p>
+              <p className="text-white/40 text-sm mt-2">Team-Verwaltung wird hier angezeigt</p>
+            </div>
+          </div>
+        );
+      
+      case "exports":
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-white">Data Exports</h1>
+                <p className="text-sm text-white/40 mt-1">Daten exportieren</p>
+              </div>
+            </div>
+            <div className="p-12 rounded-xl bg-white/5 border border-white/10 text-center">
+              <Download className="w-12 h-12 mx-auto mb-4 text-sky-500/50" />
+              <p className="text-white/60 font-medium">Data Exports</p>
+              <p className="text-white/40 text-sm mt-2">Export-Funktionen werden hier angezeigt</p>
+            </div>
+          </div>
+        );
+      
+      case "settings":
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-white">Settings</h1>
+                <p className="text-sm text-white/40 mt-1">System-Einstellungen</p>
+              </div>
+            </div>
+            <div className="p-12 rounded-xl bg-white/5 border border-white/10 text-center">
+              <Settings className="w-12 h-12 mx-auto mb-4 text-gray-500/50" />
+              <p className="text-white/60 font-medium">Settings</p>
+              <p className="text-white/40 text-sm mt-2">Einstellungen werden hier angezeigt</p>
+            </div>
+          </div>
+        );
+      
+      case "users":
+        // Falls back to dashboard content which includes users table
+        return null;
+      
+      case "dashboard":
+      default:
+        return null; // Use default dashboard content below
+    }
+  };
+
+  // Check if we should render a specific section or the default dashboard
+  const sectionContent = renderSectionContent();
+  
+  if (sectionContent) {
+    return (
+      <CommandCenterLayout>
+        {sectionContent}
+        
+        {/* User Deep-Dive Panel */}
+        <UserDeepDivePanel 
+          userId={deepDiveUserId} 
+          onClose={() => setDeepDiveUserId(null)} 
+        />
+      </CommandCenterLayout>
+    );
+  }
+
+  // Default Dashboard View (dashboard or users section)
   return (
     <CommandCenterLayout>
       {/* Page Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold bg-gradient-to-r from-[#FF6A00] to-[#FFB200] bg-clip-text text-transparent">
-            Dashboard Overview
+            {activeSection === "users" ? "Users" : "Dashboard Overview"}
           </h1>
-          <p className="text-sm text-white/40 mt-1">Real-time platform analytics and user management</p>
+          <p className="text-sm text-white/40 mt-1">
+            {activeSection === "users" ? "Alle registrierten Benutzer verwalten" : "Real-time platform analytics and user management"}
+          </p>
         </div>
         <button 
           onClick={() => refetch()} 
