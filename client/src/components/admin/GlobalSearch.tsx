@@ -55,11 +55,9 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   // AI Search mutation
   const searchMutation = useMutation({
     mutationFn: async (searchQuery: string) => {
-      const res = await fetch("/api/admin/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const useAI = searchQuery.length > 10;
+      const res = await fetch(`/api/admin/search?q=${encodeURIComponent(searchQuery)}&limit=20&ai=${useAI}`, {
         credentials: "include",
-        body: JSON.stringify({ query: searchQuery, limit: 10 }),
       });
       if (!res.ok) throw new Error("Search failed");
       return res.json();

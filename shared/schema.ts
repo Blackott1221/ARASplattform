@@ -1040,3 +1040,41 @@ export const exportJobs = pgTable("export_jobs", {
 
 export type ExportJob = typeof exportJobs.$inferSelect;
 export type InsertExportJob = typeof exportJobs.$inferInsert;
+
+// ============================================================================
+// COMMAND CENTER - Admin Activity Log (Enhanced for Real-time Feed)
+// ============================================================================
+
+export const adminActivityLog = pgTable("admin_activity_log", {
+  id: serial("id").primaryKey(),
+  actorId: text("actor_id").notNull(),
+  actorName: text("actor_name"),
+  actorAvatar: text("actor_avatar"),
+  actorRole: text("actor_role"),
+  action: text("action").notNull(),
+  actionCategory: text("action_category").notNull(),
+  actionIcon: text("action_icon"),
+  actionColor: text("action_color"),
+  targetType: text("target_type"),
+  targetId: text("target_id"),
+  targetName: text("target_name"),
+  targetUrl: text("target_url"),
+  title: text("title").notNull(),
+  description: text("description"),
+  metadata: jsonb("metadata").$type<Record<string, any>>(),
+  aiInsight: text("ai_insight"),
+  aiPriority: text("ai_priority"),
+  aiSuggestion: text("ai_suggestion"),
+  aiProcessedAt: timestamp("ai_processed_at"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  geoLocation: text("geo_location"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("admin_activity_log_actor_idx").on(table.actorId),
+  index("admin_activity_log_category_idx").on(table.actionCategory),
+  index("admin_activity_log_created_idx").on(table.createdAt),
+]);
+
+export type AdminActivityLog = typeof adminActivityLog.$inferSelect;
+export type InsertAdminActivityLog = typeof adminActivityLog.$inferInsert;
