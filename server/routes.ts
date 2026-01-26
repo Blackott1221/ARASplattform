@@ -24,6 +24,8 @@ import promptGeneratorRouter from "./routes/prompt-generator";
 import arasLabRouter from "./routes/aras-lab";
 import n8nAdminRouter from "./routes/n8n-admin";
 import adminStaffRouter from "./routes/admin-staff";
+import adminChatRouter, { seedDefaultChannel } from "./routes/admin-chat";
+import adminExportRouter from "./routes/admin-export";
 import { requireAdmin } from "./middleware/admin";
 import { getKnowledgeDigest } from "./knowledge/context-builder";
 import { checkCallLimit, checkMessageLimit } from "./middleware/usage-limits";
@@ -2416,6 +2418,11 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   app.use("/api/aras-lab", arasLabRouter);
   app.use("/api/admin/n8n", n8nAdminRouter);
   app.use("/api/admin", adminStaffRouter);
+  app.use("/api/admin", adminChatRouter);
+  app.use("/api/admin", adminExportRouter);
+  
+  // Seed default chat channel
+  seedDefaultChannel().catch(console.error);
 
   // RETELL AI VOICE CALLS
   app.post('/api/voice/retell/call', requireAuth, checkCallLimit, async (req: any, res) => {
