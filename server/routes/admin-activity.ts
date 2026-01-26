@@ -30,6 +30,11 @@ router.get("/activity", requireAdmin, async (req: any, res) => {
 
     res.json(result);
   } catch (error: any) {
+    // Graceful handling wenn Tabelle nicht existiert
+    if (error.code === "42P01") {
+      logger.warn("[ACTIVITY] Table does not exist yet, returning empty");
+      return res.json({ data: [], total: 0 });
+    }
     logger.error("[ACTIVITY] Error fetching activities:", error);
     res.status(500).json({ error: "Failed to fetch activities" });
   }
@@ -45,6 +50,10 @@ router.get("/activity/stats", requireAdmin, async (req: any, res) => {
     const stats = await activityService.getStats(hours ? Number(hours) : 24);
     res.json({ data: stats });
   } catch (error: any) {
+    if (error.code === "42P01") {
+      logger.warn("[ACTIVITY] Table does not exist yet, returning empty stats");
+      return res.json({ data: { total: 0, byCategory: {}, byHour: [] } });
+    }
     logger.error("[ACTIVITY] Error fetching stats:", error);
     res.status(500).json({ error: "Failed to fetch stats" });
   }
@@ -60,6 +69,10 @@ router.get("/activity/categories", requireAdmin, async (req: any, res) => {
     const categories = await activityService.getCategories(hours ? Number(hours) : 24);
     res.json({ data: categories });
   } catch (error: any) {
+    if (error.code === "42P01") {
+      logger.warn("[ACTIVITY] Table does not exist yet, returning empty categories");
+      return res.json({ data: [] });
+    }
     logger.error("[ACTIVITY] Error fetching categories:", error);
     res.status(500).json({ error: "Failed to fetch categories" });
   }
@@ -149,6 +162,9 @@ router.post("/activity/log", requireAdmin, async (req: any, res) => {
 
     res.json({ success: true, message: "Activity logged" });
   } catch (error: any) {
+    if (error.code === "42P01") {
+      return res.status(503).json({ error: "Activity table not yet created. Run migration first." });
+    }
     logger.error("[ACTIVITY] Error logging activity:", error);
     res.status(500).json({ error: "Failed to log activity" });
   }

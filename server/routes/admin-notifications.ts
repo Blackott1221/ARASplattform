@@ -33,6 +33,11 @@ router.get("/notifications", requireAdmin, async (req: any, res) => {
       total: notifications.length,
     });
   } catch (error: any) {
+    // Graceful handling wenn Tabelle nicht existiert
+    if (error.code === "42P01") {
+      logger.warn("[NOTIFICATIONS] Table does not exist yet, returning empty");
+      return res.json({ data: [], unreadCount: 0, total: 0 });
+    }
     logger.error("[NOTIFICATIONS] Error fetching:", error);
     res.status(500).json({ error: "Failed to fetch notifications" });
   }
@@ -48,6 +53,11 @@ router.get("/notifications/count", requireAdmin, async (req: any, res) => {
     const count = await notificationService.getUnreadCount(userId);
     res.json({ count });
   } catch (error: any) {
+    // Graceful handling wenn Tabelle nicht existiert
+    if (error.code === "42P01") {
+      logger.warn("[NOTIFICATIONS] Table does not exist yet, returning 0");
+      return res.json({ count: 0 });
+    }
     logger.error("[NOTIFICATIONS] Count error:", error);
     res.status(500).json({ error: "Failed to fetch count" });
   }
@@ -65,6 +75,9 @@ router.post("/notifications/:id/read", requireAdmin, async (req: any, res) => {
     await notificationService.markAsRead(notificationId, userId);
     res.json({ success: true });
   } catch (error: any) {
+    if (error.code === "42P01") {
+      return res.json({ success: true });
+    }
     logger.error("[NOTIFICATIONS] Mark read error:", error);
     res.status(500).json({ error: "Failed to mark as read" });
   }
@@ -80,6 +93,9 @@ router.post("/notifications/read-all", requireAdmin, async (req: any, res) => {
     const count = await notificationService.markAllAsRead(userId);
     res.json({ success: true, count });
   } catch (error: any) {
+    if (error.code === "42P01") {
+      return res.json({ success: true, count: 0 });
+    }
     logger.error("[NOTIFICATIONS] Mark all read error:", error);
     res.status(500).json({ error: "Failed to mark all as read" });
   }
@@ -178,6 +194,9 @@ router.post("/notifications/test", requireAdmin, async (req: any, res) => {
 
     res.json({ success: true, notification });
   } catch (error: any) {
+    if (error.code === "42P01") {
+      return res.status(503).json({ error: "Notifications table not yet created. Run migration first." });
+    }
     logger.error("[NOTIFICATIONS] Test error:", error);
     res.status(500).json({ error: "Failed to create test notification" });
   }
