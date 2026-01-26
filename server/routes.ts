@@ -23,6 +23,7 @@ import aiRecommendationsRouter from "./routes/ai-recommendations";
 import promptGeneratorRouter from "./routes/prompt-generator";
 import arasLabRouter from "./routes/aras-lab";
 import n8nAdminRouter from "./routes/n8n-admin";
+import adminStaffRouter from "./routes/admin-staff";
 import { requireAdmin } from "./middleware/admin";
 import { getKnowledgeDigest } from "./knowledge/context-builder";
 import { checkCallLimit, checkMessageLimit } from "./middleware/usage-limits";
@@ -2414,6 +2415,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   app.use("/api/prompt-generator", promptGeneratorRouter);
   app.use("/api/aras-lab", arasLabRouter);
   app.use("/api/admin/n8n", n8nAdminRouter);
+  app.use("/api/admin", adminStaffRouter);
 
   // RETELL AI VOICE CALLS
   app.post('/api/voice/retell/call', requireAuth, checkCallLimit, async (req: any, res) => {
