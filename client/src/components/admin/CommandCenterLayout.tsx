@@ -8,10 +8,13 @@ import {
   MessageSquare, Phone, Zap, Bug, Crown, Clock, Settings,
   LayoutDashboard, UserPlus, Download, Activity, Search,
   Bell, ChevronLeft, ChevronRight, Command, Sparkles,
-  MessageCircle, ListTodo, Shield, X, Menu
+  MessageCircle, ListTodo, Shield, X, Menu, Keyboard
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
+import { GlobalSearch } from "./GlobalSearch";
+import { KeyboardShortcutsProvider } from "./KeyboardShortcuts";
+import { NotificationsPanel, NotificationBell } from "./NotificationsPanel";
 
 // ============================================================================
 // ARAS Design System 2026
@@ -130,6 +133,7 @@ export function CommandCenterLayout({ children }: CommandCenterLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   // Check for reduced motion preference
   const prefersReducedMotion = useMemo(() => {
@@ -150,10 +154,16 @@ export function CommandCenterLayout({ children }: CommandCenterLayoutProps) {
         e.preventDefault();
         setSidebarCollapsed(prev => !prev);
       }
+      // Cmd/Ctrl + N = Notifications
+      if ((e.metaKey || e.ctrlKey) && e.key === "n") {
+        e.preventDefault();
+        setNotificationsOpen(prev => !prev);
+      }
       // Escape = Close modals
       if (e.key === "Escape") {
         setSearchOpen(false);
         setMobileMenuOpen(false);
+        setNotificationsOpen(false);
       }
     };
 
@@ -389,13 +399,7 @@ export function CommandCenterLayout({ children }: CommandCenterLayoutProps) {
             </div>
 
             {/* Notifications */}
-            <button className="relative p-2 rounded-lg hover:bg-white/5 transition-colors">
-              <Bell className="w-5 h-5" style={{ color: DESIGN.text.secondary }} />
-              <span 
-                className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
-                style={{ backgroundColor: DESIGN.accent.primary }}
-              />
-            </button>
+            <NotificationBell onClick={() => setNotificationsOpen(true)} />
 
             {/* User Menu */}
             <div className="flex items-center gap-3 pl-2 lg:pl-4 border-l" style={{ borderColor: DESIGN.border.default }}>
@@ -416,141 +420,21 @@ export function CommandCenterLayout({ children }: CommandCenterLayoutProps) {
       </main>
 
       {/* Global Search Modal */}
+      <GlobalSearch 
+        isOpen={searchOpen} 
+        onClose={() => setSearchOpen(false)} 
+      />
+
+      {/* Notifications Panel */}
       <AnimatePresence>
-        {searchOpen && (
-          <GlobalSearchModal 
-            onClose={() => setSearchOpen(false)} 
-            prefersReducedMotion={prefersReducedMotion}
+        {notificationsOpen && (
+          <NotificationsPanel 
+            isOpen={notificationsOpen}
+            onClose={() => setNotificationsOpen(false)} 
           />
         )}
       </AnimatePresence>
     </div>
-  );
-}
-
-// ============================================================================
-// Global Search Modal Component
-// ============================================================================
-interface GlobalSearchModalProps {
-  onClose: () => void;
-  prefersReducedMotion: boolean;
-}
-
-function GlobalSearchModal({ onClose, prefersReducedMotion }: GlobalSearchModalProps) {
-  const [query, setQuery] = useState("");
-  const [, setLocation] = useLocation();
-  
-  const quickActions = useMemo(() => [
-    { icon: Users, label: "View all users", shortcut: "U", path: "/admin-dashboard/users" },
-    { icon: UserPlus, label: "Invite staff member", shortcut: "I", path: "/admin-dashboard/staff" },
-    { icon: Download, label: "Export data", shortcut: "E", path: "/admin-dashboard/exports" },
-    { icon: Mail, label: "View N8N emails", shortcut: "M", path: "/admin-dashboard/emails" },
-    { icon: MessageCircle, label: "Open team chat", shortcut: "C", path: "/admin-dashboard/team-chat" },
-    { icon: Activity, label: "Activity feed", shortcut: "A", path: "/admin-dashboard/activity" },
-  ], []);
-
-  // Handle quick action navigation
-  const handleQuickAction = useCallback((path: string) => {
-    setLocation(path);
-    onClose();
-  }, [setLocation, onClose]);
-
-  // Keyboard navigation for quick actions
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!query) {
-        const action = quickActions.find(a => a.shortcut.toLowerCase() === e.key.toLowerCase());
-        if (action) {
-          e.preventDefault();
-          handleQuickAction(action.path);
-        }
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [query, quickActions, handleQuickAction]);
-
-  const modalTransition = prefersReducedMotion ? { duration: 0 } : { duration: 0.15 };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={modalTransition}
-      className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] bg-black/60 backdrop-blur-sm px-4"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={prefersReducedMotion ? {} : { opacity: 0, scale: 0.95, y: -20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={prefersReducedMotion ? {} : { opacity: 0, scale: 0.95, y: -20 }}
-        transition={modalTransition}
-        className="w-full max-w-2xl bg-[#0a0a0c] border rounded-2xl shadow-2xl overflow-hidden"
-        style={{ borderColor: DESIGN.border.default }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Search Input */}
-        <div className="flex items-center gap-3 px-4 border-b" style={{ borderColor: DESIGN.border.default }}>
-          <Search className="w-5 h-5" style={{ color: DESIGN.text.muted }} />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search users, leads, calls, emails..."
-            className="flex-1 py-4 bg-transparent text-white placeholder:text-white/30 focus:outline-none"
-            autoFocus
-          />
-          <kbd 
-            className="px-2 py-1 text-[10px] rounded"
-            style={{ color: DESIGN.text.muted, backgroundColor: DESIGN.bg.hover }}
-          >
-            ESC
-          </kbd>
-        </div>
-        
-        {/* Quick Actions */}
-        {!query && (
-          <div className="p-4 space-y-1">
-            <div 
-              className="text-[10px] font-semibold uppercase tracking-wider mb-3"
-              style={{ color: DESIGN.text.muted }}
-            >
-              Quick Actions
-            </div>
-            {quickActions.map((action) => (
-              <button
-                key={action.path}
-                onClick={() => handleQuickAction(action.path)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 transition-colors text-left group"
-              >
-                <action.icon className="w-4 h-4" style={{ color: DESIGN.text.muted }} />
-                <span className="text-sm" style={{ color: DESIGN.text.secondary }}>
-                  {action.label}
-                </span>
-                <kbd 
-                  className="ml-auto px-2 py-0.5 text-[10px] rounded opacity-50 group-hover:opacity-100 transition-opacity"
-                  style={{ color: DESIGN.text.muted, backgroundColor: DESIGN.bg.hover }}
-                >
-                  {action.shortcut}
-                </kbd>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Search Results Placeholder */}
-        {query && (
-          <div className="border-t p-4" style={{ borderColor: DESIGN.border.default }}>
-            <div className="text-sm text-center py-8" style={{ color: DESIGN.text.muted }}>
-              <Sparkles className="w-8 h-8 mx-auto mb-3 opacity-50" />
-              Searching for "{query}"...
-              <p className="text-xs mt-2">Global search coming soon</p>
-            </div>
-          </div>
-        )}
-      </motion.div>
-    </motion.div>
   );
 }
 
