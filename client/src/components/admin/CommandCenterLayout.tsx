@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useLocation, Link } from "wouter";
+import { useLocation } from "wouter";
 import { 
   Users, Mail, TrendingUp, Calendar, Building2, Megaphone,
   MessageSquare, Phone, Zap, Bug, Crown, Clock, Settings,
@@ -129,7 +129,7 @@ interface CommandCenterLayoutProps {
 }
 
 export function CommandCenterLayout({ children }: CommandCenterLayoutProps) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -272,58 +272,58 @@ export function CommandCenterLayout({ children }: CommandCenterLayoutProps) {
                   const Icon = item.icon;
                   
                   return (
-                    <Link key={item.id} href={item.path}>
-                      <motion.div
-                        className={cn(
-                          "group relative flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors",
-                          isActive ? "text-white" : "hover:bg-white/5"
-                        )}
-                        style={{ 
-                          backgroundColor: isActive ? DESIGN.bg.active : undefined,
-                          color: isActive ? DESIGN.text.primary : DESIGN.text.secondary,
-                        }}
-                        whileHover={prefersReducedMotion ? {} : { x: 2 }}
-                        whileTap={prefersReducedMotion ? {} : { scale: 0.98 }}
-                      >
-                        {/* Active indicator */}
-                        {isActive && (
-                          <motion.div
-                            layoutId={prefersReducedMotion ? undefined : "nav-indicator"}
-                            className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full"
-                            style={{ backgroundColor: item.color }}
-                            transition={transition}
-                          />
-                        )}
-                        
-                        <Icon 
-                          className="w-5 h-5 flex-shrink-0" 
-                          style={{ color: isActive ? item.color : undefined }}
+                    <motion.div
+                      key={item.id}
+                      onClick={() => setLocation(item.path)}
+                      className={cn(
+                        "group relative flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors",
+                        isActive ? "text-white" : "hover:bg-white/5"
+                      )}
+                      style={{ 
+                        backgroundColor: isActive ? DESIGN.bg.active : undefined,
+                        color: isActive ? DESIGN.text.primary : DESIGN.text.secondary,
+                      }}
+                      whileHover={prefersReducedMotion ? {} : { x: 2 }}
+                      whileTap={prefersReducedMotion ? {} : { scale: 0.98 }}
+                    >
+                      {/* Active indicator */}
+                      {isActive && (
+                        <motion.div
+                          layoutId={prefersReducedMotion ? undefined : "nav-indicator"}
+                          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full"
+                          style={{ backgroundColor: item.color }}
+                          transition={transition}
                         />
-                        
-                        <AnimatePresence mode="wait">
-                          {!sidebarCollapsed && (
-                            <motion.span
-                              {...slideIn}
-                              transition={transition}
-                              className="text-sm font-medium flex-1 truncate"
-                            >
-                              {item.label}
-                            </motion.span>
-                          )}
-                        </AnimatePresence>
-
-                        {/* Badge */}
-                        {item.badge && !sidebarCollapsed && (
-                          <span className={cn(
-                            "px-1.5 py-0.5 text-[9px] font-bold uppercase rounded",
-                            item.badge === "live" && "bg-emerald-500/20 text-emerald-400",
-                            item.badge === "new" && "bg-blue-500/20 text-blue-400"
-                          )}>
-                            {item.badge}
-                          </span>
+                      )}
+                      
+                      <Icon 
+                        className="w-5 h-5 flex-shrink-0" 
+                        style={{ color: isActive ? item.color : undefined }}
+                      />
+                      
+                      <AnimatePresence mode="wait">
+                        {!sidebarCollapsed && (
+                          <motion.span
+                            {...slideIn}
+                            transition={transition}
+                            className="text-sm font-medium flex-1 truncate"
+                          >
+                            {item.label}
+                          </motion.span>
                         )}
-                      </motion.div>
-                    </Link>
+                      </AnimatePresence>
+
+                      {/* Badge */}
+                      {item.badge && !sidebarCollapsed && (
+                        <span className={cn(
+                          "px-1.5 py-0.5 text-[9px] font-bold uppercase rounded",
+                          item.badge === "live" && "bg-emerald-500/20 text-emerald-400",
+                          item.badge === "new" && "bg-blue-500/20 text-blue-400"
+                        )}>
+                          {item.badge}
+                        </span>
+                      )}
+                    </motion.div>
                   );
                 })}
               </div>
