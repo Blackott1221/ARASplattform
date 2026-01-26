@@ -1316,20 +1316,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
-      // 2. Parse and validate request body
-      const {
-        recipient,
-        recipientName,
-        subject,
-        content,
-        htmlContent,
-        status,
-        timestamp,
-        workflowName,
-        workflowId,
-        executionId,
-        metadata
-      } = req.body;
+      // Helper: Strip N8N expression prefix "=" from values
+      // N8N sometimes sends raw expression syntax like "=value" instead of evaluated "value"
+      const cleanN8NValue = (val: any): any => {
+        if (typeof val === 'string' && val.startsWith('=')) {
+          return val.substring(1);
+        }
+        return val;
+      };
+
+      // Helper: Parse timestamp safely with fallback
+      const parseTimestamp = (ts: any): Date => {
+        if (!ts) return new Date();
+        const cleaned = cleanN8NValue(ts);
+        const parsed = new Date(cleaned);
+        if (isNaN(parsed.getTime())) {
+          logger.warn('[N8N-WEBHOOK] Invalid timestamp, using current time', { original: ts, cleaned });
+          return new Date();
+        }
+        return parsed;
+      };
+
+      // 2. Parse and validate request body (clean N8N expression prefixes)
+      const rawBody = req.body;
+      const recipient = cleanN8NValue(rawBody.recipient);
+      const recipientName = cleanN8NValue(rawBody.recipientName);
+      const subject = cleanN8NValue(rawBody.subject);
+      const content = cleanN8NValue(rawBody.content);
+      const htmlContent = cleanN8NValue(rawBody.htmlContent);
+      const status = cleanN8NValue(rawBody.status);
+      const timestamp = rawBody.timestamp;
+      const workflowName = cleanN8NValue(rawBody.workflowName);
+      const workflowId = cleanN8NValue(rawBody.workflowId);
+      const executionId = cleanN8NValue(rawBody.executionId);
+      const metadata = rawBody.metadata;
 
       // 3. Validate required fields
       if (!recipient || !subject) {
@@ -1359,7 +1379,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         workflowName: workflowName || null,
         executionId: executionId || null,
         metadata: metadata || null,
-        sentAt: timestamp ? new Date(timestamp) : new Date(),
+        sentAt: parseTimestamp(timestamp),
       }).returning();
 
       logger.info('[N8N-WEBHOOK] Email log saved successfully', {
