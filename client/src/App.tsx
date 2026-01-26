@@ -194,10 +194,24 @@ function Router() {
           <Route path="/leads" component={AppPage} />
           <Route path="/app/leads" component={AppPage} />
           <Route path="/admin" component={AdminDashboard} />
-          <Route path="/admin-dashboard/:rest*" component={AdminDashboard} />
+          <Route path="/admin-dashboard/activity" component={AdminDashboard} />
+          <Route path="/admin-dashboard/users" component={AdminDashboard} />
+          <Route path="/admin-dashboard/leads" component={AdminDashboard} />
+          <Route path="/admin-dashboard/contacts" component={AdminDashboard} />
+          <Route path="/admin-dashboard/emails" component={AdminDashboard} />
+          <Route path="/admin-dashboard/calls" component={AdminDashboard} />
+          <Route path="/admin-dashboard/campaigns" component={AdminDashboard} />
+          <Route path="/admin-dashboard/chats" component={AdminDashboard} />
+          <Route path="/admin-dashboard/agents" component={AdminDashboard} />
+          <Route path="/admin-dashboard/feedback" component={AdminDashboard} />
+          <Route path="/admin-dashboard/plans" component={AdminDashboard} />
+          <Route path="/admin-dashboard/team-chat" component={AdminDashboard} />
+          <Route path="/admin-dashboard/tasks" component={AdminDashboard} />
+          <Route path="/admin-dashboard/staff" component={AdminDashboard} />
+          <Route path="/admin-dashboard/exports" component={AdminDashboard} />
+          <Route path="/admin-dashboard/settings" component={AdminDashboard} />
           <Route path="/admin-dashboard" component={AdminDashboard} />
           <Route path="/app/admin" component={AdminDashboard} />
-          <Route path="/app/admin-dashboard/:rest*" component={AdminDashboard} />
           <Route path="/app/admin-dashboard" component={AdminDashboard} />
           <Route path="/campaigns" component={Campaigns} />
           <Route path="/app/campaigns" component={Campaigns} />
