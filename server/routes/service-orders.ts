@@ -14,6 +14,12 @@ import { db } from '../db';
 import { serviceOrders, serviceOrderEvents, users } from '@shared/schema';
 import { eq, desc, and, sql } from 'drizzle-orm';
 import { requireStaffOrAdmin } from '../middleware/staff';
+import Stripe from 'stripe';
+
+// Initialize Stripe
+const stripe = process.env.STRIPE_SECRET_KEY 
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2023-10-16' as any })
+  : null;
 
 const router = Router();
 
@@ -133,6 +139,109 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('[SERVICE-ORDERS] Error listing user orders:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/service-orders/:id/checkout
+ * Create Stripe Checkout Session for one-time payment
+ * Requires: authenticated user, order must belong to user
+ */
+router.post('/:id/checkout', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = req.session!.userId as string;
+    const orderId = parseInt(req.params.id, 10);
+
+    if (isNaN(orderId)) {
+      return res.status(400).json({ error: 'Invalid order ID' });
+    }
+
+    if (!stripe) {
+      console.error('[SERVICE-ORDERS] Stripe not configured');
+      return res.status(500).json({ error: 'Payment system unavailable' });
+    }
+
+    // Get order and verify ownership
+    const [order] = await db
+      .select()
+      .from(serviceOrders)
+      .where(eq(serviceOrders.id, orderId))
+      .limit(1);
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    if (order.clientUserId !== userId) {
+      return res.status(403).json({ error: 'Not authorized to access this order' });
+    }
+
+    // Check if already paid
+    if (order.paymentStatus === 'paid') {
+      return res.status(400).json({ error: 'Order already paid' });
+    }
+
+    // Get user for customer info
+    const [user] = await db
+      .select({ email: users.email, firstName: users.firstName, lastName: users.lastName })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    const customerEmail = order.contactEmail || user?.email || undefined;
+    const appUrl = process.env.APP_URL || 'http://localhost:5000';
+
+    // Create Stripe Checkout Session (one-time payment)
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      payment_method_types: ['card'],
+      customer_email: customerEmail,
+      line_items: [
+        {
+          price_data: {
+            currency: order.currency || 'eur',
+            unit_amount: order.priceCents,
+            product_data: {
+              name: 'ARAS Campaign Setup',
+              description: `${order.targetCalls?.toLocaleString()} calls - ${order.packageCode}`,
+            },
+          },
+          quantity: 1,
+        },
+      ],
+      success_url: `${appUrl}/campaign-studio?success=true&order_id=${orderId}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${appUrl}/campaign-studio?canceled=true&order_id=${orderId}`,
+      metadata: {
+        userId,
+        orderId: orderId.toString(),
+        type: 'service_order',
+      },
+    });
+
+    // Update order with pending checkout
+    await db
+      .update(serviceOrders)
+      .set({
+        paymentReference: session.id,
+        updatedAt: new Date(),
+      })
+      .where(eq(serviceOrders.id, orderId));
+
+    // Create event
+    await createOrderEvent(
+      orderId,
+      'checkout_started',
+      'Checkout gestartet',
+      userId,
+      `Stripe Checkout Session erstellt`,
+      { sessionId: session.id }
+    );
+
+    console.log(`[SERVICE-ORDERS] Checkout session created for order ${orderId}`);
+    res.json({ url: session.url });
+  } catch (error: any) {
+    console.error('[SERVICE-ORDERS] Error creating checkout session:', error);
+    res.status(500).json({ error: 'Failed to start checkout' });
   }
 });
 

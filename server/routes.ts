@@ -1234,8 +1234,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const session = event.data.object as any;
           const userId = session.metadata?.userId;
           const planId = session.metadata?.planId;
+          const orderId = session.metadata?.orderId;
+          const sessionType = session.metadata?.type;
           
-          if (userId && planId) {
+          // Handle service order one-time payment
+          if (sessionType === 'service_order' && orderId) {
+            try {
+              // Update order payment status (idempotent)
+              const [existingOrder] = await client`
+                SELECT id, payment_status FROM service_orders WHERE id = ${parseInt(orderId, 10)}
+              `;
+              
+              if (existingOrder && existingOrder.payment_status !== 'paid') {
+                await client`
+                  UPDATE service_orders 
+                  SET payment_status = 'paid', 
+                      payment_reference = ${session.payment_intent || session.id},
+                      status = 'paid',
+                      updated_at = NOW()
+                  WHERE id = ${parseInt(orderId, 10)}
+                `;
+                
+                // Create event
+                await client`
+                  INSERT INTO service_order_events (order_id, type, title, description, metadata, created_at)
+                  VALUES (
+                    ${parseInt(orderId, 10)}, 
+                    'paid', 
+                    'Zahlung eingegangen',
+                    'Stripe Checkout abgeschlossen',
+                    ${JSON.stringify({ sessionId: session.id, paymentIntent: session.payment_intent })}::jsonb,
+                    NOW()
+                  )
+                `;
+                
+                logger.info(`[STRIPE-WEBHOOK] Service order ${orderId} marked as paid`);
+              } else {
+                logger.info(`[STRIPE-WEBHOOK] Service order ${orderId} already paid, skipping`);
+              }
+            } catch (orderErr: any) {
+              logger.error(`[STRIPE-WEBHOOK] Error updating service order ${orderId}:`, orderErr);
+            }
+          }
+          // Handle subscription payment
+          else if (userId && planId) {
             await storage.updateUserSubscription(userId, {
               subscriptionPlan: planId,
               subscriptionStatus: 'active',

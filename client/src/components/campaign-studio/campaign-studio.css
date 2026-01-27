@@ -2348,3 +2348,318 @@
   line-height: 1.5;
   margin: 0;
 }
+
+/* ============================================================================
+   Review & Checkout Step
+   ============================================================================ */
+.cs-review-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .cs-review-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Summary Sections */
+.cs-review-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cs-review-section {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--aras-r-lg);
+  padding: 16px;
+}
+
+.cs-review-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--aras-orange);
+  margin-bottom: 12px;
+}
+
+.cs-review-section-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+}
+
+.cs-review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 480px) {
+  .cs-review-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cs-review-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cs-review-item--full {
+  grid-column: 1 / -1;
+}
+
+.cs-review-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.cs-review-value {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.cs-review-value--highlight {
+  color: var(--aras-orange);
+  font-weight: 600;
+}
+
+.cs-review-brief {
+  line-height: 1.5;
+}
+
+.cs-review-show-more {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: 6px;
+  font-size: 12px;
+  color: var(--aras-orange);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* Checkout Panel */
+.cs-review-checkout {
+  position: sticky;
+  top: 96px;
+}
+
+@media (max-width: 900px) {
+  .cs-review-checkout {
+    position: static;
+  }
+}
+
+.cs-review-total-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--aras-r-lg);
+  padding: 20px;
+}
+
+.cs-review-total-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0 0 16px 0;
+}
+
+.cs-review-total-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.cs-review-total-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.cs-review-total-row--grand {
+  font-size: 18px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.cs-review-total-row--grand span:last-child {
+  color: var(--aras-orange);
+}
+
+.cs-review-total-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  margin: 8px 0;
+}
+
+.cs-review-total-vat {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0 0 16px 0;
+}
+
+/* Consent */
+.cs-review-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.4;
+  margin-bottom: 16px;
+  cursor: pointer;
+}
+
+/* Pay Button */
+.cs-review-pay-btn {
+  width: 100%;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--aras-orange), #ff8c00);
+  border: none;
+  border-radius: var(--aras-r-md);
+  color: white;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cs-review-pay-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(255, 106, 0, 0.3);
+}
+
+.cs-review-pay-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-review-pay-btn:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* Trust */
+.cs-review-trust {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.cs-review-trust svg {
+  color: #4ade80;
+}
+
+/* Error */
+.cs-review-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--aras-r-md);
+  color: #f87171;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.cs-review-error-retry {
+  margin-left: auto;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 4px 12px;
+  border-radius: var(--aras-r-sm);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+}
+
+.cs-review-error-retry:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Success */
+.cs-review-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.cs-review-success-icon {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(34, 197, 94, 0.1);
+  border-radius: 50%;
+  color: #4ade80;
+  margin-bottom: 20px;
+}
+
+.cs-review-success-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0 0 10px 0;
+}
+
+.cs-review-success-text {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0 0 24px 0;
+  max-width: 400px;
+}
+
+.cs-review-success-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Brief Dialog */
+.cs-review-brief-dialog {
+  max-width: 500px;
+}
+
+.cs-review-brief-full {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+/* Spin animation */
+.cs-spin {
+  animation: cs-spin 1s linear infinite;
+}
+
+@keyframes cs-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
