@@ -1822,3 +1822,310 @@
   background: rgba(255, 255, 255, 0.05);
   border-color: rgba(255, 255, 255, 0.25);
 }
+
+/* ============================================================================
+   Leads Step
+   ============================================================================ */
+.cs-leads-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 480px) {
+  .cs-leads-mode-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cs-leads-mode-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 24px 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--aras-r-md);
+  cursor: pointer;
+  transition: transform 0.18s var(--aras-ease), box-shadow 0.18s var(--aras-ease), border-color 0.18s var(--aras-ease);
+}
+
+.cs-leads-mode-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.cs-leads-mode-card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--aras-bg), 0 0 0 4px rgba(255, 106, 0, 0.4);
+}
+
+.cs-leads-mode-card--selected {
+  border-color: rgba(255, 106, 0, 0.45);
+  box-shadow: 0 0 20px rgba(255, 106, 0, 0.15);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-leads-mode-card:hover {
+    transform: none;
+  }
+}
+
+.cs-leads-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 10px;
+}
+
+.cs-leads-badge--selected {
+  background: rgba(255, 106, 0, 0.2);
+  color: var(--aras-orange);
+}
+
+.cs-leads-mode-icon {
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 106, 0, 0.1);
+  border-radius: 50%;
+  color: var(--aras-orange);
+  margin-bottom: 12px;
+}
+
+.cs-leads-mode-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  margin-bottom: 4px;
+}
+
+.cs-leads-mode-desc {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Have Leads Panel */
+.cs-leads-have-panel {
+  margin-top: 8px;
+}
+
+/* Need Leads Panel */
+.cs-leads-need-panel {
+  margin-top: 8px;
+}
+
+.cs-leads-section {
+  margin-bottom: 24px;
+}
+
+.cs-leads-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0 0 6px 0;
+}
+
+.cs-leads-section-desc {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0 0 14px 0;
+}
+
+/* Lead Packages Grid */
+.cs-leads-packages-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+@media (min-width: 640px) {
+  .cs-leads-packages-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.cs-leads-package-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 16px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--aras-r-sm);
+  cursor: pointer;
+  transition: transform 0.18s var(--aras-ease), box-shadow 0.18s var(--aras-ease), border-color 0.18s var(--aras-ease);
+}
+
+.cs-leads-package-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.cs-leads-package-card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--aras-bg), 0 0 0 4px rgba(255, 106, 0, 0.4);
+}
+
+.cs-leads-package-card--selected {
+  border-color: rgba(255, 106, 0, 0.45);
+  box-shadow: 0 0 16px rgba(255, 106, 0, 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-leads-package-card:hover {
+    transform: none;
+  }
+}
+
+.cs-leads-package-count {
+  font-size: 22px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  line-height: 1.1;
+}
+
+.cs-leads-package-unit {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 8px;
+}
+
+.cs-leads-package-price {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--aras-orange);
+  margin-bottom: 2px;
+}
+
+.cs-leads-package-note {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Summary */
+.cs-leads-summary {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 10px 14px;
+  background: rgba(255, 106, 0, 0.08);
+  border-radius: var(--aras-r-sm);
+}
+
+/* Filters Grid */
+.cs-leads-filters-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 480px) {
+  .cs-leads-filters-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cs-leads-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cs-leads-filter-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.cs-leads-select {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Info Card */
+.cs-leads-info-card {
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--aras-r-md);
+}
+
+.cs-leads-info-card--compact {
+  padding: 16px;
+}
+
+.cs-leads-info-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--aras-orange);
+  margin-bottom: 10px;
+}
+
+.cs-leads-info-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+}
+
+.cs-leads-info-text {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0 0 12px 0;
+  line-height: 1.5;
+}
+
+.cs-leads-info-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cs-leads-info-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 8px;
+}
+
+.cs-leads-info-list li svg {
+  color: var(--aras-orange);
+  flex-shrink: 0;
+}
+
+.cs-leads-info-list--inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.cs-leads-info-list--inline li {
+  margin-bottom: 0;
+}
+
+.cs-leads-info-list--inline li::before {
+  content: '✓';
+  color: var(--aras-orange);
+  margin-right: 4px;
+}
