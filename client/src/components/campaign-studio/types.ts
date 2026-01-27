@@ -20,6 +20,15 @@ export interface LeadFilters {
   companySize?: string;
 }
 
+export interface CompanySnapshot {
+  domain?: string;
+  industryGuess?: string;
+  offerSummary?: string;
+  toneSuggestion?: 'executive' | 'friendly' | 'direct';
+  suggestedUseCases?: string[];
+  confidence?: number;
+}
+
 export interface CampaignStudioDraft {
   // Step 1: Identity
   customerType?: 'company' | 'agency';
@@ -29,6 +38,7 @@ export interface CampaignStudioDraft {
   contactEmail?: string;
   companyName?: string;
   websiteUrl?: string;
+  companySnapshot?: CompanySnapshot;
   
   // Step 3: Use Case
   useCaseId?: string;

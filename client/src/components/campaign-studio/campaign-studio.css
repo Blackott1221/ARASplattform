@@ -766,3 +766,228 @@
 .cs-btn--next-hint {
   opacity: 0.6;
 }
+
+/* ============================================================================
+   Company Scan Step
+   ============================================================================ */
+.cs-scan-input-section {
+  margin-bottom: 20px;
+}
+
+.cs-input--large {
+  height: 48px;
+  font-size: 15px;
+}
+
+.cs-helper-text--subtle {
+  margin-top: 8px;
+  margin-bottom: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.cs-scan-actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.cs-btn--scan {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--aras-orange) 0%, #ff8c40 100%);
+  border: none;
+  border-radius: var(--aras-r-sm);
+  color: #fff;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.cs-btn--scan:hover:not(:disabled) {
+  box-shadow: 0 4px 16px rgba(255, 106, 0, 0.35);
+}
+
+.cs-btn--scan:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.cs-btn--scan:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--aras-bg), 0 0 0 4px rgba(255, 106, 0, 0.35);
+}
+
+.cs-btn--skip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--aras-r-sm);
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.cs-btn--skip:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.cs-btn--skip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cs-btn--skip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--aras-bg), 0 0 0 4px rgba(255, 106, 0, 0.35);
+}
+
+/* Spinner */
+.cs-spin {
+  animation: cs-spin 1s linear infinite;
+}
+
+@keyframes cs-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-spin {
+    animation: none;
+  }
+}
+
+/* Scan Progress */
+.cs-scan-progress {
+  margin-bottom: 20px;
+}
+
+.cs-scan-progress-track {
+  height: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 1px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.cs-scan-progress-fill {
+  height: 100%;
+  background: var(--aras-orange);
+  border-radius: 1px;
+  transition: width 0.3s ease;
+}
+
+.cs-scan-status-text {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Insight Cards */
+.cs-insight-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.cs-insight-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--aras-r-md);
+}
+
+.cs-insight-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 106, 0, 0.1);
+  border-radius: var(--aras-r-sm);
+  color: var(--aras-orange);
+  flex-shrink: 0;
+}
+
+.cs-insight-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.cs-insight-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.cs-insight-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.cs-insight-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.cs-insight-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.cs-insight-chip--tone {
+  background: rgba(255, 106, 0, 0.12);
+  color: var(--aras-orange);
+  text-transform: capitalize;
+}
+
+/* Summary Note */
+.cs-scan-summary-note {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 8px;
+}
+
+/* Skipped Note */
+.cs-skipped-note {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--aras-r-md);
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.cs-skipped-note p {
+  margin: 0;
+  font-size: 13px;
+}
