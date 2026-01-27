@@ -1,5 +1,6 @@
 import { Check, MessageCircle } from "lucide-react";
 import type { CampaignStudioDraft } from "../types";
+import { InfoDot } from "../InfoDot";
 
 // ============================================================================
 // Package Definitions
@@ -152,8 +153,18 @@ export default function VolumePricingStep({ draft, setDraft, attemptedNext }: Vo
             <div className="cs-volume-summary-chip">
               <MessageCircle size={14} />
               Unlimited conversations
+              <InfoDot 
+                title="Unlimited conversations" 
+                body="You only pay for purchased call volume. Conversations per call aren't capped." 
+              />
             </div>
-            <p className="cs-volume-summary-note">VAT may apply based on your location.</p>
+            <p className="cs-volume-summary-note">
+              VAT may apply based on your location.
+              <InfoDot 
+                title="Tax information" 
+                body="Final tax amount will be calculated at checkout based on your billing address." 
+              />
+            </p>
           </>
         ) : (
           <p className="cs-volume-summary-empty">Select a package to see pricing.</p>

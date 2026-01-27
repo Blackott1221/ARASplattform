@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { CampaignStudioDraft, LeadFilters } from "../types";
+import { InfoDot } from "../InfoDot";
 
 // ============================================================================
 // Constants
@@ -299,7 +300,13 @@ export default function LeadsStep({ draft, setDraft, attemptedNext }: LeadsStepP
             <ul className="cs-leads-info-list cs-leads-info-list--inline">
               <li>Decision-maker level contacts</li>
               <li>Structured for outbound campaigns</li>
-              <li>Exclusive customer pricing</li>
+              <li>
+                Exclusive customer pricing
+                <InfoDot 
+                  title="Lead pricing" 
+                  body="Optional add-on. Filters refine targeting. Availability may vary by region." 
+                />
+              </li>
             </ul>
           </div>
         </div>

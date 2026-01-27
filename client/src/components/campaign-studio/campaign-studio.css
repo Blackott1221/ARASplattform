@@ -4,6 +4,112 @@
  */
 
 /* ============================================================================
+   Cinematic Wizard System - Utility Classes
+   ============================================================================ */
+
+/* Title (H1) */
+.cs-title {
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0 0 12px 0;
+}
+
+/* Subtitle */
+.cs-subtitle {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.5;
+  margin: 0 0 24px 0;
+}
+
+@media (max-width: 480px) {
+  .cs-subtitle {
+    font-size: 15px;
+  }
+}
+
+/* Section Title (small caps) */
+.cs-sectionTitle {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.65);
+  margin: 0 0 12px 0;
+}
+
+/* Card base */
+.cs-card {
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(16, 17, 20, 0.72);
+  border-radius: var(--aras-r-lg);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+/* Tip (hover lift) */
+.cs-tip {
+  transition: 
+    transform var(--aras-dur-1, 0.18s) var(--aras-ease, ease-out), 
+    box-shadow var(--aras-dur-1, 0.18s) var(--aras-ease, ease-out), 
+    border-color var(--aras-dur-1, 0.18s) var(--aras-ease, ease-out);
+}
+
+.cs-tip:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Focus Ring */
+.cs-focusRing:focus-visible {
+  outline: 2px solid rgba(255, 106, 0, 0.45);
+  outline-offset: 2px;
+}
+
+/* Wave Text (animated gradient headline) */
+.cs-waveText {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.95) 0%,
+    var(--aras-orange) 25%,
+    var(--aras-gold) 50%,
+    var(--aras-orange) 75%,
+    rgba(255, 255, 255, 0.95) 100%
+  );
+  background-size: 200% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: cs-wave-gradient 8s linear infinite;
+}
+
+@keyframes cs-wave-gradient {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .cs-tip:hover {
+    transform: none;
+  }
+  
+  .cs-waveText {
+    animation: none;
+    background: var(--aras-orange);
+    background-clip: text;
+    -webkit-background-clip: text;
+  }
+  
+  .cs-tip,
+  .cs-card {
+    transition-duration: 0.01s;
+  }
+}
+
+/* ============================================================================
    Container & Layout
    ============================================================================ */
 .cs-container {
@@ -2662,4 +2768,248 @@
 @keyframes cs-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+/* ============================================================================
+   InfoDot Component
+   ============================================================================ */
+.cs-infodot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+  margin-left: 6px;
+}
+
+.cs-infodot:hover {
+  background: rgba(255, 106, 0, 0.15);
+  border-color: rgba(255, 106, 0, 0.3);
+  color: var(--aras-orange);
+}
+
+.cs-infodot:focus-visible {
+  outline: 2px solid rgba(255, 106, 0, 0.45);
+  outline-offset: 1px;
+}
+
+.cs-infodot-icon {
+  width: 10px;
+  height: 10px;
+}
+
+/* InfoDot Popover Content */
+.cs-infodot-content {
+  width: 260px;
+  padding: 12px 14px;
+  background: rgba(20, 21, 25, 0.98);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--aras-r-md);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+.cs-infodot-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0 0 6px 0;
+}
+
+.cs-infodot-body {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ============================================================================
+   Order Timeline Mini
+   ============================================================================ */
+.cs-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.cs-timeline-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  position: relative;
+}
+
+.cs-timeline-item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 22px;
+  bottom: -8px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.cs-timeline-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.cs-timeline-dot--active {
+  background: var(--aras-orange);
+  border-color: var(--aras-orange);
+  box-shadow: 0 0 8px rgba(255, 106, 0, 0.4);
+}
+
+.cs-timeline-dot--done {
+  background: #4ade80;
+  border-color: #4ade80;
+}
+
+.cs-timeline-text {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.cs-timeline-text--active {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+}
+
+/* ============================================================================
+   Enhanced Success/Cancel Cards
+   ============================================================================ */
+.cs-result-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 48px 24px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--aras-r-lg);
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+.cs-result-icon {
+  width: 72px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  margin-bottom: 20px;
+}
+
+.cs-result-icon--success {
+  background: rgba(34, 197, 94, 0.12);
+  color: #4ade80;
+}
+
+.cs-result-icon--cancel {
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+}
+
+.cs-result-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0 0 8px 0;
+}
+
+.cs-result-text {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.5;
+  margin: 0 0 24px 0;
+  max-width: 320px;
+}
+
+.cs-result-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 280px;
+}
+
+.cs-result-btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  background: linear-gradient(135deg, var(--aras-orange), #ff8c00);
+  border: none;
+  border-radius: var(--aras-r-md);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cs-result-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(255, 106, 0, 0.3);
+}
+
+.cs-result-btn-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--aras-r-md);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.cs-result-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-result-btn-primary:hover {
+    transform: none;
+  }
+}
+
+/* A11y: Alert role styling */
+.cs-field-error[role="alert"] {
+  animation: cs-shake 0.3s ease;
+}
+
+@keyframes cs-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-field-error[role="alert"] {
+    animation: none;
+  }
 }

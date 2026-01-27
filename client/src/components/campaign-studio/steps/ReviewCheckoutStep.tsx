@@ -11,7 +11,9 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
-  ChevronRight
+  ChevronRight,
+  RotateCcw,
+  Plus
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -22,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { CampaignStudioDraft } from "../types";
+import { InfoDot } from "../InfoDot";
 
 // ============================================================================
 // Label Mappings
@@ -239,21 +242,58 @@ export default function ReviewCheckoutStep({ draft }: ReviewCheckoutStepProps) {
   if (status === 'success') {
     return (
       <div className="cs-step-content">
-        <div className="cs-review-success">
-          <div className="cs-review-success-icon">
-            <CheckCircle2 size={48} />
+        <div className="cs-result-card">
+          <div className="cs-result-icon cs-result-icon--success">
+            <CheckCircle2 size={36} />
           </div>
-          <h2 className="cs-review-success-title">Payment received!</h2>
-          <p className="cs-review-success-text">
-            Your campaign order has been confirmed. Our team will begin setup shortly.
+          <h2 className="cs-result-title">Payment received!</h2>
+          <p className="cs-result-text">
+            Your campaign order is ready for launch. Our team will begin setup shortly.
           </p>
-          <Button
-            className="cs-review-success-btn"
-            onClick={() => window.location.href = '/dashboard'}
-          >
-            Go to Dashboard
-            <ChevronRight size={16} />
-          </Button>
+          <div className="cs-result-actions">
+            <button
+              type="button"
+              className="cs-result-btn-primary"
+              onClick={() => window.location.href = '/dashboard'}
+            >
+              Go to Dashboard
+              <ChevronRight size={16} />
+            </button>
+            <button
+              type="button"
+              className="cs-result-btn-secondary"
+              onClick={() => window.location.href = '/campaign-studio'}
+            >
+              <Plus size={14} />
+              Start another campaign
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Canceled state (show gentle retry card)
+  if (errorMessage && errorMessage.includes('canceled')) {
+    return (
+      <div className="cs-step-content">
+        <div className="cs-result-card">
+          <div className="cs-result-icon cs-result-icon--cancel">
+            <RotateCcw size={32} />
+          </div>
+          <h2 className="cs-result-title">Checkout canceled</h2>
+          <p className="cs-result-text">
+            No worries — your order is saved. You can retry checkout when ready.
+          </p>
+          <div className="cs-result-actions">
+            <button
+              type="button"
+              className="cs-result-btn-primary"
+              onClick={handleRetry}
+            >
+              Retry checkout
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -266,8 +306,8 @@ export default function ReviewCheckoutStep({ draft }: ReviewCheckoutStepProps) {
         Review your campaign configuration before checkout.
       </p>
 
-      {errorMessage && (
-        <div className="cs-review-error">
+      {errorMessage && !errorMessage.includes('canceled') && (
+        <div className="cs-review-error" role="alert">
           <AlertCircle size={16} />
           <span>{errorMessage}</span>
           <button type="button" onClick={handleRetry} className="cs-review-error-retry">
@@ -452,7 +492,13 @@ export default function ReviewCheckoutStep({ draft }: ReviewCheckoutStepProps) {
                 checked={consentChecked}
                 onCheckedChange={(checked) => setConsentChecked(checked === true)}
               />
-              <span>I confirm I'm authorized to run outbound campaigns for this company.</span>
+              <span>
+                I confirm I'm authorized to run outbound campaigns for this company.
+                <InfoDot 
+                  title="Authorization" 
+                  body="You confirm you have permission to contact these leads on behalf of the company." 
+                />
+              </span>
             </label>
 
             {/* Action Button */}
@@ -499,6 +545,26 @@ export default function ReviewCheckoutStep({ draft }: ReviewCheckoutStepProps) {
               <Shield size={14} />
               <span>Secure checkout • GDPR compliant</span>
             </div>
+
+            {/* Order Timeline (only when order exists) */}
+            {orderId && (
+              <div className="cs-timeline">
+                <div className="cs-timeline-item">
+                  <div className="cs-timeline-dot cs-timeline-dot--done" />
+                  <span className="cs-timeline-text">Order created</span>
+                </div>
+                <div className="cs-timeline-item">
+                  <div className={`cs-timeline-dot ${status === 'startingCheckout' || status === 'orderReady' ? 'cs-timeline-dot--active' : ''}`} />
+                  <span className={`cs-timeline-text ${status === 'startingCheckout' || status === 'orderReady' ? 'cs-timeline-text--active' : ''}`}>
+                    {status === 'startingCheckout' ? 'Starting checkout...' : 'Ready for checkout'}
+                  </span>
+                </div>
+                <div className="cs-timeline-item">
+                  <div className="cs-timeline-dot" />
+                  <span className="cs-timeline-text">Payment received</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
