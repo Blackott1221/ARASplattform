@@ -50,6 +50,9 @@ import ArasLab from "@/pages/aras-lab";
 import InternalDashboard from "@/pages/internal/dashboard";
 import InternalContacts from "@/pages/internal/contacts";
 
+// 🚀 CAMPAIGN STUDIO - Done-for-You Onboarding Wizard
+import CampaignStudioPage from "@/pages/campaign-studio";
+
 // Memoized video background component - never re-renders to keep video playing continuously
 const VideoBackground = memo(() => {
   useEffect(() => {
@@ -237,6 +240,10 @@ function Router() {
           {/* 🧪 ARAS LAB - Experimental Voice Interface (hidden) */}
           <Route path="/app/aras-lab" component={ArasLab} />
           <Route path="/aras-lab" component={ArasLab} />
+          
+          {/* 🚀 CAMPAIGN STUDIO - Done-for-You Onboarding Wizard */}
+          <Route path="/campaign-studio" component={CampaignStudioPage} />
+          <Route path="/app/campaign-studio" component={CampaignStudioPage} />
           
         </>
       )}
