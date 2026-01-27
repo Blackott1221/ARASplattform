@@ -23,6 +23,8 @@ function isStepValid(stepId: CampaignStudioStepId, draft: CampaignStudioDraft): 
         !!draft.contactEmail && isValidEmail(draft.contactEmail) &&
         !!draft.companyName && draft.companyName.length >= 2
       );
+    case 'use-case':
+      return Boolean(draft.useCaseId);
     // Other steps: always valid for now (will implement later)
     default:
       return true;
@@ -195,7 +197,7 @@ export default function CampaignStudioShell() {
                 setDraft={setDraft}
                 goNext={goNext}
                 goBack={goBack}
-                attemptedNext={isFirstStep ? attemptedNext : undefined}
+                attemptedNext={attemptedNext}
               />
             </motion.div>
           </AnimatePresence>

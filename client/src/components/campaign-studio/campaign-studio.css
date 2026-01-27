@@ -991,3 +991,276 @@
   margin: 0;
   font-size: 13px;
 }
+
+/* ============================================================================
+   Use Case Step - Grid & Cards
+   ============================================================================ */
+.cs-field-error--centered {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.cs-usecase-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+@media (min-width: 640px) {
+  .cs-usecase-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1280px) {
+  .cs-usecase-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.cs-usecase-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  min-height: 156px;
+  padding: 18px 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--aras-r-md);
+  cursor: pointer;
+  transition: transform 0.18s var(--aras-ease), box-shadow 0.18s var(--aras-ease), border-color 0.18s var(--aras-ease);
+}
+
+.cs-usecase-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.cs-usecase-card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--aras-bg), 0 0 0 4px rgba(255, 106, 0, 0.4);
+}
+
+.cs-usecase-card--selected {
+  border-color: rgba(255, 106, 0, 0.45);
+  box-shadow: 0 0 20px rgba(255, 106, 0, 0.15);
+}
+
+.cs-usecase-card--selected:hover {
+  border-color: rgba(255, 106, 0, 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-usecase-card:hover {
+    transform: none;
+  }
+}
+
+/* Badges */
+.cs-usecase-badges {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 6px;
+}
+
+.cs-usecase-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 10px;
+}
+
+.cs-usecase-badge--recommended {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+
+.cs-usecase-badge--selected {
+  background: rgba(255, 106, 0, 0.2);
+  color: var(--aras-orange);
+}
+
+/* Header */
+.cs-usecase-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.cs-usecase-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 106, 0, 0.1);
+  border-radius: var(--aras-r-sm);
+  color: var(--aras-orange);
+  flex-shrink: 0;
+}
+
+.cs-usecase-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0;
+}
+
+/* Tagline */
+.cs-usecase-tagline {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0 0 12px 0;
+  line-height: 1.4;
+}
+
+/* Outcomes */
+.cs-usecase-outcomes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+}
+
+.cs-usecase-outcomes li {
+  position: relative;
+  padding-left: 14px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+
+.cs-usecase-outcomes li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 4px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+}
+
+/* Preview hint */
+.cs-usecase-preview-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: auto;
+  padding-top: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.4);
+  transition: color 0.15s ease;
+}
+
+.cs-usecase-card:hover .cs-usecase-preview-hint {
+  color: var(--aras-orange);
+}
+
+/* ============================================================================
+   Preview Dialog
+   ============================================================================ */
+.cs-preview-dialog {
+  max-width: 720px !important;
+  background: var(--aras-bg) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+@media (max-width: 640px) {
+  .cs-preview-dialog {
+    max-width: calc(100vw - 32px) !important;
+    padding: 16px !important;
+  }
+}
+
+.cs-preview-title {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.cs-preview-title svg {
+  color: var(--aras-orange);
+}
+
+.cs-preview-tagline {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.cs-preview-section {
+  margin-top: 20px;
+}
+
+.cs-preview-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 0 0 10px 0;
+}
+
+.cs-preview-script {
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--aras-r-sm);
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.8);
+  white-space: pre-wrap;
+  font-family: inherit;
+}
+
+.cs-preview-outcomes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cs-preview-outcomes li {
+  position: relative;
+  padding-left: 18px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.cs-preview-outcomes li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--aras-orange);
+  font-size: 12px;
+}
+
+.cs-preview-kpi {
+  margin-top: 16px;
+  padding: 10px 14px;
+  background: rgba(255, 106, 0, 0.08);
+  border-radius: var(--aras-r-sm);
+  font-size: 13px;
+  color: var(--aras-orange);
+}
+
+.cs-preview-footer {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  gap: 12px !important;
+}
