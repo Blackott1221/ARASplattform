@@ -15,6 +15,7 @@ export interface StepComponentProps {
   setDraft: (patch: Partial<CampaignStudioDraft>) => void;
   goNext?: () => void;
   goBack?: () => void;
+  attemptedNext?: boolean;
 }
 
 export interface StepDefinition {

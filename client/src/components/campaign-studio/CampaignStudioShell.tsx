@@ -6,8 +6,28 @@ import { useState, useEffect, useCallback } from "react";
 import "./campaign-studio.css";
 
 import { CAMPAIGN_STUDIO_STEPS, TOTAL_STEPS } from "./steps/registry";
-import type { CampaignStudioDraft, PersistedWizardData } from "./types";
+import type { CampaignStudioDraft, PersistedWizardData, CampaignStudioStepId } from "./types";
 import { INITIAL_DRAFT, STORAGE_KEY, STORAGE_VERSION } from "./types";
+
+// ============================================================================
+// Validation helpers
+// ============================================================================
+const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+function isStepValid(stepId: CampaignStudioStepId, draft: CampaignStudioDraft): boolean {
+  switch (stepId) {
+    case 'identity':
+      return (
+        !!draft.customerType &&
+        !!draft.contactName && draft.contactName.length >= 2 &&
+        !!draft.contactEmail && isValidEmail(draft.contactEmail) &&
+        !!draft.companyName && draft.companyName.length >= 2
+      );
+    // Other steps: always valid for now (will implement later)
+    default:
+      return true;
+  }
+}
 
 // ============================================================================
 // localStorage helpers
@@ -52,6 +72,7 @@ export default function CampaignStudioShell() {
   const [draft, setDraftState] = useState<CampaignStudioDraft>(INITIAL_DRAFT);
   const [hydrated, setHydrated] = useState(false);
   const [direction, setDirection] = useState<1 | -1>(1);
+  const [attemptedNext, setAttemptedNext] = useState(false);
 
   // Hydrate from localStorage on mount
   useEffect(() => {
@@ -77,15 +98,25 @@ export default function CampaignStudioShell() {
 
   // Navigation
   const goNext = useCallback(() => {
+    const currentStepId = CAMPAIGN_STUDIO_STEPS[currentStepIndex].id;
+    
+    // Check validation
+    if (!isStepValid(currentStepId, draft)) {
+      setAttemptedNext(true);
+      return;
+    }
+    
     if (currentStepIndex < TOTAL_STEPS - 1) {
       setDirection(1);
+      setAttemptedNext(false); // Reset for next step
       setCurrentStepIndex(prev => prev + 1);
     }
-  }, [currentStepIndex]);
+  }, [currentStepIndex, draft]);
 
   const goBack = useCallback(() => {
     if (currentStepIndex > 0) {
       setDirection(-1);
+      setAttemptedNext(false); // Reset when going back
       setCurrentStepIndex(prev => prev - 1);
     }
   }, [currentStepIndex]);
@@ -96,6 +127,7 @@ export default function CampaignStudioShell() {
   const isFirstStep = currentStepIndex === 0;
   const isLastStep = currentStepIndex === TOTAL_STEPS - 1;
   const progressPercent = ((currentStepIndex + 1) / TOTAL_STEPS) * 100;
+  const stepIsValid = isStepValid(currentStep.id, draft);
 
   // Animation variants
   const stepVariants = {
@@ -163,6 +195,7 @@ export default function CampaignStudioShell() {
                 setDraft={setDraft}
                 goNext={goNext}
                 goBack={goBack}
+                attemptedNext={isFirstStep ? attemptedNext : undefined}
               />
             </motion.div>
           </AnimatePresence>
@@ -179,17 +212,9 @@ export default function CampaignStudioShell() {
               <span>Back</span>
             </button>
             
-            {/* Selected indicator for step 0 */}
-            {isFirstStep && draft.customerType && (
-              <span className="cs-selected-hint">
-                <Check size={14} />
-                {draft.customerType === 'company' ? 'Company' : 'Agency'} selected
-              </span>
-            )}
-
             <button 
               type="button" 
-              className="cs-btn cs-btn--next"
+              className={`cs-btn cs-btn--next ${!stepIsValid ? 'cs-btn--next-hint' : ''}`}
               onClick={goNext}
               disabled={isLastStep}
             >
@@ -213,7 +238,7 @@ export default function CampaignStudioShell() {
         </button>
         <button 
           type="button" 
-          className="cs-btn cs-btn--next"
+          className={`cs-btn cs-btn--next ${!stepIsValid ? 'cs-btn--next-hint' : ''}`}
           onClick={goNext}
           disabled={isLastStep}
         >

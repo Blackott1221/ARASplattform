@@ -628,3 +628,141 @@
 .cs-trust-card .cs-placeholder-desc {
   text-align: center;
 }
+
+/* ============================================================================
+   Identity Step - Choice Cards (larger, premium)
+   ============================================================================ */
+.cs-choices--identity {
+  margin-bottom: 28px;
+}
+
+.cs-choice-card--identity {
+  min-height: 96px;
+  position: relative;
+}
+
+.cs-choice-card--error {
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.cs-choice-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--aras-orange);
+  border-radius: 50%;
+  color: #fff;
+}
+
+/* ============================================================================
+   Section Labels
+   ============================================================================ */
+.cs-section-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 12px;
+}
+
+.cs-helper-text {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 20px;
+  margin-top: -8px;
+}
+
+/* ============================================================================
+   Contact Card
+   ============================================================================ */
+.cs-contact-card {
+  margin-top: 8px;
+  padding: 24px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--aras-r-md);
+}
+
+.cs-contact-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cs-contact-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 600px) {
+  .cs-contact-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================================
+   Form Fields
+   ============================================================================ */
+.cs-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cs-field--full {
+  grid-column: 1 / -1;
+}
+
+.cs-field-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.cs-input {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cs-input:focus {
+  border-color: var(--aras-orange) !important;
+  box-shadow: 0 0 0 2px rgba(255, 106, 0, 0.15) !important;
+}
+
+.cs-input::placeholder {
+  color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.cs-input--error {
+  border-color: rgba(239, 68, 68, 0.5) !important;
+}
+
+.cs-input--error:focus {
+  border-color: rgba(239, 68, 68, 0.7) !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.15) !important;
+}
+
+/* ============================================================================
+   Field Errors
+   ============================================================================ */
+.cs-field-error {
+  font-size: 12px;
+  color: rgba(239, 68, 68, 0.85);
+  margin-top: 4px;
+}
+
+/* ============================================================================
+   Next Button Hint State (when invalid)
+   ============================================================================ */
+.cs-btn--next-hint {
+  opacity: 0.6;
+}
