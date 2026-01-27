@@ -1106,3 +1106,101 @@ export const adminNotifications = pgTable("admin_notifications", {
 
 export type AdminNotification = typeof adminNotifications.$inferSelect;
 export type InsertAdminNotification = typeof adminNotifications.$inferInsert;
+
+// ============================================================================
+// SERVICE ORDERS - Done-for-You Onboarding Flow
+// ============================================================================
+// Client orders for managed call services (e.g., calls_1000, calls_5000)
+// Tracks payment, status, assigned staff, and timeline events
+// ============================================================================
+
+export const serviceOrders = pgTable("service_orders", {
+  id: serial("id").primaryKey(),
+  
+  // Client/User reference
+  clientUserId: varchar("client_user_id").references(() => users.id).notNull(),
+  
+  // Contact info (for orders without existing user account)
+  companyName: varchar("company_name"),
+  contactName: varchar("contact_name"),
+  contactEmail: varchar("contact_email"),
+  contactPhone: varchar("contact_phone"),
+  
+  // Package details
+  packageCode: varchar("package_code").notNull(), // e.g., 'calls_1000', 'calls_5000'
+  targetCalls: integer("target_calls").notNull(),
+  priceCents: integer("price_cents").notNull(),
+  currency: varchar("currency").notNull().default("eur"),
+  
+  // Order status
+  status: varchar("status").notNull().default("draft"), // draft|paid|intake|in_progress|paused|completed|canceled
+  
+  // Payment tracking
+  paymentStatus: varchar("payment_status").notNull().default("unpaid"), // unpaid|paid|failed|refunded
+  paymentReference: varchar("payment_reference"), // Stripe payment intent ID or checkout session ID
+  
+  // Operational references
+  campaignId: integer("campaign_id").references(() => campaigns.id), // Link to active campaign
+  // TODO: Add lead_import_job_id when import_jobs table is created
+  leadImportJobId: integer("lead_import_job_id"), // NULL for now - no import_jobs table yet
+  
+  // Staff assignment
+  assignedStaffId: varchar("assigned_staff_id").references(() => users.id),
+  
+  // Flexible metadata
+  metadata: jsonb("metadata").$type<{
+    notes?: string;
+    callsCompleted?: number;
+    lastCallDate?: string;
+    customFields?: Record<string, any>;
+  }>(),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("service_orders_status_idx").on(table.status),
+  index("service_orders_payment_status_idx").on(table.paymentStatus),
+  index("service_orders_created_idx").on(table.createdAt),
+  index("service_orders_client_idx").on(table.clientUserId),
+  index("service_orders_staff_idx").on(table.assignedStaffId),
+]);
+
+export type ServiceOrder = typeof serviceOrders.$inferSelect;
+export type InsertServiceOrder = typeof serviceOrders.$inferInsert;
+
+// Service Order Events - Timeline/Audit trail
+export const serviceOrderEvents = pgTable("service_order_events", {
+  id: serial("id").primaryKey(),
+  
+  // Parent order reference
+  orderId: integer("order_id").references(() => serviceOrders.id).notNull(),
+  
+  // Event details
+  type: varchar("type").notNull(), // created|paid|lead_upload|assigned|started|paused|completed|note
+  title: varchar("title").notNull(),
+  description: text("description"),
+  
+  // Actor who triggered the event
+  actorId: varchar("actor_id").references(() => users.id),
+  
+  // Flexible metadata for event-specific data
+  metadata: jsonb("metadata").$type<{
+    previousStatus?: string;
+    newStatus?: string;
+    previousStaffId?: string;
+    newStaffId?: string;
+    paymentAmount?: number;
+    [key: string]: any;
+  }>(),
+  
+  // Timestamp
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("service_order_events_order_idx").on(table.orderId),
+  index("service_order_events_type_idx").on(table.type),
+  index("service_order_events_created_idx").on(table.createdAt),
+]);
+
+export type ServiceOrderEvent = typeof serviceOrderEvents.$inferSelect;
+export type InsertServiceOrderEvent = typeof serviceOrderEvents.$inferInsert;

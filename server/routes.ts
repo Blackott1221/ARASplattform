@@ -30,6 +30,7 @@ import adminActivityRouter from "./routes/admin-activity";
 import adminSearchRouter from "./routes/admin-search";
 import adminNotificationsRouter from "./routes/admin-notifications";
 import adminUsersRouter from "./routes/admin-users";
+import serviceOrdersRouter from "./routes/service-orders";
 import { requireAdmin } from "./middleware/admin";
 import { getKnowledgeDigest } from "./knowledge/context-builder";
 import { checkCallLimit, checkMessageLimit } from "./middleware/usage-limits";
@@ -2428,6 +2429,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   app.use("/api/admin", adminSearchRouter);
   app.use("/api/admin", adminNotificationsRouter);
   app.use("/api/admin", adminUsersRouter);
+  app.use("/api/service-orders", serviceOrdersRouter);
   
   // Seed default chat channel
   seedDefaultChannel().catch(console.error);
