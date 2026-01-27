@@ -64,6 +64,10 @@ const TONE_LABELS: Record<string, string> = {
 
 const LEAD_PRICE_CENTS = 5;
 const RECEIPT_KEY = 'aras_campaign_studio_receipt_v1';
+const RECEIPT_EXPIRY_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
+
+// Order status whitelist for "ready" states
+const READY_STATUSES = ['paid', 'intake', 'in_progress', 'completed'];
 
 // ============================================================================
 // Types
@@ -72,6 +76,8 @@ interface Receipt {
   orderId: number;
   paid: boolean;
   lastSeenAt: number;
+  createdAt: number; // For expiry check
+  version: number;   // For future migrations
 }
 
 interface OrderEvent {
@@ -132,14 +138,30 @@ function loadReceipt(): Receipt | null {
   try {
     const raw = localStorage.getItem(RECEIPT_KEY);
     if (!raw) return null;
-    return JSON.parse(raw);
+    const receipt = JSON.parse(raw) as Receipt;
+    
+    // Check for expiry (14 days)
+    if (receipt.createdAt && Date.now() - receipt.createdAt > RECEIPT_EXPIRY_MS) {
+      localStorage.removeItem(RECEIPT_KEY);
+      return null;
+    }
+    
+    return receipt;
   } catch {
     return null;
   }
 }
 
-function saveReceipt(receipt: Receipt): void {
+function saveReceipt(orderId: number, paid: boolean): void {
   try {
+    const now = Date.now();
+    const receipt: Receipt = {
+      orderId,
+      paid,
+      lastSeenAt: now,
+      createdAt: now,
+      version: 1,
+    };
     localStorage.setItem(RECEIPT_KEY, JSON.stringify(receipt));
   } catch {
     // Ignore storage errors
@@ -185,7 +207,7 @@ export default function ReviewCheckoutStep({ draft }: ReviewCheckoutStepProps) {
         const oid = parseInt(urlOrderId, 10);
         if (!isNaN(oid)) {
           setOrderId(oid);
-          saveReceipt({ orderId: oid, paid: true, lastSeenAt: Date.now() });
+          saveReceipt(oid, true);
         }
       }
       // Clean URL
@@ -240,7 +262,7 @@ export default function ReviewCheckoutStep({ draft }: ReviewCheckoutStepProps) {
         // Trust server for paid status
         if (data.order?.paymentStatus === 'paid' && status !== 'success') {
           setStatus('success');
-          saveReceipt({ orderId, paid: true, lastSeenAt: Date.now() });
+          saveReceipt(orderId, true);
         }
       } catch {
         setTimelineStatus('error');
@@ -319,7 +341,7 @@ export default function ReviewCheckoutStep({ draft }: ReviewCheckoutStepProps) {
       setOrderId(order.id);
       setStatus('orderReady');
       // Save receipt (not yet paid)
-      saveReceipt({ orderId: order.id, paid: false, lastSeenAt: Date.now() });
+      saveReceipt(order.id, false);
     } catch (err) {
       console.error('Create order error:', err);
       setStatus('error');
@@ -375,10 +397,27 @@ export default function ReviewCheckoutStep({ draft }: ReviewCheckoutStepProps) {
 
   // Success state
   if (status === 'success') {
-    // Build admin dashboard link (prepare for future deep link support)
-    const adminDashboardUrl = orderId 
+    // Build admin dashboard links
+    const deepLink = orderId 
       ? `/admin-dashboard?tab=service-orders&orderId=${orderId}`
       : '/admin-dashboard';
+    const fallbackLink = '/admin-dashboard';
+
+    // Navigate handler with fallback guard
+    const handleGoToDashboard = () => {
+      window.location.href = deepLink;
+      // Fallback after 800ms if navigation blocked
+      setTimeout(() => {
+        if (document.visibilityState === 'visible' && window.location.pathname.includes('/campaign-studio')) {
+          window.location.href = fallbackLink;
+        }
+      }, 800);
+    };
+
+    // Check if order is being prepared (paid but not in ready status)
+    const isPreparing = serverOrder && 
+      serverOrder.paymentStatus === 'paid' && 
+      !READY_STATUSES.includes(serverOrder.status);
 
     return (
       <div className="cs-step-content">
@@ -390,11 +429,38 @@ export default function ReviewCheckoutStep({ draft }: ReviewCheckoutStepProps) {
           <p className="cs-result-text">
             Your campaign order is ready for launch. Our team will begin setup shortly.
           </p>
+
+          {/* Status Banner: Preparing */}
+          {isPreparing && (
+            <div className="cs-status-banner" style={{
+              padding: '14px 16px',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 'var(--aras-r-md)',
+              background: 'rgba(255,255,255,0.02)',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 12,
+              marginBottom: 16,
+              width: '100%',
+              maxWidth: 320,
+            }}>
+              <Loader2 size={18} style={{ opacity: 0.7, flexShrink: 0, marginTop: 2 }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.9)' }}>
+                  We're preparing your campaign setup.
+                </span>
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>
+                  You can already review your order in the dashboard.
+                </span>
+              </div>
+            </div>
+          )}
+
           <div className="cs-result-actions">
             <button
               type="button"
               className="cs-result-btn-primary"
-              onClick={() => window.location.href = adminDashboardUrl}
+              onClick={handleGoToDashboard}
             >
               Go to Admin Dashboard
               <ChevronRight size={16} />
@@ -412,6 +478,27 @@ export default function ReviewCheckoutStep({ draft }: ReviewCheckoutStepProps) {
               Start another campaign
             </button>
           </div>
+
+          {/* Fallback micro-link */}
+          <p style={{ 
+            fontSize: 13, 
+            color: 'rgba(255,255,255,0.5)', 
+            marginTop: 16,
+            textAlign: 'center',
+          }}>
+            If the order doesn't open automatically,{' '}
+            <a 
+              href={fallbackLink}
+              style={{ 
+                color: 'rgba(255,255,255,0.75)', 
+                textDecoration: 'underline',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '0.75'}
+            >
+              open the dashboard
+            </a>.
+          </p>
 
           {/* Server Timeline on Success */}
           {orderId && timelineStatus === 'ready' && serverEvents.length > 0 && (
@@ -707,6 +794,46 @@ export default function ReviewCheckoutStep({ draft }: ReviewCheckoutStepProps) {
               <Shield size={14} />
               <span>Secure checkout • GDPR compliant</span>
             </div>
+
+            {/* Status Banner: Payment Pending */}
+            {orderId && serverOrder && serverOrder.paymentStatus !== 'paid' && (
+              <div className="cs-status-banner" style={{
+                padding: '14px 16px',
+                border: '1px solid rgba(255, 191, 36, 0.2)',
+                borderRadius: 'var(--aras-r-md)',
+                background: 'rgba(251, 191, 36, 0.08)',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 12,
+                marginTop: 16,
+                marginBottom: 8,
+              }}>
+                <AlertCircle size={18} style={{ color: '#fbbf24', flexShrink: 0, marginTop: 2 }} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.9)' }}>
+                    Payment pending — complete checkout to launch.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleStartCheckout}
+                    disabled={!consentChecked || status === 'startingCheckout'}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--aras-orange)',
+                      cursor: 'pointer',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      padding: 0,
+                      textAlign: 'left',
+                      opacity: (!consentChecked || status === 'startingCheckout') ? 0.5 : 1,
+                    }}
+                  >
+                    {status === 'startingCheckout' ? 'Starting checkout...' : 'Retry checkout →'}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Order Timeline - Server Events */}
             {orderId && (
