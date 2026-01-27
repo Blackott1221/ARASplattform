@@ -24,6 +24,80 @@ const stripe = process.env.STRIPE_SECRET_KEY
 const router = Router();
 
 // ============================================================================
+// SERVER-AUTHORITATIVE PRICING (Tamper-proof)
+// ============================================================================
+interface CallPackageDef {
+  volume: number;
+  pricePerCallCents: number;
+}
+
+const CALL_PACKAGES: Record<string, CallPackageDef> = {
+  'calls_2500':   { volume: 2500,   pricePerCallCents: 39 },
+  'calls_5000':   { volume: 5000,   pricePerCallCents: 35 },
+  'calls_10000':  { volume: 10000,  pricePerCallCents: 32 },
+  'calls_20000':  { volume: 20000,  pricePerCallCents: 28 },
+  'calls_50000':  { volume: 50000,  pricePerCallCents: 24 },
+  'calls_100000': { volume: 100000, pricePerCallCents: 20 },
+};
+
+const LEAD_PRICE_CENTS = 5; // €0.05 per lead
+
+function computeServerPrice(
+  packageCode: string,
+  targetCalls: number,
+  leadsMode?: 'have' | 'need',
+  leadPackageSize?: number
+): { valid: boolean; error?: string; callsTotalCents: number; leadsTotalCents: number; grandTotalCents: number } {
+  const pkg = CALL_PACKAGES[packageCode];
+  
+  if (!pkg) {
+    return { valid: false, error: `Unknown package: ${packageCode}`, callsTotalCents: 0, leadsTotalCents: 0, grandTotalCents: 0 };
+  }
+  
+  if (pkg.volume !== targetCalls) {
+    return { valid: false, error: `Target calls ${targetCalls} does not match package ${packageCode} (expected ${pkg.volume})`, callsTotalCents: 0, leadsTotalCents: 0, grandTotalCents: 0 };
+  }
+  
+  const callsTotalCents = targetCalls * pkg.pricePerCallCents;
+  let leadsTotalCents = 0;
+  
+  if (leadsMode === 'need') {
+    if (!leadPackageSize || leadPackageSize <= 0) {
+      return { valid: false, error: 'Lead package size required when leadsMode is "need"', callsTotalCents: 0, leadsTotalCents: 0, grandTotalCents: 0 };
+    }
+    leadsTotalCents = leadPackageSize * LEAD_PRICE_CENTS;
+  }
+  
+  const grandTotalCents = callsTotalCents + leadsTotalCents;
+  
+  return { valid: true, callsTotalCents, leadsTotalCents, grandTotalCents };
+}
+
+function sanitizeMetadata(metadata: any): Record<string, any> {
+  if (!metadata || typeof metadata !== 'object') return {};
+  
+  const sanitized: Record<string, any> = {};
+  const allowedKeys = [
+    'customerType', 'useCaseId', 'voiceId', 'leadsMode', 'leadPackageSize', 
+    'leadFilters', 'goalPrimary', 'goalMetric', 'goalBrief', 'goalGuardrails', 
+    'tone', 'callsTotalCents', 'leadsTotalCents', 'grandTotalCents'
+  ];
+  
+  for (const key of allowedKeys) {
+    if (metadata[key] !== undefined) {
+      // Truncate goalBrief to 500 chars
+      if (key === 'goalBrief' && typeof metadata[key] === 'string') {
+        sanitized[key] = metadata[key].slice(0, 500);
+      } else {
+        sanitized[key] = metadata[key];
+      }
+    }
+  }
+  
+  return sanitized;
+}
+
+// ============================================================================
 // HELPER: Create Event
 // ============================================================================
 async function createOrderEvent(
@@ -63,6 +137,8 @@ function requireAuth(req: Request, res: Response, next: any) {
  * POST /api/service-orders
  * Create a new service order (draft status)
  * Requires: authenticated user
+ * 
+ * SECURITY: Server computes price authoritatively. Client priceCents is IGNORED.
  */
 router.post('/', requireAuth, async (req: Request, res: Response) => {
   try {
@@ -74,19 +150,45 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
       contactPhone,
       packageCode,
       targetCalls,
-      priceCents,
       currency = 'eur',
       metadata,
+      // Leads fields
+      leadsMode,
+      leadPackageSize,
+      leadFilters,
     } = req.body;
 
     // Validate required fields
-    if (!packageCode || !targetCalls || !priceCents) {
+    if (!packageCode || !targetCalls) {
       return res.status(400).json({ 
-        error: 'Missing required fields: packageCode, targetCalls, priceCents' 
+        error: 'Missing required fields: packageCode, targetCalls',
+        code: 'MISSING_FIELDS'
       });
     }
 
-    // Create order
+    // SERVER-AUTHORITATIVE PRICING: Compute price server-side
+    const pricing = computeServerPrice(packageCode, targetCalls, leadsMode, leadPackageSize);
+    
+    if (!pricing.valid) {
+      console.warn(`[SERVICE-ORDERS] Pricing validation failed: ${pricing.error}`);
+      return res.status(400).json({ 
+        error: pricing.error,
+        code: 'INVALID_PRICING'
+      });
+    }
+
+    // Sanitize and enrich metadata
+    const sanitizedMetadata = sanitizeMetadata({
+      ...metadata,
+      leadsMode,
+      leadPackageSize,
+      leadFilters,
+      callsTotalCents: pricing.callsTotalCents,
+      leadsTotalCents: pricing.leadsTotalCents,
+      grandTotalCents: pricing.grandTotalCents,
+    });
+
+    // Create order with server-computed price
     const [order] = await db.insert(serviceOrders).values({
       clientUserId: userId,
       companyName,
@@ -95,11 +197,11 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
       contactPhone,
       packageCode,
       targetCalls,
-      priceCents,
+      priceCents: pricing.grandTotalCents, // SERVER-AUTHORITATIVE
       currency,
       status: 'draft',
       paymentStatus: 'unpaid',
-      metadata,
+      metadata: sanitizedMetadata,
     }).returning();
 
     // Create initial event
@@ -109,10 +211,16 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
       'Order erstellt',
       userId,
       `Neuer Service-Auftrag für ${packageCode} erstellt`,
-      { packageCode, targetCalls, priceCents }
+      { 
+        packageCode, 
+        targetCalls, 
+        callsTotalCents: pricing.callsTotalCents,
+        leadsTotalCents: pricing.leadsTotalCents,
+        grandTotalCents: pricing.grandTotalCents,
+      }
     );
 
-    console.log(`[SERVICE-ORDERS] Created order ${order.id} for user ${userId}`);
+    console.log(`[SERVICE-ORDERS] Created order ${order.id} for user ${userId}, total: ${pricing.grandTotalCents} cents`);
     res.status(201).json(order);
   } catch (error: any) {
     console.error('[SERVICE-ORDERS] Error creating order:', error);
@@ -146,6 +254,8 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
  * POST /api/service-orders/:id/checkout
  * Create Stripe Checkout Session for one-time payment
  * Requires: authenticated user, order must belong to user
+ * 
+ * IDEMPOTENT: Returns existing session URL if pending, creates new only if needed.
  */
 router.post('/:id/checkout', requireAuth, async (req: Request, res: Response) => {
   try {
@@ -176,9 +286,47 @@ router.post('/:id/checkout', requireAuth, async (req: Request, res: Response) =>
       return res.status(403).json({ error: 'Not authorized to access this order' });
     }
 
-    // Check if already paid
+    // Already paid → 409 Conflict
     if (order.paymentStatus === 'paid') {
-      return res.status(400).json({ error: 'Order already paid' });
+      return res.status(409).json({ 
+        error: 'Order already paid',
+        code: 'ALREADY_PAID'
+      });
+    }
+
+    // IDEMPOTENCY: Check for existing pending session
+    if (order.paymentStatus === 'pending' && order.paymentReference) {
+      try {
+        const existingSession = await stripe.checkout.sessions.retrieve(order.paymentReference);
+        
+        // Session still open → return existing URL
+        if (existingSession.status !== 'complete' && existingSession.url) {
+          console.log(`[SERVICE-ORDERS] Returning existing session for order ${orderId}`);
+          return res.json({ url: existingSession.url });
+        }
+        
+        // Session expired or complete but not marked paid → reset for new session
+        console.log(`[SERVICE-ORDERS] Existing session ${order.paymentReference} expired/complete, creating new`);
+        await db
+          .update(serviceOrders)
+          .set({
+            paymentStatus: 'unpaid',
+            paymentReference: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(serviceOrders.id, orderId));
+      } catch (stripeErr: any) {
+        // Session not found or error → reset and create new
+        console.warn(`[SERVICE-ORDERS] Could not retrieve session ${order.paymentReference}: ${stripeErr.message}`);
+        await db
+          .update(serviceOrders)
+          .set({
+            paymentStatus: 'unpaid',
+            paymentReference: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(serviceOrders.id, orderId));
+      }
     }
 
     // Get user for customer info
@@ -191,7 +339,7 @@ router.post('/:id/checkout', requireAuth, async (req: Request, res: Response) =>
     const customerEmail = order.contactEmail || user?.email || undefined;
     const appUrl = process.env.APP_URL || 'http://localhost:5000';
 
-    // Create Stripe Checkout Session (one-time payment)
+    // Create NEW Stripe Checkout Session (one-time payment)
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       payment_method_types: ['card'],
@@ -200,7 +348,7 @@ router.post('/:id/checkout', requireAuth, async (req: Request, res: Response) =>
         {
           price_data: {
             currency: order.currency || 'eur',
-            unit_amount: order.priceCents,
+            unit_amount: order.priceCents, // SERVER-AUTHORITATIVE price
             product_data: {
               name: 'ARAS Campaign Setup',
               description: `${order.targetCalls?.toLocaleString()} calls - ${order.packageCode}`,
@@ -218,10 +366,11 @@ router.post('/:id/checkout', requireAuth, async (req: Request, res: Response) =>
       },
     });
 
-    // Update order with pending checkout
+    // Update order to pending with session reference
     await db
       .update(serviceOrders)
       .set({
+        paymentStatus: 'pending',
         paymentReference: session.id,
         updatedAt: new Date(),
       })

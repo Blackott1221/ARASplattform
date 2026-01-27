@@ -129,6 +129,9 @@ export default function ReviewCheckoutStep({ draft }: ReviewCheckoutStepProps) {
     setErrorMessage('');
 
     try {
+      // Generate packageCode from callVolume (server-authoritative pricing)
+      const packageCode = `calls_${draft.callVolume}`;
+
       const response = await fetch('/api/service-orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -137,31 +140,43 @@ export default function ReviewCheckoutStep({ draft }: ReviewCheckoutStepProps) {
           companyName: draft.companyName,
           contactName: draft.contactName,
           contactEmail: draft.contactEmail,
-          packageCode: `calls_${draft.callVolume}`,
+          packageCode,
           targetCalls: draft.callVolume,
-          priceCents: grandTotalCents,
           currency: 'eur',
+          // Leads fields (server validates)
+          leadsMode: draft.leadsMode,
+          leadPackageSize: draft.leadPackageSize,
+          leadFilters: draft.leadFilters,
+          // Metadata for campaign config (no pricing - server computes)
           metadata: {
             customerType: draft.customerType,
             useCaseId: draft.useCaseId,
             voiceId: draft.voiceId,
-            leadsMode: draft.leadsMode,
-            leadPackageSize: draft.leadPackageSize,
-            leadFilters: draft.leadFilters,
             goalPrimary: draft.goalPrimary,
             goalMetric: draft.goalMetric,
             goalBrief: draft.goalBrief,
             goalGuardrails: draft.goalGuardrails,
             tone: draft.tone,
-            callsTotalCents,
-            leadsTotalCents,
-            grandTotalCents,
           },
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create order');
+        const errorData = await response.json().catch(() => ({}));
+        
+        // Handle specific error codes
+        if (errorData.code === 'INVALID_PRICING') {
+          setStatus('error');
+          setErrorMessage('Please re-check your call package selection.');
+          return;
+        }
+        if (errorData.code === 'MISSING_FIELDS') {
+          setStatus('error');
+          setErrorMessage('Missing required information. Please complete all steps.');
+          return;
+        }
+        
+        throw new Error(errorData.error || 'Failed to create order');
       }
 
       const order = await response.json();
@@ -172,7 +187,7 @@ export default function ReviewCheckoutStep({ draft }: ReviewCheckoutStepProps) {
       setStatus('error');
       setErrorMessage('We couldn\'t create your order. Please try again.');
     }
-  }, [status, draft, grandTotalCents, callsTotalCents, leadsTotalCents]);
+  }, [status, draft]);
 
   // Start checkout
   const handleStartCheckout = useCallback(async () => {
@@ -189,7 +204,15 @@ export default function ReviewCheckoutStep({ draft }: ReviewCheckoutStepProps) {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to start checkout');
+        const errorData = await response.json().catch(() => ({}));
+        
+        // Handle 409 Already Paid → show success
+        if (response.status === 409 && errorData.code === 'ALREADY_PAID') {
+          setStatus('success');
+          return;
+        }
+        
+        throw new Error(errorData.error || 'Failed to start checkout');
       }
 
       const { url } = await response.json();
