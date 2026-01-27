@@ -251,6 +251,75 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/service-orders/:id
+ * Get order detail with events for the current user
+ * Requires: authenticated user, order must belong to user
+ */
+router.get('/:id', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = req.session!.userId as string;
+    const orderId = parseInt(req.params.id, 10);
+
+    if (isNaN(orderId)) {
+      return res.status(400).json({ error: 'Invalid order ID' });
+    }
+
+    // Get order and verify ownership
+    const [order] = await db
+      .select({
+        id: serviceOrders.id,
+        status: serviceOrders.status,
+        paymentStatus: serviceOrders.paymentStatus,
+        packageCode: serviceOrders.packageCode,
+        targetCalls: serviceOrders.targetCalls,
+        priceCents: serviceOrders.priceCents,
+        currency: serviceOrders.currency,
+        companyName: serviceOrders.companyName,
+        contactName: serviceOrders.contactName,
+        contactEmail: serviceOrders.contactEmail,
+        createdAt: serviceOrders.createdAt,
+        updatedAt: serviceOrders.updatedAt,
+        metadata: serviceOrders.metadata,
+        clientUserId: serviceOrders.clientUserId,
+      })
+      .from(serviceOrders)
+      .where(eq(serviceOrders.id, orderId))
+      .limit(1);
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Ownership check
+    if (order.clientUserId !== userId) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Get events for this order
+    const events = await db
+      .select({
+        id: serviceOrderEvents.id,
+        type: serviceOrderEvents.type,
+        title: serviceOrderEvents.title,
+        description: serviceOrderEvents.description,
+        createdAt: serviceOrderEvents.createdAt,
+      })
+      .from(serviceOrderEvents)
+      .where(eq(serviceOrderEvents.orderId, orderId))
+      .orderBy(serviceOrderEvents.createdAt);
+
+    // Remove clientUserId from response (internal field)
+    const { clientUserId, ...safeOrder } = order;
+
+    console.log(`[SERVICE-ORDERS] User ${userId} fetched order ${orderId} with ${events.length} events`);
+    res.json({ order: safeOrder, events });
+  } catch (error: any) {
+    console.error('[SERVICE-ORDERS] Error fetching user order:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * POST /api/service-orders/:id/checkout
  * Create Stripe Checkout Session for one-time payment
  * Requires: authenticated user, order must belong to user

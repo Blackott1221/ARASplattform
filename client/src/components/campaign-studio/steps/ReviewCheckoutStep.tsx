@@ -63,6 +63,42 @@ const TONE_LABELS: Record<string, string> = {
 };
 
 const LEAD_PRICE_CENTS = 5;
+const RECEIPT_KEY = 'aras_campaign_studio_receipt_v1';
+
+// ============================================================================
+// Types
+// ============================================================================
+interface Receipt {
+  orderId: number;
+  paid: boolean;
+  lastSeenAt: number;
+}
+
+interface OrderEvent {
+  id: number;
+  type: string;
+  title: string;
+  description?: string | null;
+  createdAt: string;
+}
+
+interface OrderFromServer {
+  id: number;
+  status: string;
+  paymentStatus: string;
+  packageCode?: string;
+  targetCalls?: number;
+  priceCents?: number;
+  currency?: string;
+  companyName?: string;
+  contactName?: string;
+  contactEmail?: string;
+  createdAt: string;
+  updatedAt: string;
+  metadata?: any;
+}
+
+type TimelineStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 // ============================================================================
 // Helpers
@@ -80,6 +116,34 @@ function formatPrice(cents?: number, currency = 'EUR'): string {
 function formatNumber(n?: number): string {
   if (!n) return '—';
   return new Intl.NumberFormat('de-DE').format(n);
+}
+
+function formatEventTime(isoString: string): string {
+  const date = new Date(isoString);
+  return new Intl.DateTimeFormat('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
+function loadReceipt(): Receipt | null {
+  try {
+    const raw = localStorage.getItem(RECEIPT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function saveReceipt(receipt: Receipt): void {
+  try {
+    localStorage.setItem(RECEIPT_KEY, JSON.stringify(receipt));
+  } catch {
+    // Ignore storage errors
+  }
 }
 
 // ============================================================================
@@ -103,19 +167,88 @@ export default function ReviewCheckoutStep({ draft }: ReviewCheckoutStepProps) {
   const [consentChecked, setConsentChecked] = useState(false);
   const [showBriefDialog, setShowBriefDialog] = useState(false);
 
-  // Check URL params on mount for success/cancel
+  // Server timeline state
+  const [timelineStatus, setTimelineStatus] = useState<TimelineStatus>('idle');
+  const [serverEvents, setServerEvents] = useState<OrderEvent[]>([]);
+  const [serverOrder, setServerOrder] = useState<OrderFromServer | null>(null);
+  const [showAllEvents, setShowAllEvents] = useState(false);
+
+  // Check URL params on mount for success/cancel + hydrate from receipt
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const urlOrderId = params.get('order_id');
+    
     if (params.get('success') === 'true') {
       setStatus('success');
+      // Save receipt as paid
+      if (urlOrderId) {
+        const oid = parseInt(urlOrderId, 10);
+        if (!isNaN(oid)) {
+          setOrderId(oid);
+          saveReceipt({ orderId: oid, paid: true, lastSeenAt: Date.now() });
+        }
+      }
       // Clean URL
       window.history.replaceState({}, '', window.location.pathname);
     } else if (params.get('canceled') === 'true') {
+      // Restore orderId from URL if available
+      if (urlOrderId) {
+        const oid = parseInt(urlOrderId, 10);
+        if (!isNaN(oid)) {
+          setOrderId(oid);
+          setStatus('orderReady');
+        }
+      }
       setErrorMessage('Checkout was canceled. You can try again when ready.');
       // Clean URL
       window.history.replaceState({}, '', window.location.pathname);
+    } else {
+      // No success/cancel → try hydrating from receipt
+      const receipt = loadReceipt();
+      if (receipt && receipt.orderId) {
+        setOrderId(receipt.orderId);
+        if (receipt.paid) {
+          setStatus('success');
+        } else {
+          setStatus('orderReady');
+        }
+      }
     }
   }, []);
+
+  // Fetch order detail + events when orderId changes
+  useEffect(() => {
+    if (!orderId) return;
+
+    const fetchOrderDetail = async () => {
+      setTimelineStatus('loading');
+      try {
+        const response = await fetch(`/api/service-orders/${orderId}`, {
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          setTimelineStatus('error');
+          return;
+        }
+
+        const data = await response.json();
+        setServerOrder(data.order);
+        setServerEvents(data.events || []);
+        setTimelineStatus('ready');
+
+        // Trust server for paid status
+        if (data.order?.paymentStatus === 'paid' && status !== 'success') {
+          setStatus('success');
+          saveReceipt({ orderId, paid: true, lastSeenAt: Date.now() });
+        }
+      } catch {
+        setTimelineStatus('error');
+      }
+    };
+
+    fetchOrderDetail();
+  }, [orderId, status]);
 
   // Compute totals
   const callsTotalCents = draft.computedTotalCents || 0;
@@ -185,6 +318,8 @@ export default function ReviewCheckoutStep({ draft }: ReviewCheckoutStepProps) {
       const order = await response.json();
       setOrderId(order.id);
       setStatus('orderReady');
+      // Save receipt (not yet paid)
+      saveReceipt({ orderId: order.id, paid: false, lastSeenAt: Date.now() });
     } catch (err) {
       console.error('Create order error:', err);
       setStatus('error');
@@ -240,6 +375,11 @@ export default function ReviewCheckoutStep({ draft }: ReviewCheckoutStepProps) {
 
   // Success state
   if (status === 'success') {
+    // Build admin dashboard link (prepare for future deep link support)
+    const adminDashboardUrl = orderId 
+      ? `/admin-dashboard?tab=service-orders&orderId=${orderId}`
+      : '/admin-dashboard';
+
     return (
       <div className="cs-step-content">
         <div className="cs-result-card">
@@ -254,20 +394,42 @@ export default function ReviewCheckoutStep({ draft }: ReviewCheckoutStepProps) {
             <button
               type="button"
               className="cs-result-btn-primary"
-              onClick={() => window.location.href = '/dashboard'}
+              onClick={() => window.location.href = adminDashboardUrl}
             >
-              Go to Dashboard
+              Go to Admin Dashboard
               <ChevronRight size={16} />
             </button>
             <button
               type="button"
               className="cs-result-btn-secondary"
-              onClick={() => window.location.href = '/campaign-studio'}
+              onClick={() => {
+                // Clear receipt and reload wizard
+                localStorage.removeItem(RECEIPT_KEY);
+                window.location.href = '/campaign-studio';
+              }}
             >
               <Plus size={14} />
               Start another campaign
             </button>
           </div>
+
+          {/* Server Timeline on Success */}
+          {orderId && timelineStatus === 'ready' && serverEvents.length > 0 && (
+            <div className="cs-timeline" style={{ marginTop: 24, width: '100%', maxWidth: 300 }}>
+              <p className="cs-sectionTitle" style={{ marginBottom: 8, textAlign: 'left' }}>Order Timeline</p>
+              {serverEvents.slice(0, 5).map((event) => (
+                <div key={event.id} className="cs-timeline-item">
+                  <div className={`cs-timeline-dot ${event.type === 'paid' ? 'cs-timeline-dot--done' : 'cs-timeline-dot--done'}`} />
+                  <span className="cs-timeline-text">
+                    {event.title}
+                    <span style={{ marginLeft: 8, opacity: 0.5, fontSize: 11 }}>
+                      {formatEventTime(event.createdAt)}
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -546,23 +708,77 @@ export default function ReviewCheckoutStep({ draft }: ReviewCheckoutStepProps) {
               <span>Secure checkout • GDPR compliant</span>
             </div>
 
-            {/* Order Timeline (only when order exists) */}
+            {/* Order Timeline - Server Events */}
             {orderId && (
               <div className="cs-timeline">
-                <div className="cs-timeline-item">
-                  <div className="cs-timeline-dot cs-timeline-dot--done" />
-                  <span className="cs-timeline-text">Order created</span>
-                </div>
-                <div className="cs-timeline-item">
-                  <div className={`cs-timeline-dot ${status === 'startingCheckout' || status === 'orderReady' ? 'cs-timeline-dot--active' : ''}`} />
-                  <span className={`cs-timeline-text ${status === 'startingCheckout' || status === 'orderReady' ? 'cs-timeline-text--active' : ''}`}>
-                    {status === 'startingCheckout' ? 'Starting checkout...' : 'Ready for checkout'}
-                  </span>
-                </div>
-                <div className="cs-timeline-item">
-                  <div className="cs-timeline-dot" />
-                  <span className="cs-timeline-text">Payment received</span>
-                </div>
+                <p className="cs-sectionTitle" style={{ marginBottom: 8 }}>Order Timeline</p>
+                
+                {timelineStatus === 'loading' && (
+                  <>
+                    <div className="cs-timeline-item">
+                      <div className="cs-timeline-dot" />
+                      <span className="cs-timeline-text" style={{ opacity: 0.4 }}>Loading...</span>
+                    </div>
+                  </>
+                )}
+
+                {timelineStatus === 'error' && (
+                  <div className="cs-timeline-item">
+                    <span className="cs-timeline-text" style={{ color: 'rgba(255,100,100,0.8)' }}>
+                      Failed to load timeline.{' '}
+                      <button 
+                        type="button" 
+                        onClick={() => setOrderId(orderId)} 
+                        style={{ color: 'var(--aras-orange)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                      >
+                        Retry
+                      </button>
+                    </span>
+                  </div>
+                )}
+
+                {timelineStatus === 'ready' && serverEvents.length === 0 && (
+                  <div className="cs-timeline-item">
+                    <div className="cs-timeline-dot" />
+                    <span className="cs-timeline-text">No events yet</span>
+                  </div>
+                )}
+
+                {timelineStatus === 'ready' && serverEvents.length > 0 && (
+                  <>
+                    {(showAllEvents ? serverEvents : serverEvents.slice(0, 6)).map((event, idx) => {
+                      const isPaid = event.type === 'paid';
+                      const isLast = idx === (showAllEvents ? serverEvents.length : Math.min(serverEvents.length, 6)) - 1;
+                      return (
+                        <div key={event.id} className="cs-timeline-item">
+                          <div className={`cs-timeline-dot ${isPaid ? 'cs-timeline-dot--done' : isLast ? 'cs-timeline-dot--active' : 'cs-timeline-dot--done'}`} />
+                          <span className={`cs-timeline-text ${isLast ? 'cs-timeline-text--active' : ''}`}>
+                            {event.title}
+                            <span style={{ marginLeft: 8, opacity: 0.5, fontSize: 11 }}>
+                              {formatEventTime(event.createdAt)}
+                            </span>
+                          </span>
+                        </div>
+                      );
+                    })}
+                    {serverEvents.length > 6 && !showAllEvents && (
+                      <button 
+                        type="button"
+                        onClick={() => setShowAllEvents(true)}
+                        style={{ 
+                          background: 'none', 
+                          border: 'none', 
+                          color: 'var(--aras-orange)', 
+                          cursor: 'pointer', 
+                          fontSize: 12, 
+                          marginTop: 4 
+                        }}
+                      >
+                        Show all ({serverEvents.length})
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
             )}
           </div>
