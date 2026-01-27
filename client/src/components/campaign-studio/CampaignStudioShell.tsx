@@ -27,6 +27,8 @@ function isStepValid(stepId: CampaignStudioStepId, draft: CampaignStudioDraft): 
       return Boolean(draft.useCaseId);
     case 'volume-pricing':
       return Boolean(draft.callVolume && draft.pricePerCallCents && draft.computedTotalCents);
+    case 'voice-gallery':
+      return Boolean(draft.voiceId);
     // Other steps: always valid for now (will implement later)
     default:
       return true;

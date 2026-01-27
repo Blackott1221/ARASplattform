@@ -1474,3 +1474,351 @@
   margin: 0;
   padding: 12px 0;
 }
+
+/* ============================================================================
+   Voice Gallery Step
+   ============================================================================ */
+.cs-voice-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+@media (min-width: 768px) {
+  .cs-voice-layout {
+    flex-direction: row;
+    gap: 24px;
+  }
+}
+
+.cs-voice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  flex: 1;
+}
+
+@media (max-width: 480px) {
+  .cs-voice-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.cs-voice-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  min-height: 140px;
+  padding: 18px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--aras-r-md);
+  cursor: pointer;
+  transition: transform 0.18s var(--aras-ease), box-shadow 0.18s var(--aras-ease), border-color 0.18s var(--aras-ease);
+}
+
+.cs-voice-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.cs-voice-card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--aras-bg), 0 0 0 4px rgba(255, 106, 0, 0.4);
+}
+
+.cs-voice-card--selected {
+  border-color: rgba(255, 106, 0, 0.45);
+  box-shadow: 0 0 20px rgba(255, 106, 0, 0.15);
+}
+
+.cs-voice-card--active {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.cs-voice-card--selected.cs-voice-card--active {
+  border-color: rgba(255, 106, 0, 0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-voice-card:hover {
+    transform: none;
+  }
+}
+
+/* Voice Badge */
+.cs-voice-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 10px;
+}
+
+.cs-voice-badge--selected {
+  background: rgba(255, 106, 0, 0.2);
+  color: var(--aras-orange);
+}
+
+/* Voice Avatar */
+.cs-voice-avatar {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(255, 106, 0, 0.2) 0%, rgba(255, 106, 0, 0.1) 100%);
+  border-radius: 50%;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--aras-orange);
+  margin-bottom: 10px;
+}
+
+/* Voice Info */
+.cs-voice-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+
+.cs-voice-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.cs-voice-persona {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Preview hint */
+.cs-voice-preview-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: auto;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.4);
+  transition: color 0.15s ease;
+}
+
+.cs-voice-card:hover .cs-voice-preview-hint {
+  color: var(--aras-orange);
+}
+
+/* ============================================================================
+   Voice Preview Panel
+   ============================================================================ */
+.cs-voice-preview {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .cs-voice-preview {
+    max-width: 340px;
+  }
+}
+
+.cs-voice-preview-content {
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--aras-r-md);
+}
+
+.cs-voice-preview-idle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--aras-r-md);
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 14px;
+}
+
+.cs-voice-preview-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.cs-voice-preview-avatar {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(255, 106, 0, 0.25) 0%, rgba(255, 106, 0, 0.1) 100%);
+  border-radius: 50%;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--aras-orange);
+  flex-shrink: 0;
+}
+
+.cs-voice-preview-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0;
+}
+
+.cs-voice-preview-persona {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 2px 0 0 0;
+}
+
+.cs-voice-preview-desc {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.5;
+  margin: 0 0 16px 0;
+}
+
+/* Sample Script */
+.cs-voice-preview-script {
+  padding: 14px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--aras-r-sm);
+  margin-bottom: 16px;
+}
+
+.cs-voice-preview-script-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 8px;
+}
+
+.cs-voice-preview-script-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.75);
+  margin: 0;
+  font-style: italic;
+}
+
+/* Player Controls */
+.cs-voice-player {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cs-voice-player-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--aras-orange);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+.cs-voice-player-btn:hover:not(:disabled) {
+  box-shadow: 0 4px 16px rgba(255, 106, 0, 0.4);
+}
+
+.cs-voice-player-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.cs-voice-player-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--aras-bg), 0 0 0 4px rgba(255, 106, 0, 0.4);
+}
+
+.cs-voice-player-timeline {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.cs-voice-player-progress {
+  height: 100%;
+  background: var(--aras-orange);
+  border-radius: 2px;
+  transition: width 0.25s linear;
+}
+
+.cs-voice-player-time {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cs-voice-player-status {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+  margin: 12px 0 0 0;
+}
+
+/* Error State */
+.cs-voice-player-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
+}
+
+.cs-voice-player-error span {
+  font-size: 13px;
+  color: rgba(239, 68, 68, 0.8);
+}
+
+.cs-voice-player-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: var(--aras-r-sm);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.cs-voice-player-retry:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.25);
+}
