@@ -1,30 +1,129 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Building2, Users } from "lucide-react";
-import { useState } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
 import "./campaign-studio.css";
 
-const CURRENT_STEP = 1;
-const TOTAL_STEPS = 8;
+import { CAMPAIGN_STUDIO_STEPS, TOTAL_STEPS } from "./steps/registry";
+import type { CampaignStudioDraft, PersistedWizardData } from "./types";
+import { INITIAL_DRAFT, STORAGE_KEY, STORAGE_VERSION } from "./types";
 
+// ============================================================================
+// localStorage helpers
+// ============================================================================
+function loadPersistedData(): { stepIndex: number; draft: CampaignStudioDraft } | null {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return null;
+    const data: PersistedWizardData = JSON.parse(stored);
+    if (data.version !== STORAGE_VERSION) return null;
+    return {
+      stepIndex: data.currentStepIndex ?? 0,
+      draft: data.draft ?? INITIAL_DRAFT,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function persistData(stepIndex: number, draft: CampaignStudioDraft) {
+  try {
+    const data: PersistedWizardData = {
+      version: STORAGE_VERSION,
+      currentStepIndex: stepIndex,
+      draft,
+      updatedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch {
+    // Silent fail
+  }
+}
+
+// ============================================================================
+// Shell Component
+// ============================================================================
 export default function CampaignStudioShell() {
   const prefersReducedMotion = useReducedMotion();
-  const [selectedType, setSelectedType] = useState<string | null>(null);
+  
+  // Wizard state
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [draft, setDraftState] = useState<CampaignStudioDraft>(INITIAL_DRAFT);
+  const [hydrated, setHydrated] = useState(false);
+  const [direction, setDirection] = useState<1 | -1>(1);
 
-  const cardVariants = {
-    initial: prefersReducedMotion 
+  // Hydrate from localStorage on mount
+  useEffect(() => {
+    const persisted = loadPersistedData();
+    if (persisted) {
+      setCurrentStepIndex(persisted.stepIndex);
+      setDraftState(persisted.draft);
+    }
+    setHydrated(true);
+  }, []);
+
+  // Persist on state change (after hydration)
+  useEffect(() => {
+    if (hydrated) {
+      persistData(currentStepIndex, draft);
+    }
+  }, [currentStepIndex, draft, hydrated]);
+
+  // Draft updater (partial merge)
+  const setDraft = useCallback((patch: Partial<CampaignStudioDraft>) => {
+    setDraftState(prev => ({ ...prev, ...patch }));
+  }, []);
+
+  // Navigation
+  const goNext = useCallback(() => {
+    if (currentStepIndex < TOTAL_STEPS - 1) {
+      setDirection(1);
+      setCurrentStepIndex(prev => prev + 1);
+    }
+  }, [currentStepIndex]);
+
+  const goBack = useCallback(() => {
+    if (currentStepIndex > 0) {
+      setDirection(-1);
+      setCurrentStepIndex(prev => prev - 1);
+    }
+  }, [currentStepIndex]);
+
+  // Current step
+  const currentStep = CAMPAIGN_STUDIO_STEPS[currentStepIndex];
+  const StepComponent = currentStep.component;
+  const isFirstStep = currentStepIndex === 0;
+  const isLastStep = currentStepIndex === TOTAL_STEPS - 1;
+  const progressPercent = ((currentStepIndex + 1) / TOTAL_STEPS) * 100;
+
+  // Animation variants
+  const stepVariants = {
+    initial: (dir: number) => prefersReducedMotion 
       ? { opacity: 0 } 
-      : { opacity: 0, y: 14 },
+      : { opacity: 0, x: dir * 30 },
     animate: prefersReducedMotion 
       ? { opacity: 1 } 
-      : { opacity: 1, y: 0 },
+      : { opacity: 1, x: 0 },
+    exit: (dir: number) => prefersReducedMotion 
+      ? { opacity: 0 } 
+      : { opacity: 0, x: dir * -30 },
   };
 
   const transition = {
-    duration: prefersReducedMotion ? 0 : 0.18,
+    duration: prefersReducedMotion ? 0.08 : 0.22,
     ease: [0.32, 0.72, 0, 1],
   };
+
+  // Don't render until hydrated to prevent flash
+  if (!hydrated) {
+    return (
+      <div className="cs-container">
+        <div className="cs-bg-layer cs-bg-gradient" aria-hidden="true" />
+        <div className="cs-loading">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="cs-container">
@@ -36,83 +135,89 @@ export default function CampaignStudioShell() {
       <header className="cs-header">
         <div className="cs-header-inner">
           <span className="cs-header-label">Campaign Studio</span>
-          <span className="cs-header-step">Step {CURRENT_STEP}/{TOTAL_STEPS}</span>
+          <span className="cs-header-step">Step {currentStepIndex + 1}/{TOTAL_STEPS}</span>
         </div>
         <div className="cs-progress-track">
           <div 
             className="cs-progress-fill" 
-            style={{ width: `${(CURRENT_STEP / TOTAL_STEPS) * 100}%` }}
+            style={{ width: `${progressPercent}%` }}
           />
         </div>
       </header>
 
       {/* Main content area */}
       <main className="cs-main">
-        <motion.div
-          className="cs-card"
-          variants={cardVariants}
-          initial="initial"
-          animate="animate"
-          transition={transition}
-        >
-          <h1 className="cs-title arasWaveTitle">
-            Start your campaign setup
-          </h1>
-          <p className="cs-subtitle">
-            Answer a few quick steps. You pay per call volume — conversations are unlimited.
-          </p>
-
-          {/* Choice cards */}
-          <div className="cs-choices">
-            <button
-              type="button"
-              className={`cs-choice-card ${selectedType === 'company' ? 'cs-choice-card--selected' : ''}`}
-              onClick={() => setSelectedType('company')}
-              aria-pressed={selectedType === 'company'}
+        <div className="cs-card">
+          <AnimatePresence mode="wait" custom={direction}>
+            <motion.div
+              key={currentStep.id}
+              custom={direction}
+              variants={stepVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={transition}
             >
-              <div className="cs-choice-icon">
-                <Building2 size={28} strokeWidth={1.5} />
-              </div>
-              <span className="cs-choice-label">I'm a company</span>
-              <span className="cs-choice-desc">Single brand, direct outreach</span>
-            </button>
-
-            <button
-              type="button"
-              className={`cs-choice-card ${selectedType === 'agency' ? 'cs-choice-card--selected' : ''}`}
-              onClick={() => setSelectedType('agency')}
-              aria-pressed={selectedType === 'agency'}
-            >
-              <div className="cs-choice-icon">
-                <Users size={28} strokeWidth={1.5} />
-              </div>
-              <span className="cs-choice-label">I'm an agency</span>
-              <span className="cs-choice-desc">Multiple clients, white-label</span>
-            </button>
-          </div>
+              <StepComponent 
+                draft={draft} 
+                setDraft={setDraft}
+                goNext={goNext}
+                goBack={goBack}
+              />
+            </motion.div>
+          </AnimatePresence>
 
           {/* Action buttons (desktop) */}
           <div className="cs-actions cs-actions--desktop">
-            <button type="button" className="cs-btn cs-btn--back" disabled>
+            <button 
+              type="button" 
+              className="cs-btn cs-btn--back" 
+              disabled={isFirstStep}
+              onClick={goBack}
+            >
               <ArrowLeft size={18} />
               <span>Back</span>
             </button>
-            <button type="button" className="cs-btn cs-btn--next" disabled={!selectedType}>
-              <span>Continue</span>
+            
+            {/* Selected indicator for step 0 */}
+            {isFirstStep && draft.customerType && (
+              <span className="cs-selected-hint">
+                <Check size={14} />
+                {draft.customerType === 'company' ? 'Company' : 'Agency'} selected
+              </span>
+            )}
+
+            <button 
+              type="button" 
+              className="cs-btn cs-btn--next"
+              onClick={goNext}
+              disabled={isLastStep}
+            >
+              <span>{isLastStep ? 'Launch' : 'Continue'}</span>
               <ArrowRight size={18} />
             </button>
           </div>
-        </motion.div>
+        </div>
       </main>
 
       {/* Bottom action bar (mobile) */}
       <div className="cs-bottom-bar">
-        <button type="button" className="cs-btn cs-btn--back" disabled>
+        <button 
+          type="button" 
+          className="cs-btn cs-btn--back" 
+          disabled={isFirstStep}
+          onClick={goBack}
+        >
           <ArrowLeft size={18} />
           <span>Back</span>
         </button>
-        <button type="button" className="cs-btn cs-btn--next" disabled={!selectedType}>
-          <span>Continue</span>
+        <button 
+          type="button" 
+          className="cs-btn cs-btn--next"
+          onClick={goNext}
+          disabled={isLastStep}
+        >
+          <span>{isLastStep ? 'Launch' : 'Continue'}</span>
           <ArrowRight size={18} />
         </button>
       </div>
