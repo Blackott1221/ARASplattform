@@ -2129,3 +2129,222 @@
   color: var(--aras-orange);
   margin-right: 4px;
 }
+
+/* ============================================================================
+   Goals Step
+   ============================================================================ */
+.cs-goals-section {
+  margin-bottom: 24px;
+}
+
+.cs-goals-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0 0 10px 0;
+}
+
+.cs-goals-section-desc {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0 0 12px 0;
+}
+
+/* Goals Grid */
+.cs-goals-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.cs-goals-grid--2col {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.cs-goals-grid--3col {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 480px) {
+  .cs-goals-grid--2col,
+  .cs-goals-grid--3col {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Goals Card */
+.cs-goals-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 6px;
+  padding: 16px 12px;
+  min-height: 80px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--aras-r-sm);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: transform 0.18s var(--aras-ease), box-shadow 0.18s var(--aras-ease), border-color 0.18s var(--aras-ease);
+}
+
+.cs-goals-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.cs-goals-card:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--aras-bg), 0 0 0 4px rgba(255, 106, 0, 0.4);
+}
+
+.cs-goals-card--selected {
+  border-color: rgba(255, 106, 0, 0.45);
+  box-shadow: 0 0 16px rgba(255, 106, 0, 0.12);
+  color: var(--aras-orange);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-goals-card:hover {
+    transform: none;
+  }
+}
+
+.cs-goals-card--tone {
+  min-height: 90px;
+}
+
+.cs-goals-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: rgba(255, 106, 0, 0.2);
+  border-radius: 50%;
+  color: var(--aras-orange);
+}
+
+.cs-goals-card-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.cs-goals-card-desc {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Brief Textarea */
+.cs-goals-brief-container {
+  position: relative;
+}
+
+.cs-goals-brief-textarea {
+  min-height: 140px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  resize: vertical;
+}
+
+@media (max-width: 480px) {
+  .cs-goals-brief-textarea {
+    min-height: 120px !important;
+  }
+}
+
+.cs-goals-brief-hint {
+  position: absolute;
+  bottom: 10px;
+  right: 12px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  pointer-events: none;
+}
+
+.cs-goals-brief-hint--valid {
+  color: #4ade80;
+}
+
+/* Guardrail Chips */
+.cs-goals-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cs-goals-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.cs-goals-chip:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.cs-goals-chip:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--aras-bg), 0 0 0 4px rgba(255, 106, 0, 0.4);
+}
+
+.cs-goals-chip--active {
+  background: rgba(255, 106, 0, 0.12);
+  border-color: rgba(255, 106, 0, 0.3);
+  color: var(--aras-orange);
+}
+
+/* Compliance Info */
+.cs-goals-compliance {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--aras-r-md);
+  margin-top: 8px;
+}
+
+.cs-goals-compliance-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(34, 197, 94, 0.1);
+  border-radius: 50%;
+  color: #4ade80;
+  flex-shrink: 0;
+}
+
+.cs-goals-compliance-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0 0 4px 0;
+}
+
+.cs-goals-compliance-text {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.5;
+  margin: 0;
+}

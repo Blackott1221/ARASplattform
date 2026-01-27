@@ -32,6 +32,9 @@ function isStepValid(stepId: CampaignStudioStepId, draft: CampaignStudioDraft): 
     case 'leads':
       // Mode required; if 'need', package required
       return Boolean(draft.leadsMode) && (draft.leadsMode === 'have' || Boolean(draft.leadPackageSize));
+    case 'goals':
+      // Primary goal + brief (min 40 chars) required
+      return Boolean(draft.goalPrimary) && Boolean(draft.goalBrief) && (draft.goalBrief?.length || 0) >= 40;
     // Other steps: always valid for now (will implement later)
     default:
       return true;

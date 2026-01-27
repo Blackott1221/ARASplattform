@@ -57,6 +57,9 @@ export interface CampaignStudioDraft {
   
   // Step 7: Goals
   goalPrimary?: string;
+  goalMetric?: string;
+  goalBrief?: string;
+  goalGuardrails?: string[];
   tone?: 'executive' | 'friendly' | 'direct';
   calendarLink?: string;
   
