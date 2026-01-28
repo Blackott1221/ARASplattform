@@ -17,13 +17,63 @@ const router = Router();
 // TYPES
 // ============================================================================
 
+// STEP 14: Portal Permission Types
+export type PortalPermission = 
+  | 'calls.read'
+  | 'calls.write'      // notes/review/star/tag
+  | 'analysis.run'     // single analyze + bulk
+  | 'export.csv'
+  | 'export.pdf'
+  | 'audit.read'
+  | 'views.manage';    // saved views (client-only flag)
+
+export type PortalRole = 'CEO' | 'Marketing' | 'ReadOnly' | string;
+
 interface PortalUser {
   portalKey: string;
   username: string;
   password?: string;       // DEPRECATED: use passwordHash
   passwordHash?: string;   // scrypt$N=16384$r=8$p=1$salt=<b64>$hash=<b64>
   displayName: string;
-  role: string;
+  role: PortalRole;
+  permissions?: PortalPermission[];  // STEP 14: Optional explicit permissions
+}
+
+// STEP 14: Role-based permission defaults
+const ROLE_PERMISSIONS: Record<string, PortalPermission[]> = {
+  CEO: [
+    'calls.read', 'calls.write', 'analysis.run', 
+    'export.csv', 'export.pdf', 'audit.read', 'views.manage'
+  ],
+  Marketing: [
+    'calls.read', 'calls.write', 'analysis.run',
+    'export.csv', 'export.pdf', 'views.manage'
+    // NO audit.read
+  ],
+  ReadOnly: [
+    'calls.read', 'export.pdf', 'views.manage'
+  ]
+};
+
+const DEFAULT_PERMISSIONS: PortalPermission[] = ['calls.read', 'views.manage'];
+
+/**
+ * Resolve permissions for a user based on explicit permissions or role defaults.
+ */
+export function resolvePermissions(user: PortalUser): PortalPermission[] {
+  // If explicit permissions provided, use them
+  if (user.permissions && user.permissions.length > 0) {
+    return user.permissions;
+  }
+  
+  // Map by role
+  const rolePerms = ROLE_PERMISSIONS[user.role];
+  if (rolePerms) {
+    return rolePerms;
+  }
+  
+  // Fallback for unknown roles
+  return DEFAULT_PERMISSIONS;
 }
 
 // ============================================================================
@@ -322,6 +372,7 @@ interface PortalSession {
   username: string;
   displayName: string;
   role: string;
+  permissions: PortalPermission[];  // STEP 14: Permissions in session
   iat: number;
   exp: number;
   sid: string; // STEP 10: Session ID for rotation
@@ -469,7 +520,7 @@ router.post('/login', (req: Request, res: Response) => {
       });
     }
     
-    logPortalAudit(portalKey, 'portal.login.fail', { ipHash, portalKey });
+    logPortalAudit(portalKey, 'portal.login.fail', { ipHash });
     return res.status(401).json({ 
       ok: false, 
       message: 'Invalid credentials' 
@@ -514,12 +565,16 @@ router.post('/login', (req: Request, res: Response) => {
   // STEP 10: Reset brute-force counter on success
   resetAttempts(clientIp, portalKey, username);
   
+  // STEP 14: Resolve permissions for user
+  const permissions = resolvePermissions(user);
+  
   // Create session with new SID (rotation)
   const token = signSession({
     portalKey: user.portalKey,
     username: user.username,
     displayName: user.displayName,
-    role: user.role
+    role: user.role,
+    permissions
   });
   
   // STEP 10: Set cookie with strict settings
@@ -580,10 +635,46 @@ router.get('/me', requirePortalAuth, (req: Request, res: Response) => {
     portalKey: session.portalKey,
     displayName: session.displayName,
     role: session.role,
+    permissions: session.permissions,  // STEP 14: Include permissions
     company: enrichedConfig.company,
     package: enrichedConfig.package,
     ui: enrichedConfig.ui
   });
 });
+
+// ============================================================================
+// STEP 14C: Permission Enforcement Middleware
+// ============================================================================
+
+/**
+ * Middleware factory to require a specific portal permission.
+ * Returns 403 with neutral message if permission is missing.
+ */
+export function requirePortalPermission(permission: PortalPermission) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const session = (req as any).portalSession as PortalSession | undefined;
+    
+    if (!session) {
+      return res.status(401).json({ error: 'AUTH_REQUIRED', message: 'Authentication required' });
+    }
+    
+    const hasPermission = session.permissions?.includes(permission);
+    
+    if (!hasPermission) {
+      // Audit log (safe: no sensitive data)
+      logPortalAudit(session.portalKey, 'portal.auth.denied', { 
+        feature: permission.split('.')[0]  // e.g., 'export' from 'export.csv'
+      });
+      
+      // Neutral error message (no permission leakage)
+      return res.status(403).json({ 
+        error: 'FORBIDDEN', 
+        message: 'Not authorized.' 
+      });
+    }
+    
+    next();
+  };
+}
 
 export default router;

@@ -60,6 +60,7 @@ import AdminDashboardServiceOrders from "@/pages/admin-dashboard-service-orders"
 import PortalLogin from "@/pages/portal/login";
 import PortalReport from "@/pages/portal/report";
 import PortalDashboard from "@/pages/portal/dashboard";
+import PortalHelpCenter from "@/pages/portal/help";  // STEP 15
 
 // Memoized video background component - never re-renders to keep video playing continuously
 const VideoBackground = memo(() => {
@@ -157,6 +158,7 @@ function Router() {
         {/* 🔐 CLIENT PORTAL ROUTES - Public, isolated auth */}
         <Route path="/portal/:portalKey/login" component={PortalLogin} />
         <Route path="/portal/:portalKey/report" component={PortalReport} />
+        <Route path="/portal/:portalKey/help" component={PortalHelpCenter} />  {/* STEP 15: Help Center */}
         <Route path="/portal/:portalKey/calls/:callId" component={PortalDashboard} />  {/* STEP 11: Deep-link */}
         <Route path="/portal/:portalKey" component={PortalDashboard} />
         

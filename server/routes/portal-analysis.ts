@@ -11,7 +11,7 @@ import { db } from '../db';
 import { callLogs } from '@shared/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { createHash } from 'crypto';
-import { requirePortalAuth } from './portal-auth';
+import { requirePortalAuth, requirePortalPermission } from './portal-auth';
 import { z } from 'zod';
 
 const router = Router();
@@ -274,7 +274,7 @@ router.get('/calls/:id/analysis', async (req: Request, res: Response) => {
 // Generate analysis (uses cache if valid)
 // ============================================================================
 
-router.post('/calls/:id/analyze', async (req: Request, res: Response) => {
+router.post('/calls/:id/analyze', requirePortalPermission('analysis.run'), async (req: Request, res: Response) => {
   try {
     const session = (req as any).portalSession;
     const config = (req as any).portalConfig as PortalConfig;

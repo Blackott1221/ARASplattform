@@ -17,7 +17,7 @@ import {
   MessageSquare, Mic, CheckCircle, XCircle, AlertCircle,
   Sparkles, TrendingUp, Zap, Target, BarChart3,
   FileDown, Activity, ChevronDown, AlertTriangle,
-  Link2  // STEP 11
+  Link2, HelpCircle  // STEP 11 + STEP 15
 } from 'lucide-react';
 import {
   Tooltip,
@@ -74,10 +74,21 @@ interface PortalInfoHints {
   };
 }
 
+// STEP 14: Portal Permission Type (matches server)
+type PortalPermission = 
+  | 'calls.read'
+  | 'calls.write'
+  | 'analysis.run'
+  | 'export.csv'
+  | 'export.pdf'
+  | 'audit.read'
+  | 'views.manage';
+
 interface PortalSession {
   portalKey: string;
   displayName: string;
   role: string;
+  permissions: PortalPermission[];  // STEP 14: Permissions array
   company: {
     name: string;
     ceo: string;
@@ -218,6 +229,32 @@ function saveSavedViews(views: SavedView[]): void {
 
 function sanitizeViewName(name: string): string {
   return name.trim().replace(/\s+/g, ' ').slice(0, 32);
+}
+
+// ============================================================================
+// STEP 15C: First-login Tour
+// ============================================================================
+
+function getTourKey(portalKey: string, username: string): string {
+  return `portal.tour.v1:${portalKey}:${username}`;
+}
+
+function hasDismissedTour(portalKey: string, username: string): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    return localStorage.getItem(getTourKey(portalKey, username)) === 'done';
+  } catch {
+    return true;
+  }
+}
+
+function dismissTour(portalKey: string, username: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(getTourKey(portalKey, username), 'done');
+  } catch {
+    // Ignore storage errors
+  }
 }
 
 // Insights API response type
@@ -1430,6 +1467,9 @@ export default function PortalDashboard() {
   const [newViewName, setNewViewName] = useState('');
   const [viewToast, setViewToast] = useState<string | null>(null);
   
+  // STEP 15C: First-login Tour state
+  const [showTour, setShowTour] = useState(false);
+  
   // STEP 13: Save View handler
   const handleSaveView = useCallback(() => {
     const name = sanitizeViewName(newViewName);
@@ -1517,6 +1557,38 @@ export default function PortalDashboard() {
     retry: false
   });
   
+  // STEP 14: Permission check helper
+  const hasPermission = useCallback((perm: PortalPermission): boolean => {
+    return session?.permissions?.includes(perm) ?? false;
+  }, [session?.permissions]);
+  
+  // STEP 14: Convenience flags for common permission checks
+  const canWrite = hasPermission('calls.write');
+  const canAnalyze = hasPermission('analysis.run');
+  const canExportCsv = hasPermission('export.csv');
+  const canExportPdf = hasPermission('export.pdf');
+  const canViewAudit = hasPermission('audit.read');
+  
+  // STEP 15C: Show tour on first login
+  useEffect(() => {
+    if (session && portalKey) {
+      // Extract username from displayName (safe approximation)
+      const username = session.displayName.replace(/\s+/g, '_').toLowerCase();
+      if (!hasDismissedTour(portalKey, username)) {
+        setShowTour(true);
+      }
+    }
+  }, [session, portalKey]);
+  
+  // STEP 15C: Dismiss tour handler
+  const handleDismissTour = useCallback(() => {
+    if (session && portalKey) {
+      const username = session.displayName.replace(/\s+/g, '_').toLowerCase();
+      dismissTour(portalKey, username);
+      setShowTour(false);
+    }
+  }, [session, portalKey]);
+  
   // Fetch call stats
   const { data: stats } = useQuery<CallStats>({
     queryKey: ['portal-stats', portalKey],
@@ -1599,7 +1671,7 @@ export default function PortalDashboard() {
     window.open(`/portal/${portalKey}/report?${params}`, '_blank');
   }, [portalKey, activeFilter, buildApiParams]);
   
-  // Fetch audit log
+  // STEP 14: Fetch audit log (only if user has permission)
   const { data: auditData } = useQuery<{ entries: Array<{ ts: string; action: string; metaSafe: { callId?: number } }> }>({
     queryKey: ['portal-audit', portalKey],
     queryFn: async () => {
@@ -1607,7 +1679,7 @@ export default function PortalDashboard() {
       if (!res.ok) return { entries: [] };
       return res.json();
     },
-    enabled: !!session,
+    enabled: !!session && canViewAudit,
     staleTime: 30 * 1000 // 30 sec cache
   });
   
@@ -1844,22 +1916,35 @@ export default function PortalDashboard() {
             
             <div className="flex items-center gap-3">
               {/* Activity Button */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => setShowActivityDrawer(true)}
-                    className="p-2 rounded-lg hover:bg-white/5 transition-colors text-white/40 hover:text-white relative"
-                  >
-                    <Activity className="w-5 h-5" />
-                    {auditData && auditData.entries.length > 0 && (
-                      <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#FE9100]" />
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="text-xs">Aktivitätsprotokoll</p>
-                </TooltipContent>
-              </Tooltip>
+              {/* STEP 14: Audit button (permission-gated) */}
+              {canViewAudit && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setShowActivityDrawer(true)}
+                      className="p-2 rounded-lg hover:bg-white/5 transition-colors text-white/40 hover:text-white relative"
+                    >
+                      <Activity className="w-5 h-5" />
+                      {auditData && auditData.entries.length > 0 && (
+                        <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#FE9100]" />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs">Aktivitätsprotokoll</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              
+              {/* STEP 14: Read-only badge */}
+              {!canWrite && (
+                <span 
+                  className="px-2.5 h-[22px] rounded-full text-[10px] font-medium flex items-center opacity-80"
+                  style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)' }}
+                >
+                  Read-only
+                </span>
+              )}
               
               {/* User Chip */}
               <div 
@@ -1875,6 +1960,15 @@ export default function PortalDashboard() {
                   <span className="text-xs text-white/40">{session.role}</span>
                 </div>
               </div>
+              
+              {/* STEP 15B: Help link */}
+              <a
+                href={`/portal/${portalKey}/help`}
+                className="p-2 rounded-lg hover:bg-white/5 transition-colors text-white/40 hover:text-white"
+                title="Hilfe"
+              >
+                <HelpCircle className="w-5 h-5" />
+              </a>
               
               {/* Logout */}
               <button
@@ -2078,32 +2172,46 @@ export default function PortalDashboard() {
               {/* Separator */}
               <div className="w-px h-6 bg-white/10" />
               
-              {/* Export CSV */}
+              {/* STEP 14: Export CSV (permission-gated) */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    onClick={handleExportCSV}
-                    className="h-9 px-3 rounded-xl text-xs font-medium bg-white/5 border border-white/10 text-white/60 hover:text-white/80 hover:bg-white/8 transition-colors flex items-center gap-1.5"
+                    onClick={canExportCsv ? handleExportCSV : undefined}
+                    disabled={!canExportCsv}
+                    className={`h-9 px-3 rounded-xl text-xs font-medium bg-white/5 border border-white/10 flex items-center gap-1.5 transition-colors ${
+                      canExportCsv 
+                        ? 'text-white/60 hover:text-white/80 hover:bg-white/8 cursor-pointer' 
+                        : 'text-white/30 cursor-not-allowed opacity-50'
+                    }`}
                   >
                     <FileDown className="w-3.5 h-3.5" />
                     CSV
                   </button>
                 </TooltipTrigger>
-                <TooltipContent><p className="text-xs">Exports current view</p></TooltipContent>
+                <TooltipContent>
+                  <p className="text-xs">{canExportCsv ? 'Exports current view' : 'Keine Berechtigung für diese Funktion.'}</p>
+                </TooltipContent>
               </Tooltip>
               
-              {/* PDF Report */}
+              {/* STEP 14: PDF Report (permission-gated) */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    onClick={handleOpenReport}
-                    className="h-9 px-3 rounded-xl text-xs font-medium bg-white/5 border border-white/10 text-white/60 hover:text-white/80 hover:bg-white/8 transition-colors flex items-center gap-1.5"
+                    onClick={canExportPdf ? handleOpenReport : undefined}
+                    disabled={!canExportPdf}
+                    className={`h-9 px-3 rounded-xl text-xs font-medium bg-white/5 border border-white/10 flex items-center gap-1.5 transition-colors ${
+                      canExportPdf 
+                        ? 'text-white/60 hover:text-white/80 hover:bg-white/8 cursor-pointer' 
+                        : 'text-white/30 cursor-not-allowed opacity-50'
+                    }`}
                   >
                     <FileText className="w-3.5 h-3.5" />
                     Report
                   </button>
                 </TooltipTrigger>
-                <TooltipContent><p className="text-xs">Exports current view as PDF</p></TooltipContent>
+                <TooltipContent>
+                  <p className="text-xs">{canExportPdf ? 'Exports current view as PDF' : 'Keine Berechtigung für diese Funktion.'}</p>
+                </TooltipContent>
               </Tooltip>
             </div>
             
@@ -2640,16 +2748,18 @@ export default function PortalDashboard() {
                     </TooltipContent>
                   </Tooltip>
                   
-                  {/* STEP 9: Bulk Analyze */}
+                  {/* STEP 9+14: Bulk Analyze (permission-gated) */}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button
-                        onClick={handleBulkAnalyze}
-                        disabled={bulkAnalyzeState?.running}
-                        className="flex items-center gap-1.5 px-3 h-9 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+                        onClick={canAnalyze ? handleBulkAnalyze : undefined}
+                        disabled={!canAnalyze || bulkAnalyzeState?.running}
+                        className={`flex items-center gap-1.5 px-3 h-9 rounded-lg text-xs font-medium transition-colors ${
+                          !canAnalyze ? 'opacity-50 cursor-not-allowed' : 'disabled:opacity-50'
+                        }`}
                         style={{
                           background: 'rgba(254,145,0,0.15)',
-                          color: '#FE9100',
+                          color: canAnalyze ? '#FE9100' : 'rgba(254,145,0,0.5)',
                           border: '1px solid rgba(254,145,0,0.3)'
                         }}
                       >
@@ -2658,7 +2768,11 @@ export default function PortalDashboard() {
                       </button>
                     </TooltipTrigger>
                     <TooltipContent className="max-w-[320px]">
-                      <p className="text-xs">{session.ui.infoHints?.bulkAnalyze || 'Analysiert bis zu 20 Gespräche nacheinander. Kein Massenlauf.'}</p>
+                      <p className="text-xs">
+                        {!canAnalyze 
+                          ? 'Keine Berechtigung für diese Funktion.'
+                          : session.ui.infoHints?.bulkAnalyze || 'Analysiert bis zu 20 Gespräche nacheinander. Kein Massenlauf.'}
+                      </p>
                     </TooltipContent>
                   </Tooltip>
                   
@@ -3058,6 +3172,87 @@ export default function PortalDashboard() {
       
       {/* STEP 13: View Toast */}
       {viewToast && <Toast message={viewToast} onClose={() => setViewToast(null)} />}
+      
+      {/* STEP 15C: First-login Tour Modal */}
+      {showTour && (
+        <>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
+          <div 
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-[520px] mx-4 rounded-2xl overflow-hidden"
+            style={{ background: 'rgba(20,20,20,0.98)', border: '1px solid rgba(255,255,255,0.1)' }}
+          >
+            {/* Header */}
+            <div 
+              className="p-6 text-center"
+              style={{ background: 'linear-gradient(135deg, rgba(254,145,0,0.15) 0%, rgba(254,145,0,0.05) 100%)' }}
+            >
+              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[#FE9100]/20 flex items-center justify-center">
+                <Sparkles className="w-8 h-8 text-[#FE9100]" />
+              </div>
+              <h2 
+                className="text-2xl font-bold text-white mb-2"
+                style={{ fontFamily: 'Orbitron, sans-serif' }}
+              >
+                Willkommen, {session?.displayName?.split(' ')[0]}!
+              </h2>
+              <p className="text-sm text-white/60">
+                Hier sind 3 Tipps für den perfekten Start.
+              </p>
+            </div>
+            
+            {/* Steps */}
+            <div className="p-6 space-y-4">
+              <div className="flex gap-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#FE9100]/20 flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-[#FE9100]" />
+                </div>
+                <div>
+                  <h3 className="font-medium text-white mb-1">Starten Sie mit "Needs Review"</h3>
+                  <p className="text-sm text-white/50">Ungeprüfte Gespräche zuerst bearbeiten für maximale Effizienz.</p>
+                </div>
+              </div>
+              
+              <div className="flex gap-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#FE9100]/20 flex items-center justify-center">
+                  <Target className="w-5 h-5 text-[#FE9100]" />
+                </div>
+                <div>
+                  <h3 className="font-medium text-white mb-1">Nutzen Sie Outcome Tags</h3>
+                  <p className="text-sm text-white/50">Klassifizieren Sie Ergebnisse (Termin, Rückruf, Follow-up) für Ihre Pipeline.</p>
+                </div>
+              </div>
+              
+              <div className="flex gap-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#FE9100]/20 flex items-center justify-center">
+                  <Copy className="w-5 h-5 text-[#FE9100]" />
+                </div>
+                <div>
+                  <h3 className="font-medium text-white mb-1">Kopieren Sie Next Actions</h3>
+                  <p className="text-sm text-white/50">Nutzen Sie das Copy Kit für schnelle Follow-up Nachrichten.</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Actions */}
+            <div className="p-6 pt-0 flex gap-3">
+              <a
+                href={`/portal/${portalKey}/help`}
+                className="flex-1 py-3 rounded-xl text-sm font-medium text-center text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+                style={{ border: '1px solid rgba(255,255,255,0.1)' }}
+              >
+                Hilfe öffnen
+              </a>
+              <button
+                onClick={handleDismissTour}
+                className="flex-1 py-3 rounded-xl text-sm font-medium text-white"
+                style={{ background: 'linear-gradient(135deg, #FE9100 0%, #FF6B00 100%)' }}
+              >
+                Los geht's
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

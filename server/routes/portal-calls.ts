@@ -11,7 +11,7 @@ import { Router, Request, Response } from 'express';
 import { db } from '../db';
 import { callLogs } from '@shared/schema';
 import { eq, desc, and, sql, ilike, or, lt } from 'drizzle-orm';
-import { requirePortalAuth } from './portal-auth';
+import { requirePortalAuth, requirePortalPermission } from './portal-auth';
 
 const router = Router();
 
@@ -813,7 +813,7 @@ router.get('/calls/insights', async (req: Request, res: Response) => {
 // Export calls as CSV (respects filters, max 5000 rows)
 // ============================================================================
 
-router.get('/calls/export.csv', async (req: Request, res: Response) => {
+router.get('/calls/export.csv', requirePortalPermission('export.csv'), async (req: Request, res: Response) => {
   try {
     const config = (req as any).portalConfig as PortalConfig;
     const baseFilter = buildFilterCondition(config);
@@ -937,6 +937,7 @@ interface AuditEntry {
     reviewed?: boolean;
     ipHash?: string;       // STEP 10: Hashed IP for login events
     outcomeTag?: string;   // STEP 11: Outcome tag for call.tag events
+    feature?: string;      // STEP 14: Feature name for auth.denied events
   };
 }
 
@@ -996,7 +997,7 @@ export function logPortalAudit(portalKey: string, action: string, meta: AuditEnt
 // GET /api/portal/audit — Activity log for portal
 // ============================================================================
 
-router.get('/audit', (req: Request, res: Response) => {
+router.get('/audit', requirePortalPermission('audit.read'), (req: Request, res: Response) => {
   const session = (req as any).portalSession;
   const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
   
@@ -1012,7 +1013,7 @@ router.get('/audit', (req: Request, res: Response) => {
 // GET /api/portal/calls/report — Report data for PDF
 // ============================================================================
 
-router.get('/calls/report', async (req: Request, res: Response) => {
+router.get('/calls/report', requirePortalPermission('export.pdf'), async (req: Request, res: Response) => {
   const config = (req as any).portalConfig as PortalConfig;
   const session = (req as any).portalSession;
   
@@ -1134,7 +1135,7 @@ router.get('/calls/report', async (req: Request, res: Response) => {
 // PATCH /api/portal/calls/:id/metadata — Update note/star/reviewed
 // ============================================================================
 
-router.patch('/calls/:id/metadata', async (req: Request, res: Response) => {
+router.patch('/calls/:id/metadata', requirePortalPermission('calls.write'), async (req: Request, res: Response) => {
   const config = (req as any).portalConfig as PortalConfig;
   const session = (req as any).portalSession;
   const callId = parseInt(req.params.id);
