@@ -16,7 +16,8 @@ import {
   LogOut, RefreshCw, Search, Loader2, Copy, Info,
   MessageSquare, Mic, CheckCircle, XCircle, AlertCircle,
   Sparkles, TrendingUp, Zap, Target, BarChart3,
-  FileDown, Activity, ChevronDown, AlertTriangle
+  FileDown, Activity, ChevronDown, AlertTriangle,
+  Link2  // STEP 11
 } from 'lucide-react';
 import {
   Tooltip,
@@ -118,6 +119,8 @@ interface CallItem {
   starred?: boolean;
   reviewedAt?: string;
   note?: string;
+  // STEP 11: Outcome tag
+  outcomeTag?: 'appointment' | 'callback' | 'follow_up' | 'not_interested' | 'wrong_number' | 'unclear' | null;
 }
 
 // ARAS Intelligence Analysis v1
@@ -136,8 +139,9 @@ interface AnalysisV1 {
   transcriptHash: string;
 }
 
-// STEP 9: Extended tab types
-type TabFilter = 'all' | 'needsReview' | 'starred' | 'highSignal' | 'failed';
+// STEP 9+11: Extended tab types (added outcome-based tabs)
+type TabFilter = 'all' | 'needsReview' | 'starred' | 'highSignal' | 'failed' | 'appointments' | 'callbacks' | 'followUp';
+type OutcomeTag = 'appointment' | 'callback' | 'follow_up' | 'not_interested' | 'wrong_number' | 'unclear';
 type KPIFilter = 'all' | 'connected' | 'completed' | 'high_signal';
 
 const HIGH_SIGNAL_THRESHOLD = 70;
@@ -543,6 +547,9 @@ function CallDetailDrawer({
   const noteDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const reducedMotion = usePrefersReducedMotion();
   
+  // STEP 11: Outcome tag state
+  const [outcomeTag, setOutcomeTag] = useState<OutcomeTag | null>(null);
+  
   // Fetch call details
   const { data: call, isLoading, refetch: refetchCall } = useQuery<CallDetail>({
     queryKey: ['portal-call', callId],
@@ -555,13 +562,14 @@ function CallDetailDrawer({
     }
   });
   
-  // STEP 8: Initialize review state from call metadata
+  // STEP 8+11: Initialize review state from call metadata
   useEffect(() => {
     if (call) {
       const portal = (call as any).portal || {};
       setNoteValue(portal.note || '');
       setStarred(!!portal.starred);
       setReviewed(!!portal.reviewedAt);
+      setOutcomeTag(portal.outcomeTag || null);
     }
   }, [call]);
   
@@ -605,6 +613,33 @@ function CallDetailDrawer({
     setReviewed(newVal);
     saveMetadata({ reviewed: newVal });
   }, [reviewed, saveMetadata]);
+  
+  // STEP 11: Outcome tag change handler
+  const handleOutcomeTagChange = useCallback(async (tag: OutcomeTag) => {
+    const newTag = outcomeTag === tag ? null : tag; // Toggle off if same
+    setOutcomeTag(newTag as OutcomeTag | null);
+    setSaveState('saving');
+    try {
+      const res = await fetch(`/api/portal/calls/${callId}/metadata`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ outcomeTag: newTag || '' })
+      });
+      if (!res.ok) throw new Error('Failed to save');
+      setSaveState('idle');
+      queryClient.invalidateQueries({ queryKey: ['portal-calls'] });
+    } catch {
+      setSaveState('error');
+    }
+  }, [callId, outcomeTag, queryClient]);
+  
+  // STEP 11: Copy share link handler
+  const handleCopyShareLink = useCallback(() => {
+    const url = `${window.location.origin}/portal/${portalKey}/calls/${callId}`;
+    navigator.clipboard.writeText(url);
+    setToast('Share link copied');
+  }, [portalKey, callId]);
   
   // Fetch cached analysis
   const { data: analysisData, refetch: refetchAnalysis } = useQuery<{ analysis: AnalysisV1; cached: boolean }>({
@@ -1128,6 +1163,93 @@ function CallDetailDrawer({
                     <span className="text-white/30">{noteValue.length}/800</span>
                   </div>
                 </div>
+                
+                {/* STEP 11: Outcome Tags */}
+                <div className="space-y-2">
+                  <div className="text-xs font-medium text-white/40 uppercase tracking-wider">Outcome Tag</div>
+                  <div className="flex flex-wrap gap-2">
+                    {([
+                      { key: 'appointment' as OutcomeTag, label: 'Appointment', tooltip: 'Termin fixiert oder klar vereinbart.' },
+                      { key: 'callback' as OutcomeTag, label: 'Callback', tooltip: 'Rückruf explizit gewünscht.' },
+                      { key: 'follow_up' as OutcomeTag, label: 'Follow-up', tooltip: 'Interesse da, nächster Schritt nötig.' },
+                      { key: 'not_interested' as OutcomeTag, label: 'Not Interested', tooltip: 'Kein Interesse signalisiert.' },
+                      { key: 'wrong_number' as OutcomeTag, label: 'Wrong Number', tooltip: 'Falsche Nummer oder Person.' },
+                      { key: 'unclear' as OutcomeTag, label: 'Unclear', tooltip: 'Ergebnis nicht eindeutig.' }
+                    ]).map(tag => {
+                      const isActive = outcomeTag === tag.key;
+                      return (
+                        <Tooltip key={tag.key}>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={() => handleOutcomeTagChange(tag.key)}
+                              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                              style={{
+                                background: isActive ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)',
+                                border: isActive ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(255,255,255,0.06)',
+                                color: isActive ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)'
+                              }}
+                            >
+                              {tag.label}
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent><p className="text-xs">{tag.tooltip}</p></TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
+                </div>
+                
+                {/* STEP 11: Share / Copy Kit */}
+                <div className="flex items-center gap-2 pt-2 border-t border-white/5">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={handleCopyShareLink}
+                        className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-medium text-white/50 hover:text-white/80 bg-white/5 hover:bg-white/8 transition-colors"
+                      >
+                        <Link2 className="w-3.5 h-3.5" />
+                        Share Link
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent><p className="text-xs">Deep-Link zu diesem Call kopieren</p></TooltipContent>
+                  </Tooltip>
+                  
+                  {analysis?.nextBestAction && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(analysis.nextBestAction);
+                            setToast('Next Action copied');
+                          }}
+                          className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-medium text-white/50 hover:text-white/80 bg-white/5 hover:bg-white/8 transition-colors"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          Next Action
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent><p className="text-xs">Next Best Action kopieren</p></TooltipContent>
+                    </Tooltip>
+                  )}
+                  
+                  {analysis?.followUpDraft && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(analysis.followUpDraft);
+                            setToast('Follow-up draft copied');
+                          }}
+                          className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-xs font-medium text-white/50 hover:text-white/80 bg-white/5 hover:bg-white/8 transition-colors"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          Follow-up
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent><p className="text-xs">Follow-up Draft kopieren</p></TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
               </div>
             </>
           ) : (
@@ -1149,7 +1271,7 @@ function CallDetailDrawer({
 // ============================================================================
 
 export default function PortalDashboard() {
-  const { portalKey } = useParams<{ portalKey: string }>();
+  const { portalKey, callId: urlCallId } = useParams<{ portalKey: string; callId?: string }>();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   
@@ -1158,6 +1280,16 @@ export default function PortalDashboard() {
   const [activeFilter, setActiveFilter] = useState<KPIFilter>('all');
   const [showActivityDrawer, setShowActivityDrawer] = useState(false);
   const reducedMotion = usePrefersReducedMotion();
+  
+  // STEP 11: Deep-link support - open drawer from URL
+  useEffect(() => {
+    if (urlCallId) {
+      const callIdNum = parseInt(urlCallId);
+      if (!isNaN(callIdNum)) {
+        setSelectedCallId(callIdNum);
+      }
+    }
+  }, [urlCallId]);
   
   // STEP 9: Tab state
   const [activeTab, setActiveTab] = useState<TabFilter>('all');
@@ -1252,7 +1384,7 @@ export default function PortalDashboard() {
     staleTime: 30 * 1000 // 30 sec cache
   });
   
-  // STEP 9: Filter calls by tab first, then by KPI filter
+  // STEP 9+11: Filter calls by tab first, then by KPI filter
   const tabFilteredCalls = useMemo(() => {
     if (!callsData?.items) return [];
     
@@ -1265,6 +1397,13 @@ export default function PortalDashboard() {
         return callsData.items.filter(c => c.signalScore && c.signalScore >= HIGH_SIGNAL_THRESHOLD);
       case 'failed':
         return callsData.items.filter(c => c.status?.toLowerCase() === 'failed');
+      // STEP 11: Outcome-based tabs
+      case 'appointments':
+        return callsData.items.filter(c => c.outcomeTag === 'appointment');
+      case 'callbacks':
+        return callsData.items.filter(c => c.outcomeTag === 'callback');
+      case 'followUp':
+        return callsData.items.filter(c => c.outcomeTag === 'follow_up');
       default:
         return callsData.items;
     }
@@ -1292,14 +1431,18 @@ export default function PortalDashboard() {
     }
   }, [tabFilteredCalls, activeFilter]);
   
-  // STEP 9: Tab counts for badges
+  // STEP 9+11: Tab counts for badges (including outcome tabs)
   const tabCounts = useMemo(() => {
-    if (!callsData?.items) return { needsReview: 0, starred: 0, highSignal: 0, failed: 0 };
+    if (!callsData?.items) return { needsReview: 0, starred: 0, highSignal: 0, failed: 0, appointments: 0, callbacks: 0, followUp: 0 };
     return {
       needsReview: callsData.items.filter(c => !c.reviewedAt).length,
       starred: callsData.items.filter(c => c.starred).length,
       highSignal: callsData.items.filter(c => c.signalScore && c.signalScore >= HIGH_SIGNAL_THRESHOLD).length,
-      failed: callsData.items.filter(c => c.status?.toLowerCase() === 'failed').length
+      failed: callsData.items.filter(c => c.status?.toLowerCase() === 'failed').length,
+      // STEP 11: Outcome-based counts
+      appointments: callsData.items.filter(c => c.outcomeTag === 'appointment').length,
+      callbacks: callsData.items.filter(c => c.outcomeTag === 'callback').length,
+      followUp: callsData.items.filter(c => c.outcomeTag === 'follow_up').length
     };
   }, [callsData?.items]);
   
@@ -1538,7 +1681,11 @@ export default function PortalDashboard() {
               { key: 'needsReview' as TabFilter, label: 'Needs Review', count: tabCounts.needsReview },
               { key: 'starred' as TabFilter, label: 'Starred', count: tabCounts.starred },
               { key: 'highSignal' as TabFilter, label: 'High Signal', count: tabCounts.highSignal },
-              { key: 'failed' as TabFilter, label: 'Failed', count: tabCounts.failed }
+              { key: 'failed' as TabFilter, label: 'Failed', count: tabCounts.failed },
+              // STEP 11: Outcome-based tabs
+              { key: 'appointments' as TabFilter, label: 'Appointments', count: tabCounts.appointments },
+              { key: 'callbacks' as TabFilter, label: 'Callbacks', count: tabCounts.callbacks },
+              { key: 'followUp' as TabFilter, label: 'Follow-up', count: tabCounts.followUp }
             ]).map(tab => (
               <Tooltip key={tab.key}>
                 <TooltipTrigger asChild>
@@ -1572,6 +1719,9 @@ export default function PortalDashboard() {
                     {tab.key === 'starred' && (session?.ui?.infoHints?.tabs?.starred || 'Für Follow-up markierte Calls')}
                     {tab.key === 'highSignal' && (session?.ui?.infoHints?.tabs?.highSignal || 'Calls mit Signal Score ≥ 70')}
                     {tab.key === 'failed' && (session?.ui?.infoHints?.tabs?.failed || 'Fehlgeschlagene Calls')}
+                    {tab.key === 'appointments' && 'Calls mit Termin-Outcome'}
+                    {tab.key === 'callbacks' && 'Calls mit Rückruf-Wunsch'}
+                    {tab.key === 'followUp' && 'Calls die Follow-up benötigen'}
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -2206,6 +2356,43 @@ export default function PortalDashboard() {
                                     </div>
                                   </TooltipTrigger>
                                   <TooltipContent><p className="text-xs">Reviewed</p></TooltipContent>
+                                </Tooltip>
+                              )}
+                              {/* STEP 11: Outcome tag indicator */}
+                              {call.outcomeTag && (
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <span 
+                                      className="px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide"
+                                      style={{ 
+                                        background: call.outcomeTag === 'appointment' ? 'rgba(34,197,94,0.15)' :
+                                                   call.outcomeTag === 'callback' ? 'rgba(59,130,246,0.15)' :
+                                                   call.outcomeTag === 'follow_up' ? 'rgba(254,145,0,0.15)' :
+                                                   'rgba(255,255,255,0.08)',
+                                        color: call.outcomeTag === 'appointment' ? '#22c55e' :
+                                               call.outcomeTag === 'callback' ? '#3b82f6' :
+                                               call.outcomeTag === 'follow_up' ? '#FE9100' :
+                                               'rgba(255,255,255,0.5)'
+                                      }}
+                                    >
+                                      {call.outcomeTag === 'appointment' ? 'Appt' :
+                                       call.outcomeTag === 'callback' ? 'CB' :
+                                       call.outcomeTag === 'follow_up' ? 'F/U' :
+                                       call.outcomeTag === 'not_interested' ? 'N/I' :
+                                       call.outcomeTag === 'wrong_number' ? 'W/N' :
+                                       'Unc'}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p className="text-xs">
+                                      {call.outcomeTag === 'appointment' ? 'Appointment' :
+                                       call.outcomeTag === 'callback' ? 'Callback' :
+                                       call.outcomeTag === 'follow_up' ? 'Follow-up' :
+                                       call.outcomeTag === 'not_interested' ? 'Not Interested' :
+                                       call.outcomeTag === 'wrong_number' ? 'Wrong Number' :
+                                       'Unclear'}
+                                    </p>
+                                  </TooltipContent>
                                 </Tooltip>
                               )}
                               {call.hasTranscript && (

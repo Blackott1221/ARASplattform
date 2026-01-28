@@ -157,6 +157,7 @@ function Router() {
         {/* 🔐 CLIENT PORTAL ROUTES - Public, isolated auth */}
         <Route path="/portal/:portalKey/login" component={PortalLogin} />
         <Route path="/portal/:portalKey/report" component={PortalReport} />
+        <Route path="/portal/:portalKey/calls/:callId" component={PortalDashboard} />  {/* STEP 11: Deep-link */}
         <Route path="/portal/:portalKey" component={PortalDashboard} />
         
         {/* Public routes - always accessible */}

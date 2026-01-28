@@ -216,7 +216,9 @@ router.get('/calls', async (req: Request, res: Response) => {
         // STEP 8: Portal review data
         starred: portal.starred || false,
         reviewedAt: portal.reviewedAt || null,
-        note: portal.note || null
+        note: portal.note || null,
+        // STEP 11: Outcome tag
+        outcomeTag: portal.outcomeTag || null
       };
     });
     
@@ -664,8 +666,8 @@ router.get('/calls/export.csv', async (req: Request, res: Response) => {
       .orderBy(desc(callLogs.createdAt))
       .limit(5000);
     
-    // Build CSV (STEP 8: include reviewedAt, starred, note)
-    const headers = ['createdAt', 'phoneNumber', 'contactName', 'status', 'durationSec', 'signalScore', 'intent', 'sentiment', 'nextBestAction', 'reviewedAt', 'starred', 'note'];
+    // Build CSV (STEP 8: include reviewedAt, starred, note; STEP 11: outcomeTag)
+    const headers = ['createdAt', 'phoneNumber', 'contactName', 'status', 'durationSec', 'signalScore', 'intent', 'sentiment', 'nextBestAction', 'reviewedAt', 'starred', 'note', 'outcomeTag'];
     const rows = [headers.join(',')];
     
     for (const call of calls) {
@@ -685,7 +687,8 @@ router.get('/calls/export.csv', async (req: Request, res: Response) => {
         escapeCSV(analysis?.nextBestAction || ''),
         portal.reviewedAt || '',
         portal.starred ? 'true' : '',
-        escapeCSV(portal.note || '')
+        escapeCSV(portal.note || ''),
+        portal.outcomeTag || ''
       ];
       rows.push(row.join(','));
     }
@@ -726,12 +729,30 @@ interface AuditEntry {
   ts: string;
   portalKey: string;
   action: string;
-  metaSafe: { callId?: number; range?: string; success?: boolean; count?: number; ok?: number; failed?: number; starred?: boolean; reviewed?: boolean };
+  metaSafe: { 
+    callId?: number; 
+    range?: string; 
+    success?: boolean; 
+    count?: number; 
+    ok?: number; 
+    failed?: number; 
+    starred?: boolean; 
+    reviewed?: boolean;
+    ipHash?: string;       // STEP 10: Hashed IP for login events
+    outcomeTag?: string;   // STEP 11: Outcome tag for call.tag events
+  };
 }
 
 // ============================================================================
 // PORTAL METADATA V1 — Client notes/review/star stored in metadata.portal
 // ============================================================================
+
+// STEP 11: Outcome tag enum
+type OutcomeTag = 'appointment' | 'callback' | 'follow_up' | 'not_interested' | 'wrong_number' | 'unclear';
+type NextActionOwner = 'leadely' | 'internal';
+
+const VALID_OUTCOME_TAGS: OutcomeTag[] = ['appointment', 'callback', 'follow_up', 'not_interested', 'wrong_number', 'unclear'];
+const VALID_NEXT_ACTION_OWNERS: NextActionOwner[] = ['leadely', 'internal'];
 
 interface PortalMetadataV1 {
   version: 'v1';
@@ -740,6 +761,8 @@ interface PortalMetadataV1 {
   reviewedBy?: string;  // displayName or username
   note?: string;        // max 800 chars, trimmed
   updatedAt?: string;   // ISO timestamp
+  outcomeTag?: OutcomeTag;           // STEP 11: Outcome classification
+  nextActionOwner?: NextActionOwner; // STEP 11: Who owns the next action
 }
 
 function getPortalMeta(metadata: Record<string, any>): PortalMetadataV1 {
@@ -858,7 +881,7 @@ router.get('/calls/report', async (req: Request, res: Response) => {
       });
     }
     
-    // Format calls for report (STEP 8: include note short + review/star markers)
+    // Format calls for report (STEP 8: include note short + review/star markers; STEP 11: outcomeTag)
     const reportCalls = filteredCalls.map(c => {
       const meta = (c.metadata || {}) as Record<string, any>;
       const analysis = meta.ai?.analysisV1;
@@ -874,7 +897,8 @@ router.get('/calls/report', async (req: Request, res: Response) => {
           (analysis.nextBestAction.length > 60 ? analysis.nextBestAction.slice(0, 60) + '…' : analysis.nextBestAction) : null,
         starred: portal.starred || false,
         reviewed: !!portal.reviewedAt,
-        noteShort: portal.note ? (portal.note.length > 80 ? portal.note.slice(0, 80) + '…' : portal.note) : null
+        noteShort: portal.note ? (portal.note.length > 80 ? portal.note.slice(0, 80) + '…' : portal.note) : null,
+        outcomeTag: portal.outcomeTag || null  // STEP 11
       };
     });
     
@@ -923,11 +947,23 @@ router.patch('/calls/:id/metadata', async (req: Request, res: Response) => {
   }
   
   try {
-    const { starred, reviewed, note } = req.body as {
+    const { starred, reviewed, note, outcomeTag, nextActionOwner } = req.body as {
       starred?: boolean;
       reviewed?: boolean;
       note?: string;
+      outcomeTag?: string;         // STEP 11
+      nextActionOwner?: string;    // STEP 11
     };
+    
+    // STEP 11: Validate outcomeTag if provided
+    if (outcomeTag !== undefined && !VALID_OUTCOME_TAGS.includes(outcomeTag as OutcomeTag)) {
+      return res.status(400).json({ error: 'INVALID_OUTCOME_TAG' });
+    }
+    
+    // STEP 11: Validate nextActionOwner if provided
+    if (nextActionOwner !== undefined && !VALID_NEXT_ACTION_OWNERS.includes(nextActionOwner as NextActionOwner)) {
+      return res.status(400).json({ error: 'INVALID_NEXT_ACTION_OWNER' });
+    }
     
     // Verify call belongs to this portal
     const filter = normalizeFilter(config.filter);
@@ -976,6 +1012,17 @@ router.patch('/calls/:id/metadata', async (req: Request, res: Response) => {
     if (note !== undefined) {
       updatedPortal.note = sanitizeNote(note);
       logPortalAudit(session.portalKey, 'portal.call.note', { callId });
+    }
+    
+    // STEP 11: Handle outcomeTag
+    if (outcomeTag !== undefined) {
+      updatedPortal.outcomeTag = outcomeTag as OutcomeTag;
+      logPortalAudit(session.portalKey, 'portal.call.tag', { callId, outcomeTag });
+    }
+    
+    // STEP 11: Handle nextActionOwner
+    if (nextActionOwner !== undefined) {
+      updatedPortal.nextActionOwner = nextActionOwner as NextActionOwner;
     }
     
     // Merge into existing metadata (preserve other keys like ai, summary, etc.)

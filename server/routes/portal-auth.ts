@@ -8,7 +8,7 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
-import { createHmac, timingSafeEqual } from 'crypto';
+import { createHmac, timingSafeEqual, scryptSync, randomBytes, createHash } from 'crypto';
 import { logPortalAudit } from './portal-calls';
 
 const router = Router();
@@ -20,10 +20,150 @@ const router = Router();
 interface PortalUser {
   portalKey: string;
   username: string;
-  password: string;
+  password?: string;       // DEPRECATED: use passwordHash
+  passwordHash?: string;   // scrypt$N=16384$r=8$p=1$salt=<b64>$hash=<b64>
   displayName: string;
   role: string;
 }
+
+// ============================================================================
+// STEP 10: PASSWORD HASHING (scrypt, Node crypto)
+// ============================================================================
+
+const SCRYPT_N = 16384;
+const SCRYPT_R = 8;
+const SCRYPT_P = 1;
+const SCRYPT_KEYLEN = 64;
+
+/**
+ * Hash a portal password using scrypt.
+ * Format: scrypt$N=16384$r=8$p=1$salt=<base64>$hash=<base64>
+ * Use this to generate hashes for .env (run once locally).
+ */
+export function hashPortalPassword(plain: string): string {
+  const salt = randomBytes(32);
+  const hash = scryptSync(plain, salt, SCRYPT_KEYLEN, { N: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P });
+  return `scrypt$N=${SCRYPT_N}$r=${SCRYPT_R}$p=${SCRYPT_P}$salt=${salt.toString('base64')}$hash=${hash.toString('base64')}`;
+}
+
+/**
+ * Verify a password against a scrypt hash.
+ * Uses constant-time comparison.
+ */
+function verifyPortalPassword(plain: string, passwordHash: string): boolean {
+  try {
+    const parts = passwordHash.split('$');
+    if (parts[0] !== 'scrypt' || parts.length < 6) return false;
+    
+    // Parse params
+    const params: Record<string, string> = {};
+    for (let i = 1; i < parts.length; i++) {
+      const [key, val] = parts[i].split('=');
+      if (key && val) params[key] = val;
+    }
+    
+    const N = parseInt(params['N'] || '16384', 10);
+    const r = parseInt(params['r'] || '8', 10);
+    const p = parseInt(params['p'] || '1', 10);
+    const salt = Buffer.from(params['salt'] || '', 'base64');
+    const storedHash = Buffer.from(params['hash'] || '', 'base64');
+    
+    if (salt.length === 0 || storedHash.length === 0) return false;
+    
+    const derivedHash = scryptSync(plain, salt, storedHash.length, { N, r, p });
+    
+    return timingSafeEqual(derivedHash, storedHash);
+  } catch {
+    return false;
+  }
+}
+
+// ============================================================================
+// STEP 10: BRUTE-FORCE PROTECTION (in-memory)
+// ============================================================================
+
+interface LoginAttempt {
+  count: number;
+  firstAttempt: number;
+  lockedUntil: number | null;
+}
+
+const loginAttempts = new Map<string, LoginAttempt>();
+
+const BRUTE_FORCE_MAX_ATTEMPTS = 8;
+const BRUTE_FORCE_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+const BRUTE_FORCE_LOCK_MS = 15 * 60 * 1000;   // 15 minutes
+
+function getAttemptKey(ip: string, portalKey: string, username: string): string {
+  return `${ip}:${portalKey}:${username}`;
+}
+
+function hashIp(ip: string): string {
+  const secret = getSessionSecret();
+  return createHash('sha256').update(ip + secret).digest('hex').slice(0, 16);
+}
+
+function checkBruteForce(ip: string, portalKey: string, username: string): { locked: boolean; remaining?: number } {
+  const key = getAttemptKey(ip, portalKey, username);
+  const now = Date.now();
+  const attempt = loginAttempts.get(key);
+  
+  if (!attempt) return { locked: false };
+  
+  // Check if locked
+  if (attempt.lockedUntil && now < attempt.lockedUntil) {
+    return { locked: true, remaining: Math.ceil((attempt.lockedUntil - now) / 1000) };
+  }
+  
+  // Reset if window expired
+  if (now - attempt.firstAttempt > BRUTE_FORCE_WINDOW_MS) {
+    loginAttempts.delete(key);
+    return { locked: false };
+  }
+  
+  return { locked: false };
+}
+
+function recordFailedAttempt(ip: string, portalKey: string, username: string): boolean {
+  const key = getAttemptKey(ip, portalKey, username);
+  const now = Date.now();
+  let attempt = loginAttempts.get(key);
+  
+  if (!attempt || now - attempt.firstAttempt > BRUTE_FORCE_WINDOW_MS) {
+    attempt = { count: 1, firstAttempt: now, lockedUntil: null };
+  } else {
+    attempt.count++;
+  }
+  
+  // Check if should lock
+  if (attempt.count >= BRUTE_FORCE_MAX_ATTEMPTS) {
+    attempt.lockedUntil = now + BRUTE_FORCE_LOCK_MS;
+    loginAttempts.set(key, attempt);
+    return true; // locked
+  }
+  
+  loginAttempts.set(key, attempt);
+  return false;
+}
+
+function resetAttempts(ip: string, portalKey: string, username: string): void {
+  const key = getAttemptKey(ip, portalKey, username);
+  loginAttempts.delete(key);
+}
+
+// Cleanup old entries every 30 minutes
+setInterval(() => {
+  const now = Date.now();
+  const entries = Array.from(loginAttempts.entries());
+  for (let i = 0; i < entries.length; i++) {
+    const [key, attempt] = entries[i];
+    if (attempt.lockedUntil && now > attempt.lockedUntil) {
+      loginAttempts.delete(key);
+    } else if (now - attempt.firstAttempt > BRUTE_FORCE_WINDOW_MS * 2) {
+      loginAttempts.delete(key);
+    }
+  }
+}, 30 * 60 * 1000);
 
 interface PortalBranding {
   mode: 'white_label' | 'co_branded';
@@ -184,14 +324,16 @@ interface PortalSession {
   role: string;
   iat: number;
   exp: number;
+  sid: string; // STEP 10: Session ID for rotation
 }
 
-function signSession(session: Omit<PortalSession, 'iat' | 'exp'>): string {
+function signSession(session: Omit<PortalSession, 'iat' | 'exp' | 'sid'>): string {
   const secret = getSessionSecret();
   const iat = Math.floor(Date.now() / 1000);
   const exp = iat + (7 * 24 * 60 * 60); // 7 days
+  const sid = randomBytes(16).toString('base64url'); // STEP 10: Session ID
   
-  const payload: PortalSession = { ...session, iat, exp };
+  const payload: PortalSession = { ...session, iat, exp, sid };
   const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
   
   const hmac = createHmac('sha256', secret);
@@ -288,11 +430,21 @@ export function requirePortalAuth(req: Request, res: Response, next: NextFunctio
  */
 router.post('/login', (req: Request, res: Response) => {
   const { portalKey, username, password } = req.body;
+  const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
   
   if (!portalKey || !username || !password) {
     return res.status(400).json({ 
       ok: false, 
       message: 'Missing required fields' 
+    });
+  }
+  
+  // STEP 10: Check brute-force lock
+  const bruteCheck = checkBruteForce(clientIp, portalKey, username);
+  if (bruteCheck.locked) {
+    return res.status(429).json({ 
+      ok: false, 
+      message: 'Too many attempts. Try again later.' 
     });
   }
   
@@ -303,30 +455,51 @@ router.post('/login', (req: Request, res: Response) => {
     u.username === username
   );
   
-  if (!user) {
-    // Generic error - don't reveal if user exists
-    return res.status(401).json({ 
-      ok: false, 
-      message: 'Invalid credentials' 
-    });
-  }
-  
-  // Verify password (constant-time comparison)
-  try {
-    const pwBuffer = Buffer.from(password);
-    const storedBuffer = Buffer.from(user.password);
+  // Helper for failed login
+  const handleFailedLogin = () => {
+    const wasLocked = recordFailedAttempt(clientIp, portalKey, username);
+    const ipHash = hashIp(clientIp);
     
-    if (pwBuffer.length !== storedBuffer.length || !timingSafeEqual(pwBuffer, storedBuffer)) {
-      return res.status(401).json({ 
+    if (wasLocked) {
+      logPortalAudit(portalKey, 'portal.login.locked', { ipHash });
+      console.warn('[PORTAL-AUTH] Account locked due to brute-force:', { portalKey, username });
+      return res.status(429).json({ 
         ok: false, 
-        message: 'Invalid credentials' 
+        message: 'Too many attempts. Try again later.' 
       });
     }
-  } catch {
+    
+    logPortalAudit(portalKey, 'portal.login.fail', { ipHash, portalKey });
     return res.status(401).json({ 
       ok: false, 
       message: 'Invalid credentials' 
     });
+  };
+  
+  if (!user) {
+    return handleFailedLogin();
+  }
+  
+  // STEP 10: Verify password (scrypt hash preferred, plaintext fallback with warning)
+  let passwordValid = false;
+  
+  if (user.passwordHash) {
+    // New format: scrypt hash
+    passwordValid = verifyPortalPassword(password, user.passwordHash);
+  } else if (user.password) {
+    // DEPRECATED: Plaintext fallback (log warning once)
+    console.warn('[PORTAL-AUTH] DEPRECATION WARNING: User uses plaintext password. Migrate to passwordHash:', { portalKey, username });
+    try {
+      const pwBuffer = Buffer.from(password);
+      const storedBuffer = Buffer.from(user.password);
+      passwordValid = pwBuffer.length === storedBuffer.length && timingSafeEqual(pwBuffer, storedBuffer);
+    } catch {
+      passwordValid = false;
+    }
+  }
+  
+  if (!passwordValid) {
+    return handleFailedLogin();
   }
   
   // Verify portal config exists
@@ -334,11 +507,14 @@ router.post('/login', (req: Request, res: Response) => {
   if (!configs[portalKey]) {
     return res.status(401).json({ 
       ok: false, 
-      message: 'Portal not configured' 
+      message: 'Invalid credentials' 
     });
   }
   
-  // Create session
+  // STEP 10: Reset brute-force counter on success
+  resetAttempts(clientIp, portalKey, username);
+  
+  // Create session with new SID (rotation)
   const token = signSession({
     portalKey: user.portalKey,
     username: user.username,
@@ -346,11 +522,11 @@ router.post('/login', (req: Request, res: Response) => {
     role: user.role
   });
   
-  // Set cookie
+  // STEP 10: Set cookie with strict settings
   const isProduction = process.env.NODE_ENV === 'production';
   const cookieOptions = [
     `aras_portal_session=${token}`,
-    'Path=/',
+    'Path=/',  // Using / for routing compatibility (STOP question answered: B)
     'HttpOnly',
     'SameSite=Lax',
     `Max-Age=${7 * 24 * 60 * 60}`, // 7 days
