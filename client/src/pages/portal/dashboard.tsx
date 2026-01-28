@@ -57,6 +57,15 @@ interface PortalInfoHints {
   insights: string;
   companyCard: string;
   packageCard: string;
+  reviewed: string;
+  bulkAnalyze: string;
+  tabs?: {
+    all: string;
+    needsReview: string;
+    starred: string;
+    highSignal: string;
+    failed: string;
+  };
 }
 
 interface PortalSession {
@@ -105,6 +114,10 @@ interface CallItem {
   hasRecording: boolean;
   signalScore?: number | null;
   hasAnalysis?: boolean;
+  // STEP 8: Portal metadata
+  starred?: boolean;
+  reviewedAt?: string;
+  note?: string;
 }
 
 // ARAS Intelligence Analysis v1
@@ -123,6 +136,8 @@ interface AnalysisV1 {
   transcriptHash: string;
 }
 
+// STEP 9: Extended tab types
+type TabFilter = 'all' | 'needsReview' | 'starred' | 'highSignal' | 'failed';
 type KPIFilter = 'all' | 'connected' | 'completed' | 'high_signal';
 
 const HIGH_SIGNAL_THRESHOLD = 70;
@@ -502,12 +517,14 @@ function CallDetailDrawer({
   callId, 
   onClose,
   portalKey,
-  onAnalysisComplete
+  onAnalysisComplete,
+  session
 }: { 
   callId: number; 
   onClose: () => void;
   portalKey: string;
   onAnalysisComplete?: () => void;
+  session?: PortalSession;
 }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -518,8 +535,16 @@ function CallDetailDrawer({
   const transcriptRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   
+  // STEP 8: Review Panel state
+  const [noteValue, setNoteValue] = useState('');
+  const [starred, setStarred] = useState(false);
+  const [reviewed, setReviewed] = useState(false);
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'error'>('idle');
+  const noteDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const reducedMotion = usePrefersReducedMotion();
+  
   // Fetch call details
-  const { data: call, isLoading } = useQuery<CallDetail>({
+  const { data: call, isLoading, refetch: refetchCall } = useQuery<CallDetail>({
     queryKey: ['portal-call', callId],
     queryFn: async () => {
       const res = await fetch(`/api/portal/calls/${callId}`, {
@@ -529,6 +554,57 @@ function CallDetailDrawer({
       return res.json();
     }
   });
+  
+  // STEP 8: Initialize review state from call metadata
+  useEffect(() => {
+    if (call) {
+      const portal = (call as any).portal || {};
+      setNoteValue(portal.note || '');
+      setStarred(!!portal.starred);
+      setReviewed(!!portal.reviewedAt);
+    }
+  }, [call]);
+  
+  // STEP 8: Save metadata helper
+  const saveMetadata = useCallback(async (updates: { starred?: boolean; reviewed?: boolean; note?: string }) => {
+    setSaveState('saving');
+    try {
+      const res = await fetch(`/api/portal/calls/${callId}/metadata`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(updates)
+      });
+      if (!res.ok) throw new Error('Save failed');
+      setSaveState('idle');
+      // Invalidate calls list to reflect changes
+      queryClient.invalidateQueries({ queryKey: ['portal-calls'] });
+    } catch {
+      setSaveState('error');
+    }
+  }, [callId, queryClient]);
+  
+  // STEP 8: Debounced note save
+  const handleNoteChange = useCallback((value: string) => {
+    setNoteValue(value);
+    if (noteDebounceRef.current) clearTimeout(noteDebounceRef.current);
+    noteDebounceRef.current = setTimeout(() => {
+      saveMetadata({ note: value });
+    }, 600);
+  }, [saveMetadata]);
+  
+  // STEP 8: Toggle handlers
+  const handleStarToggle = useCallback(() => {
+    const newVal = !starred;
+    setStarred(newVal);
+    saveMetadata({ starred: newVal });
+  }, [starred, saveMetadata]);
+  
+  const handleReviewedToggle = useCallback(() => {
+    const newVal = !reviewed;
+    setReviewed(newVal);
+    saveMetadata({ reviewed: newVal });
+  }, [reviewed, saveMetadata]);
   
   // Fetch cached analysis
   const { data: analysisData, refetch: refetchAnalysis } = useQuery<{ analysis: AnalysisV1; cached: boolean }>({
@@ -969,6 +1045,90 @@ function CallDetailDrawer({
                   </div>
                 )}
               </div>
+              
+              {/* STEP 8: Review Panel */}
+              <div 
+                className="p-4 rounded-2xl space-y-4"
+                style={{
+                  background: 'rgba(20,20,20,0.8)',
+                  border: '1px solid rgba(255,255,255,0.1)'
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-white/40 uppercase tracking-wider">
+                    Team Review
+                  </h3>
+                  <div className="flex items-center gap-3">
+                    {/* Star Toggle */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={handleStarToggle}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5 transition-colors"
+                        >
+                          {starred ? (
+                            <svg className="w-5 h-5 text-yellow-400 fill-current" viewBox="0 0 24 24">
+                              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                            </svg>
+                          ) : (
+                            <svg className="w-5 h-5 text-white/30" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                            </svg>
+                          )}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs">{starred ? 'Markierung entfernen' : 'Für Follow-up markieren'}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                    
+                    {/* Reviewed Toggle */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={handleReviewedToggle}
+                          className="flex items-center gap-2 px-3 h-8 rounded-lg text-xs font-medium transition-colors"
+                          style={{
+                            background: reviewed ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.05)',
+                            color: reviewed ? '#22c55e' : 'rgba(255,255,255,0.5)',
+                            border: reviewed ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(255,255,255,0.08)'
+                          }}
+                        >
+                          {reviewed ? <CheckCircle className="w-3.5 h-3.5" /> : <div className="w-3.5 h-3.5 rounded-full border border-current" />}
+                          Reviewed
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-[280px]">
+                        <p className="text-xs">{session?.ui?.infoHints?.reviewed || 'Markiert den Call als geprüft. Für euer Team-Review.'}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </div>
+                
+                {/* Note Textarea */}
+                <div className="space-y-2">
+                  <textarea
+                    value={noteValue}
+                    onChange={(e) => handleNoteChange(e.target.value)}
+                    placeholder="Notiz für das Team… (z.B. Einwand, nächster Schritt, Termin)"
+                    maxLength={800}
+                    className="w-full min-h-[96px] p-3 rounded-xl text-sm text-white/90 placeholder-white/30 resize-none outline-none"
+                    style={{
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      lineHeight: '1.6'
+                    }}
+                  />
+                  <div className="flex items-center justify-between text-xs">
+                    <span className={saveState === 'error' ? 'text-red-400' : 'text-white/30'}>
+                      {saveState === 'saving' ? (reducedMotion ? 'Saving…' : '● Saving…') : 
+                       saveState === 'error' ? '✕ Couldn\'t save' : 
+                       '✓ Saved'}
+                    </span>
+                    <span className="text-white/30">{noteValue.length}/800</span>
+                  </div>
+                </div>
+              </div>
             </>
           ) : (
             <div className="text-center py-20 text-white/40">
@@ -998,6 +1158,20 @@ export default function PortalDashboard() {
   const [activeFilter, setActiveFilter] = useState<KPIFilter>('all');
   const [showActivityDrawer, setShowActivityDrawer] = useState(false);
   const reducedMotion = usePrefersReducedMotion();
+  
+  // STEP 9: Tab state
+  const [activeTab, setActiveTab] = useState<TabFilter>('all');
+  
+  // STEP 9: Bulk Analyze state
+  const [bulkAnalyzeState, setBulkAnalyzeState] = useState<{
+    running: boolean;
+    progress: number;
+    total: number;
+    okCount: number;
+    failedCount: number;
+    cancelled: boolean;
+  } | null>(null);
+  const bulkCancelRef = useRef(false);
   
   // Fetch session/config
   const { data: session, isLoading: sessionLoading, error: sessionError } = useQuery<PortalSession>({
@@ -1078,27 +1252,65 @@ export default function PortalDashboard() {
     staleTime: 30 * 1000 // 30 sec cache
   });
   
-  // Filter calls based on active KPI filter
-  const filteredCalls = useMemo(() => {
+  // STEP 9: Filter calls by tab first, then by KPI filter
+  const tabFilteredCalls = useMemo(() => {
     if (!callsData?.items) return [];
     
-    switch (activeFilter) {
-      case 'connected':
-        return callsData.items.filter(c => 
-          ['initiated', 'completed', 'in_progress'].includes(c.status?.toLowerCase())
-        );
-      case 'completed':
-        return callsData.items.filter(c => 
-          ['completed', 'done'].includes(c.status?.toLowerCase())
-        );
-      case 'high_signal':
-        return callsData.items.filter(c => 
-          c.signalScore && c.signalScore >= HIGH_SIGNAL_THRESHOLD
-        );
+    switch (activeTab) {
+      case 'needsReview':
+        return callsData.items.filter(c => !c.reviewedAt);
+      case 'starred':
+        return callsData.items.filter(c => c.starred);
+      case 'highSignal':
+        return callsData.items.filter(c => c.signalScore && c.signalScore >= HIGH_SIGNAL_THRESHOLD);
+      case 'failed':
+        return callsData.items.filter(c => c.status?.toLowerCase() === 'failed');
       default:
         return callsData.items;
     }
-  }, [callsData?.items, activeFilter]);
+  }, [callsData?.items, activeTab]);
+  
+  // Filter calls based on active KPI filter (on top of tab filter)
+  const filteredCalls = useMemo(() => {
+    if (!tabFilteredCalls.length) return [];
+    
+    switch (activeFilter) {
+      case 'connected':
+        return tabFilteredCalls.filter(c => 
+          ['initiated', 'completed', 'in_progress'].includes(c.status?.toLowerCase())
+        );
+      case 'completed':
+        return tabFilteredCalls.filter(c => 
+          ['completed', 'done'].includes(c.status?.toLowerCase())
+        );
+      case 'high_signal':
+        return tabFilteredCalls.filter(c => 
+          c.signalScore && c.signalScore >= HIGH_SIGNAL_THRESHOLD
+        );
+      default:
+        return tabFilteredCalls;
+    }
+  }, [tabFilteredCalls, activeFilter]);
+  
+  // STEP 9: Tab counts for badges
+  const tabCounts = useMemo(() => {
+    if (!callsData?.items) return { needsReview: 0, starred: 0, highSignal: 0, failed: 0 };
+    return {
+      needsReview: callsData.items.filter(c => !c.reviewedAt).length,
+      starred: callsData.items.filter(c => c.starred).length,
+      highSignal: callsData.items.filter(c => c.signalScore && c.signalScore >= HIGH_SIGNAL_THRESHOLD).length,
+      failed: callsData.items.filter(c => c.status?.toLowerCase() === 'failed').length
+    };
+  }, [callsData?.items]);
+  
+  // STEP 9: Next Actions - top 8 high signal calls with analysis
+  const nextActions = useMemo(() => {
+    if (!callsData?.items) return [];
+    return callsData.items
+      .filter(c => c.hasAnalysis && c.signalScore && c.signalScore >= HIGH_SIGNAL_THRESHOLD)
+      .sort((a, b) => (b.signalScore || 0) - (a.signalScore || 0))
+      .slice(0, 8);
+  }, [callsData?.items]);
   
   // Calculate KPI stats
   const kpiStats = useMemo(() => {
@@ -1121,6 +1333,73 @@ export default function PortalDashboard() {
     
     return { connected, completed, highSignal, analyzedCount };
   }, [callsData?.items]);
+  
+  // STEP 9: Bulk Analyze handler
+  const handleBulkAnalyze = useCallback(async () => {
+    if (!tabFilteredCalls.length) return;
+    
+    // Get candidates: no analysis, max 20
+    const candidates = tabFilteredCalls
+      .filter(c => !c.hasAnalysis && c.hasTranscript)
+      .slice(0, 20);
+    
+    if (candidates.length === 0) return;
+    
+    bulkCancelRef.current = false;
+    setBulkAnalyzeState({
+      running: true,
+      progress: 0,
+      total: candidates.length,
+      okCount: 0,
+      failedCount: 0,
+      cancelled: false
+    });
+    
+    let ok = 0;
+    let failed = 0;
+    
+    for (let i = 0; i < candidates.length; i++) {
+      if (bulkCancelRef.current) {
+        setBulkAnalyzeState(prev => prev ? { ...prev, running: false, cancelled: true } : null);
+        break;
+      }
+      
+      const call = candidates[i];
+      try {
+        const res = await fetch(`/api/portal/calls/${call.id}/analyze`, {
+          method: 'POST',
+          credentials: 'include'
+        });
+        if (res.ok) {
+          ok++;
+        } else {
+          failed++;
+        }
+      } catch {
+        failed++;
+      }
+      
+      setBulkAnalyzeState(prev => prev ? {
+        ...prev,
+        progress: i + 1,
+        okCount: ok,
+        failedCount: failed
+      } : null);
+      
+      // Small delay between requests
+      if (i < candidates.length - 1) {
+        await new Promise(r => setTimeout(r, 250));
+      }
+    }
+    
+    setBulkAnalyzeState(prev => prev ? { ...prev, running: false } : null);
+    refetchCalls();
+    queryClient.invalidateQueries({ queryKey: ['portal-insights'] });
+  }, [tabFilteredCalls, refetchCalls, queryClient]);
+  
+  const handleBulkCancel = useCallback(() => {
+    bulkCancelRef.current = true;
+  }, []);
   
   // Handle unauthorized - redirect to login
   useEffect(() => {
@@ -1246,6 +1525,60 @@ export default function PortalDashboard() {
           )}
         </div>
       </header>
+      
+      {/* STEP 9: Tab Bar */}
+      <div 
+        className="sticky top-16 z-20 border-b border-white/5 backdrop-blur-xl"
+        style={{ background: 'rgba(10,10,10,0.7)' }}
+      >
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-1 py-2 overflow-x-auto hide-scrollbar">
+            {([
+              { key: 'all' as TabFilter, label: 'All', count: callsData?.items?.length || 0 },
+              { key: 'needsReview' as TabFilter, label: 'Needs Review', count: tabCounts.needsReview },
+              { key: 'starred' as TabFilter, label: 'Starred', count: tabCounts.starred },
+              { key: 'highSignal' as TabFilter, label: 'High Signal', count: tabCounts.highSignal },
+              { key: 'failed' as TabFilter, label: 'Failed', count: tabCounts.failed }
+            ]).map(tab => (
+              <Tooltip key={tab.key}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setActiveTab(tab.key)}
+                    className="flex items-center gap-2 px-4 h-[36px] rounded-full text-sm font-medium whitespace-nowrap transition-colors"
+                    style={{
+                      background: activeTab === tab.key ? 'rgba(255,255,255,0.06)' : 'transparent',
+                      border: activeTab === tab.key ? '1px solid rgba(255,255,255,0.1)' : '1px solid transparent',
+                      color: activeTab === tab.key ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)'
+                    }}
+                  >
+                    {tab.label}
+                    {tab.count > 0 && tab.key !== 'all' && (
+                      <span 
+                        className="px-1.5 py-0.5 rounded-full text-xs"
+                        style={{ 
+                          background: activeTab === tab.key ? 'rgba(254,145,0,0.2)' : 'rgba(255,255,255,0.1)',
+                          color: activeTab === tab.key ? '#FE9100' : 'rgba(255,255,255,0.5)'
+                        }}
+                      >
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">
+                    {tab.key === 'all' && (session?.ui?.infoHints?.tabs?.all || 'Alle Calls anzeigen')}
+                    {tab.key === 'needsReview' && (session?.ui?.infoHints?.tabs?.needsReview || 'Calls die noch nicht reviewed wurden')}
+                    {tab.key === 'starred' && (session?.ui?.infoHints?.tabs?.starred || 'Für Follow-up markierte Calls')}
+                    {tab.key === 'highSignal' && (session?.ui?.infoHints?.tabs?.highSignal || 'Calls mit Signal Score ≥ 70')}
+                    {tab.key === 'failed' && (session?.ui?.infoHints?.tabs?.failed || 'Fehlgeschlagene Calls')}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
+        </div>
+      </div>
       
       {/* Main Content */}
       <main className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-6 relative">
@@ -1585,6 +1918,65 @@ export default function PortalDashboard() {
                 {session.package.notes}
               </p>
             </div>
+            
+            {/* STEP 9: Next Actions Panel */}
+            <div 
+              className="p-5 rounded-2xl"
+              style={{
+                background: 'rgba(20,20,20,0.6)',
+                border: '1px solid rgba(255,255,255,0.06)',
+                backdropFilter: 'blur(20px)'
+              }}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Target className="w-4 h-4 text-[#FE9100]" />
+                <h3 className="text-sm font-medium text-white">Next Actions</h3>
+              </div>
+              <p className="text-xs text-white/40 mb-4">Top Gespräche mit klarstem nächsten Schritt.</p>
+              
+              {nextActions.length > 0 ? (
+                <div className="space-y-2">
+                  {nextActions.map(call => (
+                    <div 
+                      key={call.id}
+                      className="flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-colors hover:bg-white/5"
+                      onClick={() => setSelectedCallId(call.id)}
+                    >
+                      <span 
+                        className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold"
+                        style={{ background: `${getSignalColor(call.signalScore || 0)}15`, color: getSignalColor(call.signalScore || 0) }}
+                      >
+                        {call.signalScore}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm text-white/80 truncate">{call.contactName || call.to}</div>
+                      </div>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigator.clipboard.writeText('Next best action copied');
+                            }}
+                            className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+                          >
+                            <Copy className="w-3.5 h-3.5 text-white/40" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent><p className="text-xs">Next Action kopieren</p></TooltipContent>
+                      </Tooltip>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-white/40 text-sm">
+                  <Zap className="w-6 h-6 mx-auto mb-2 opacity-40" />
+                  Noch keine analysierten High-Signal Gespräche.
+                  <br />
+                  <span className="text-xs">Starte Analyse im Call-Detail oder via Bulk.</span>
+                </div>
+              )}
+            </div>
           </div>
           
           {/* Right Column - Calls Table */}
@@ -1646,6 +2038,28 @@ export default function PortalDashboard() {
                     </TooltipTrigger>
                     <TooltipContent className="max-w-[320px]">
                       <p className="text-xs">{session.ui.infoHints?.pdfReport || 'Öffnet einen druckoptimierten Report. Im Druckdialog "Als PDF speichern" wählen.'}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  
+                  {/* STEP 9: Bulk Analyze */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={handleBulkAnalyze}
+                        disabled={bulkAnalyzeState?.running}
+                        className="flex items-center gap-1.5 px-3 h-9 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+                        style={{
+                          background: 'rgba(254,145,0,0.15)',
+                          color: '#FE9100',
+                          border: '1px solid rgba(254,145,0,0.3)'
+                        }}
+                      >
+                        <Zap className="w-3.5 h-3.5" />
+                        Bulk (20)
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[320px]">
+                      <p className="text-xs">{session.ui.infoHints?.bulkAnalyze || 'Analysiert bis zu 20 Gespräche nacheinander. Kein Massenlauf.'}</p>
                     </TooltipContent>
                   </Tooltip>
                   
@@ -1764,6 +2178,36 @@ export default function PortalDashboard() {
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1.5">
+                              {/* STEP 8: Star indicator */}
+                              {call.starred && (
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <div 
+                                      className="w-6 h-6 rounded-md flex items-center justify-center"
+                                      style={{ background: 'rgba(234,179,8,0.1)' }}
+                                    >
+                                      <svg className="w-3 h-3 text-yellow-400 fill-current" viewBox="0 0 24 24">
+                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                      </svg>
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent><p className="text-xs">Follow-up markiert</p></TooltipContent>
+                                </Tooltip>
+                              )}
+                              {/* STEP 8: Reviewed indicator */}
+                              {call.reviewedAt && (
+                                <Tooltip>
+                                  <TooltipTrigger>
+                                    <div 
+                                      className="w-6 h-6 rounded-md flex items-center justify-center"
+                                      style={{ background: 'rgba(34,197,94,0.1)' }}
+                                    >
+                                      <CheckCircle className="w-3 h-3 text-green-400" />
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent><p className="text-xs">Reviewed</p></TooltipContent>
+                                </Tooltip>
+                              )}
                               {call.hasTranscript && (
                                 <div 
                                   className="w-6 h-6 rounded-md flex items-center justify-center"
@@ -1820,7 +2264,77 @@ export default function PortalDashboard() {
           onClose={() => setSelectedCallId(null)}
           portalKey={portalKey || ''}
           onAnalysisComplete={() => refetchCalls()}
+          session={session}
         />
+      )}
+      
+      {/* STEP 9: Bulk Analyze Progress Modal */}
+      {bulkAnalyzeState && (
+        <>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
+          <div 
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-[360px] p-6 rounded-2xl z-50"
+            style={{
+              background: 'rgba(20,20,20,0.98)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
+            }}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <Zap className="w-5 h-5 text-[#FE9100]" />
+              <h3 className="font-semibold text-white">Bulk Analyse</h3>
+            </div>
+            
+            {bulkAnalyzeState.running ? (
+              <>
+                <div className="mb-3">
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-white/60">Analysiere…</span>
+                    <span className="text-white">{bulkAnalyzeState.progress} / {bulkAnalyzeState.total}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                    <div 
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{ 
+                        width: `${(bulkAnalyzeState.progress / bulkAnalyzeState.total) * 100}%`,
+                        background: 'linear-gradient(90deg, #FE9100, #FF6B00)'
+                      }}
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={handleBulkCancel}
+                  className="w-full py-2.5 rounded-xl text-sm font-medium text-white/70 bg-white/5 hover:bg-white/10 transition-colors"
+                >
+                  Abbrechen
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="text-center py-4">
+                  {bulkAnalyzeState.cancelled ? (
+                    <p className="text-white/60 text-sm">Abgebrochen</p>
+                  ) : (
+                    <>
+                      <p className="text-white/80 text-sm mb-1">
+                        <span className="text-green-400 font-medium">{bulkAnalyzeState.okCount}</span> erfolgreich
+                        {bulkAnalyzeState.failedCount > 0 && (
+                          <>, <span className="text-red-400 font-medium">{bulkAnalyzeState.failedCount}</span> fehlgeschlagen</>
+                        )}
+                      </p>
+                    </>
+                  )}
+                </div>
+                <button
+                  onClick={() => setBulkAnalyzeState(null)}
+                  className="w-full py-2.5 rounded-xl text-sm font-medium text-white bg-[#FE9100] hover:bg-[#FF6B00] transition-colors"
+                >
+                  Schließen
+                </button>
+              </>
+            )}
+          </div>
+        </>
       )}
       
       {/* Activity Drawer (STEP 7) */}
@@ -1862,7 +2376,12 @@ export default function PortalDashboard() {
                     'portal.analyze.start': 'Analyse gestartet',
                     'portal.analyze.success': 'Analyse erstellt',
                     'portal.analyze.fail': 'Analyse fehlgeschlagen',
-                    'portal.call.view': 'Call angesehen'
+                    'portal.call.view': 'Call angesehen',
+                    'portal.call.note': 'Notiz gespeichert',
+                    'portal.call.review': 'Review-Status geändert',
+                    'portal.call.star': 'Markierung geändert',
+                    'portal.bulkAnalyze.start': 'Bulk-Analyse gestartet',
+                    'portal.bulkAnalyze.finish': 'Bulk-Analyse beendet'
                   };
                   const label = actionLabels[entry.action] || entry.action;
                   const time = new Date(entry.ts).toLocaleString('de-DE', {

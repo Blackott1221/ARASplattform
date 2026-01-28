@@ -195,10 +195,11 @@ router.get('/calls', async (req: Request, res: Response) => {
       ? String(items[items.length - 1].id) 
       : null;
     
-    // Transform items for response
+    // Transform items for response (STEP 8: include portal metadata)
     const transformedItems = items.map(call => {
       const meta = (call.metadata || {}) as Record<string, any>;
       const analysis = meta.ai?.analysisV1;
+      const portal = getPortalMeta(meta);
       
       return {
         id: call.id,
@@ -211,7 +212,11 @@ router.get('/calls', async (req: Request, res: Response) => {
         hasTranscript: !!(call.transcript && call.transcript.length > 0),
         hasRecording: !!(call.recordingUrl && call.recordingUrl.length > 0),
         signalScore: analysis?.signalScore ?? null,
-        hasAnalysis: !!analysis
+        hasAnalysis: !!analysis,
+        // STEP 8: Portal review data
+        starred: portal.starred || false,
+        reviewedAt: portal.reviewedAt || null,
+        note: portal.note || null
       };
     });
     
@@ -659,13 +664,14 @@ router.get('/calls/export.csv', async (req: Request, res: Response) => {
       .orderBy(desc(callLogs.createdAt))
       .limit(5000);
     
-    // Build CSV
-    const headers = ['createdAt', 'phoneNumber', 'contactName', 'status', 'durationSec', 'signalScore', 'intent', 'sentiment', 'nextBestAction'];
+    // Build CSV (STEP 8: include reviewedAt, starred, note)
+    const headers = ['createdAt', 'phoneNumber', 'contactName', 'status', 'durationSec', 'signalScore', 'intent', 'sentiment', 'nextBestAction', 'reviewedAt', 'starred', 'note'];
     const rows = [headers.join(',')];
     
     for (const call of calls) {
       const meta = (call.metadata || {}) as Record<string, any>;
       const analysis = meta.ai?.analysisV1;
+      const portal = getPortalMeta(meta);
       
       const row = [
         call.createdAt ? new Date(call.createdAt).toISOString() : '',
@@ -676,7 +682,10 @@ router.get('/calls/export.csv', async (req: Request, res: Response) => {
         analysis?.signalScore?.toString() || '',
         analysis?.intent || '',
         analysis?.sentiment || '',
-        escapeCSV(analysis?.nextBestAction || '')
+        escapeCSV(analysis?.nextBestAction || ''),
+        portal.reviewedAt || '',
+        portal.starred ? 'true' : '',
+        escapeCSV(portal.note || '')
       ];
       rows.push(row.join(','));
     }
@@ -717,7 +726,33 @@ interface AuditEntry {
   ts: string;
   portalKey: string;
   action: string;
-  metaSafe: { callId?: number; range?: string; success?: boolean };
+  metaSafe: { callId?: number; range?: string; success?: boolean; count?: number; ok?: number; failed?: number; starred?: boolean; reviewed?: boolean };
+}
+
+// ============================================================================
+// PORTAL METADATA V1 — Client notes/review/star stored in metadata.portal
+// ============================================================================
+
+interface PortalMetadataV1 {
+  version: 'v1';
+  starred?: boolean;
+  reviewedAt?: string;  // ISO timestamp
+  reviewedBy?: string;  // displayName or username
+  note?: string;        // max 800 chars, trimmed
+  updatedAt?: string;   // ISO timestamp
+}
+
+function getPortalMeta(metadata: Record<string, any>): PortalMetadataV1 {
+  const portal = metadata?.portal;
+  if (portal && portal.version === 'v1') {
+    return portal as PortalMetadataV1;
+  }
+  return { version: 'v1' };
+}
+
+function sanitizeNote(note: string | undefined): string | undefined {
+  if (!note) return undefined;
+  return note.trim().replace(/\s+/g, ' ').slice(0, 800);
 }
 
 const auditBuffer: AuditEntry[] = [];
@@ -823,10 +858,11 @@ router.get('/calls/report', async (req: Request, res: Response) => {
       });
     }
     
-    // Format calls for report
+    // Format calls for report (STEP 8: include note short + review/star markers)
     const reportCalls = filteredCalls.map(c => {
       const meta = (c.metadata || {}) as Record<string, any>;
       const analysis = meta.ai?.analysisV1;
+      const portal = getPortalMeta(meta);
       return {
         createdAt: c.createdAt,
         phoneNumberMasked: maskPhoneNumber(c.phoneNumber || ''),
@@ -835,7 +871,10 @@ router.get('/calls/report', async (req: Request, res: Response) => {
         durationSec: c.duration || 0,
         signalScore: analysis?.signalScore || null,
         nextBestAction: analysis?.nextBestAction ? 
-          (analysis.nextBestAction.length > 60 ? analysis.nextBestAction.slice(0, 60) + '…' : analysis.nextBestAction) : null
+          (analysis.nextBestAction.length > 60 ? analysis.nextBestAction.slice(0, 60) + '…' : analysis.nextBestAction) : null,
+        starred: portal.starred || false,
+        reviewed: !!portal.reviewedAt,
+        noteShort: portal.note ? (portal.note.length > 80 ? portal.note.slice(0, 80) + '…' : portal.note) : null
       };
     });
     
@@ -867,6 +906,95 @@ router.get('/calls/report', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('[PORTAL-CALLS] Report error:', error);
     return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'Failed to generate report' });
+  }
+});
+
+// ============================================================================
+// PATCH /api/portal/calls/:id/metadata — Update note/star/reviewed
+// ============================================================================
+
+router.patch('/calls/:id/metadata', async (req: Request, res: Response) => {
+  const config = (req as any).portalConfig as PortalConfig;
+  const session = (req as any).portalSession;
+  const callId = parseInt(req.params.id);
+  
+  if (!callId || isNaN(callId)) {
+    return res.status(400).json({ error: 'INVALID_ID' });
+  }
+  
+  try {
+    const { starred, reviewed, note } = req.body as {
+      starred?: boolean;
+      reviewed?: boolean;
+      note?: string;
+    };
+    
+    // Verify call belongs to this portal
+    const filter = normalizeFilter(config.filter);
+    const baseCondition = buildPortalCallWhere(filter);
+    
+    const [existing] = await db
+      .select({ id: callLogs.id, metadata: callLogs.metadata })
+      .from(callLogs)
+      .where(and(baseCondition, eq(callLogs.id, callId)))
+      .limit(1);
+    
+    if (!existing) {
+      return res.status(404).json({ error: 'NOT_FOUND' });
+    }
+    
+    // Build updated portal metadata
+    const currentMeta = (existing.metadata || {}) as Record<string, any>;
+    const currentPortal = getPortalMeta(currentMeta);
+    const now = new Date().toISOString();
+    
+    const updatedPortal: PortalMetadataV1 = {
+      ...currentPortal,
+      version: 'v1',
+      updatedAt: now
+    };
+    
+    // Handle starred
+    if (typeof starred === 'boolean') {
+      updatedPortal.starred = starred;
+      logPortalAudit(session.portalKey, 'portal.call.star', { callId, starred });
+    }
+    
+    // Handle reviewed
+    if (typeof reviewed === 'boolean') {
+      if (reviewed) {
+        updatedPortal.reviewedAt = now;
+        updatedPortal.reviewedBy = session.displayName || session.username || 'User';
+      } else {
+        updatedPortal.reviewedAt = undefined;
+        updatedPortal.reviewedBy = undefined;
+      }
+      logPortalAudit(session.portalKey, 'portal.call.review', { callId, reviewed });
+    }
+    
+    // Handle note
+    if (note !== undefined) {
+      updatedPortal.note = sanitizeNote(note);
+      logPortalAudit(session.portalKey, 'portal.call.note', { callId });
+    }
+    
+    // Merge into existing metadata (preserve other keys like ai, summary, etc.)
+    const mergedMeta = {
+      ...currentMeta,
+      portal: updatedPortal
+    };
+    
+    // Update in DB
+    await db
+      .update(callLogs)
+      .set({ metadata: mergedMeta })
+      .where(eq(callLogs.id, callId));
+    
+    return res.json({ portal: updatedPortal });
+    
+  } catch (error: any) {
+    console.error('[PORTAL-CALLS] Metadata update error:', error);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
   }
 });
 
