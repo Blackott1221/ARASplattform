@@ -224,7 +224,13 @@ export default function AdminDashboardServiceOrders() {
     return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }, []);
 
-  // Fetch orders with admin/user fallback
+  /**
+   * ADMIN/USER FALLBACK STRATEGY:
+   * 1. Try admin endpoint first (/api/service-orders/admin)
+   * 2. If 401/403, fallback to user endpoint (/api/service-orders)
+   * 3. This allows admins to see all orders, users to see only their own
+   * 4. Same pattern applies to detail fetch below
+   */
   const fetchOrders = useCallback(async () => {
     setStatus('loading');
     
@@ -300,9 +306,15 @@ export default function AdminDashboardServiceOrders() {
     }
   }, []);
 
-  // Auto-select deep-linked order and open sheet
+  // Check if deep-linked orderId exists in loaded orders
+  const deepLinkValid = useMemo(() => {
+    if (!deepLinkedOrderId || status !== 'ready') return null;
+    return orders.some(o => o.id === deepLinkedOrderId);
+  }, [deepLinkedOrderId, orders, status]);
+
+  // Auto-select deep-linked order and open sheet (only if valid)
   useEffect(() => {
-    if (deepLinkedOrderId && status === 'ready') {
+    if (deepLinkedOrderId && status === 'ready' && deepLinkValid === true) {
       setSelectedOrderId(deepLinkedOrderId);
       setDetailsOpen(true);
       fetchOrderDetails(deepLinkedOrderId);
@@ -314,7 +326,7 @@ export default function AdminDashboardServiceOrders() {
         }
       }, 100);
     }
-  }, [deepLinkedOrderId, status, fetchOrderDetails]);
+  }, [deepLinkedOrderId, status, deepLinkValid, fetchOrderDetails]);
 
   // Handle open order
   const handleOpenOrder = useCallback((orderId: number) => {
@@ -378,8 +390,34 @@ export default function AdminDashboardServiceOrders() {
         </p>
       </div>
 
-      {/* Deep-link info strip */}
-      {deepLinkedOrderId && status === 'ready' && (
+      {/* Invalid Deep-link Banner */}
+      {deepLinkedOrderId && status === 'ready' && deepLinkValid === false && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 12,
+            padding: '12px 16px',
+            marginBottom: 16,
+            borderRadius: 12,
+            border: `1px solid ${DESIGN.border.default}`,
+            background: DESIGN.bg.card,
+          }}
+        >
+          <AlertCircle size={16} style={{ color: DESIGN.text.muted, marginTop: 2, flexShrink: 0 }} />
+          <div>
+            <div style={{ fontSize: 13, color: DESIGN.text.secondary }}>
+              Order not found in this view.
+            </div>
+            <div style={{ fontSize: 12, color: DESIGN.text.muted, marginTop: 2 }}>
+              If you're not an admin, you may only see your own orders.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Valid Deep-link info strip */}
+      {deepLinkedOrderId && status === 'ready' && deepLinkValid === true && (
         <div
           style={{
             display: 'flex',
@@ -862,7 +900,35 @@ export default function AdminDashboardServiceOrders() {
                     Timeline
                   </h4>
                   {detailsData.events.length === 0 ? (
-                    <p style={{ fontSize: 13, color: DESIGN.text.muted }}>No events yet.</p>
+                    <div style={{
+                      padding: 14,
+                      background: DESIGN.bg.hover,
+                      borderRadius: 8,
+                      border: `1px solid ${DESIGN.border.subtle}`,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ fontSize: 13, color: DESIGN.text.secondary, fontWeight: 500 }}>
+                          Timeline will appear here
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => selectedOrderId && fetchOrderDetails(selectedOrderId)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: DESIGN.accent.primary,
+                            fontSize: 12,
+                            cursor: 'pointer',
+                            padding: 0,
+                          }}
+                        >
+                          Refresh
+                        </button>
+                      </div>
+                      <p style={{ fontSize: 12, color: DESIGN.text.muted, margin: 0 }}>
+                        As the order progresses, updates will show up automatically.
+                      </p>
+                    </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                       {detailsData.events.map((event) => (
@@ -907,13 +973,18 @@ export default function AdminDashboardServiceOrders() {
           <SheetFooter style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${DESIGN.border.subtle}` }}>
             <div style={{ display: 'flex', gap: 8, width: '100%', flexWrap: 'wrap' }}>
               {detailsData && detailsData.order.paymentStatus !== 'paid' && (
-                <Button
-                  size="sm"
-                  onClick={() => window.location.href = `/campaign-studio?orderId=${selectedOrderId}`}
-                  style={{ background: DESIGN.accent.primary }}
-                >
-                  Go to checkout
-                </Button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <Button
+                    size="sm"
+                    onClick={() => window.location.href = `/campaign-studio?orderId=${encodeURIComponent(String(selectedOrderId))}&from=service-orders`}
+                    style={{ background: DESIGN.accent.primary }}
+                  >
+                    Continue checkout
+                  </Button>
+                  <span style={{ fontSize: 12, color: DESIGN.text.muted, opacity: 0.75 }}>
+                    You'll continue in Campaign Studio.
+                  </span>
+                </div>
               )}
               <Button
                 size="sm"
