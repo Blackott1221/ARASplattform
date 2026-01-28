@@ -77,6 +77,26 @@
 - **AI**: OpenAI API
 - **Voice**: Twilio (optional)
 
+## 🧪 Campaign Studio + Service Orders — Release Smoke Checks
+
+1. [ ] `/campaign-studio` lädt, Step 1 validiert (Name/Email/Company)
+2. [ ] Company Scan: invalid URL → inline error, valid URL → staged cards
+3. [ ] Use Case: Preview Dialog öffnet, Select setzt useCaseId
+4. [ ] Volume: Package Auswahl setzt callVolume + total
+5. [ ] Voice: Auswahl setzt voiceId, mock player läuft ohne leak
+6. [ ] Leads: Mode have/need validiert; need → package required
+7. [ ] Goals: goalPrimary + brief >= 40; guardrails toggle
+8. [ ] Review: Create order → Pay gating via consent → redirect
+9. [ ] Return success/cancel states sauber (kein panic-red, retry ok)
+10. [ ] `/admin-dashboard/service-orders`: list loads; Open sheet; deep-link orderId behavior
+
+### Scope Completed
+- ✅ Campaign Studio Wizard (8 steps) + Stripe checkout + receipt flow
+- ✅ Service Orders dashboard (list + details sheet + events timeline)
+- ✅ Deep-link safety + reduced motion compliance
+
+---
+
 ## 📞 Support
 
 For setup assistance or technical questions, contact the development team.
