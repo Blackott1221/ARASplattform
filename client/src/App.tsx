@@ -53,6 +53,9 @@ import InternalContacts from "@/pages/internal/contacts";
 // 🚀 CAMPAIGN STUDIO - Done-for-You Onboarding Wizard
 import CampaignStudioPage from "@/pages/campaign-studio";
 
+// 📦 SERVICE ORDERS - Admin/User Order Dashboard
+import AdminDashboardServiceOrders from "@/pages/admin-dashboard-service-orders";
+
 // Memoized video background component - never re-renders to keep video playing continuously
 const VideoBackground = memo(() => {
   useEffect(() => {
@@ -213,6 +216,7 @@ function Router() {
           <Route path="/admin-dashboard/staff" component={AdminDashboard} />
           <Route path="/admin-dashboard/exports" component={AdminDashboard} />
           <Route path="/admin-dashboard/settings" component={AdminDashboard} />
+          <Route path="/admin-dashboard/service-orders" component={AdminDashboardServiceOrders} />
           <Route path="/admin-dashboard" component={AdminDashboard} />
           <Route path="/app/admin" component={AdminDashboard} />
           <Route path="/app/admin-dashboard" component={AdminDashboard} />
