@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { CommandCenterLayout } from "@/components/admin/CommandCenterLayout";
 import { 
   Search, RefreshCw, ExternalLink, AlertCircle, Package,
-  CheckCircle2, Clock, XCircle, Loader2, ChevronRight
+  CheckCircle2, Clock, XCircle, Loader2, ChevronRight, Copy, X
 } from "lucide-react";
 import {
   Table,
@@ -16,6 +16,14 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from "@/components/ui/sheet";
 
 // ============================================================================
 // Design Tokens (local, matches CommandCenterLayout)
@@ -61,6 +69,21 @@ interface ServiceOrder {
 
 type FetchStatus = 'loading' | 'ready' | 'error';
 
+interface OrderEvent {
+  id: number;
+  type: string;
+  title: string;
+  description?: string | null;
+  createdAt: string;
+}
+
+interface OrderDetails {
+  order: ServiceOrder;
+  events: OrderEvent[];
+}
+
+type DetailsStatus = 'idle' | 'loading' | 'ready' | 'error';
+
 // ============================================================================
 // Helpers
 // ============================================================================
@@ -80,6 +103,16 @@ function formatDate(isoString: string): string {
     day: '2-digit',
     month: '2-digit',
     year: '2-digit',
+  }).format(date);
+}
+
+function formatDateTime(isoString: string): string {
+  const date = new Date(isoString);
+  return new Intl.DateTimeFormat('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
   }).format(date);
 }
 
@@ -173,6 +206,10 @@ export default function AdminDashboardServiceOrders() {
   const [isAdminView, setIsAdminView] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsStatus, setDetailsStatus] = useState<DetailsStatus>('idle');
+  const [detailsData, setDetailsData] = useState<OrderDetails | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   // Deep-link orderId from URL
   const deepLinkedOrderId = useMemo(() => {
@@ -222,20 +259,6 @@ export default function AdminDashboardServiceOrders() {
     fetchOrders();
   }, [fetchOrders]);
 
-  // Auto-select deep-linked order
-  useEffect(() => {
-    if (deepLinkedOrderId && status === 'ready') {
-      setSelectedOrderId(deepLinkedOrderId);
-      // Scroll to row
-      setTimeout(() => {
-        const row = document.getElementById(`order-row-${deepLinkedOrderId}`);
-        if (row) {
-          row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 100);
-    }
-  }, [deepLinkedOrderId, status]);
-
   // Filtered orders (client-side search)
   const filteredOrders = useMemo(() => {
     if (!searchQuery.trim()) return orders;
@@ -247,10 +270,69 @@ export default function AdminDashboardServiceOrders() {
     );
   }, [orders, searchQuery]);
 
-  // Handle open order (placeholder for next step)
-  const handleOpenOrder = (orderId: number) => {
+  // Fetch order details with admin/user fallback
+  const fetchOrderDetails = useCallback(async (orderId: number) => {
+    setDetailsStatus('loading');
+    setDetailsData(null);
+    
+    try {
+      // Try admin endpoint first
+      let response = await fetch(`/api/service-orders/admin/${orderId}`, { credentials: 'include' });
+      
+      // Fallback to user endpoint on 401/403
+      if (response.status === 401 || response.status === 403) {
+        response = await fetch(`/api/service-orders/${orderId}`, { credentials: 'include' });
+      }
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch order details');
+      }
+
+      const data = await response.json();
+      // Normalize response: could be { order, events } or just order with events
+      const order = data.order || data;
+      const events = data.events || [];
+      
+      setDetailsData({ order, events });
+      setDetailsStatus('ready');
+    } catch {
+      setDetailsStatus('error');
+    }
+  }, []);
+
+  // Auto-select deep-linked order and open sheet
+  useEffect(() => {
+    if (deepLinkedOrderId && status === 'ready') {
+      setSelectedOrderId(deepLinkedOrderId);
+      setDetailsOpen(true);
+      fetchOrderDetails(deepLinkedOrderId);
+      // Scroll to row
+      setTimeout(() => {
+        const row = document.getElementById(`order-row-${deepLinkedOrderId}`);
+        if (row) {
+          row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+    }
+  }, [deepLinkedOrderId, status, fetchOrderDetails]);
+
+  // Handle open order
+  const handleOpenOrder = useCallback((orderId: number) => {
     setSelectedOrderId(orderId);
-  };
+    setDetailsOpen(true);
+    fetchOrderDetails(orderId);
+  }, [fetchOrderDetails]);
+
+  // Copy order ID to clipboard
+  const handleCopyOrderId = useCallback(() => {
+    if (!selectedOrderId) return;
+    navigator.clipboard.writeText(selectedOrderId.toString()).then(() => {
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    }).catch(() => {
+      // Fallback: select text (user can copy manually)
+    });
+  }, [selectedOrderId]);
 
   return (
     <CommandCenterLayout>
@@ -627,35 +709,232 @@ export default function AdminDashboardServiceOrders() {
         )}
       </div>
 
-      {/* Selected Order Panel (Placeholder) */}
-      {selectedOrderId && (
-        <div
-          style={{
-            marginTop: 24,
-            padding: '20px 24px',
-            borderRadius: 16,
-            border: `1px solid ${DESIGN.border.default}`,
-            background: DESIGN.bg.card,
+      {/* Order Details Sheet */}
+      <Sheet open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <SheetContent 
+          side="right" 
+          className="w-full sm:max-w-[560px] overflow-y-auto"
+          style={{ 
+            background: DESIGN.bg.primary, 
+            borderLeft: `1px solid ${DESIGN.border.default}`,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <h3 style={{ fontSize: 15, fontWeight: 600, color: DESIGN.text.primary }}>
-              Order #{selectedOrderId}
-            </h3>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setSelectedOrderId(null)}
-              style={{ color: DESIGN.text.muted }}
-            >
-              Close
-            </Button>
+          <SheetHeader>
+            <SheetTitle style={{ color: DESIGN.text.primary, fontSize: 18 }}>
+              Order Details
+            </SheetTitle>
+            <SheetDescription style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <code style={{ 
+                fontFamily: 'monospace', 
+                fontSize: 13, 
+                color: DESIGN.text.secondary,
+                background: DESIGN.bg.hover,
+                padding: '2px 6px',
+                borderRadius: 4,
+              }}>
+                #{selectedOrderId}
+              </code>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={handleCopyOrderId}
+                style={{ height: 28, padding: '0 8px' }}
+              >
+                {copySuccess ? (
+                  <CheckCircle2 size={14} style={{ color: '#10b981' }} />
+                ) : (
+                  <Copy size={14} style={{ color: DESIGN.text.muted }} />
+                )}
+              </Button>
+            </SheetDescription>
+          </SheetHeader>
+
+          <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Loading State */}
+            {detailsStatus === 'loading' && (
+              <div style={{ padding: 40, textAlign: 'center' }}>
+                <Loader2 size={24} className="animate-spin" style={{ color: DESIGN.text.muted, margin: '0 auto 12px' }} />
+                <p style={{ fontSize: 13, color: DESIGN.text.muted }}>Loading order details...</p>
+              </div>
+            )}
+
+            {/* Error State */}
+            {detailsStatus === 'error' && (
+              <div style={{ 
+                padding: 24, 
+                textAlign: 'center',
+                background: DESIGN.bg.card,
+                borderRadius: 12,
+                border: `1px solid ${DESIGN.border.default}`,
+              }}>
+                <AlertCircle size={24} style={{ color: '#ef4444', margin: '0 auto 12px' }} />
+                <p style={{ fontSize: 13, color: DESIGN.text.secondary, marginBottom: 12 }}>
+                  Failed to load order details.
+                </p>
+                <Button size="sm" onClick={() => selectedOrderId && fetchOrderDetails(selectedOrderId)}>
+                  <RefreshCw size={14} style={{ marginRight: 6 }} />
+                  Retry
+                </Button>
+              </div>
+            )}
+
+            {/* Order Details */}
+            {detailsStatus === 'ready' && detailsData && (
+              <>
+                {/* Customer Section */}
+                <div style={{
+                  padding: 16,
+                  background: DESIGN.bg.card,
+                  borderRadius: 12,
+                  border: `1px solid ${DESIGN.border.default}`,
+                }}>
+                  <h4 style={{ fontSize: 11, fontWeight: 600, color: DESIGN.text.muted, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Customer
+                  </h4>
+                  <div style={{ fontSize: 14, color: DESIGN.text.primary, fontWeight: 500, marginBottom: 4 }}>
+                    {detailsData.order.companyName || 'No company'}
+                  </div>
+                  <div style={{ fontSize: 13, color: DESIGN.text.secondary }}>
+                    {detailsData.order.contactName || '—'}
+                  </div>
+                  <div style={{ fontSize: 12, color: DESIGN.text.muted }}>
+                    {detailsData.order.contactEmail || '—'}
+                  </div>
+                </div>
+
+                {/* Package Section */}
+                <div style={{
+                  padding: 16,
+                  background: DESIGN.bg.card,
+                  borderRadius: 12,
+                  border: `1px solid ${DESIGN.border.default}`,
+                }}>
+                  <h4 style={{ fontSize: 11, fontWeight: 600, color: DESIGN.text.muted, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Package
+                  </h4>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ fontSize: 13, color: DESIGN.text.secondary }}>Calls</span>
+                    <span style={{ fontSize: 13, color: DESIGN.text.primary, fontWeight: 500 }}>
+                      {formatNumber(detailsData.order.targetCalls)}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ fontSize: 13, color: DESIGN.text.secondary }}>Package</span>
+                    <span style={{ fontSize: 13, color: DESIGN.text.primary }}>
+                      {detailsData.order.packageCode || '—'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8, borderTop: `1px solid ${DESIGN.border.subtle}` }}>
+                    <span style={{ fontSize: 14, color: DESIGN.text.primary, fontWeight: 500 }}>Total</span>
+                    <span style={{ fontSize: 14, color: DESIGN.text.primary, fontWeight: 600 }}>
+                      {formatPrice(detailsData.order.priceCents, detailsData.order.currency)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Status Section */}
+                <div style={{
+                  padding: 16,
+                  background: DESIGN.bg.card,
+                  borderRadius: 12,
+                  border: `1px solid ${DESIGN.border.default}`,
+                }}>
+                  <h4 style={{ fontSize: 11, fontWeight: 600, color: DESIGN.text.muted, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Status
+                  </h4>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <PaymentStatusBadge status={detailsData.order.paymentStatus} />
+                    <OrderStatusBadge status={detailsData.order.status} />
+                  </div>
+                  <div style={{ marginTop: 12, fontSize: 11, color: DESIGN.text.muted }}>
+                    Created: {formatDate(detailsData.order.createdAt)}
+                  </div>
+                </div>
+
+                {/* Timeline Section */}
+                <div style={{
+                  padding: 16,
+                  background: DESIGN.bg.card,
+                  borderRadius: 12,
+                  border: `1px solid ${DESIGN.border.default}`,
+                }}>
+                  <h4 style={{ fontSize: 11, fontWeight: 600, color: DESIGN.text.muted, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Timeline
+                  </h4>
+                  {detailsData.events.length === 0 ? (
+                    <p style={{ fontSize: 13, color: DESIGN.text.muted }}>No events yet.</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {detailsData.events.map((event) => (
+                        <div key={event.id} style={{ display: 'flex', gap: 12 }}>
+                          <div style={{ 
+                            width: 8, 
+                            height: 8, 
+                            borderRadius: '50%', 
+                            background: event.type === 'paid' ? '#10b981' : DESIGN.accent.primary,
+                            marginTop: 6,
+                            flexShrink: 0,
+                          }} />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 13, color: DESIGN.text.primary, fontWeight: 500 }}>
+                              {event.title}
+                            </div>
+                            {event.description && (
+                              <div style={{ 
+                                fontSize: 12, 
+                                color: DESIGN.text.muted,
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                              }}>
+                                {event.description}
+                              </div>
+                            )}
+                            <div style={{ fontSize: 11, color: DESIGN.text.muted, marginTop: 2 }}>
+                              {formatDateTime(event.createdAt)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
-          <p style={{ marginTop: 12, fontSize: 13, color: DESIGN.text.muted }}>
-            Details will open in the next step.
-          </p>
-        </div>
-      )}
+
+          <SheetFooter style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${DESIGN.border.subtle}` }}>
+            <div style={{ display: 'flex', gap: 8, width: '100%', flexWrap: 'wrap' }}>
+              {detailsData && detailsData.order.paymentStatus !== 'paid' && (
+                <Button
+                  size="sm"
+                  onClick={() => window.location.href = `/campaign-studio?orderId=${selectedOrderId}`}
+                  style={{ background: DESIGN.accent.primary }}
+                >
+                  Go to checkout
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleCopyOrderId}
+              >
+                <Copy size={14} style={{ marginRight: 6 }} />
+                {copySuccess ? 'Copied!' : 'Copy Order ID'}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setDetailsOpen(false)}
+                style={{ marginLeft: 'auto' }}
+              >
+                Close
+              </Button>
+            </div>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </CommandCenterLayout>
   );
 }

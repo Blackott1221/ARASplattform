@@ -8,7 +8,7 @@ import {
   MessageSquare, Phone, Zap, Bug, Crown, Clock, Settings,
   LayoutDashboard, UserPlus, Download, Activity, Search,
   Bell, ChevronLeft, ChevronRight, Command, Sparkles,
-  MessageCircle, ListTodo, Shield, X, Menu, Keyboard
+  MessageCircle, ListTodo, Shield, X, Menu, Keyboard, Receipt
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -93,6 +93,7 @@ const NAV_SECTIONS = [
   {
     title: "System",
     items: [
+      { id: "service-orders", label: "Service Orders", icon: Receipt, path: "/admin-dashboard/service-orders", color: "#F59E0B" },
       { id: "feedback", label: "Feedback & Bugs", icon: Bug, path: "/admin-dashboard/feedback", color: "#F43F5E" },
       { id: "plans", label: "Subscription Plans", icon: Crown, path: "/admin-dashboard/plans", color: "#0EA5E9" },
       { id: "exports", label: "Data Exports", icon: Download, path: "/admin-dashboard/exports", color: "#78716C" },
