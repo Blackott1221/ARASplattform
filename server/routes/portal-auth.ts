@@ -9,6 +9,7 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import { createHmac, timingSafeEqual } from 'crypto';
+import { logPortalAudit } from './portal-calls';
 
 const router = Router();
 
@@ -22,6 +23,37 @@ interface PortalUser {
   password: string;
   displayName: string;
   role: string;
+}
+
+interface PortalBranding {
+  mode: 'white_label' | 'co_branded';
+  productName: string;
+  showPoweredBy: boolean;
+  accent: string;
+  locationLabel?: string;
+  supportLabel?: string;
+  supportEmail?: string;
+}
+
+interface PortalCopy {
+  welcomeTitle: string;
+  welcomeSubtitle: string;
+  packageExplainer: string;
+  signalExplainerShort: string;
+  signalExplainerLong: string;
+  privacyNoteShort: string;
+}
+
+interface PortalInfoHints {
+  signalScore: string;
+  nextBestAction: string;
+  riskFlags: string;
+  exportCsv: string;
+  pdfReport: string;
+  autoAnalyze: string;
+  insights: string;
+  companyCard: string;
+  packageCard: string;
 }
 
 interface PortalConfig {
@@ -42,10 +74,61 @@ interface PortalConfig {
     portalTitle: string;
     tooltipMode: string;
     kpiFocus: string;
+    branding?: Partial<PortalBranding>;
+    copy?: Partial<PortalCopy>;
+    infoHints?: Partial<PortalInfoHints>;
   };
   filter: {
     field: string;
     value: string;
+  };
+}
+
+// Default values for white-label polish
+const DEFAULT_BRANDING: PortalBranding = {
+  mode: 'white_label',
+  productName: 'Call Intelligence',
+  showPoweredBy: false,
+  accent: 'arasOrange',
+  locationLabel: '',
+  supportLabel: 'Support',
+  supportEmail: ''
+};
+
+const DEFAULT_COPY: PortalCopy = {
+  welcomeTitle: 'Willkommen',
+  welcomeSubtitle: 'Übersicht Ihrer Voice-Agent Gespräche und Analysen.',
+  packageExplainer: 'Jeder abgeschlossene Call zählt gegen Ihr Kontingent. Überschreitung wird nach Verbrauch abgerechnet.',
+  signalExplainerShort: 'Der Signal Score zeigt die Abschlusswahrscheinlichkeit.',
+  signalExplainerLong: 'Der Signal Score (0–100) bewertet automatisch die Gesprächsqualität und Abschlusswahrscheinlichkeit. Werte ≥70 gelten als "High Signal" – diese Leads verdienen priorisierte Nachverfolgung.',
+  privacyNoteShort: 'Ihre Daten werden gemäß DSGVO verarbeitet und nicht an Dritte weitergegeben.'
+};
+
+const DEFAULT_INFO_HINTS: PortalInfoHints = {
+  signalScore: 'Der Signal Score (0–100) bewertet automatisch die Gesprächsqualität. Werte ab 70 zeigen hohe Abschlusswahrscheinlichkeit.',
+  nextBestAction: 'Die empfohlene nächste Aktion basiert auf dem Gesprächsverlauf und erkannten Signalen.',
+  riskFlags: 'Risiko-Flags weisen auf potenzielle Einwände oder kritische Punkte im Gespräch hin.',
+  exportCsv: 'Exportiert alle gefilterten Calls als CSV-Datei für Ihre eigene Auswertung.',
+  pdfReport: 'Öffnet einen druckoptimierten Report. Im Druckdialog "Als PDF speichern" wählen.',
+  autoAnalyze: 'Analysiert neue Calls automatisch beim Öffnen. Kann jederzeit deaktiviert werden.',
+  insights: 'Trends und KPIs der letzten 14 Tage auf einen Blick.',
+  companyCard: 'Ihre Firmendaten für Rechnungsstellung und Compliance.',
+  packageCard: 'Übersicht Ihres gebuchten Call-Kontingents und aktueller Verbrauch.'
+};
+
+function applyConfigDefaults(config: PortalConfig, displayName: string): PortalConfig {
+  return {
+    ...config,
+    ui: {
+      ...config.ui,
+      branding: { ...DEFAULT_BRANDING, ...config.ui.branding },
+      copy: { 
+        ...DEFAULT_COPY, 
+        welcomeTitle: `Willkommen, ${displayName.split(' ')[0]}.`,
+        ...config.ui.copy 
+      },
+      infoHints: { ...DEFAULT_INFO_HINTS, ...config.ui.infoHints }
+    }
   };
 }
 
@@ -282,6 +365,9 @@ router.post('/login', (req: Request, res: Response) => {
     displayName: user.displayName 
   });
   
+  // Audit log
+  logPortalAudit(portalKey, 'portal.login', { success: true });
+  
   return res.json({ ok: true });
 });
 
@@ -305,19 +391,22 @@ router.post('/logout', (_req: Request, res: Response) => {
 
 /**
  * GET /api/portal/me
- * Get current session info + portal config
+ * Get current session info + portal config (with defaults applied)
  */
 router.get('/me', requirePortalAuth, (req: Request, res: Response) => {
   const session = (req as any).portalSession as PortalSession;
   const config = (req as any).portalConfig as PortalConfig;
   
+  // Apply defaults for white-label polish
+  const enrichedConfig = applyConfigDefaults(config, session.displayName);
+  
   return res.json({
     portalKey: session.portalKey,
     displayName: session.displayName,
     role: session.role,
-    company: config.company,
-    package: config.package,
-    ui: config.ui
+    company: enrichedConfig.company,
+    package: enrichedConfig.package,
+    ui: enrichedConfig.ui
   });
 });
 

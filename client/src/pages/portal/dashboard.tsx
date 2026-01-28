@@ -15,7 +15,8 @@ import {
   ChevronRight, X, Play, Pause, Volume2, VolumeX,
   LogOut, RefreshCw, Search, Loader2, Copy, Info,
   MessageSquare, Mic, CheckCircle, XCircle, AlertCircle,
-  Sparkles, TrendingUp, Zap, Target, BarChart3
+  Sparkles, TrendingUp, Zap, Target, BarChart3,
+  FileDown, Activity, ChevronDown, AlertTriangle
 } from 'lucide-react';
 import {
   Tooltip,
@@ -26,6 +27,37 @@ import {
 // ============================================================================
 // TYPES
 // ============================================================================
+
+interface PortalBranding {
+  mode: 'white_label' | 'co_branded';
+  productName: string;
+  showPoweredBy: boolean;
+  accent: string;
+  locationLabel?: string;
+  supportLabel?: string;
+  supportEmail?: string;
+}
+
+interface PortalCopy {
+  welcomeTitle: string;
+  welcomeSubtitle: string;
+  packageExplainer: string;
+  signalExplainerShort: string;
+  signalExplainerLong: string;
+  privacyNoteShort: string;
+}
+
+interface PortalInfoHints {
+  signalScore: string;
+  nextBestAction: string;
+  riskFlags: string;
+  exportCsv: string;
+  pdfReport: string;
+  autoAnalyze: string;
+  insights: string;
+  companyCard: string;
+  packageCard: string;
+}
 
 interface PortalSession {
   portalKey: string;
@@ -48,6 +80,9 @@ interface PortalSession {
     portalTitle: string;
     tooltipMode: string;
     kpiFocus: string;
+    branding: PortalBranding;
+    copy: PortalCopy;
+    infoHints: PortalInfoHints;
   };
 }
 
@@ -210,6 +245,27 @@ function getSentimentLabel(sentiment: string): string {
 }
 
 // ============================================================================
+// PREFERS REDUCED MOTION HOOK (portal-scope)
+// ============================================================================
+
+function usePrefersReducedMotion(): boolean {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  });
+  
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const handler = (e: MediaQueryListEvent) => setPrefersReducedMotion(e.matches);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, []);
+  
+  return prefersReducedMotion;
+}
+
+// ============================================================================
 // TYPING TEXT COMPONENT (reduced-motion aware)
 // ============================================================================
 
@@ -226,12 +282,10 @@ function TypingText({
 }) {
   const [displayedText, setDisplayedText] = useState('');
   const [isComplete, setIsComplete] = useState(false);
-  const prefersReducedMotion = useRef(
-    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  );
+  const prefersReduced = usePrefersReducedMotion();
   
   useEffect(() => {
-    if (prefersReducedMotion.current) {
+    if (prefersReduced) {
       setDisplayedText(text);
       setIsComplete(true);
       onComplete?.();
@@ -377,9 +431,7 @@ function Sparkline({
   height?: number; 
   className?: string;
 }) {
-  const prefersReducedMotion = useRef(
-    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  );
+  const prefersReduced = usePrefersReducedMotion();
   
   if (!data || data.length < 2) {
     return <div className={className} style={{ height }} />;
@@ -414,9 +466,9 @@ function Sparkline({
         strokeLinejoin="round"
         style={{
           opacity: 0.6,
-          strokeDasharray: prefersReducedMotion.current ? 'none' : '200',
-          strokeDashoffset: prefersReducedMotion.current ? '0' : '200',
-          animation: prefersReducedMotion.current ? 'none' : 'sparklineDraw 1s ease-out forwards'
+          strokeDasharray: prefersReduced ? 'none' : '200',
+          strokeDashoffset: prefersReduced ? '0' : '200',
+          animation: prefersReduced ? 'none' : 'sparklineDraw 1s ease-out forwards'
         }}
       />
       <style>{`
@@ -944,9 +996,8 @@ export default function PortalDashboard() {
   const [selectedCallId, setSelectedCallId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<KPIFilter>('all');
-  const prefersReducedMotion = useRef(
-    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  );
+  const [showActivityDrawer, setShowActivityDrawer] = useState(false);
+  const reducedMotion = usePrefersReducedMotion();
   
   // Fetch session/config
   const { data: session, isLoading: sessionLoading, error: sessionError } = useQuery<PortalSession>({
@@ -1005,6 +1056,27 @@ export default function PortalDashboard() {
     if (searchQuery) params.set('q', searchQuery);
     window.open(`/api/portal/calls/export.csv?${params}`, '_blank');
   }, [activeFilter, searchQuery]);
+  
+  // PDF Report handler
+  const handleOpenReport = useCallback(() => {
+    const params = new URLSearchParams({ range: '14d' });
+    if (activeFilter === 'completed') params.set('status', 'completed');
+    if (activeFilter === 'high_signal') params.set('highSignal', '1');
+    if (searchQuery) params.set('q', searchQuery);
+    window.open(`/portal/${portalKey}/report?${params}`, '_blank');
+  }, [portalKey, activeFilter, searchQuery]);
+  
+  // Fetch audit log
+  const { data: auditData } = useQuery<{ entries: Array<{ ts: string; action: string; metaSafe: { callId?: number } }> }>({
+    queryKey: ['portal-audit', portalKey],
+    queryFn: async () => {
+      const res = await fetch('/api/portal/audit?limit=50', { credentials: 'include' });
+      if (!res.ok) return { entries: [] };
+      return res.json();
+    },
+    enabled: !!session,
+    staleTime: 30 * 1000 // 30 sec cache
+  });
   
   // Filter calls based on active KPI filter
   const filteredCalls = useMemo(() => {
@@ -1092,7 +1164,7 @@ export default function PortalDashboard() {
             linear-gradient(180deg, rgba(254,145,0,0.06) 0%, transparent 60%)
           `,
           opacity: 0.28,
-          animation: prefersReducedMotion.current ? 'none' : 'gradientShift 8s ease-in-out infinite alternate',
+          animation: reducedMotion ? 'none' : 'gradientShift 8s ease-in-out infinite alternate',
         }}
       />
       <style>{`
@@ -1102,7 +1174,7 @@ export default function PortalDashboard() {
         }
       `}</style>
       
-      {/* Header */}
+      {/* Header (STEP 6 — White-Label Branding) */}
       <header 
         className="sticky top-0 z-30 border-b border-white/5 backdrop-blur-xl"
         style={{ background: 'rgba(10,10,10,0.8)' }}
@@ -1110,25 +1182,52 @@ export default function PortalDashboard() {
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div>
-              <h1 className="font-orbitron text-lg font-bold text-white">
-                {session.ui.portalTitle}
+              <h1 
+                className="text-[22px] font-bold text-white"
+                style={{ fontFamily: 'Orbitron, sans-serif', letterSpacing: '0.06em' }}
+              >
+                {session.ui.branding?.productName || session.ui.portalTitle}
               </h1>
-              <p className="text-xs text-white/40 hidden sm:block">Command Center</p>
+              <p className="text-[14px] text-white/60 hidden sm:block">
+                {session.ui.copy?.welcomeSubtitle || 'Command Center'}
+              </p>
             </div>
             
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              {/* Activity Button */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setShowActivityDrawer(true)}
+                    className="p-2 rounded-lg hover:bg-white/5 transition-colors text-white/40 hover:text-white relative"
+                  >
+                    <Activity className="w-5 h-5" />
+                    {auditData && auditData.entries.length > 0 && (
+                      <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#FE9100]" />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">Aktivitätsprotokoll</p>
+                </TooltipContent>
+              </Tooltip>
+              
+              {/* User Chip */}
               <div 
-                className="hidden sm:flex items-center gap-3 px-3 py-1.5 rounded-full"
+                className="hidden sm:flex items-center gap-3 px-3 py-1.5 rounded-full h-[32px]"
                 style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
               >
-                <div className="w-8 h-8 rounded-full bg-[#FE9100]/20 flex items-center justify-center">
-                  <User className="w-4 h-4 text-[#FE9100]" />
+                <div className="w-6 h-6 rounded-full bg-[#FE9100]/20 flex items-center justify-center">
+                  <User className="w-3 h-3 text-[#FE9100]" />
                 </div>
                 <div className="text-right">
-                  <div className="text-sm text-white font-medium">{session.displayName}</div>
-                  <div className="text-xs text-white/40">{session.role}</div>
+                  <span className="text-sm text-white font-medium">{session.displayName}</span>
+                  <span className="text-white/30 mx-1">·</span>
+                  <span className="text-xs text-white/40">{session.role}</span>
                 </div>
               </div>
+              
+              {/* Logout */}
               <button
                 onClick={handleLogout}
                 className="p-2 rounded-lg hover:bg-white/5 transition-colors text-white/60 hover:text-white"
@@ -1138,6 +1237,13 @@ export default function PortalDashboard() {
               </button>
             </div>
           </div>
+          
+          {/* Powered by (optional) */}
+          {session.ui.branding?.showPoweredBy && (
+            <div className="pb-2 text-center">
+              <span className="text-[10px] text-white/30">Powered by ARAS AI</span>
+            </div>
+          )}
         </div>
       </header>
       
@@ -1251,7 +1357,7 @@ export default function PortalDashboard() {
               backdropFilter: 'blur(20px)',
               transform: 'translateY(0)',
             }}
-            onMouseEnter={(e) => { if (!prefersReducedMotion.current) e.currentTarget.style.transform = 'translateY(-2px)'; }}
+            onMouseEnter={(e) => { if (!reducedMotion) e.currentTarget.style.transform = 'translateY(-2px)'; }}
             onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
           >
             <div className="flex items-start justify-between mb-2">
@@ -1285,7 +1391,7 @@ export default function PortalDashboard() {
               border: activeFilter === 'connected' ? '1px solid rgba(254,145,0,0.3)' : '1px solid rgba(255,255,255,0.08)',
               backdropFilter: 'blur(20px)',
             }}
-            onMouseEnter={(e) => { if (!prefersReducedMotion.current) e.currentTarget.style.transform = 'translateY(-2px)'; }}
+            onMouseEnter={(e) => { if (!reducedMotion) e.currentTarget.style.transform = 'translateY(-2px)'; }}
             onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
           >
             <div className="flex items-start justify-between mb-2">
@@ -1306,7 +1412,7 @@ export default function PortalDashboard() {
               border: activeFilter === 'completed' ? '1px solid rgba(254,145,0,0.3)' : '1px solid rgba(255,255,255,0.08)',
               backdropFilter: 'blur(20px)',
             }}
-            onMouseEnter={(e) => { if (!prefersReducedMotion.current) e.currentTarget.style.transform = 'translateY(-2px)'; }}
+            onMouseEnter={(e) => { if (!reducedMotion) e.currentTarget.style.transform = 'translateY(-2px)'; }}
             onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
           >
             <div className="flex items-start justify-between mb-2">
@@ -1327,7 +1433,7 @@ export default function PortalDashboard() {
               border: activeFilter === 'high_signal' ? '1px solid rgba(254,145,0,0.3)' : '1px solid rgba(255,255,255,0.08)',
               backdropFilter: 'blur(20px)',
             }}
-            onMouseEnter={(e) => { if (!prefersReducedMotion.current) e.currentTarget.style.transform = 'translateY(-2px)'; }}
+            onMouseEnter={(e) => { if (!reducedMotion) e.currentTarget.style.transform = 'translateY(-2px)'; }}
             onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
           >
             <div className="flex items-start justify-between mb-2">
@@ -1519,13 +1625,27 @@ export default function PortalDashboard() {
                       <button
                         onClick={handleExportCSV}
                         className="p-2 rounded-lg hover:bg-white/5 transition-colors text-white/40 hover:text-white"
-                        title="Export CSV"
                       >
                         <FileText className="w-4 h-4" />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="text-xs">Export as CSV</p>
+                    <TooltipContent className="max-w-[320px]">
+                      <p className="text-xs">{session.ui.infoHints?.exportCsv || 'Exportiert alle gefilterten Calls als CSV-Datei.'}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  
+                  {/* PDF Report (STEP 7) */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={handleOpenReport}
+                        className="p-2 rounded-lg hover:bg-white/5 transition-colors text-white/40 hover:text-white"
+                      >
+                        <FileDown className="w-4 h-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-[320px]">
+                      <p className="text-xs">{session.ui.infoHints?.pdfReport || 'Öffnet einen druckoptimierten Report. Im Druckdialog "Als PDF speichern" wählen.'}</p>
                     </TooltipContent>
                   </Tooltip>
                   
@@ -1701,6 +1821,84 @@ export default function PortalDashboard() {
           portalKey={portalKey || ''}
           onAnalysisComplete={() => refetchCalls()}
         />
+      )}
+      
+      {/* Activity Drawer (STEP 7) */}
+      {showActivityDrawer && (
+        <>
+          <div 
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+            onClick={() => setShowActivityDrawer(false)}
+          />
+          <div 
+            className="fixed top-0 right-0 h-full w-full md:w-[380px] z-50 overflow-y-auto"
+            style={{
+              background: 'rgba(15,15,15,0.98)',
+              borderLeft: '1px solid rgba(255,255,255,0.08)',
+              boxShadow: '-10px 0 40px rgba(0,0,0,0.4)'
+            }}
+          >
+            <div className="sticky top-0 flex items-center justify-between p-4 border-b border-white/5 backdrop-blur-xl" style={{ background: 'rgba(15,15,15,0.9)' }}>
+              <div className="flex items-center gap-2">
+                <Activity className="w-5 h-5 text-[#FE9100]" />
+                <h2 className="font-semibold text-white">Aktivität</h2>
+              </div>
+              <button
+                onClick={() => setShowActivityDrawer(false)}
+                className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+              >
+                <X className="w-5 h-5 text-white/60" />
+              </button>
+            </div>
+            
+            <div className="p-4 space-y-2">
+              {auditData?.entries && auditData.entries.length > 0 ? (
+                auditData.entries.map((entry, idx) => {
+                  const actionLabels: Record<string, string> = {
+                    'portal.login': 'Login',
+                    'portal.logout': 'Logout',
+                    'portal.export.csv': 'Export (CSV)',
+                    'portal.export.pdf': 'Report (PDF)',
+                    'portal.analyze.start': 'Analyse gestartet',
+                    'portal.analyze.success': 'Analyse erstellt',
+                    'portal.analyze.fail': 'Analyse fehlgeschlagen',
+                    'portal.call.view': 'Call angesehen'
+                  };
+                  const label = actionLabels[entry.action] || entry.action;
+                  const time = new Date(entry.ts).toLocaleString('de-DE', {
+                    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
+                  });
+                  
+                  return (
+                    <div 
+                      key={idx}
+                      className="flex items-center gap-3 p-3 rounded-xl"
+                      style={{ background: 'rgba(255,255,255,0.03)' }}
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                        {entry.action.includes('login') ? <User className="w-4 h-4 text-green-400" /> :
+                         entry.action.includes('export') || entry.action.includes('pdf') ? <FileDown className="w-4 h-4 text-blue-400" /> :
+                         entry.action.includes('analyze') ? <Sparkles className="w-4 h-4 text-[#FE9100]" /> :
+                         <Activity className="w-4 h-4 text-white/40" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm text-white/90">{label}</div>
+                        <div className="text-xs text-white/40">{time}</div>
+                      </div>
+                      {entry.metaSafe?.callId && (
+                        <span className="text-xs text-white/30 font-mono">#{entry.metaSafe.callId}</span>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-12 text-white/40 text-sm">
+                  Noch keine Aktivitäten.
+                </div>
+              )}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

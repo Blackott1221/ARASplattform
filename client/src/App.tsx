@@ -58,6 +58,7 @@ import AdminDashboardServiceOrders from "@/pages/admin-dashboard-service-orders"
 
 // 🔐 CLIENT PORTAL - Isolated customer dashboards (Leadely etc.)
 import PortalLogin from "@/pages/portal/login";
+import PortalReport from "@/pages/portal/report";
 import PortalDashboard from "@/pages/portal/dashboard";
 
 // Memoized video background component - never re-renders to keep video playing continuously
@@ -155,6 +156,7 @@ function Router() {
       <Switch>
         {/* 🔐 CLIENT PORTAL ROUTES - Public, isolated auth */}
         <Route path="/portal/:portalKey/login" component={PortalLogin} />
+        <Route path="/portal/:portalKey/report" component={PortalReport} />
         <Route path="/portal/:portalKey" component={PortalDashboard} />
         
         {/* Public routes - always accessible */}

@@ -702,4 +702,172 @@ function escapeCSV(value: string): string {
   return value;
 }
 
+function maskPhoneNumber(phone: string): string {
+  if (!phone || phone.length < 8) return phone;
+  const last4 = phone.slice(-4);
+  const prefix = phone.slice(0, phone.length > 10 ? 4 : 3);
+  return `${prefix}******${last4}`;
+}
+
+// ============================================================================
+// AUDIT LOG (in-memory ring buffer, no migration required)
+// ============================================================================
+
+interface AuditEntry {
+  ts: string;
+  portalKey: string;
+  action: string;
+  metaSafe: { callId?: number; range?: string; success?: boolean };
+}
+
+const auditBuffer: AuditEntry[] = [];
+const AUDIT_MAX = 300;
+const callViewRateLimit = new Map<string, number>(); // key: portalKey:callId, value: timestamp
+
+export function logPortalAudit(portalKey: string, action: string, meta: AuditEntry['metaSafe'] = {}) {
+  const entry: AuditEntry = {
+    ts: new Date().toISOString(),
+    portalKey,
+    action,
+    metaSafe: meta
+  };
+  auditBuffer.push(entry);
+  if (auditBuffer.length > AUDIT_MAX) {
+    auditBuffer.shift();
+  }
+}
+
+// ============================================================================
+// GET /api/portal/audit — Activity log for portal
+// ============================================================================
+
+router.get('/audit', (req: Request, res: Response) => {
+  const session = (req as any).portalSession;
+  const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+  
+  const entries = auditBuffer
+    .filter(e => e.portalKey === session.portalKey)
+    .slice(-limit)
+    .reverse();
+  
+  return res.json({ entries });
+});
+
+// ============================================================================
+// GET /api/portal/calls/report — Report data for PDF
+// ============================================================================
+
+router.get('/calls/report', async (req: Request, res: Response) => {
+  const config = (req as any).portalConfig as PortalConfig;
+  const session = (req as any).portalSession;
+  
+  logPortalAudit(session.portalKey, 'portal.export.pdf', { success: true });
+  
+  try {
+    const range = (req.query.range as string) || '14d';
+    const status = req.query.status as string | undefined;
+    const highSignal = req.query.highSignal === '1';
+    const analyzed = req.query.analyzed === '1';
+    const q = req.query.q as string | undefined;
+    
+    const filter = normalizeFilter(config.filter);
+    const baseCondition = buildPortalCallWhere(filter);
+    const conditions = [baseCondition];
+    
+    // Date range
+    if (range === '14d') {
+      conditions.push(sql`${callLogs.createdAt} >= NOW() - INTERVAL '14 days'`);
+    } else if (range === '30d') {
+      conditions.push(sql`${callLogs.createdAt} >= NOW() - INTERVAL '30 days'`);
+    }
+    
+    // Status filter
+    if (status) {
+      conditions.push(eq(callLogs.status, status));
+    }
+    
+    // Search
+    if (q) {
+      const searchPattern = `%${q}%`;
+      conditions.push(or(
+        ilike(callLogs.phoneNumber, searchPattern),
+        ilike(callLogs.contactName, searchPattern)
+      )!);
+    }
+    
+    // Fetch calls (max 200 for report)
+    const calls = await db
+      .select({
+        id: callLogs.id,
+        createdAt: callLogs.createdAt,
+        phoneNumber: callLogs.phoneNumber,
+        contactName: callLogs.contactName,
+        status: callLogs.status,
+        duration: callLogs.duration,
+        metadata: callLogs.metadata
+      })
+      .from(callLogs)
+      .where(and(...conditions))
+      .orderBy(desc(callLogs.createdAt))
+      .limit(200);
+    
+    // Filter by analysis if needed
+    let filteredCalls = calls;
+    if (highSignal || analyzed) {
+      filteredCalls = calls.filter(c => {
+        const meta = (c.metadata || {}) as Record<string, any>;
+        const analysis = meta.ai?.analysisV1;
+        if (analyzed && !analysis) return false;
+        if (highSignal && (!analysis || analysis.signalScore < 70)) return false;
+        return true;
+      });
+    }
+    
+    // Format calls for report
+    const reportCalls = filteredCalls.map(c => {
+      const meta = (c.metadata || {}) as Record<string, any>;
+      const analysis = meta.ai?.analysisV1;
+      return {
+        createdAt: c.createdAt,
+        phoneNumberMasked: maskPhoneNumber(c.phoneNumber || ''),
+        contactName: c.contactName || '',
+        status: c.status || '',
+        durationSec: c.duration || 0,
+        signalScore: analysis?.signalScore || null,
+        nextBestAction: analysis?.nextBestAction ? 
+          (analysis.nextBestAction.length > 60 ? analysis.nextBestAction.slice(0, 60) + '…' : analysis.nextBestAction) : null
+      };
+    });
+    
+    // Compute insights totals
+    const allCalls = await db
+      .select({ id: callLogs.id, status: callLogs.status, duration: callLogs.duration, metadata: callLogs.metadata })
+      .from(callLogs)
+      .where(and(baseCondition, range === '14d' ? sql`${callLogs.createdAt} >= NOW() - INTERVAL '14 days'` : 
+                 range === '30d' ? sql`${callLogs.createdAt} >= NOW() - INTERVAL '30 days'` : sql`1=1`));
+    
+    const totals = {
+      total: allCalls.length,
+      completed: allCalls.filter(c => ['completed', 'done'].includes(c.status?.toLowerCase() || '')).length,
+      failed: allCalls.filter(c => c.status?.toLowerCase() === 'failed').length,
+      avgDurationSec: allCalls.length > 0 ? Math.round(allCalls.reduce((sum, c) => sum + (c.duration || 0), 0) / allCalls.length) : 0,
+      analyzedCount: allCalls.filter(c => (c.metadata as any)?.ai?.analysisV1).length,
+      highSignalCount: allCalls.filter(c => (c.metadata as any)?.ai?.analysisV1?.signalScore >= 70).length
+    };
+    
+    return res.json({
+      generatedAt: new Date().toISOString(),
+      range,
+      company: config.company,
+      package: config.package,
+      totals,
+      calls: reportCalls
+    });
+    
+  } catch (error: any) {
+    console.error('[PORTAL-CALLS] Report error:', error);
+    return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'Failed to generate report' });
+  }
+});
+
 export default router;
