@@ -60,6 +60,11 @@ interface PortalInfoHints {
   packageCard: string;
   reviewed: string;
   bulkAnalyze: string;
+  // STEP 13: Saved Views hints
+  saveView?: string;
+  loadView?: string;
+  shareView?: string;
+  clearFilters?: string;
   tabs?: {
     all: string;
     needsReview: string;
@@ -144,7 +149,76 @@ type TabFilter = 'all' | 'needsReview' | 'starred' | 'highSignal' | 'failed' | '
 type OutcomeTag = 'appointment' | 'callback' | 'follow_up' | 'not_interested' | 'wrong_number' | 'unclear';
 type KPIFilter = 'all' | 'connected' | 'completed' | 'high_signal';
 
+// STEP 12: Range type
+type RangePreset = '14d' | '30d' | '90d' | 'all' | 'custom';
+
+// STEP 12: Server-side counts response
+interface CountsData {
+  range: string;
+  from: string | null;
+  to: string | null;
+  counts: {
+    all: number;
+    needsReview: number;
+    starred: number;
+    highSignal: number;
+    failed: number;
+    appointment: number;
+    callback: number;
+    follow_up: number;
+  };
+}
+
 const HIGH_SIGNAL_THRESHOLD = 70;
+
+// ============================================================================
+// STEP 13: Saved Views (LocalStorage)
+// ============================================================================
+
+interface SavedView {
+  id: string;
+  name: string;
+  createdAt: string;
+  state: {
+    range: RangePreset;
+    from?: string;
+    to?: string;
+    tab: TabFilter;
+    q?: string;
+  };
+}
+
+const SAVED_VIEWS_KEY = 'portal.savedViews.v1';
+const MAX_SAVED_VIEWS = 20;
+
+function generateViewId(): string {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+function getSavedViews(): SavedView[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(SAVED_VIEWS_KEY);
+    if (!raw) return [];
+    const views = JSON.parse(raw) as SavedView[];
+    return Array.isArray(views) ? views.slice(0, MAX_SAVED_VIEWS) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveSavedViews(views: SavedView[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(SAVED_VIEWS_KEY, JSON.stringify(views.slice(0, MAX_SAVED_VIEWS)));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+function sanitizeViewName(name: string): string {
+  return name.trim().replace(/\s+/g, ' ').slice(0, 32);
+}
 
 // Insights API response type
 interface InsightsData {
@@ -1270,16 +1344,63 @@ function CallDetailDrawer({
 // MAIN DASHBOARD COMPONENT
 // ============================================================================
 
+// STEP 12: Parse URL query params
+function parseUrlQuery(): { range: RangePreset; from: string | null; to: string | null; tab: TabFilter; q: string } {
+  if (typeof window === 'undefined') return { range: '14d', from: null, to: null, tab: 'all', q: '' };
+  const params = new URLSearchParams(window.location.search);
+  const range = (params.get('range') as RangePreset) || '14d';
+  const from = params.get('from');
+  const to = params.get('to');
+  const tab = (params.get('tab') as TabFilter) || 'all';
+  const q = params.get('q') || '';
+  return { range: from && to ? 'custom' : range, from, to, tab, q };
+}
+
+// STEP 12: Update URL without reload
+function updateUrlQuery(state: { range: RangePreset; from?: string | null; to?: string | null; tab: TabFilter; q: string }) {
+  if (typeof window === 'undefined') return;
+  const params = new URLSearchParams();
+  if (state.range !== '14d') params.set('range', state.range);
+  if (state.from) params.set('from', state.from);
+  if (state.to) params.set('to', state.to);
+  if (state.tab !== 'all') params.set('tab', state.tab);
+  if (state.q) params.set('q', state.q);
+  const newUrl = params.toString() ? `${window.location.pathname}?${params}` : window.location.pathname;
+  window.history.replaceState({}, '', newUrl);
+}
+
 export default function PortalDashboard() {
   const { portalKey, callId: urlCallId } = useParams<{ portalKey: string; callId?: string }>();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   
+  // STEP 12: Initialize state from URL
+  const initialQuery = useMemo(() => parseUrlQuery(), []);
+  
   const [selectedCallId, setSelectedCallId] = useState<number | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialQuery.q);
   const [activeFilter, setActiveFilter] = useState<KPIFilter>('all');
   const [showActivityDrawer, setShowActivityDrawer] = useState(false);
   const reducedMotion = usePrefersReducedMotion();
+  
+  // STEP 12: Range state
+  const [rangePreset, setRangePreset] = useState<RangePreset>(initialQuery.range);
+  const [customFrom, setCustomFrom] = useState<string>(initialQuery.from || '');
+  const [customTo, setCustomTo] = useState<string>(initialQuery.to || '');
+  const [showCustomRange, setShowCustomRange] = useState(initialQuery.range === 'custom');
+  
+  // STEP 12: Sync state to URL
+  const [activeTab, setActiveTab] = useState<TabFilter>(initialQuery.tab);
+  
+  useEffect(() => {
+    updateUrlQuery({
+      range: rangePreset,
+      from: rangePreset === 'custom' ? customFrom : null,
+      to: rangePreset === 'custom' ? customTo : null,
+      tab: activeTab,
+      q: searchQuery
+    });
+  }, [rangePreset, customFrom, customTo, activeTab, searchQuery]);
   
   // STEP 11: Deep-link support - open drawer from URL
   useEffect(() => {
@@ -1291,9 +1412,6 @@ export default function PortalDashboard() {
     }
   }, [urlCallId]);
   
-  // STEP 9: Tab state
-  const [activeTab, setActiveTab] = useState<TabFilter>('all');
-  
   // STEP 9: Bulk Analyze state
   const [bulkAnalyzeState, setBulkAnalyzeState] = useState<{
     running: boolean;
@@ -1304,6 +1422,86 @@ export default function PortalDashboard() {
     cancelled: boolean;
   } | null>(null);
   const bulkCancelRef = useRef(false);
+  
+  // STEP 13: Saved Views state
+  const [savedViews, setSavedViews] = useState<SavedView[]>(() => getSavedViews());
+  const [showSavePopover, setShowSavePopover] = useState(false);
+  const [showViewsDropdown, setShowViewsDropdown] = useState(false);
+  const [newViewName, setNewViewName] = useState('');
+  const [viewToast, setViewToast] = useState<string | null>(null);
+  
+  // STEP 13: Save View handler
+  const handleSaveView = useCallback(() => {
+    const name = sanitizeViewName(newViewName);
+    if (!name) return;
+    
+    const view: SavedView = {
+      id: generateViewId(),
+      name,
+      createdAt: new Date().toISOString(),
+      state: {
+        range: rangePreset,
+        from: rangePreset === 'custom' ? customFrom : undefined,
+        to: rangePreset === 'custom' ? customTo : undefined,
+        tab: activeTab,
+        q: searchQuery || undefined
+      }
+    };
+    
+    const updated = [view, ...savedViews].slice(0, MAX_SAVED_VIEWS);
+    setSavedViews(updated);
+    saveSavedViews(updated);
+    setNewViewName('');
+    setShowSavePopover(false);
+    setViewToast('View saved');
+  }, [newViewName, rangePreset, customFrom, customTo, activeTab, searchQuery, savedViews]);
+  
+  // STEP 13: Load View handler
+  const handleLoadView = useCallback((view: SavedView) => {
+    setRangePreset(view.state.range);
+    if (view.state.range === 'custom') {
+      setCustomFrom(view.state.from || '');
+      setCustomTo(view.state.to || '');
+      setShowCustomRange(true);
+    } else {
+      setCustomFrom('');
+      setCustomTo('');
+      setShowCustomRange(false);
+    }
+    setActiveTab(view.state.tab);
+    setSearchQuery(view.state.q || '');
+    setShowViewsDropdown(false);
+    setViewToast(`Loaded "${view.name}"`);
+  }, []);
+  
+  // STEP 13: Delete View handler
+  const handleDeleteView = useCallback((viewId: string) => {
+    const updated = savedViews.filter(v => v.id !== viewId);
+    setSavedViews(updated);
+    saveSavedViews(updated);
+  }, [savedViews]);
+  
+  // STEP 13: Share View Link handler
+  const handleShareViewLink = useCallback(() => {
+    const params = new URLSearchParams();
+    if (rangePreset !== '14d') params.set('range', rangePreset);
+    if (rangePreset === 'custom' && customFrom) params.set('from', customFrom);
+    if (rangePreset === 'custom' && customTo) params.set('to', customTo);
+    if (activeTab !== 'all') params.set('tab', activeTab);
+    if (searchQuery) params.set('q', searchQuery);
+    const url = params.toString() 
+      ? `${window.location.origin}/portal/${portalKey}?${params}`
+      : `${window.location.origin}/portal/${portalKey}`;
+    navigator.clipboard.writeText(url);
+    setViewToast('View link copied');
+  }, [portalKey, rangePreset, customFrom, customTo, activeTab, searchQuery]);
+  
+  // STEP 13D: Clear handler (keeps range, clears tab + search)
+  const handleClearFilters = useCallback(() => {
+    setActiveTab('all');
+    setSearchQuery('');
+    setViewToast('Filters cleared');
+  }, []);
   
   // Fetch session/config
   const { data: session, isLoading: sessionLoading, error: sessionError } = useQuery<PortalSession>({
@@ -1330,17 +1528,49 @@ export default function PortalDashboard() {
     enabled: !!session
   });
   
-  // Fetch calls list
+  // STEP 12: Build query params for API calls
+  const buildApiParams = useCallback(() => {
+    const params = new URLSearchParams({ limit: '100' });
+    if (rangePreset === 'custom' && customFrom && customTo) {
+      params.set('from', customFrom);
+      params.set('to', customTo);
+    } else if (rangePreset !== 'custom') {
+      params.set('range', rangePreset);
+    }
+    if (searchQuery) params.set('q', searchQuery);
+    return params;
+  }, [rangePreset, customFrom, customTo, searchQuery]);
+  
+  // Fetch calls list (STEP 12: with range params)
   const { data: callsData, isLoading: callsLoading, refetch: refetchCalls } = useQuery<{ items: CallItem[]; nextCursor: string | null }>({
-    queryKey: ['portal-calls', portalKey, searchQuery],
+    queryKey: ['portal-calls', portalKey, rangePreset, customFrom, customTo, searchQuery],
     queryFn: async () => {
-      const params = new URLSearchParams({ limit: '100' });
-      if (searchQuery) params.set('q', searchQuery);
+      const params = buildApiParams();
       const res = await fetch(`/api/portal/calls?${params}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch calls');
       return res.json();
     },
     enabled: !!session
+  });
+  
+  // STEP 12E: Fetch server-side counts
+  const { data: countsData, isLoading: countsLoading, error: countsError } = useQuery<CountsData>({
+    queryKey: ['portal-counts', portalKey, rangePreset, customFrom, customTo, searchQuery],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (rangePreset === 'custom' && customFrom && customTo) {
+        params.set('from', customFrom);
+        params.set('to', customTo);
+      } else if (rangePreset !== 'custom') {
+        params.set('range', rangePreset);
+      }
+      if (searchQuery) params.set('q', searchQuery);
+      const res = await fetch(`/api/portal/calls/counts?${params}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch counts');
+      return res.json();
+    },
+    enabled: !!session,
+    staleTime: 30 * 1000 // 30 sec cache
   });
   
   // Fetch insights (14 day trends)
@@ -1355,22 +1585,19 @@ export default function PortalDashboard() {
     staleTime: 5 * 60 * 1000 // 5 min cache
   });
   
-  // CSV Export handler
+  // STEP 12: CSV Export handler (uses current view state)
   const handleExportCSV = useCallback(() => {
-    const params = new URLSearchParams({ range: '14d' });
-    if (activeFilter === 'completed') params.set('status', 'completed');
-    if (searchQuery) params.set('q', searchQuery);
+    const params = buildApiParams();
     window.open(`/api/portal/calls/export.csv?${params}`, '_blank');
-  }, [activeFilter, searchQuery]);
+  }, [buildApiParams]);
   
-  // PDF Report handler
+  // STEP 13D: PDF Report handler (uses current view state)
   const handleOpenReport = useCallback(() => {
-    const params = new URLSearchParams({ range: '14d' });
-    if (activeFilter === 'completed') params.set('status', 'completed');
+    const params = buildApiParams();
+    params.delete('limit'); // Not needed for report
     if (activeFilter === 'high_signal') params.set('highSignal', '1');
-    if (searchQuery) params.set('q', searchQuery);
     window.open(`/portal/${portalKey}/report?${params}`, '_blank');
-  }, [portalKey, activeFilter, searchQuery]);
+  }, [portalKey, activeFilter, buildApiParams]);
   
   // Fetch audit log
   const { data: auditData } = useQuery<{ entries: Array<{ ts: string; action: string; metaSafe: { callId?: number } }> }>({
@@ -1431,20 +1658,20 @@ export default function PortalDashboard() {
     }
   }, [tabFilteredCalls, activeFilter]);
   
-  // STEP 9+11: Tab counts for badges (including outcome tabs)
+  // STEP 12E: Tab counts from server-side counts (not from loaded page)
   const tabCounts = useMemo(() => {
-    if (!callsData?.items) return { needsReview: 0, starred: 0, highSignal: 0, failed: 0, appointments: 0, callbacks: 0, followUp: 0 };
+    if (!countsData?.counts) return { all: 0, needsReview: 0, starred: 0, highSignal: 0, failed: 0, appointments: 0, callbacks: 0, followUp: 0 };
     return {
-      needsReview: callsData.items.filter(c => !c.reviewedAt).length,
-      starred: callsData.items.filter(c => c.starred).length,
-      highSignal: callsData.items.filter(c => c.signalScore && c.signalScore >= HIGH_SIGNAL_THRESHOLD).length,
-      failed: callsData.items.filter(c => c.status?.toLowerCase() === 'failed').length,
-      // STEP 11: Outcome-based counts
-      appointments: callsData.items.filter(c => c.outcomeTag === 'appointment').length,
-      callbacks: callsData.items.filter(c => c.outcomeTag === 'callback').length,
-      followUp: callsData.items.filter(c => c.outcomeTag === 'follow_up').length
+      all: countsData.counts.all,
+      needsReview: countsData.counts.needsReview,
+      starred: countsData.counts.starred,
+      highSignal: countsData.counts.highSignal,
+      failed: countsData.counts.failed,
+      appointments: countsData.counts.appointment,
+      callbacks: countsData.counts.callback,
+      followUp: countsData.counts.follow_up
     };
-  }, [callsData?.items]);
+  }, [countsData?.counts]);
   
   // STEP 9: Next Actions - top 8 high signal calls with analysis
   const nextActions = useMemo(() => {
@@ -1669,15 +1896,227 @@ export default function PortalDashboard() {
         </div>
       </header>
       
-      {/* STEP 9: Tab Bar */}
+      {/* STEP 12C: Range Picker + Tab Bar */}
       <div 
         className="sticky top-16 z-20 border-b border-white/5 backdrop-blur-xl"
         style={{ background: 'rgba(10,10,10,0.7)' }}
       >
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Range Picker Row */}
+          <div className="flex items-center gap-3 py-2 border-b border-white/5">
+            <select
+              value={rangePreset}
+              onChange={(e) => {
+                const val = e.target.value as RangePreset;
+                setRangePreset(val);
+                if (val === 'custom') {
+                  setShowCustomRange(true);
+                } else {
+                  setShowCustomRange(false);
+                  setCustomFrom('');
+                  setCustomTo('');
+                }
+              }}
+              aria-label="Date range"
+              className="h-9 px-3 rounded-xl text-sm bg-white/5 border border-white/10 text-white/80 outline-none focus:border-[#FE9100]/50"
+              style={{ minWidth: 140 }}
+            >
+              <option value="14d">Last 14 days</option>
+              <option value="30d">Last 30 days</option>
+              <option value="90d">Last 90 days</option>
+              <option value="all">All time</option>
+              <option value="custom">Custom…</option>
+            </select>
+            
+            {showCustomRange && (
+              <div className="flex items-center gap-2">
+                <label className="sr-only" htmlFor="range-from">From</label>
+                <input
+                  id="range-from"
+                  type="date"
+                  value={customFrom}
+                  onChange={(e) => setCustomFrom(e.target.value)}
+                  className="h-9 px-3 rounded-xl text-sm bg-white/5 border border-white/10 text-white/80 outline-none focus:border-[#FE9100]/50"
+                  aria-describedby="range-hint"
+                />
+                <span className="text-white/40 text-sm">to</span>
+                <label className="sr-only" htmlFor="range-to">To</label>
+                <input
+                  id="range-to"
+                  type="date"
+                  value={customTo}
+                  onChange={(e) => setCustomTo(e.target.value)}
+                  className="h-9 px-3 rounded-xl text-sm bg-white/5 border border-white/10 text-white/80 outline-none focus:border-[#FE9100]/50"
+                />
+                <span id="range-hint" className="sr-only">Max 365 days</span>
+              </div>
+            )}
+            
+            <div className="flex-1" />
+            
+            {/* STEP 13B: Workboard Toolbar */}
+            <div className="flex items-center gap-2">
+              {/* Save View */}
+              <div className="relative">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setShowSavePopover(!showSavePopover)}
+                      className="h-9 px-3 rounded-xl text-xs font-medium bg-white/5 border border-white/10 text-white/60 hover:text-white/80 hover:bg-white/8 transition-colors"
+                    >
+                      Save View
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent><p className="text-xs">{session?.ui?.infoHints?.saveView || 'Aktuelle Filter als View speichern'}</p></TooltipContent>
+                </Tooltip>
+                
+                {showSavePopover && (
+                  <div 
+                    className="absolute top-full right-0 mt-2 p-3 rounded-xl z-50 min-w-[200px]"
+                    style={{ background: 'rgba(20,20,20,0.95)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(20px)' }}
+                  >
+                    <input
+                      type="text"
+                      value={newViewName}
+                      onChange={(e) => setNewViewName(e.target.value)}
+                      placeholder="View name…"
+                      maxLength={32}
+                      className="w-full h-9 px-3 rounded-lg text-sm bg-white/5 border border-white/10 text-white/80 placeholder-white/30 outline-none focus:border-[#FE9100]/50 mb-2"
+                      autoFocus
+                      onKeyDown={(e) => e.key === 'Enter' && handleSaveView()}
+                    />
+                    <button
+                      onClick={handleSaveView}
+                      disabled={!newViewName.trim()}
+                      className="w-full h-9 rounded-lg text-sm font-medium text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ background: 'linear-gradient(135deg, #FE9100 0%, #FF6B00 100%)' }}
+                    >
+                      Save
+                    </button>
+                  </div>
+                )}
+              </div>
+              
+              {/* Views Dropdown */}
+              <div className="relative">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setShowViewsDropdown(!showViewsDropdown)}
+                      className="h-9 px-3 rounded-xl text-xs font-medium bg-white/5 border border-white/10 text-white/60 hover:text-white/80 hover:bg-white/8 transition-colors flex items-center gap-1"
+                    >
+                      Views
+                      {savedViews.length > 0 && (
+                        <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-white/10">{savedViews.length}</span>
+                      )}
+                      <ChevronDown className="w-3 h-3" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent><p className="text-xs">{session?.ui?.infoHints?.loadView || 'Gespeicherte Views laden'}</p></TooltipContent>
+                </Tooltip>
+                
+                {showViewsDropdown && (
+                  <div 
+                    className="absolute top-full right-0 mt-2 rounded-xl z-50 min-w-[240px] max-h-[300px] overflow-y-auto"
+                    style={{ background: 'rgba(20,20,20,0.95)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(20px)' }}
+                  >
+                    {savedViews.length === 0 ? (
+                      <div className="p-4 text-center text-xs text-white/40">No saved views</div>
+                    ) : (
+                      savedViews.map(view => (
+                        <div 
+                          key={view.id}
+                          className="flex items-center justify-between p-3 border-b border-white/5 last:border-0 hover:bg-white/5 cursor-pointer group"
+                          onClick={() => handleLoadView(view)}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm text-white/80 font-medium truncate">{view.name}</div>
+                            <div className="text-[10px] text-white/40 mt-0.5">
+                              {view.state.tab} · {view.state.range}
+                            </div>
+                          </div>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeleteView(view.id); }}
+                            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/20 text-white/40 hover:text-red-400 transition-all"
+                            title="Delete"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              {/* Share View */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleShareViewLink}
+                    className="h-9 w-9 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-white/80 hover:bg-white/8 transition-colors flex items-center justify-center"
+                  >
+                    <Link2 className="w-4 h-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent><p className="text-xs">{session?.ui?.infoHints?.shareView || 'View-Link kopieren'}</p></TooltipContent>
+              </Tooltip>
+              
+              {/* Clear */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleClearFilters}
+                    className="h-9 px-3 rounded-xl text-xs font-medium text-white/40 hover:text-white/60 transition-colors"
+                  >
+                    Clear
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent><p className="text-xs">{session?.ui?.infoHints?.clearFilters || 'Tab + Search zurücksetzen (Range bleibt)'}</p></TooltipContent>
+              </Tooltip>
+              
+              {/* Separator */}
+              <div className="w-px h-6 bg-white/10" />
+              
+              {/* Export CSV */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleExportCSV}
+                    className="h-9 px-3 rounded-xl text-xs font-medium bg-white/5 border border-white/10 text-white/60 hover:text-white/80 hover:bg-white/8 transition-colors flex items-center gap-1.5"
+                  >
+                    <FileDown className="w-3.5 h-3.5" />
+                    CSV
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent><p className="text-xs">Exports current view</p></TooltipContent>
+              </Tooltip>
+              
+              {/* PDF Report */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleOpenReport}
+                    className="h-9 px-3 rounded-xl text-xs font-medium bg-white/5 border border-white/10 text-white/60 hover:text-white/80 hover:bg-white/8 transition-colors flex items-center gap-1.5"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    Report
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent><p className="text-xs">Exports current view as PDF</p></TooltipContent>
+              </Tooltip>
+            </div>
+            
+            {/* Total count indicator */}
+            <span className="text-xs text-white/40 ml-2">
+              {countsLoading ? '…' : countsError ? '—' : `${tabCounts.all} calls`}
+            </span>
+          </div>
+          
+          {/* Tab Bar */}
           <div className="flex items-center gap-1 py-2 overflow-x-auto hide-scrollbar">
             {([
-              { key: 'all' as TabFilter, label: 'All', count: callsData?.items?.length || 0 },
+              { key: 'all' as TabFilter, label: 'All', count: tabCounts.all },
               { key: 'needsReview' as TabFilter, label: 'Needs Review', count: tabCounts.needsReview },
               { key: 'starred' as TabFilter, label: 'Starred', count: tabCounts.starred },
               { key: 'highSignal' as TabFilter, label: 'High Signal', count: tabCounts.highSignal },
@@ -1699,7 +2138,17 @@ export default function PortalDashboard() {
                     }}
                   >
                     {tab.label}
-                    {tab.count > 0 && tab.key !== 'all' && (
+                    {/* STEP 12E: Show loading/error state for counts */}
+                    {countsLoading ? (
+                      <span className="w-6 h-4 rounded-full bg-white/10 animate-pulse" />
+                    ) : countsError ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="px-1.5 py-0.5 rounded-full text-xs bg-white/10 text-white/30">—</span>
+                        </TooltipTrigger>
+                        <TooltipContent><p className="text-xs">Counts unavailable</p></TooltipContent>
+                      </Tooltip>
+                    ) : tab.count > 0 && tab.key !== 'all' ? (
                       <span 
                         className="px-1.5 py-0.5 rounded-full text-xs"
                         style={{ 
@@ -1709,7 +2158,7 @@ export default function PortalDashboard() {
                       >
                         {tab.count}
                       </span>
-                    )}
+                    ) : null}
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -2606,6 +3055,9 @@ export default function PortalDashboard() {
           </div>
         </>
       )}
+      
+      {/* STEP 13: View Toast */}
+      {viewToast && <Toast message={viewToast} onClose={() => setViewToast(null)} />}
     </div>
   );
 }

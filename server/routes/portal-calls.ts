@@ -138,27 +138,84 @@ router.get('/calls', async (req: Request, res: Response) => {
     const status = req.query.status as string | undefined;
     const q = req.query.q as string | undefined;
     
+    // STEP 12B: Range params
+    const range = (req.query.range as string) || '14d';
+    const fromParam = req.query.from as string | undefined;
+    const toParam = req.query.to as string | undefined;
+    
     // Build base filter from portal config
     const baseFilter = buildFilterCondition(config);
     
     // Build conditions array
     const conditions = [baseFilter];
     
+    // STEP 12B: Add date range filter
+    if (fromParam && toParam) {
+      const rangeStart = new Date(fromParam);
+      const rangeEnd = new Date(toParam);
+      rangeEnd.setHours(23, 59, 59, 999);
+      
+      // Validate
+      if (rangeStart > rangeEnd) {
+        return res.status(400).json({ error: 'INVALID_RANGE', message: 'from must be <= to' });
+      }
+      const daysDiff = (rangeEnd.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24);
+      if (daysDiff > 365) {
+        return res.status(400).json({ error: 'RANGE_TOO_LARGE', message: 'Max range is 365 days' });
+      }
+      
+      conditions.push(sql`${callLogs.createdAt} >= ${rangeStart.toISOString()}`);
+      conditions.push(sql`${callLogs.createdAt} <= ${rangeEnd.toISOString()}`);
+    } else if (range !== 'all') {
+      const now = new Date();
+      let rangeStart: Date;
+      switch (range) {
+        case '30d':
+          rangeStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        case '90d':
+          rangeStart = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+          break;
+        default: // 14d
+          rangeStart = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+      }
+      conditions.push(sql`${callLogs.createdAt} >= ${rangeStart.toISOString()}`);
+    }
+    
     // Add status filter if provided
     if (status && status !== 'all') {
       conditions.push(eq(callLogs.status, status));
     }
     
-    // Add search filter if provided
+    // STEP 12B: Enhanced search filter (safe fields only)
     if (q && q.trim()) {
-      const searchTerm = `%${q.trim()}%`;
-      conditions.push(
-        or(
-          ilike(callLogs.phoneNumber, searchTerm),
-          ilike(callLogs.contactName, searchTerm),
-          sql`${callLogs.metadata}->>'purpose' ILIKE ${searchTerm}`
-        )!
-      );
+      const searchTerm = q.trim();
+      const searchLike = `%${searchTerm}%`;
+      const digitsOnly = searchTerm.replace(/\D/g, '');
+      
+      // Check if q matches an outcomeTag exactly
+      const outcomeTagMatch = ['appointment', 'callback', 'follow_up', 'not_interested', 'wrong_number', 'unclear'].includes(searchTerm.toLowerCase())
+        ? searchTerm.toLowerCase()
+        : null;
+      
+      if (outcomeTagMatch) {
+        conditions.push(sql`(${callLogs.metadata}->>'portal')::jsonb->>'outcomeTag' = ${outcomeTagMatch}`);
+      } else if (digitsOnly.length >= 4) {
+        conditions.push(
+          or(
+            ilike(callLogs.contactName, searchLike),
+            sql`${callLogs.phoneNumber} LIKE ${'%' + digitsOnly}`,
+            sql`(${callLogs.metadata}->>'portal')::jsonb->>'note' ILIKE ${searchLike}`
+          )!
+        );
+      } else {
+        conditions.push(
+          or(
+            ilike(callLogs.contactName, searchLike),
+            sql`(${callLogs.metadata}->>'portal')::jsonb->>'note' ILIKE ${searchLike}`
+          )!
+        );
+      }
     }
     
     // Add cursor filter if provided
@@ -268,6 +325,146 @@ router.get('/calls/stats', async (req: Request, res: Response) => {
     return res.status(500).json({ 
       error: 'INTERNAL_ERROR', 
       message: 'Failed to retrieve statistics' 
+    });
+  }
+});
+
+// ============================================================================
+// STEP 12: GET /api/portal/calls/counts
+// Server-side counts for tabs (performant, works with 2000+ calls)
+// ============================================================================
+
+const HIGH_SIGNAL_THRESHOLD = 70; // Server const for signal score threshold
+
+router.get('/calls/counts', async (req: Request, res: Response) => {
+  try {
+    const config = (req as any).portalConfig as PortalConfig;
+    const baseFilter = buildFilterCondition(config);
+    
+    // Parse range params
+    const range = (req.query.range as string) || '14d';
+    const fromParam = req.query.from as string | undefined;
+    const toParam = req.query.to as string | undefined;
+    const q = req.query.q as string | undefined;
+    
+    // Build date range condition
+    const conditions: any[] = [baseFilter];
+    let rangeStart: Date | null = null;
+    let rangeEnd: Date | null = null;
+    
+    if (fromParam && toParam) {
+      // Custom date range
+      rangeStart = new Date(fromParam);
+      rangeEnd = new Date(toParam);
+      rangeEnd.setHours(23, 59, 59, 999); // Include full end day
+      
+      // Validate: from <= to, max 365 days
+      if (rangeStart > rangeEnd) {
+        return res.status(400).json({ error: 'INVALID_RANGE', message: 'from must be <= to' });
+      }
+      const daysDiff = (rangeEnd.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24);
+      if (daysDiff > 365) {
+        return res.status(400).json({ error: 'RANGE_TOO_LARGE', message: 'Max range is 365 days' });
+      }
+      
+      conditions.push(sql`${callLogs.createdAt} >= ${rangeStart.toISOString()}`);
+      conditions.push(sql`${callLogs.createdAt} <= ${rangeEnd.toISOString()}`);
+    } else {
+      // Preset range
+      const now = new Date();
+      switch (range) {
+        case '14d':
+          rangeStart = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+          conditions.push(sql`${callLogs.createdAt} >= ${rangeStart.toISOString()}`);
+          break;
+        case '30d':
+          rangeStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          conditions.push(sql`${callLogs.createdAt} >= ${rangeStart.toISOString()}`);
+          break;
+        case '90d':
+          rangeStart = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+          conditions.push(sql`${callLogs.createdAt} >= ${rangeStart.toISOString()}`);
+          break;
+        case 'all':
+          // No date filter
+          break;
+        default:
+          // Default to 14d
+          rangeStart = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+          conditions.push(sql`${callLogs.createdAt} >= ${rangeStart.toISOString()}`);
+      }
+    }
+    
+    // STEP 12A: Search filter (safe fields only - NO transcript)
+    if (q && q.trim()) {
+      const searchTerm = q.trim();
+      const searchLike = `%${searchTerm}%`;
+      const digitsOnly = searchTerm.replace(/\D/g, '');
+      
+      // Check if q matches an outcomeTag exactly
+      const outcomeTagMatch = VALID_OUTCOME_TAGS.includes(searchTerm.toLowerCase() as OutcomeTag)
+        ? searchTerm.toLowerCase()
+        : null;
+      
+      if (outcomeTagMatch) {
+        // Exact outcomeTag match
+        conditions.push(sql`(${callLogs.metadata}->>'portal')::jsonb->>'outcomeTag' = ${outcomeTagMatch}`);
+      } else if (digitsOnly.length >= 4) {
+        // Phone number search (last 4+ digits)
+        conditions.push(
+          or(
+            ilike(callLogs.contactName, searchLike),
+            sql`${callLogs.phoneNumber} LIKE ${'%' + digitsOnly}`,
+            sql`(${callLogs.metadata}->>'portal')::jsonb->>'note' ILIKE ${searchLike}`
+          )!
+        );
+      } else {
+        // Text search on contactName and note
+        conditions.push(
+          or(
+            ilike(callLogs.contactName, searchLike),
+            sql`(${callLogs.metadata}->>'portal')::jsonb->>'note' ILIKE ${searchLike}`
+          )!
+        );
+      }
+    }
+    
+    // Single DB roundtrip with conditional aggregation
+    const [counts] = await db
+      .select({
+        all: sql<number>`count(*)::int`,
+        needsReview: sql<number>`count(*) FILTER (WHERE (${callLogs.metadata}->>'portal')::jsonb->>'reviewedAt' IS NULL)::int`,
+        starred: sql<number>`count(*) FILTER (WHERE ((${callLogs.metadata}->>'portal')::jsonb->>'starred')::boolean = true)::int`,
+        highSignal: sql<number>`count(*) FILTER (WHERE ((${callLogs.metadata}->>'ai')::jsonb->'analysisV1'->>'signalScore')::int >= ${HIGH_SIGNAL_THRESHOLD})::int`,
+        failed: sql<number>`count(*) FILTER (WHERE lower(${callLogs.status}) = 'failed')::int`,
+        appointment: sql<number>`count(*) FILTER (WHERE (${callLogs.metadata}->>'portal')::jsonb->>'outcomeTag' = 'appointment')::int`,
+        callback: sql<number>`count(*) FILTER (WHERE (${callLogs.metadata}->>'portal')::jsonb->>'outcomeTag' = 'callback')::int`,
+        follow_up: sql<number>`count(*) FILTER (WHERE (${callLogs.metadata}->>'portal')::jsonb->>'outcomeTag' = 'follow_up')::int`
+      })
+      .from(callLogs)
+      .where(and(...conditions));
+    
+    return res.json({
+      range,
+      from: fromParam || null,
+      to: toParam || null,
+      counts: {
+        all: counts?.all || 0,
+        needsReview: counts?.needsReview || 0,
+        starred: counts?.starred || 0,
+        highSignal: counts?.highSignal || 0,
+        failed: counts?.failed || 0,
+        appointment: counts?.appointment || 0,
+        callback: counts?.callback || 0,
+        follow_up: counts?.follow_up || 0
+      }
+    });
+    
+  } catch (error: any) {
+    console.error('[PORTAL-CALLS] Error getting counts:', error);
+    return res.status(500).json({ 
+      error: 'INTERNAL_ERROR', 
+      message: 'Failed to retrieve counts' 
     });
   }
 });
@@ -493,7 +690,7 @@ router.get('/debug/filter', async (req: Request, res: Response) => {
 // Aggregated insights for dashboard (trends, KPIs, sentiment)
 // ============================================================================
 
-const HIGH_SIGNAL_THRESHOLD = 70;
+// HIGH_SIGNAL_THRESHOLD already defined at line 337
 
 router.get('/calls/insights', async (req: Request, res: Response) => {
   try {
