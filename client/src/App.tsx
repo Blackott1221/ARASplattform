@@ -56,6 +56,10 @@ import CampaignStudioPage from "@/pages/campaign-studio";
 // 📦 SERVICE ORDERS - Admin/User Order Dashboard
 import AdminDashboardServiceOrders from "@/pages/admin-dashboard-service-orders";
 
+// 🔐 CLIENT PORTAL - Isolated customer dashboards (Leadely etc.)
+import PortalLogin from "@/pages/portal/login";
+import PortalDashboard from "@/pages/portal/dashboard";
+
 // Memoized video background component - never re-renders to keep video playing continuously
 const VideoBackground = memo(() => {
   useEffect(() => {
@@ -149,6 +153,10 @@ function Router() {
   return (
     <PageTransition>
       <Switch>
+        {/* 🔐 CLIENT PORTAL ROUTES - Public, isolated auth */}
+        <Route path="/portal/:portalKey/login" component={PortalLogin} />
+        <Route path="/portal/:portalKey" component={PortalDashboard} />
+        
         {/* Public routes - always accessible */}
         <Route path="/terms" component={Terms} />
         <Route path="/privacy" component={Privacy} />

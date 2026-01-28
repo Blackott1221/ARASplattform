@@ -339,6 +339,17 @@ async function seedSubscriptionPlans() {
   app.use('/api/internal', internalRoutes.default);
   log('✅ ARAS Command Center routes registered at /api/internal/*');
   
+  // ============================================================================
+  // 🔐 CLIENT PORTAL ROUTES (Leadely etc.)
+  // ============================================================================
+  const portalAuthRoutes = await import('./routes/portal-auth');
+  const portalCallsRoutes = await import('./routes/portal-calls');
+  const portalAnalysisRoutes = await import('./routes/portal-analysis');
+  app.use('/api/portal', portalAuthRoutes.default);
+  app.use('/api/portal', portalCallsRoutes.default);
+  app.use('/api/portal', portalAnalysisRoutes.default);
+  log('✅ Client Portal routes registered at /api/portal/*');
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

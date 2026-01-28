@@ -95,6 +95,24 @@
 - ✅ Service Orders dashboard (list + details sheet + events timeline)
 - ✅ Deep-link safety + reduced motion compliance
 
+## 🔐 Leadely Portal — Release Smoke Checks
+
+1. [ ] Login wrong password → clean error message (no stack trace)
+2. [ ] Login ok → redirects to dashboard
+3. [ ] `/api/portal/debug/filter` → matchedCount plausible, sample shows safe fields only
+4. [ ] Calls list paginates correctly (50/200 limit)
+5. [ ] Call detail denied when call not in filter (404, not 500)
+6. [ ] No provider/model strings in UI (only "ARAS Intelligence", "Voice Agent")
+7. [ ] Insights endpoint `/api/portal/calls/insights?range=14d` returns totals + series
+8. [ ] CSV export `/api/portal/calls/export.csv` downloads with expected columns
+9. [ ] Audio proxy streams correctly for calls with recordings
+10. [ ] Logout clears session cookie properly
+
+### Portal Filter Modes
+- `userId` — filter by user ID string
+- `voiceAgentId` — filter by voice agent ID number (recommended for Leadely)
+- `metadata.key` — filter by jsonb key match
+
 ---
 
 ## 📞 Support
