@@ -41,48 +41,6 @@ export default function Campaigns() {
   // Animierte Tipps State
   const [currentTipIndex, setCurrentTipIndex] = useState(0);
 
-  // ─────────────────────────────────────────────────────────────
-  // PRE-FILL FROM CHAT (reads localStorage on mount)
-  // ─────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const prefilledCampaign = localStorage.getItem('aras_prefilled_campaign');
-    if (prefilledCampaign) {
-      // Parse the campaign data from the AI-generated text
-      const extractField = (text: string, fieldName: string): string => {
-        const regex = new RegExp(`${fieldName}[:\\s]*([^\\n]+)`, 'i');
-        const match = text.match(regex);
-        return match ? match[1].trim() : '';
-      };
-      
-      // Extract fields from the AI-generated campaign text
-      const name = extractField(prefilledCampaign, 'Kampagnenname');
-      const product = extractField(prefilledCampaign, 'Produkt|Zielprodukt');
-      const objective = extractField(prefilledCampaign, 'Ziel des Anrufs|Anrufziel');
-      const audience = extractField(prefilledCampaign, 'Zielgruppe');
-      const message = extractField(prefilledCampaign, 'Kernbotschaft');
-      const outcome = extractField(prefilledCampaign, 'Gewünschtes Ergebnis');
-      const followUp = extractField(prefilledCampaign, 'Follow-up');
-      const offers = extractField(prefilledCampaign, 'Sonderangebote|Angebote');
-      const objections = extractField(prefilledCampaign, 'Einwandbehandlung');
-      
-      if (name) setCampaignName(name);
-      if (product) setTargetProduct(product);
-      if (objective) setCallObjective(objective);
-      if (audience) setTargetAudience(audience);
-      if (message) setKeyMessage(message);
-      if (outcome) setDesiredOutcome(outcome);
-      if (followUp) setFollowUpAction(followUp);
-      if (offers) setSpecialOffers(offers);
-      if (objections) setObjectionHandling(objections);
-      
-      localStorage.removeItem('aras_prefilled_campaign');
-      toast({
-        title: '✨ Kampagnendaten übernommen',
-        description: 'Die generierten Daten wurden in die Felder eingefügt.',
-      });
-    }
-  }, []);
-
   // Fetch subscription
   const { data: subscriptionData } = useQuery<SubscriptionResponse>({
     queryKey: ["/api/user/subscription"],

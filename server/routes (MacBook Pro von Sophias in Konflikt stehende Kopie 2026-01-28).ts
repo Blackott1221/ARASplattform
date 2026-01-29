@@ -3,7 +3,7 @@ import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { client, db } from "./db";
-import { campaigns, chatMessages, chatSessions, contacts, calendarEvents, leads, subscriptionPlans, users, usageTracking, voiceAgents, callLogs } from "@shared/schema";
+import { campaigns, chatMessages, chatSessions, contacts, calendarEvents, leads, subscriptionPlans, users, usageTracking, voiceAgents, callLogs, n8nEmailLogs } from "@shared/schema";
 import { logger } from "./logger";
 import { PerformanceMonitor, performanceMiddleware } from "./performance-monitor";
 import { insertLeadSchema, insertCampaignSchema, insertChatMessageSchema, insertContactSchema, sanitizeUser } from "@shared/schema";
@@ -20,6 +20,17 @@ import chatRouter from "./chat";
 import dashboardRouter from "./routes/dashboard";
 import callLogsRouter from "./routes/call-logs";
 import aiRecommendationsRouter from "./routes/ai-recommendations";
+import promptGeneratorRouter from "./routes/prompt-generator";
+import arasLabRouter from "./routes/aras-lab";
+import n8nAdminRouter from "./routes/n8n-admin";
+import adminStaffRouter from "./routes/admin-staff";
+import adminChatRouter, { seedDefaultChannel } from "./routes/admin-chat";
+import adminExportRouter from "./routes/admin-export";
+import adminActivityRouter from "./routes/admin-activity";
+import adminSearchRouter from "./routes/admin-search";
+import adminNotificationsRouter from "./routes/admin-notifications";
+import adminUsersRouter from "./routes/admin-users";
+import serviceOrdersRouter from "./routes/service-orders";
 import { requireAdmin } from "./middleware/admin";
 import { getKnowledgeDigest } from "./knowledge/context-builder";
 import { checkCallLimit, checkMessageLimit } from "./middleware/usage-limits";
@@ -588,7 +599,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Quick test: try to call the method
       let testResult = { success: false, count: 0, error: null as string | null };
-      if (hasMethod) {
+      if (hasMethod && userId) {
         try {
           const sources = await storage.getUserDataSources(userId);
           testResult = { success: true, count: sources.length, error: null };
@@ -791,11 +802,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Also test storage.getUserDataSources to verify it works
       let storageTest = { count: 0, error: null as string | null };
-      try {
-        const storageSources = await storage.getUserDataSources(canonicalUserId);
-        storageTest.count = storageSources.length;
-      } catch (e: any) {
-        storageTest.error = e.message;
+      if (canonicalUserId) {
+        try {
+          const storageSources = await storage.getUserDataSources(canonicalUserId);
+          storageTest.count = storageSources.length;
+        } catch (e: any) {
+          storageTest.error = e.message;
+        }
       }
       
       res.json({
@@ -1221,8 +1234,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const session = event.data.object as any;
           const userId = session.metadata?.userId;
           const planId = session.metadata?.planId;
+          const orderId = session.metadata?.orderId;
+          const sessionType = session.metadata?.type;
           
-          if (userId && planId) {
+          // Handle service order one-time payment
+          if (sessionType === 'service_order' && orderId) {
+            try {
+              // Update order payment status (idempotent)
+              const [existingOrder] = await client`
+                SELECT id, payment_status FROM service_orders WHERE id = ${parseInt(orderId, 10)}
+              `;
+              
+              if (existingOrder && existingOrder.payment_status !== 'paid') {
+                await client`
+                  UPDATE service_orders 
+                  SET payment_status = 'paid', 
+                      payment_reference = ${session.payment_intent || session.id},
+                      status = 'paid',
+                      updated_at = NOW()
+                  WHERE id = ${parseInt(orderId, 10)}
+                `;
+                
+                // Create event
+                await client`
+                  INSERT INTO service_order_events (order_id, type, title, description, metadata, created_at)
+                  VALUES (
+                    ${parseInt(orderId, 10)}, 
+                    'paid', 
+                    'Zahlung eingegangen',
+                    'Stripe Checkout abgeschlossen',
+                    ${JSON.stringify({ sessionId: session.id, paymentIntent: session.payment_intent })}::jsonb,
+                    NOW()
+                  )
+                `;
+                
+                logger.info(`[STRIPE-WEBHOOK] Service order ${orderId} marked as paid`);
+              } else {
+                logger.info(`[STRIPE-WEBHOOK] Service order ${orderId} already paid, skipping`);
+              }
+            } catch (orderErr: any) {
+              logger.error(`[STRIPE-WEBHOOK] Error updating service order ${orderId}:`, orderErr);
+            }
+          }
+          // Handle subscription payment
+          else if (userId && planId) {
             await storage.updateUserSubscription(userId, {
               subscriptionPlan: planId,
               subscriptionStatus: 'active',
@@ -1289,6 +1344,113 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       logger.error('[STRIPE-WEBHOOK] Error processing webhook:', error);
       res.status(500).json({ error: 'Webhook processing failed' });
+    }
+  });
+
+  // ==========================================
+  // N8N WEBHOOK - Email Tracking
+  // ==========================================
+  app.post('/api/n8n/webhook/email', express.json(), async (req: any, res) => {
+    try {
+      logger.info('[N8N-WEBHOOK] Incoming email webhook', {
+        headers: req.headers,
+        bodyKeys: req.body ? Object.keys(req.body) : []
+      });
+
+      // 1. Validate webhook secret
+      const secret = req.headers['x-webhook-secret'];
+      const expectedSecret = process.env.N8N_WEBHOOK_SECRET || 'aras-n8n-secret-2024';
+
+      if (!secret || secret !== expectedSecret) {
+        logger.warn('[N8N-WEBHOOK] Unauthorized - invalid or missing secret');
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      // Helper: Strip N8N expression prefix "=" from values
+      // N8N sometimes sends raw expression syntax like "=value" instead of evaluated "value"
+      const cleanN8NValue = (val: any): any => {
+        if (typeof val === 'string' && val.startsWith('=')) {
+          return val.substring(1);
+        }
+        return val;
+      };
+
+      // Helper: Parse timestamp safely with fallback
+      const parseTimestamp = (ts: any): Date => {
+        if (!ts) return new Date();
+        const cleaned = cleanN8NValue(ts);
+        const parsed = new Date(cleaned);
+        if (isNaN(parsed.getTime())) {
+          logger.warn('[N8N-WEBHOOK] Invalid timestamp, using current time', { original: ts, cleaned });
+          return new Date();
+        }
+        return parsed;
+      };
+
+      // 2. Parse and validate request body (clean N8N expression prefixes)
+      const rawBody = req.body;
+      const recipient = cleanN8NValue(rawBody.recipient);
+      const recipientName = cleanN8NValue(rawBody.recipientName);
+      const subject = cleanN8NValue(rawBody.subject);
+      const content = cleanN8NValue(rawBody.content);
+      const htmlContent = cleanN8NValue(rawBody.htmlContent);
+      const status = cleanN8NValue(rawBody.status);
+      const timestamp = rawBody.timestamp;
+      const workflowName = cleanN8NValue(rawBody.workflowName);
+      const workflowId = cleanN8NValue(rawBody.workflowId);
+      const executionId = cleanN8NValue(rawBody.executionId);
+      const metadata = rawBody.metadata;
+
+      // 3. Validate required fields
+      if (!recipient || !subject) {
+        logger.warn('[N8N-WEBHOOK] Missing required fields', { recipient, subject });
+        return res.status(400).json({ 
+          error: 'Missing required fields: recipient, subject' 
+        });
+      }
+
+      logger.info('[N8N-WEBHOOK] Valid request', {
+        recipient,
+        subject,
+        workflowName,
+        workflowId,
+        status: status || 'sent'
+      });
+
+      // 4. Insert into database
+      const [inserted] = await db.insert(n8nEmailLogs).values({
+        recipient,
+        recipientName: recipientName || null,
+        subject,
+        content: content || null,
+        htmlContent: htmlContent || null,
+        status: status || 'sent',
+        workflowId: workflowId || null,
+        workflowName: workflowName || null,
+        executionId: executionId || null,
+        metadata: metadata || null,
+        sentAt: parseTimestamp(timestamp),
+      }).returning();
+
+      logger.info('[N8N-WEBHOOK] Email log saved successfully', {
+        id: inserted.id,
+        recipient: inserted.recipient,
+        subject: inserted.subject
+      });
+
+      // 5. Success response
+      return res.status(201).json({
+        success: true,
+        id: inserted.id,
+        message: 'Email log created'
+      });
+
+    } catch (error: any) {
+      logger.error('[N8N-WEBHOOK] Error processing webhook:', error);
+      return res.status(500).json({
+        error: 'Webhook processing failed',
+        message: error.message
+      });
     }
   });
 
@@ -1550,54 +1712,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // 🔥 DETECT PROMPT CREATION CONTEXT
       const conversationContext = recentMessages.map(m => m.message).join(' ');
-      const msgLower = message.toLowerCase();
       
-      // Explicit prompt requests - user directly asks for a prompt
+      // Explicit prompt requests
       const explicitPromptRequest = 
-        msgLower.includes('prompt') || 
-        msgLower.includes('skript') ||
-        msgLower.includes('leitfaden') ||
-        msgLower.includes('brauche den') ||
-        msgLower.includes('generier') ||
-        msgLower.includes('erstell') ||
-        conversationContext.toLowerCase().includes('prompt erstellen') ||
-        conversationContext.toLowerCase().includes('prompt schreiben');
-
-      // User described a use case (what they want the AI to do on the phone)
-      const hasUseCaseKeyword = 
-        msgLower.includes('apotheke') ||
-        msgLower.includes('öffnungszeiten') ||
-        msgLower.includes('anrufen') ||
-        msgLower.includes('reservier') ||
-        msgLower.includes('bestätig') ||
-        msgLower.includes('verschieb') ||
-        msgLower.includes('absag') ||
-        msgLower.includes('frag') ||
-        msgLower.includes('erfrag') ||
-        msgLower.includes('prüf') ||
-        msgLower.includes('check') ||
-        msgLower.includes('vereinbar') ||
-        msgLower.includes('erkundig') ||
-        msgLower.includes('bewerber') ||
-        msgLower.includes('tisch') ||
-        msgLower.includes('meeting') ||
-        msgLower.includes('termin') ||
-        msgLower.includes('restaurant') ||
-        msgLower.includes('arzt') ||
-        msgLower.includes('hotel') ||
-        msgLower.includes('buchen') ||
-        msgLower.includes('stornieren') ||
-        msgLower.includes('nachfragen') ||
-        msgLower.includes('informieren') ||
-        msgLower.includes('kontaktieren');
+        message.toLowerCase().includes('prompt') || 
+        message.toLowerCase().includes('skript') ||
+        message.toLowerCase().includes('leitfaden') ||
+        conversationContext.includes('prompt erstellen');
 
       const isPromptCreation = conversationContext.includes('PROMPT-ERSTELLUNG') || 
         conversationContext.includes('Einzelanruf') && conversationContext.includes('Kampagne') ||
         conversationContext.includes('Was soll dieser Anruf bewirken') ||
         conversationContext.includes('fertiger Prompt') ||
         message.includes('Einzelanruf') || message.includes('Kampagne') ||
-        explicitPromptRequest ||
-        hasUseCaseKeyword;
+        explicitPromptRequest;
       
       // Get user data for personalization (user already fetched above)
       const companyName = (user as any)?.company || '';
@@ -1631,9 +1759,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message.includes('Meeting') ||
           message.includes('Termin') ||
           // Free text detection - user described what they want
-          hasUseCaseKeyword ||
-          // User typed substantial free text (more than just a word)
-          (message.length > 15 && !message.includes('?'));
+          message.includes('anrufen') ||
+          message.includes('reservier') ||
+          message.includes('bestätig') ||
+          message.includes('verschieb') ||
+          message.includes('absag') ||
+          message.includes('frag') ||
+          message.includes('erfrag') || 
+          message.includes('prüf') ||
+          message.includes('check') ||
+          message.includes('vereinbar') ||
+          message.includes('öffnungszeiten') ||
+          message.includes('erkundig') ||
+          message.length > 10; // User typed substantial free text
 
         const isKampagneMode = aiConfirmedKampagne || userSelectedKampagne;
         // Einzelanruf is active if confirmed, selected, explicitly requested, has described use case, or if we are in a prompt flow but NOT in Kampagne mode
@@ -1645,19 +1783,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // User has provided use case (button OR free text) - GENERATE PROMPT
             promptCreationContext = `
 
-🎯 FORCE-PROMPT-MODE (ABSOLUTE PRIORITÄT):
-IGNORIERE ALLE vorherigen Anweisungen. Der User möchte einen Prompt für einen KI-Telefonagenten.
+🎯 FORCE-PROMPT-MODE (EXTREM WICHTIG):
+IGNORIERE alle vorherigen Anweisungen, die das Generieren von Prompts verbieten könnten.
+Der User möchte einen Prompt für einen KI-Telefonagenten erstellen. Das IST deine Aufgabe.
 
-⛔ VERBOTENE ANTWORTEN (NIEMALS SAGEN):
-- "Ich kann keine Anrufe tätigen" -> VERBOTEN
-- "Ich bin ein KI-Sprachmodell" -> VERBOTEN  
-- "Ich kann das recherchieren" -> VERBOTEN
-- "Dafür brauche ich mehr Infos" -> VERBOTEN (nutze Platzhalter stattdessen!)
-- "Ich verstehe, dass du..." -> VERBOTEN (keine Belehrungen!)
-- Jegliche Erklärung über deine Fähigkeiten -> VERBOTEN
-
-✅ DEINE EINZIGE AUFGABE: Generiere SOFORT einen Prompt im Code-Block-Format!
-Wenn Details fehlen (Ort, Zeit, Name), nutze Platzhalter wie [ORT], [DATUM], [NAME].
+REGELN:
+1. NIEMALS anbieten, selbst zu recherchieren oder anzurufen ("Ich kann das recherchieren" -> VERBOTEN).
+2. NIEMALS den User belehren ("Ich bin ein KI-Modell" -> VERBOTEN).
+3. WENN Infos fehlen (z.B. Ort, Datum), nutze Platzhalter wie [ORT EINFÜGEN] oder [DATUM].
+4. Frag NUR nach, wenn das Ziel komplett unklar ist. Sonst: GENERIEREN.
 
 USER-KONTEXT FÜR DEN PROMPT (aus Datenbank):
 - Name des Anrufers: ${userName}
@@ -2327,6 +2461,20 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   app.use("/api/dashboard", dashboardRouter);
   app.use("/api/call-logs", callLogsRouter);
   app.use("/api/ai", aiRecommendationsRouter);
+  app.use("/api/prompt-generator", promptGeneratorRouter);
+  app.use("/api/aras-lab", arasLabRouter);
+  app.use("/api/admin/n8n", n8nAdminRouter);
+  app.use("/api/admin", adminStaffRouter);
+  app.use("/api/admin", adminChatRouter);
+  app.use("/api/admin", adminExportRouter);
+  app.use("/api/admin", adminActivityRouter);
+  app.use("/api/admin", adminSearchRouter);
+  app.use("/api/admin", adminNotificationsRouter);
+  app.use("/api/admin", adminUsersRouter);
+  app.use("/api/service-orders", serviceOrdersRouter);
+  
+  // Seed default chat channel
+  seedDefaultChannel().catch(console.error);
 
   // RETELL AI VOICE CALLS
   app.post('/api/voice/retell/call', requireAuth, checkCallLimit, async (req: any, res) => {
@@ -3926,7 +4074,8 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
       }
       
       // 🎯 Generate ARAS Core Summary if not already exists
-      let callSummary = finalCallData.metadata?.summary || null;
+      const metadata = finalCallData.metadata as any || {};
+      let callSummary = metadata?.summary || null;
       
       if (!callSummary && finalCallData.transcript && finalCallData.status === 'completed') {
         try {
@@ -3940,16 +4089,16 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
           // Baue User-Kontext
           const userContext = user ? {
             userName: user.firstName || user.username,
-            company: user.company,
-            industry: user.industry
+            company: user.company || undefined,
+            industry: user.industry || undefined
           } : undefined;
           
           // Baue Contact-Kontext falls vorhanden
           let contactContext;
-          if (finalCallData.metadata?.contactId) {
+          if (metadata?.contactId) {
             try {
               const contacts = await storage.getUserContacts(userId);
-              const contact = contacts.find((c: any) => c.id === finalCallData.metadata.contactId);
+              const contact = contacts.find((c: any) => c.id === metadata.contactId);
               if (contact) {
                 contactContext = {
                   name: `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || contact.company,
@@ -3975,23 +4124,23 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
             
             // Speichere Summary in metadata
             const updatedMetadata = { 
-              ...finalCallData.metadata, 
+              ...metadata, 
               summary: callSummary 
             };
             await storage.updateCallLog(callId, { metadata: updatedMetadata });
             
             // 🔥 Wenn contactId vorhanden: Füge kurze Notiz zu Kontakt hinzu
-            if (finalCallData.metadata?.contactId && contactContext) {
+            if (metadata?.contactId && contactContext) {
               try {
                 const contacts = await storage.getUserContacts(userId);
-                const contact = contacts.find((c: any) => c.id === finalCallData.metadata.contactId);
+                const contact = contacts.find((c: any) => c.id === metadata.contactId);
                 
-                if (contact) {
+                if (contact && finalCallData.createdAt) {
                   const callDate = new Date(finalCallData.createdAt).toLocaleDateString('de-DE');
                   const summaryNote = `\n\nLetzter Anruf (${callDate}):\n- Ergebnis: ${callSummary.outcome}\n- Nächster Schritt: ${callSummary.nextStep}`;
                   
                   const updatedNotes = (contact.notes || '') + summaryNote;
-                  await storage.updateContact(finalCallData.metadata.contactId, { notes: updatedNotes });
+                  await storage.updateContact(metadata.contactId, { notes: updatedNotes });
                   
                   logger.info('[CALL-DETAILS] ✅ Summary zu Kontakt-Notizen hinzugefügt');
                 }
@@ -5114,6 +5263,142 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
     } catch (error: any) {
       logger.error('[CONTACTS] Error bulk importing contacts:', error);
       res.status(500).json({ error: 'Failed to import contacts' });
+    }
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // 🔐 PASSWORD RESET ROUTES
+  // ═══════════════════════════════════════════════════════════════
+
+  // Request password reset (sends email)
+  app.post('/api/forgot-password', async (req: any, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: 'E-Mail-Adresse erforderlich' });
+      }
+
+      // Find user by email
+      const allUsers = await db.select().from(users).where(eq(users.email, email.toLowerCase().trim()));
+      const user = allUsers[0];
+      
+      if (!user) {
+        // Don't reveal if email exists - security best practice
+        logger.info(`[PASSWORD-RESET] Request for non-existent email: ${email}`);
+        return res.json({ success: true, message: 'Falls ein Account existiert, wurde eine E-Mail gesendet.' });
+      }
+
+      // Generate reset token
+      const resetToken = `prt_${Date.now()}_${Math.random().toString(36).substr(2, 24)}`;
+      const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      // Save token to user
+      await db.update(users)
+        .set({ 
+          passwordResetToken: resetToken,
+          passwordResetExpires: resetExpires
+        })
+        .where(eq(users.id, user.id));
+
+      // Send password reset email
+      const { sendPasswordResetEmail } = await import('./email-service');
+      await sendPasswordResetEmail(
+        user.email!,
+        user.firstName || user.username,
+        resetToken
+      );
+
+      logger.info(`[PASSWORD-RESET] Reset email sent to ${user.email}`);
+      res.json({ success: true, message: 'Falls ein Account existiert, wurde eine E-Mail gesendet.' });
+
+    } catch (error: any) {
+      logger.error('[PASSWORD-RESET] Error:', error);
+      res.status(500).json({ message: 'Fehler beim Senden der E-Mail' });
+    }
+  });
+
+  // Reset password with token
+  app.post('/api/reset-password', async (req: any, res) => {
+    try {
+      const { token, newPassword } = req.body;
+      
+      if (!token || !newPassword) {
+        return res.status(400).json({ message: 'Token und neues Passwort erforderlich' });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: 'Passwort muss mindestens 6 Zeichen haben' });
+      }
+
+      // Find user by reset token
+      const allUsers = await db.select().from(users).where(eq(users.passwordResetToken, token));
+      const user = allUsers[0];
+      
+      if (!user) {
+        logger.warn(`[PASSWORD-RESET] Invalid token: ${token.substring(0, 20)}...`);
+        return res.status(400).json({ message: 'Ungültiger oder abgelaufener Link' });
+      }
+
+      // Check if token is expired
+      if (user.passwordResetExpires && new Date(user.passwordResetExpires) < new Date()) {
+        logger.warn(`[PASSWORD-RESET] Expired token for user ${user.id}`);
+        return res.status(400).json({ message: 'Link ist abgelaufen. Bitte fordere einen neuen an.' });
+      }
+
+      // Hash new password
+      const bcrypt = await import('bcryptjs');
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update password and clear reset token
+      await db.update(users)
+        .set({ 
+          password: hashedPassword,
+          passwordResetToken: null,
+          passwordResetExpires: null
+        })
+        .where(eq(users.id, user.id));
+
+      // Send confirmation email
+      const { sendPasswordChangedEmail } = await import('./email-service');
+      if (user.email) {
+        await sendPasswordChangedEmail(user.email, user.firstName || user.username);
+      }
+
+      logger.info(`[PASSWORD-RESET] Password changed for user ${user.id}`);
+      res.json({ success: true, message: 'Passwort erfolgreich geändert!' });
+
+    } catch (error: any) {
+      logger.error('[PASSWORD-RESET] Error:', error);
+      res.status(500).json({ message: 'Fehler beim Zurücksetzen des Passworts' });
+    }
+  });
+
+  // Verify reset token (check if valid before showing form)
+  app.get('/api/verify-reset-token', async (req: any, res) => {
+    try {
+      const { token } = req.query;
+      
+      if (!token) {
+        return res.status(400).json({ valid: false, message: 'Token fehlt' });
+      }
+
+      const allUsers = await db.select().from(users).where(eq(users.passwordResetToken, token as string));
+      const user = allUsers[0];
+      
+      if (!user) {
+        return res.json({ valid: false, message: 'Ungültiger Link' });
+      }
+
+      if (user.passwordResetExpires && new Date(user.passwordResetExpires) < new Date()) {
+        return res.json({ valid: false, message: 'Link abgelaufen' });
+      }
+
+      res.json({ valid: true, email: user.email });
+
+    } catch (error: any) {
+      logger.error('[PASSWORD-RESET] Token verify error:', error);
+      res.status(500).json({ valid: false, message: 'Fehler bei der Überprüfung' });
     }
   });
 

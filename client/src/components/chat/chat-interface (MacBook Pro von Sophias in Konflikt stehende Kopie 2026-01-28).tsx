@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { MessageBubble } from "./message-bubble";
-import { Send, Mic, MicOff, Plus, MessageSquare, X, Menu, Paperclip, File, Image as ImageIcon, FileText, Clock, AlertCircle, Phone, Loader2, ArrowUp, Sparkles, Zap, ChevronRight, LayoutGrid, FileEdit, PhoneCall, Users, User, Briefcase, UtensilsCrossed, Calendar, MessageCircle, Copy, CheckCircle, ArrowLeft } from "lucide-react";
+import { Send, Mic, MicOff, Plus, MessageSquare, X, Menu, Paperclip, File, Image as ImageIcon, FileText, Clock, AlertCircle, Phone, Loader2, ArrowUp, Sparkles, Zap, ChevronRight, LayoutGrid, FileEdit, PhoneCall } from "lucide-react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
@@ -75,31 +75,6 @@ const CALL_TEMPLATES = [
   }
 ];
 
-// 🔥 NEUE EINZELANRUF USE CASES
-const EINZELANRUF_USE_CASES = [
-  {
-    id: 'bewerber',
-    icon: Briefcase,
-    title: 'Bewerber prüfen',
-    description: 'Kandidaten vorqualifizieren',
-    promptHint: 'Bewerber-Screening für eine Stelle'
-  },
-  {
-    id: 'tisch',
-    icon: UtensilsCrossed,
-    title: 'Tisch reservieren',
-    description: 'Restaurant-Reservierung',
-    promptHint: 'Tischreservierung in einem Restaurant'
-  },
-  {
-    id: 'meeting',
-    icon: Calendar,
-    title: 'Meeting bestätigen',
-    description: 'Termin verifizieren',
-    promptHint: 'Meeting-Bestätigung mit einem Kontakt'
-  }
-];
-
 interface UploadedFile { name: string; type: string; size: number; content: string; }
 interface OptimisticMessage { id: string; message: string; isAi: boolean; timestamp: Date; isOptimistic: true; }
 
@@ -144,16 +119,6 @@ export function ChatInterface() {
   const [phoneError, setPhoneError] = useState('');
   const [callLoading, setCallLoading] = useState(false);
   const [callResult, setCallResult] = useState<any>(null);
-  
-  // 🔥 CALL WIZARD STATE
-  const [callWizardStep, setCallWizardStep] = useState<'type' | 'usecase' | 'input' | 'generating' | 'result'>('type');
-  const [selectedCallType, setSelectedCallType] = useState<'einzelanruf' | 'kampagne' | null>(null);
-  const [selectedUseCase, setSelectedUseCase] = useState<string | null>(null);
-  const [customInput, setCustomInput] = useState('');
-  const [generatedPrompt, setGeneratedPrompt] = useState('');
-  const [promptCopied, setPromptCopied] = useState(false);
-  const [wizardMessages, setWizardMessages] = useState<{role: 'user' | 'ai', content: string}[]>([]);
-  const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [displayText, setDisplayText] = useState("");
   const [isTyping, setIsTyping] = useState(true);
@@ -706,118 +671,6 @@ Das ist ALLES was du antworten sollst - keine zusätzlichen Erklärungen.`;
     if (type.includes('image')) return <ImageIcon className="w-4 h-4" />;
     if (type.includes('pdf')) return <FileText className="w-4 h-4" />;
     return <File className="w-4 h-4" />;
-  };
-
-  // 🔥 CALL WIZARD FUNCTIONS
-  const resetCallWizard = () => {
-    setCallWizardStep('type');
-    setSelectedCallType(null);
-    setSelectedUseCase(null);
-    setCustomInput('');
-    setGeneratedPrompt('');
-    setPromptCopied(false);
-    setWizardMessages([]);
-    setIsGeneratingPrompt(false);
-  };
-
-  const generateCallPrompt = async (useCase: string | null, customText: string) => {
-    setIsGeneratingPrompt(true);
-    setCallWizardStep('generating');
-    
-    try {
-      const useCaseInfo = useCase ? EINZELANRUF_USE_CASES.find(u => u.id === useCase) : null;
-      const context = useCaseInfo 
-        ? `Anwendungsfall: ${useCaseInfo.title} - ${useCaseInfo.promptHint}`
-        : 'Benutzerdefinierter Anruf';
-      
-      const userInput = customText || (useCaseInfo?.promptHint || '');
-      
-      const response = await fetch('/api/chat/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          message: `Du bist ein Experte für KI-Telefonanrufe. Erstelle einen präzisen, professionellen Prompt für einen ARAS AI Einzelanruf.
-
-Kontext: ${context}
-Benutzerangabe: ${userInput}
-
-WICHTIG: Erstelle einen klaren, strukturierten Prompt der folgendes enthält:
-1. Ziel des Anrufs (1-2 Sätze)
-2. Wichtige Punkte die angesprochen werden sollen
-3. Gewünschter Ton (professionell, freundlich, etc.)
-
-Formatiere den Prompt so, dass er direkt für einen KI-Telefonanruf verwendet werden kann. Halte ihn kurz und prägnant (max. 150 Wörter).
-Antworte NUR mit dem Prompt selbst, ohne Einleitung oder Erklärung.`,
-          sessionId: null
-        })
-      });
-
-      if (!response.ok) throw new Error('Prompt generation failed');
-
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let fullPrompt = '';
-
-      while (true) {
-        const { done, value } = await reader!.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n').filter(line => line.trim() !== '');
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6));
-              if (data.content) {
-                fullPrompt += data.content;
-                setGeneratedPrompt(fullPrompt);
-              }
-            } catch (e) {}
-          }
-        }
-      }
-
-      setCallWizardStep('result');
-    } catch (error) {
-      toast({
-        title: 'Fehler',
-        description: 'Prompt konnte nicht generiert werden',
-        variant: 'destructive'
-      });
-      setCallWizardStep('input');
-    } finally {
-      setIsGeneratingPrompt(false);
-    }
-  };
-
-  const copyPromptAndRedirect = async () => {
-    try {
-      await navigator.clipboard.writeText(generatedPrompt);
-      setPromptCopied(true);
-      
-      // Store prompt in localStorage for POWER page
-      localStorage.setItem('aras_prefilled_prompt', generatedPrompt);
-      
-      toast({
-        title: 'Prompt kopiert! ✓',
-        description: 'Weiterleitung zur Power-Seite...',
-      });
-      
-      // Redirect to POWER page after short delay
-      setTimeout(() => {
-        setShowCallModal(false);
-        resetCallWizard();
-        setLocation('/app/power');
-      }, 1000);
-    } catch (error) {
-      toast({
-        title: 'Kopieren fehlgeschlagen',
-        description: 'Bitte manuell kopieren',
-        variant: 'destructive'
-      });
-    }
   };
 
   const allMessages = [...messages, ...optimisticMessages];
@@ -1773,7 +1626,7 @@ Das ist ALLES. Keine weiteren Erklärungen.`;
         </motion.div>
       )}
 
-      {/* 🔥 NEUES CALL WIZARD MODAL - ULTRA HIGH-END DESIGN */}
+      {/* 🔥 ULTRA-SPEKTAKULÄRES CALL MODAL MIT GLASSMORPHISM */}
       <AnimatePresence>
         {showCallModal && (
           <motion.div
@@ -1782,485 +1635,377 @@ Das ist ALLES. Keine weiteren Erklärungen.`;
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
             style={{
-              background: 'rgba(0, 0, 0, 0.9)',
-              backdropFilter: 'blur(25px)',
-              WebkitBackdropFilter: 'blur(25px)',
+              background: 'rgba(0, 0, 0, 0.85)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
             }}
             onClick={(e) => {
-              if (e.target === e.currentTarget && !isGeneratingPrompt) {
+              // ✅ FIX: Nur schließen wenn direkt auf Hintergrund geklickt
+              if (e.target === e.currentTarget && !callLoading) {
                 setShowCallModal(false);
-                resetCallWizard();
               }
             }}
           >
             <motion.div
-              initial={{ scale: 0.85, y: 40, opacity: 0 }}
+              initial={{ scale: 0.8, y: 50, opacity: 0 }}
               animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.85, y: 40, opacity: 0 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              exit={{ scale: 0.8, y: 50, opacity: 0 }}
+              transition={{ type: 'spring', damping: 20 }}
               onClick={(e) => e.stopPropagation()}
               className="relative w-full max-w-2xl"
             >
-              {/* Animated Gradient Border */}
+              {/* 🔥 PERMANENT ANIMIERTER GRADIENT BORDER */}
               <motion.div
                 className="absolute -inset-[3px] rounded-3xl"
                 style={{
                   background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
                   backgroundSize: '300% 100%',
-                  boxShadow: '0 0 80px rgba(254, 145, 0, 0.4)',
+                  boxShadow: '0 0 60px rgba(254, 145, 0, 0.5)',
                 }}
-                animate={{ backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
+                animate={{
+                  backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                }}
                 transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
               />
 
               <div
-                className="relative rounded-3xl p-8 overflow-hidden"
+                className="relative rounded-3xl p-8"
                 style={{
-                  background: 'rgba(8, 8, 8, 0.98)',
+                  background: 'rgba(10, 10, 10, 0.95)',
                   backdropFilter: 'blur(60px)',
+                  WebkitBackdropFilter: 'blur(60px)',
                 }}
               >
-                {/* Close Button */}
+                {/* ✅ FIX: Close Button mit z-index und pointer-events */}
                 <motion.button
-                  whileHover={{ scale: 1.1, rotate: 90 }}
+                  whileHover={{ scale: 1.15, rotate: 90 }}
                   whileTap={{ scale: 0.9 }}
-                  onClick={() => {
-                    setShowCallModal(false);
-                    resetCallWizard();
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!callLoading) {
+                      setShowCallModal(false);
+                      setCallResult(null);
+                      setCallFormData({ contactName: '', phoneNumber: '', message: '' });
+                      setSelectedTemplate(null);
+                      setPhoneError('');
+                    }
                   }}
-                  disabled={isGeneratingPrompt}
-                  className="absolute top-5 right-5 p-2.5 rounded-full hover:bg-white/10 transition-all z-50"
-                  style={{ background: 'rgba(255, 255, 255, 0.05)' }}
+                  disabled={callLoading}
+                  className="absolute top-6 right-6 p-2.5 rounded-full hover:bg-white/10 transition-all z-50"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    pointerEvents: callLoading ? 'none' : 'auto',
+                  }}
                 >
-                  <X className="w-5 h-5 text-gray-400" />
+                  <X className="w-5 h-5 text-gray-400 hover:text-white" />
                 </motion.button>
 
-                {/* Back Button (show after step 1) */}
-                {callWizardStep !== 'type' && callWizardStep !== 'generating' && (
-                  <motion.button
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => {
-                      if (callWizardStep === 'usecase') setCallWizardStep('type');
-                      else if (callWizardStep === 'input') setCallWizardStep('usecase');
-                      else if (callWizardStep === 'result') setCallWizardStep('input');
-                    }}
-                    className="absolute top-5 left-5 p-2.5 rounded-full hover:bg-white/10 transition-all z-50 flex items-center gap-2"
-                    style={{ background: 'rgba(255, 255, 255, 0.05)' }}
-                  >
-                    <ArrowLeft className="w-4 h-4 text-gray-400" />
-                    <span className="text-xs text-gray-400">Zurück</span>
-                  </motion.button>
-                )}
-
-                <AnimatePresence mode="wait">
-                  {/* STEP 1: Call Type Selection */}
-                  {callWizardStep === 'type' && (
-                    <motion.div
-                      key="type"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <div className="text-center mb-10">
+                {!callResult ? (
+                  <div>
+                    {/* Header */}
+                    <div className="mb-8">
+                      <div className="flex items-center gap-4 mb-3">
                         <motion.div 
-                          className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-5"
+                          className="w-14 h-14 rounded-2xl flex items-center justify-center" 
                           style={{
-                            background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.2), rgba(163, 78, 0, 0.15))',
+                            background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.2), rgba(163, 78, 0, 0.2))',
                             border: '2px solid rgba(254, 145, 0, 0.4)',
-                            boxShadow: '0 0 40px rgba(254, 145, 0, 0.3)',
+                            boxShadow: '0 0 30px rgba(254, 145, 0, 0.3)',
                           }}
-                          animate={{ rotate: [0, 5, -5, 0] }}
-                          transition={{ duration: 4, repeat: Infinity }}
+                          whileHover={{ scale: 1.1, rotate: 360 }}
+                          transition={{ duration: 0.6 }}
                         >
-                          <Phone className="w-10 h-10 text-[#FE9100]" />
+                          <Phone className="w-7 h-7" style={{ color: '#FE9100' }} />
                         </motion.div>
-                        <h2 
-                          className="text-3xl font-bold mb-2"
-                          style={{ 
-                            fontFamily: 'Orbitron, sans-serif',
-                            background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
-                            backgroundClip: 'text',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                          }}
-                        >
-                          ARAS AI Anruf
-                        </h2>
-                        <p className="text-gray-500 text-sm">Wähle deinen Anruftyp</p>
+                        <div>
+                          <h3 
+                            className="text-4xl font-bold mb-1"
+                            style={{ 
+                              fontFamily: 'Orbitron, sans-serif',
+                              background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
+                              backgroundClip: 'text',
+                              WebkitBackgroundClip: 'text',
+                              WebkitTextFillColor: 'transparent',
+                            }}
+                          >
+                            Smart Call
+                          </h3>
+                          <p className="text-sm text-gray-500">KI-gesteuerte Anrufe in Sekunden</p>
+                        </div>
                       </div>
+                    </div>
 
-                      <div className="grid grid-cols-2 gap-4">
-                        {/* Einzelanruf Option */}
-                        <motion.button
-                          whileHover={{ scale: 1.03, y: -4 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => {
-                            setSelectedCallType('einzelanruf');
-                            setCallWizardStep('usecase');
-                          }}
-                          className="relative p-6 rounded-2xl text-left group overflow-hidden"
-                          style={{
-                            background: 'linear-gradient(135deg, rgba(20, 20, 20, 0.9), rgba(15, 15, 15, 0.95))',
-                            border: '1px solid rgba(254, 145, 0, 0.3)',
-                          }}
-                        >
-                          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                            style={{ background: 'radial-gradient(ellipse at center, rgba(254, 145, 0, 0.1) 0%, transparent 70%)' }}
-                          />
-                          <div className="relative">
-                            <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-4"
-                              style={{
-                                background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.2), rgba(254, 145, 0, 0.05))',
-                                border: '1px solid rgba(254, 145, 0, 0.3)',
-                              }}
-                            >
-                              <User className="w-7 h-7 text-[#FE9100]" />
-                            </div>
-                            <h3 className="text-lg font-bold text-white mb-1" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                              Einzelanruf
-                            </h3>
-                            <p className="text-xs text-gray-500">Einen Kontakt anrufen</p>
-                          </div>
-                          <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#FE9100] opacity-50 group-hover:opacity-100 transition-opacity" />
-                        </motion.button>
-
-                        {/* Kampagne Option */}
-                        <motion.button
-                          whileHover={{ scale: 1.03, y: -4 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => {
-                            setShowCallModal(false);
-                            resetCallWizard();
-                            setLocation('/app/campaigns');
-                          }}
-                          className="relative p-6 rounded-2xl text-left group overflow-hidden"
-                          style={{
-                            background: 'linear-gradient(135deg, rgba(20, 20, 20, 0.9), rgba(15, 15, 15, 0.95))',
-                            border: '1px solid rgba(254, 145, 0, 0.3)',
-                          }}
-                        >
-                          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                            style={{ background: 'radial-gradient(ellipse at center, rgba(254, 145, 0, 0.1) 0%, transparent 70%)' }}
-                          />
-                          <div className="relative">
-                            <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-4"
-                              style={{
-                                background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.2), rgba(254, 145, 0, 0.05))',
-                                border: '1px solid rgba(254, 145, 0, 0.3)',
-                              }}
-                            >
-                              <Users className="w-7 h-7 text-[#FE9100]" />
-                            </div>
-                            <h3 className="text-lg font-bold text-white mb-1" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                              Kampagne
-                            </h3>
-                            <p className="text-xs text-gray-500">Bis zu 10.000 parallel</p>
-                          </div>
-                          <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#FE9100] opacity-50 group-hover:opacity-100 transition-opacity" />
-                        </motion.button>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* STEP 2: Use Case Selection */}
-                  {callWizardStep === 'usecase' && (
-                    <motion.div
-                      key="usecase"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <div className="text-center mb-8 mt-6">
-                        <h2 
-                          className="text-2xl font-bold mb-2"
-                          style={{ 
-                            fontFamily: 'Orbitron, sans-serif',
-                            background: 'linear-gradient(90deg, #e9d7c4, #FE9100)',
-                            backgroundClip: 'text',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                          }}
-                        >
-                          Wofür ist der Anruf?
-                        </h2>
-                        <p className="text-gray-500 text-sm">Wähle einen Anwendungsfall oder beschreibe deinen eigenen</p>
-                      </div>
-
-                      {/* Use Case Cards */}
-                      <div className="grid grid-cols-3 gap-3 mb-6">
-                        {EINZELANRUF_USE_CASES.map((useCase, index) => {
-                          const IconComponent = useCase.icon;
-                          return (
-                            <motion.button
-                              key={useCase.id}
-                              initial={{ opacity: 0, y: 15 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: index * 0.1 }}
-                              whileHover={{ scale: 1.05, y: -3 }}
-                              whileTap={{ scale: 0.98 }}
-                              onClick={() => {
-                                setSelectedUseCase(useCase.id);
-                                setCustomInput(useCase.promptHint);
-                                setCallWizardStep('input');
-                              }}
-                              className={`relative p-5 rounded-xl text-center group transition-all ${
-                                selectedUseCase === useCase.id ? 'border-2 border-[#FE9100]' : 'border border-white/10'
-                              }`}
-                              style={{
-                                background: selectedUseCase === useCase.id 
-                                  ? 'rgba(254, 145, 0, 0.1)' 
-                                  : 'rgba(255, 255, 255, 0.02)',
-                              }}
-                            >
-                              <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
+                    {/* Templates */}
+                    <div className="mb-7">
+                      <label className="block text-xs font-semibold text-gray-400 mb-3" style={{ fontFamily: 'Orbitron, sans-serif' }}>SCHNELLVORLAGEN</label>
+                      <div className="grid grid-cols-4 gap-3">
+                        {CALL_TEMPLATES.map((template, index) => (
+                          <motion.button
+                            key={index}
+                            whileHover={{ scale: 1.08, y: -4 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => {
+                              setSelectedTemplate(index);
+                              setCallFormData({ ...callFormData, message: template.message });
+                            }}
+                            className={`relative p-5 rounded-xl transition-all ${
+                              selectedTemplate === index
+                                ? 'border-2 border-[#FE9100] shadow-lg shadow-[#FE9100]/30'
+                                : 'border border-white/10 hover:border-white/30'
+                            }`}
+                            style={{
+                              background: selectedTemplate === index 
+                                ? 'rgba(254, 145, 0, 0.1)' 
+                                : 'rgba(255, 255, 255, 0.02)',
+                              backdropFilter: 'blur(20px)',
+                            }}
+                            disabled={callLoading}
+                          >
+                            <div className="text-3xl mb-2">{template.icon}</div>
+                            <div className="text-xs text-white/90 font-medium">{template.title}</div>
+                            {selectedTemplate === index && (
+                              <motion.div
+                                initial={{ scale: 0, rotate: -180 }}
+                                animate={{ scale: 1, rotate: 0 }}
+                                className="absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center"
                                 style={{
-                                  background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.15), rgba(254, 145, 0, 0.05))',
-                                  border: '1px solid rgba(254, 145, 0, 0.25)',
+                                  background: 'linear-gradient(135deg, #FE9100, #a34e00)',
+                                  boxShadow: '0 4px 15px rgba(254, 145, 0, 0.5)',
                                 }}
                               >
-                                <IconComponent className="w-6 h-6 text-[#FE9100]" />
-                              </div>
-                              <h4 className="text-sm font-semibold text-white mb-1">{useCase.title}</h4>
-                              <p className="text-xs text-gray-500">{useCase.description}</p>
-                            </motion.button>
-                          );
-                        })}
+                                <Sparkles className="w-3 h-3 text-white" />
+                              </motion.div>
+                            )}
+                          </motion.button>
+                        ))}
                       </div>
+                    </div>
 
-                      {/* Custom Input Option */}
-                      <motion.button
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.3 }}
-                        whileHover={{ scale: 1.01 }}
-                        onClick={() => {
-                          setSelectedUseCase(null);
-                          setCustomInput('');
-                          setCallWizardStep('input');
-                        }}
-                        className="w-full p-4 rounded-xl border border-dashed border-white/20 hover:border-[#FE9100]/50 transition-all flex items-center justify-center gap-3"
-                        style={{ background: 'rgba(255, 255, 255, 0.02)' }}
-                      >
-                        <MessageCircle className="w-5 h-5 text-gray-400" />
-                        <span className="text-sm text-gray-400">Eigene Beschreibung eingeben</span>
-                      </motion.button>
-                    </motion.div>
-                  )}
-
-                  {/* STEP 3: Custom Input / Details */}
-                  {callWizardStep === 'input' && (
-                    <motion.div
-                      key="input"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <div className="text-center mb-6 mt-6">
-                        <h2 
-                          className="text-2xl font-bold mb-2"
-                          style={{ 
-                            fontFamily: 'Orbitron, sans-serif',
-                            background: 'linear-gradient(90deg, #e9d7c4, #FE9100)',
-                            backgroundClip: 'text',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                          }}
-                        >
-                          Details zum Anruf
-                        </h2>
-                        <p className="text-gray-500 text-sm">Beschreibe was ARAS AI sagen soll</p>
-                      </div>
-
-                      <div className="space-y-4">
+                    {/* Form */}
+                    <div className="space-y-5">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-400 mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>KONTAKTNAME</label>
                         <div className="relative group">
                           <motion.div
                             className="absolute -inset-[2px] rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity"
                             style={{
                               background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
                               backgroundSize: '200% 100%',
+                              boxShadow: '0 0 20px rgba(254, 145, 0, 0.3)',
                             }}
-                            animate={{ backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
+                            animate={{
+                              backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                            }}
+                            transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                          />
+                          <input
+                            type="text"
+                            value={callFormData.contactName}
+                            onChange={(e) => setCallFormData({ ...callFormData, contactName: e.target.value })}
+                            placeholder="Max Mustermann"
+                            className="relative w-full px-5 py-3.5 rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none transition-all"
+                            style={{
+                              background: 'rgba(20, 20, 20, 0.9)',
+                              backdropFilter: 'blur(20px)',
+                              border: '1px solid rgba(255, 255, 255, 0.08)',
+                            }}
+                            disabled={callLoading}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-400 mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>TELEFONNUMMER</label>
+                        <div className="relative group">
+                          <motion.div
+                            className="absolute -inset-[2px] rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity"
+                            style={{
+                              background: phoneError 
+                                ? 'rgba(239,68,68,0.6)'
+                                : 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
+                              backgroundSize: '200% 100%',
+                              boxShadow: phoneError ? '0 0 20px rgba(239,68,68,0.4)' : '0 0 20px rgba(254, 145, 0, 0.3)',
+                            }}
+                            animate={phoneError ? {} : {
+                              backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                            }}
+                            transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+                          />
+                          <input
+                            type="tel"
+                            value={callFormData.phoneNumber}
+                            onChange={(e) => {
+                              const formatted = e.target.value.replace(/[^\d+]/g, '');
+                              setCallFormData({ ...callFormData, phoneNumber: formatted });
+                              setPhoneError(formatted && !/^\+[0-9]{10,15}$/.test(formatted) ? 'Format: +4917661119320' : '');
+                            }}
+                            placeholder="+41 79 123 45 67"
+                            className="relative w-full px-5 py-3.5 rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none transition-all font-mono"
+                            style={{
+                              background: 'rgba(20, 20, 20, 0.9)',
+                              backdropFilter: 'blur(20px)',
+                              border: phoneError ? '1px solid rgba(239,68,68,0.5)' : '1px solid rgba(255, 255, 255, 0.08)',
+                            }}
+                            disabled={callLoading}
+                          />
+                        </div>
+                        {phoneError && (
+                          <motion.p 
+                            initial={{ opacity: 0, y: -5 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mt-2 text-xs text-red-400 font-medium"
+                          >
+                            ⚠️ {phoneError}
+                          </motion.p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-400 mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                          NACHRICHT
+                          {selectedTemplate !== null && selectedTemplate < 3 && (
+                            <span className="ml-2 text-[#FE9100]">✨ Template aktiv</span>
+                          )}
+                        </label>
+                        <div className="relative group">
+                          <motion.div
+                            className="absolute -inset-[2px] rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity"
+                            style={{
+                              background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
+                              backgroundSize: '200% 100%',
+                              boxShadow: '0 0 20px rgba(254, 145, 0, 0.3)',
+                            }}
+                            animate={{
+                              backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
+                            }}
                             transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
                           />
                           <textarea
-                            value={customInput}
-                            onChange={(e) => setCustomInput(e.target.value)}
-                            placeholder="z.B. Ich möchte einen Bewerber für die Stelle als Sales Manager anrufen und seine Verfügbarkeit sowie Gehaltsvorstellungen abfragen..."
-                            className="relative w-full px-5 py-4 rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none resize-none"
+                            value={callFormData.message}
+                            onChange={(e) => {
+                              setCallFormData({ ...callFormData, message: e.target.value });
+                              if (selectedTemplate !== 3) setSelectedTemplate(3);
+                            }}
+                            placeholder="z.B. Termin vereinbaren für nächste Woche"
+                            className="relative w-full px-5 py-3.5 rounded-xl text-white text-sm placeholder-gray-600 focus:outline-none transition-all resize-none"
                             style={{
-                              minHeight: 140,
-                              background: 'rgba(15, 15, 15, 0.95)',
+                              minHeight: 110,
+                              background: 'rgba(20, 20, 20, 0.9)',
+                              backdropFilter: 'blur(20px)',
                               border: '1px solid rgba(255, 255, 255, 0.08)',
                             }}
-                            autoFocus
+                            disabled={callLoading}
                           />
                         </div>
+                      </div>
 
-                        {/* Generate Button */}
+                      {/* Call Button */}
+                      <motion.div className="pt-4">
                         <motion.button
-                          whileHover={{ scale: customInput.trim() ? 1.02 : 1 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => generateCallPrompt(selectedUseCase, customInput)}
-                          disabled={!customInput.trim()}
-                          className="w-full py-4 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-3"
+                          whileHover={{ 
+                            scale: callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError ? 1 : 1.03,
+                            boxShadow: callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError 
+                              ? '0 0 0 rgba(254, 145, 0, 0)' 
+                              : '0 20px 60px rgba(254, 145, 0, 0.5)',
+                          }}
+                          whileTap={{ scale: 0.97 }}
+                          onClick={async () => {
+                            if (!callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError) {
+                              toast({ title: 'Fehlende Angaben', description: 'Bitte fülle alle Felder korrekt aus', variant: 'destructive' });
+                              return;
+                            }
+                            setCallLoading(true);
+                            try {
+                              const response = await fetch('/api/aras-voice/smart-call', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                credentials: 'include',
+                                body: JSON.stringify({ 
+                                  name: callFormData.contactName, 
+                                  phoneNumber: callFormData.phoneNumber, 
+                                  message: callFormData.message 
+                                })
+                              });
+                              const data = await response.json();
+                              if (data.success) {
+                                setCallResult({ success: true });
+                                toast({ title: 'Anruf gestartet! ✓', description: `ARAS AI ruft ${callFormData.contactName} an...` });
+                                setTimeout(() => {
+                                  setShowCallModal(false);
+                                  setCallResult(null);
+                                  setCallFormData({ contactName: '', phoneNumber: '', message: '' });
+                                  setSelectedTemplate(null);
+                                }, 2500);
+                              } else {
+                                toast({ title: 'Fehler', description: data.error || 'Anruf konnte nicht gestartet werden', variant: 'destructive' });
+                              }
+                            } catch (error: any) {
+                              toast({ title: 'Fehler', description: error?.message || 'Anruf fehlgeschlagen', variant: 'destructive' });
+                            } finally {
+                              setCallLoading(false);
+                            }
+                          }}
+                          disabled={callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || !!phoneError}
+                          className="relative w-full py-5 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3 overflow-hidden"
                           style={{
                             fontFamily: 'Orbitron, sans-serif',
-                            background: customInput.trim() 
-                              ? 'linear-gradient(90deg, rgba(254, 145, 0, 0.3), rgba(163, 78, 0, 0.25))'
-                              : 'rgba(255, 255, 255, 0.05)',
+                            background: (callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError)
+                              ? 'rgba(255, 255, 255, 0.05)'
+                              : 'linear-gradient(90deg, rgba(254, 145, 0, 0.3), rgba(163, 78, 0, 0.3))',
                             border: '2px solid rgba(254, 145, 0, 0.4)',
-                            opacity: customInput.trim() ? 1 : 0.4,
-                            boxShadow: customInput.trim() ? '0 10px 40px rgba(254, 145, 0, 0.3)' : 'none',
+                            opacity: (callLoading || !callFormData.contactName || !callFormData.phoneNumber || !callFormData.message || phoneError) ? 0.4 : 1,
+                            boxShadow: '0 10px 40px rgba(254, 145, 0, 0.3)',
                           }}
                         >
-                          <Sparkles className="w-5 h-5 text-[#FE9100]" />
-                          <span className="text-white">Prompt generieren</span>
-                          <ChevronRight className="w-5 h-5 text-[#FE9100]" />
+                          {callLoading ? (
+                            <>
+                              <Loader2 className="w-6 h-6 animate-spin" style={{ color: '#FE9100' }} />
+                              <span className="text-white">Verbinde...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Zap className="w-6 h-6" style={{ color: '#FE9100' }} />
+                              <span className="text-white">ANRUF STARTEN</span>
+                              <ChevronRight className="w-5 h-5" style={{ color: '#FE9100' }} />
+                            </>
+                          )}
                         </motion.button>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* STEP 4: Generating */}
-                  {callWizardStep === 'generating' && (
-                    <motion.div
-                      key="generating"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="text-center py-12"
-                    >
-                      <motion.div
-                        className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
-                        style={{
-                          background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.2), rgba(163, 78, 0, 0.15))',
-                          border: '2px solid rgba(254, 145, 0, 0.4)',
-                        }}
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-                      >
-                        <Loader2 className="w-10 h-10 text-[#FE9100]" />
                       </motion.div>
-                      <h3 className="text-xl font-bold text-white mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                        Generiere Prompt...
-                      </h3>
-                      <p className="text-sm text-gray-500 mb-6">ARAS AI erstellt den perfekten Anruf-Prompt</p>
-                      
-                      {generatedPrompt && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="text-left p-4 rounded-xl mt-4"
-                          style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.05)' }}
-                        >
-                          <p className="text-sm text-gray-400 whitespace-pre-wrap">{generatedPrompt}</p>
-                        </motion.div>
-                      )}
-                    </motion.div>
-                  )}
-
-                  {/* STEP 5: Result with Copy */}
-                  {callWizardStep === 'result' && (
-                    <motion.div
-                      key="result"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ duration: 0.3 }}
+                    </div>
+                  </div>
+                ) : (
+                  <motion.div 
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="text-center py-16"
+                  >
+                    <motion.div 
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: 'spring', delay: 0.2 }}
+                      className="w-28 h-28 rounded-3xl flex items-center justify-center mx-auto mb-7"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(22, 163, 74, 0.2))',
+                        border: '3px solid rgba(34, 197, 94, 0.5)',
+                        boxShadow: '0 0 60px rgba(34, 197, 94, 0.4)',
+                      }}
                     >
-                      <div className="text-center mb-6 mt-6">
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          transition={{ type: 'spring', delay: 0.1 }}
-                          className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                          style={{
-                            background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(22, 163, 74, 0.15))',
-                            border: '2px solid rgba(34, 197, 94, 0.4)',
-                            boxShadow: '0 0 40px rgba(34, 197, 94, 0.3)',
-                          }}
-                        >
-                          <CheckCircle className="w-8 h-8 text-green-400" />
-                        </motion.div>
-                        <h2 
-                          className="text-2xl font-bold mb-2"
-                          style={{ 
-                            fontFamily: 'Orbitron, sans-serif',
-                            background: 'linear-gradient(90deg, #22c55e, #16a34a)',
-                            backgroundClip: 'text',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                          }}
-                        >
-                          Prompt erstellt!
-                        </h2>
-                        <p className="text-gray-500 text-sm">Kopiere den Prompt und starte deinen Anruf</p>
-                      </div>
-
-                      {/* Generated Prompt Display */}
-                      <div 
-                        className="p-5 rounded-xl mb-5 max-h-[200px] overflow-y-auto aras-scroll"
-                        style={{ 
-                          background: 'rgba(15, 15, 15, 0.95)', 
-                          border: '1px solid rgba(255, 255, 255, 0.1)' 
-                        }}
-                      >
-                        <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">{generatedPrompt}</p>
-                      </div>
-
-                      {/* Copy & Redirect Button */}
-                      <motion.button
-                        whileHover={{ scale: 1.02, boxShadow: '0 15px 50px rgba(254, 145, 0, 0.5)' }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={copyPromptAndRedirect}
-                        className="w-full py-4 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-3"
-                        style={{
-                          fontFamily: 'Orbitron, sans-serif',
-                          background: promptCopied 
-                            ? 'linear-gradient(90deg, rgba(34, 197, 94, 0.3), rgba(22, 163, 74, 0.25))'
-                            : 'linear-gradient(90deg, rgba(254, 145, 0, 0.3), rgba(163, 78, 0, 0.25))',
-                          border: promptCopied 
-                            ? '2px solid rgba(34, 197, 94, 0.5)'
-                            : '2px solid rgba(254, 145, 0, 0.4)',
-                          boxShadow: '0 10px 40px rgba(254, 145, 0, 0.3)',
-                        }}
-                      >
-                        {promptCopied ? (
-                          <>
-                            <CheckCircle className="w-5 h-5 text-green-400" />
-                            <span className="text-white">Kopiert! Weiterleitung...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-5 h-5 text-[#FE9100]" />
-                            <span className="text-white">Kopieren & zu POWER</span>
-                            <ChevronRight className="w-5 h-5 text-[#FE9100]" />
-                          </>
-                        )}
-                      </motion.button>
-
-                      {/* Alternative: Just copy without redirect */}
-                      <motion.button
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.3 }}
-                        onClick={async () => {
-                          await navigator.clipboard.writeText(generatedPrompt);
-                          toast({ title: 'Prompt kopiert! ✓' });
-                        }}
-                        className="w-full mt-3 py-3 rounded-xl text-sm text-gray-500 hover:text-gray-300 transition-colors"
-                      >
-                        Nur kopieren (ohne Weiterleitung)
-                      </motion.button>
+                      <Phone className="w-12 h-12 text-green-400" />
                     </motion.div>
-                  )}
-                </AnimatePresence>
+                    <motion.div
+                      initial={{ y: 10, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ delay: 0.3 }}
+                    >
+                      <h4 className="text-3xl font-bold text-white mb-3" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                        Anruf gestartet!
+                      </h4>
+                      <p className="text-lg text-gray-400">
+                        ARAS AI verbindet sich mit <span className="text-[#FE9100] font-semibold">{callFormData.contactName}</span>
+                      </p>
+                    </motion.div>
+                  </motion.div>
+                )}
               </div>
             </motion.div>
           </motion.div>

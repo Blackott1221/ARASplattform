@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { nanoid } from "nanoid";
 
 // Session storage table for authentication system
 export const sessions = pgTable(
@@ -146,6 +147,10 @@ export const users = pgTable("users", {
     analytics?: boolean;
     thirdPartySharing?: boolean;
   }>(),
+  
+  // 🔐 Password Reset Token
+  passwordResetToken: varchar("password_reset_token"),
+  passwordResetExpires: timestamp("password_reset_expires"),
   
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -775,3 +780,427 @@ export const dailyBriefings = pgTable("daily_briefings", {
 
 export type DailyBriefing = typeof dailyBriefings.$inferSelect;
 export type InsertDailyBriefing = typeof dailyBriefings.$inferInsert;
+
+// ============================================================================
+// N8N EMAIL LOGS - Track all emails sent via N8N workflows
+// ============================================================================
+// Logs all emails sent from N8N workflows for admin dashboard tracking
+// Receives webhook data from N8N after each email send
+// ============================================================================
+
+export const n8nEmailLogs = pgTable("n8n_email_logs", {
+  id: serial("id").primaryKey(),
+  
+  // Email Data (from webhook)
+  recipient: text("recipient").notNull(),
+  recipientName: text("recipient_name"),
+  subject: text("subject").notNull(),
+  content: text("content"), // Optional: Email content or summary
+  htmlContent: text("html_content"), // Optional: Full HTML body
+  
+  // Status & Tracking
+  status: text("status").notNull().default("sent"), // 'pending' | 'sent' | 'delivered' | 'opened' | 'clicked' | 'bounced' | 'failed'
+  
+  // N8N Workflow Reference
+  workflowId: text("workflow_id"), // "26fcYVxGxAlswgcW"
+  workflowName: text("workflow_name"), // "ARAS Mail DEV"
+  executionId: text("execution_id"), // N8N execution ID
+  
+  // Metadata (flexible additional data)
+  metadata: jsonb("metadata").$type<{
+    tags?: string[];
+    campaign?: string;
+    template?: string;
+    variables?: Record<string, any>;
+    provider?: string;
+    errorMessage?: string;
+    [key: string]: any;
+  }>(),
+  
+  // Timestamps
+  sentAt: timestamp("sent_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("n8n_email_logs_recipient_idx").on(table.recipient),
+  index("n8n_email_logs_workflow_idx").on(table.workflowId),
+  index("n8n_email_logs_status_idx").on(table.status),
+  index("n8n_email_logs_sent_at_idx").on(table.sentAt),
+]);
+
+export type N8nEmailLog = typeof n8nEmailLogs.$inferSelect;
+export type InsertN8nEmailLog = typeof n8nEmailLogs.$inferInsert;
+
+// ============================================================================
+// COMMAND CENTER - Staff & Team Management
+// ============================================================================
+// Internal tools for admin/staff: invitations, activity logs, chat, tasks
+// ============================================================================
+
+// Staff Invitations - Invite new team members
+export const staffInvitations = pgTable("staff_invitations", {
+  id: text("id").primaryKey().$defaultFn(() => `inv_${nanoid()}`),
+  email: text("email").notNull(),
+  role: text("role").notNull().default("staff"), // 'staff' | 'admin'
+  invitedBy: text("invited_by").references(() => users.id),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  acceptedAt: timestamp("accepted_at"),
+  status: text("status").notNull().default("pending"), // 'pending' | 'accepted' | 'expired' | 'revoked'
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("staff_invitations_email_idx").on(table.email),
+  index("staff_invitations_token_idx").on(table.token),
+  index("staff_invitations_status_idx").on(table.status),
+]);
+
+export type StaffInvitation = typeof staffInvitations.$inferSelect;
+export type InsertStaffInvitation = typeof staffInvitations.$inferInsert;
+
+// Staff Activity Log - Audit trail for all admin actions
+export const staffActivityLog = pgTable("staff_activity_log", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").references(() => users.id).notNull(),
+  action: text("action").notNull(), // 'user_viewed' | 'user_edited' | 'plan_changed' | 'password_reset' | 'user_deleted' | 'export_created' | 'workflow_toggled' | 'task_created' | 'message_sent' | 'staff_invited' | 'invitation_revoked' | 'role_changed' | 'staff_removed'
+  targetType: text("target_type"), // 'user' | 'lead' | 'call' | 'workflow' | 'task' | 'invitation'
+  targetId: text("target_id"),
+  metadata: jsonb("metadata").$type<Record<string, any>>(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("staff_activity_log_user_idx").on(table.userId),
+  index("staff_activity_log_action_idx").on(table.action),
+  index("staff_activity_log_target_idx").on(table.targetType, table.targetId),
+  index("staff_activity_log_created_idx").on(table.createdAt),
+]);
+
+export type StaffActivityLog = typeof staffActivityLog.$inferSelect;
+export type InsertStaffActivityLog = typeof staffActivityLog.$inferInsert;
+
+// ============================================================================
+// COMMAND CENTER - Team Chat
+// ============================================================================
+
+// Chat Channels
+export const teamChatChannels = pgTable("team_chat_channels", {
+  id: text("id").primaryKey().$defaultFn(() => `channel_${nanoid()}`),
+  name: text("name").notNull(),
+  description: text("description"),
+  type: text("type").notNull().default("public"), // 'public' | 'private' | 'direct'
+  createdBy: text("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("team_chat_channels_type_idx").on(table.type),
+]);
+
+export type TeamChatChannel = typeof teamChatChannels.$inferSelect;
+export type InsertTeamChatChannel = typeof teamChatChannels.$inferInsert;
+
+// Chat Messages
+export const teamChatMessages = pgTable("team_chat_messages", {
+  id: serial("id").primaryKey(),
+  channelId: text("channel_id").references(() => teamChatChannels.id).notNull(),
+  userId: text("user_id").references(() => users.id).notNull(),
+  content: text("content").notNull(),
+  replyToId: integer("reply_to_id"),
+  attachments: jsonb("attachments").$type<Array<{type: string; url: string; name: string}>>(),
+  editedAt: timestamp("edited_at"),
+  deletedAt: timestamp("deleted_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("team_chat_messages_channel_idx").on(table.channelId),
+  index("team_chat_messages_user_idx").on(table.userId),
+  index("team_chat_messages_created_idx").on(table.createdAt),
+]);
+
+export type TeamChatMessage = typeof teamChatMessages.$inferSelect;
+export type InsertTeamChatMessage = typeof teamChatMessages.$inferInsert;
+
+// Channel Members
+export const teamChatChannelMembers = pgTable("team_chat_channel_members", {
+  id: serial("id").primaryKey(),
+  channelId: text("channel_id").references(() => teamChatChannels.id).notNull(),
+  userId: text("user_id").references(() => users.id).notNull(),
+  role: text("role").notNull().default("member"), // 'owner' | 'admin' | 'member'
+  lastReadAt: timestamp("last_read_at"),
+  mutedUntil: timestamp("muted_until"),
+  joinedAt: timestamp("joined_at").defaultNow(),
+}, (table) => [
+  index("team_chat_members_channel_idx").on(table.channelId),
+  index("team_chat_members_user_idx").on(table.userId),
+]);
+
+export type TeamChatChannelMember = typeof teamChatChannelMembers.$inferSelect;
+export type InsertTeamChatChannelMember = typeof teamChatChannelMembers.$inferInsert;
+
+// ============================================================================
+// COMMAND CENTER - Staff Tasks (Internal TODOs)
+// ============================================================================
+
+export const staffTasks = pgTable("staff_tasks", {
+  id: text("id").primaryKey().$defaultFn(() => `task_${nanoid()}`),
+  title: text("title").notNull(),
+  description: text("description"),
+  priority: text("priority").notNull().default("medium"), // 'low' | 'medium' | 'high' | 'urgent'
+  status: text("status").notNull().default("open"), // 'open' | 'in_progress' | 'review' | 'done' | 'archived'
+  
+  // Assignment
+  assignedTo: text("assigned_to").references(() => users.id),
+  createdBy: text("created_by").references(() => users.id).notNull(),
+  
+  // Related entity
+  relatedType: text("related_type"), // 'user' | 'lead' | 'call' | 'contact'
+  relatedId: text("related_id"),
+  
+  // Dates
+  dueDate: timestamp("due_date"),
+  completedAt: timestamp("completed_at"),
+  
+  // Tags
+  tags: jsonb("tags").$type<string[]>(),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("staff_tasks_assigned_idx").on(table.assignedTo),
+  index("staff_tasks_created_by_idx").on(table.createdBy),
+  index("staff_tasks_status_idx").on(table.status),
+  index("staff_tasks_priority_idx").on(table.priority),
+  index("staff_tasks_due_date_idx").on(table.dueDate),
+  index("staff_tasks_related_idx").on(table.relatedType, table.relatedId),
+]);
+
+export type StaffTask = typeof staffTasks.$inferSelect;
+export type InsertStaffTask = typeof staffTasks.$inferInsert;
+
+// Task Comments
+export const staffTaskComments = pgTable("staff_task_comments", {
+  id: serial("id").primaryKey(),
+  taskId: text("task_id").references(() => staffTasks.id).notNull(),
+  userId: text("user_id").references(() => users.id).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("staff_task_comments_task_idx").on(table.taskId),
+]);
+
+export type StaffTaskComment = typeof staffTaskComments.$inferSelect;
+export type InsertStaffTaskComment = typeof staffTaskComments.$inferInsert;
+
+// ============================================================================
+// COMMAND CENTER - Saved Views & Filters
+// ============================================================================
+
+export const staffSavedViews = pgTable("staff_saved_views", {
+  id: text("id").primaryKey().$defaultFn(() => `view_${nanoid()}`),
+  userId: text("user_id").references(() => users.id).notNull(),
+  name: text("name").notNull(),
+  entityType: text("entity_type").notNull(), // 'users' | 'leads' | 'calls'
+  filters: jsonb("filters").$type<Record<string, any>>().notNull(),
+  columns: jsonb("columns").$type<string[]>(),
+  sortBy: text("sort_by"),
+  sortOrder: text("sort_order"), // 'asc' | 'desc'
+  isDefault: boolean("is_default").default(false),
+  isShared: boolean("is_shared").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("staff_saved_views_user_idx").on(table.userId),
+  index("staff_saved_views_entity_idx").on(table.entityType),
+]);
+
+export type StaffSavedView = typeof staffSavedViews.$inferSelect;
+export type InsertStaffSavedView = typeof staffSavedViews.$inferInsert;
+
+// ============================================================================
+// COMMAND CENTER - Export Jobs
+// ============================================================================
+
+export const exportJobs = pgTable("export_jobs", {
+  id: text("id").primaryKey().$defaultFn(() => `export_${nanoid()}`),
+  userId: text("user_id").references(() => users.id).notNull(),
+  entityType: text("entity_type").notNull(), // 'users' | 'leads' | 'calls' | 'emails'
+  filters: jsonb("filters").$type<Record<string, any>>(),
+  format: text("format").notNull().default("csv"), // 'csv' | 'xlsx' | 'json'
+  status: text("status").notNull().default("pending"), // 'pending' | 'processing' | 'completed' | 'failed'
+  totalRows: integer("total_rows"),
+  processedRows: integer("processed_rows"),
+  fileUrl: text("file_url"),
+  errorMessage: text("error_message"),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("export_jobs_user_idx").on(table.userId),
+  index("export_jobs_status_idx").on(table.status),
+  index("export_jobs_created_idx").on(table.createdAt),
+]);
+
+export type ExportJob = typeof exportJobs.$inferSelect;
+export type InsertExportJob = typeof exportJobs.$inferInsert;
+
+// ============================================================================
+// COMMAND CENTER - Admin Activity Log (Enhanced for Real-time Feed)
+// ============================================================================
+
+export const adminActivityLog = pgTable("admin_activity_log", {
+  id: serial("id").primaryKey(),
+  actorId: text("actor_id").notNull(),
+  actorName: text("actor_name"),
+  actorAvatar: text("actor_avatar"),
+  actorRole: text("actor_role"),
+  action: text("action").notNull(),
+  actionCategory: text("action_category").notNull(),
+  actionIcon: text("action_icon"),
+  actionColor: text("action_color"),
+  targetType: text("target_type"),
+  targetId: text("target_id"),
+  targetName: text("target_name"),
+  targetUrl: text("target_url"),
+  title: text("title").notNull(),
+  description: text("description"),
+  metadata: jsonb("metadata").$type<Record<string, any>>(),
+  aiInsight: text("ai_insight"),
+  aiPriority: text("ai_priority"),
+  aiSuggestion: text("ai_suggestion"),
+  aiProcessedAt: timestamp("ai_processed_at"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  geoLocation: text("geo_location"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("admin_activity_log_actor_idx").on(table.actorId),
+  index("admin_activity_log_category_idx").on(table.actionCategory),
+  index("admin_activity_log_created_idx").on(table.createdAt),
+]);
+
+export type AdminActivityLog = typeof adminActivityLog.$inferSelect;
+export type InsertAdminActivityLog = typeof adminActivityLog.$inferInsert;
+
+// ============================================================================
+// COMMAND CENTER - Admin Notifications
+// ============================================================================
+
+export const adminNotifications = pgTable("admin_notifications", {
+  id: serial("id").primaryKey(),
+  recipientId: text("recipient_id"), // NULL = all admins
+  type: text("type").notNull(), // 'info' | 'success' | 'warning' | 'error'
+  category: text("category").notNull(), // 'user' | 'billing' | 'system' | 'call'
+  title: text("title").notNull(),
+  message: text("message"),
+  icon: text("icon"),
+  color: text("color"),
+  actionUrl: text("action_url"),
+  actionLabel: text("action_label"),
+  metadata: jsonb("metadata").$type<Record<string, any>>(),
+  isRead: boolean("is_read").default(false).notNull(),
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("admin_notifications_recipient_idx").on(table.recipientId),
+  index("admin_notifications_read_idx").on(table.isRead),
+  index("admin_notifications_created_idx").on(table.createdAt),
+]);
+
+export type AdminNotification = typeof adminNotifications.$inferSelect;
+export type InsertAdminNotification = typeof adminNotifications.$inferInsert;
+
+// ============================================================================
+// SERVICE ORDERS - Done-for-You Onboarding Flow
+// ============================================================================
+// Client orders for managed call services (e.g., calls_1000, calls_5000)
+// Tracks payment, status, assigned staff, and timeline events
+// ============================================================================
+
+export const serviceOrders = pgTable("service_orders", {
+  id: serial("id").primaryKey(),
+  
+  // Client/User reference
+  clientUserId: varchar("client_user_id").references(() => users.id).notNull(),
+  
+  // Contact info (for orders without existing user account)
+  companyName: varchar("company_name"),
+  contactName: varchar("contact_name"),
+  contactEmail: varchar("contact_email"),
+  contactPhone: varchar("contact_phone"),
+  
+  // Package details
+  packageCode: varchar("package_code").notNull(), // e.g., 'calls_1000', 'calls_5000'
+  targetCalls: integer("target_calls").notNull(),
+  priceCents: integer("price_cents").notNull(),
+  currency: varchar("currency").notNull().default("eur"),
+  
+  // Order status
+  status: varchar("status").notNull().default("draft"), // draft|paid|intake|in_progress|paused|completed|canceled
+  
+  // Payment tracking
+  paymentStatus: varchar("payment_status").notNull().default("unpaid"), // unpaid|paid|failed|refunded
+  paymentReference: varchar("payment_reference"), // Stripe payment intent ID or checkout session ID
+  
+  // Operational references
+  campaignId: integer("campaign_id").references(() => campaigns.id), // Link to active campaign
+  // TODO: Add lead_import_job_id when import_jobs table is created
+  leadImportJobId: integer("lead_import_job_id"), // NULL for now - no import_jobs table yet
+  
+  // Staff assignment
+  assignedStaffId: varchar("assigned_staff_id").references(() => users.id),
+  
+  // Flexible metadata
+  metadata: jsonb("metadata").$type<{
+    notes?: string;
+    callsCompleted?: number;
+    lastCallDate?: string;
+    customFields?: Record<string, any>;
+  }>(),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("service_orders_status_idx").on(table.status),
+  index("service_orders_payment_status_idx").on(table.paymentStatus),
+  index("service_orders_created_idx").on(table.createdAt),
+  index("service_orders_client_idx").on(table.clientUserId),
+  index("service_orders_staff_idx").on(table.assignedStaffId),
+]);
+
+export type ServiceOrder = typeof serviceOrders.$inferSelect;
+export type InsertServiceOrder = typeof serviceOrders.$inferInsert;
+
+// Service Order Events - Timeline/Audit trail
+export const serviceOrderEvents = pgTable("service_order_events", {
+  id: serial("id").primaryKey(),
+  
+  // Parent order reference
+  orderId: integer("order_id").references(() => serviceOrders.id).notNull(),
+  
+  // Event details
+  type: varchar("type").notNull(), // created|paid|lead_upload|assigned|started|paused|completed|note
+  title: varchar("title").notNull(),
+  description: text("description"),
+  
+  // Actor who triggered the event
+  actorId: varchar("actor_id").references(() => users.id),
+  
+  // Flexible metadata for event-specific data
+  metadata: jsonb("metadata").$type<{
+    previousStatus?: string;
+    newStatus?: string;
+    previousStaffId?: string;
+    newStaffId?: string;
+    paymentAmount?: number;
+    [key: string]: any;
+  }>(),
+  
+  // Timestamp
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("service_order_events_order_idx").on(table.orderId),
+  index("service_order_events_type_idx").on(table.type),
+  index("service_order_events_created_idx").on(table.createdAt),
+]);
+
+export type ServiceOrderEvent = typeof serviceOrderEvents.$inferSelect;
+export type InsertServiceOrderEvent = typeof serviceOrderEvents.$inferInsert;

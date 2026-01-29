@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { User, Volume2, VolumeX, Copy, Check } from "lucide-react";
+import { User, Volume2, VolumeX, Copy, Check, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -10,6 +10,8 @@ const renderMarkdown = (text: string) => {
   const lines = text.split('\n');
   const elements: JSX.Element[] = [];
   let currentList: { items: string[]; ordered: boolean } | null = null;
+  let inCodeBlock = false;
+  let codeBlockLines: string[] = [];
   let lineIndex = 0;
 
   const flushList = () => {
@@ -25,6 +27,33 @@ const renderMarkdown = (text: string) => {
         </ListTag>
       );
       currentList = null;
+    }
+  };
+
+  const flushCodeBlock = () => {
+    if (codeBlockLines.length > 0) {
+      elements.push(
+        <div key={`codeblock-${lineIndex}`} className="my-6 rounded-xl bg-[#0F0F0F]/80 border border-white/10 overflow-hidden relative group shadow-lg backdrop-blur-sm">
+          {/* Glassmorphism gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] to-transparent pointer-events-none" />
+          
+          {/* Top accent line */}
+          <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-[#FE9100] via-[#FF5E00] to-[#FE9100] opacity-70" />
+          
+          {/* Content */}
+          <div className="relative p-5 font-mono text-[13px] text-gray-200 whitespace-pre-wrap leading-relaxed tracking-wide">
+            {codeBlockLines.join('\n')}
+          </div>
+          
+          {/* Copy hint (visible on hover) */}
+          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <div className="text-[10px] text-white/40 bg-black/50 px-2 py-1 rounded-md border border-white/5">
+              Code Block
+            </div>
+          </div>
+        </div>
+      );
+      codeBlockLines = [];
     }
   };
 
@@ -74,6 +103,25 @@ const renderMarkdown = (text: string) => {
 
   lines.forEach((line, i) => {
     lineIndex = i;
+
+    // Handle Code Blocks (```)
+    if (line.trim().startsWith('```')) {
+      if (inCodeBlock) {
+        // End of block
+        inCodeBlock = false;
+        flushCodeBlock();
+      } else {
+        // Start of block
+        flushList();
+        inCodeBlock = true;
+      }
+      return;
+    }
+
+    if (inCodeBlock) {
+      codeBlockLines.push(line);
+      return;
+    }
 
     // Headers
     if (line.startsWith('### ')) {
@@ -140,6 +188,12 @@ const renderMarkdown = (text: string) => {
   });
 
   flushList();
+  
+  // If still in code block (e.g. streaming not finished), flush what we have
+  if (inCodeBlock) {
+    flushCodeBlock();
+  }
+  
   return elements;
 };
 
@@ -153,6 +207,7 @@ interface MessageBubbleProps {
   onSpeak?: (text: string) => void;
   isSpeaking?: boolean;
   isNew?: boolean;
+  onOptionClick?: (option: string) => void;
 }
 
 export function MessageBubble({ 
@@ -164,7 +219,8 @@ export function MessageBubble({
   messageId, 
   onSpeak, 
   isSpeaking,
-  isNew = false
+  isNew = false,
+  onOptionClick
 }: MessageBubbleProps) {
   const [displayedText, setDisplayedText] = useState(isAi && isNew ? "" : message);
   const [isTyping, setIsTyping] = useState(isAi && isNew);
@@ -201,6 +257,135 @@ export function MessageBubble({
     } catch (err) {
       console.error('Failed to copy:', err);
     }
+  };
+
+  // Detect clickable options in message
+  const renderClickableOptions = () => {
+    if (!onOptionClick || !isAi) return null;
+    
+    // 1. Initial Einzelanruf/Kampagne choice
+    const hasInitialChoice = message.includes('Einzelanruf') && message.includes('Kampagne') && message.includes('Klicke');
+    if (hasInitialChoice) {
+      return (
+        <div className="flex flex-col sm:flex-row gap-3 mt-4">
+          <motion.button
+            whileHover={{ scale: 1.02, y: -2 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => onOptionClick('Einzelanruf')}
+            className="flex items-center gap-3 px-5 py-3.5 rounded-xl bg-gradient-to-r from-white/5 to-white/[0.02] border border-white/20 hover:border-[#FE9100]/50 transition-all duration-300 group"
+          >
+            <span className="text-lg">📞</span>
+            <div className="text-left">
+              <div className="text-white font-medium text-sm">Einzelanruf</div>
+              <div className="text-gray-400 text-xs">Ein einzelnes Telefonat</div>
+            </div>
+          </motion.button>
+          
+          <motion.button
+            whileHover={{ scale: 1.02, y: -2 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => onOptionClick('Kampagne')}
+            className="flex items-center gap-3 px-5 py-3.5 rounded-xl bg-gradient-to-r from-white/5 to-white/[0.02] border border-white/20 hover:border-[#FE9100]/50 transition-all duration-300 group"
+          >
+            <span className="text-lg">🚀</span>
+            <div className="text-left">
+              <div className="text-white font-medium text-sm">Kampagne</div>
+              <div className="text-gray-400 text-xs">bis zu 10.000 Calls gleichzeitig!</div>
+            </div>
+          </motion.button>
+        </div>
+      );
+    }
+    
+    // 2. Einzelanruf use case selection (after user selected Einzelanruf)
+    const hasUseCaseSelection = message.includes('Anwendungsfall') || message.includes('wofür') || message.includes('Was soll');
+    if (hasUseCaseSelection && !message.includes('Kampagne')) {
+      return (
+        <div className="flex flex-col gap-2 mt-4">
+          <div className="text-xs text-gray-400 mb-1">Schnellauswahl:</div>
+          <div className="flex flex-wrap gap-2">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => onOptionClick('Bewerber prüfen - Ich möchte einen Bewerber anrufen und seine Verfügbarkeit/Interesse prüfen')}
+              className="px-4 py-2.5 rounded-lg bg-white/5 border border-white/20 hover:border-[#FE9100]/50 text-white text-sm transition-all"
+            >
+              👤 Bewerber prüfen
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => onOptionClick('Tisch reservieren - Ich möchte in einem Restaurant einen Tisch reservieren')}
+              className="px-4 py-2.5 rounded-lg bg-white/5 border border-white/20 hover:border-[#FE9100]/50 text-white text-sm transition-all"
+            >
+              🍽️ Tisch reservieren
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => onOptionClick('Meeting bestätigen - Ich möchte einen Termin/Meeting bestätigen lassen')}
+              className="px-4 py-2.5 rounded-lg bg-white/5 border border-white/20 hover:border-[#FE9100]/50 text-white text-sm transition-all"
+            >
+              📅 Meeting bestätigen
+            </motion.button>
+          </div>
+          <div className="text-xs text-gray-500 mt-2">Oder beschreibe deinen Anwendungsfall im Chat...</div>
+        </div>
+      );
+    }
+    
+    // 3. Detect generated prompt (contains PROMPT markers or specific structure)
+    const hasGeneratedPrompt = message.includes('[PROMPT]') || message.includes('```') || 
+      (message.includes('Hier ist dein Prompt') || message.includes('fertiger Prompt'));
+    if (hasGeneratedPrompt) {
+      // Extract prompt from message
+      const promptMatch = message.match(/```[\s\S]*?```/) || message.match(/\[PROMPT\]([\s\S]*?)\[\/PROMPT\]/);
+      const promptText = promptMatch ? promptMatch[0].replace(/```/g, '').replace(/\[PROMPT\]|\[\/PROMPT\]/g, '').trim() : message;
+      
+      return (
+        <div className="flex flex-col gap-3 mt-4">
+          <motion.button
+            whileHover={{ scale: 1.02, y: -2 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={async () => {
+              await navigator.clipboard.writeText(promptText);
+              localStorage.setItem('aras_prefilled_prompt', promptText);
+              onOptionClick('__REDIRECT_POWER__');
+            }}
+            className="flex items-center justify-center gap-3 px-6 py-4 rounded-xl bg-gradient-to-r from-[#FE9100]/20 to-[#FE9100]/10 border border-[#FE9100]/50 hover:border-[#FE9100] text-white font-medium transition-all duration-300"
+          >
+            <Copy className="w-5 h-5" />
+            <span>Kopieren & zu POWER</span>
+            <ChevronRight className="w-5 h-5" />
+          </motion.button>
+        </div>
+      );
+    }
+    
+    // 4. Detect Kampagne data (contains campaign structure)
+    const hasKampagneData = message.includes('Kampagnenname') && message.includes('Ziel des Anrufs');
+    if (hasKampagneData) {
+      return (
+        <div className="flex flex-col gap-3 mt-4">
+          <motion.button
+            whileHover={{ scale: 1.02, y: -2 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => {
+              // Store campaign data in localStorage
+              localStorage.setItem('aras_prefilled_campaign', message);
+              onOptionClick('__REDIRECT_CAMPAIGNS__');
+            }}
+            className="flex items-center justify-center gap-3 px-6 py-4 rounded-xl bg-gradient-to-r from-[#FE9100]/20 to-[#FE9100]/10 border border-[#FE9100]/50 hover:border-[#FE9100] text-white font-medium transition-all duration-300"
+          >
+            <Copy className="w-5 h-5" />
+            <span>Übernehmen & zu Kampagnen</span>
+            <ChevronRight className="w-5 h-5" />
+          </motion.button>
+        </div>
+      );
+    }
+    
+    return null;
   };
 
   return (
@@ -259,6 +444,7 @@ export function MessageBubble({
                 {isAi && !isTyping ? (
                   <div className="space-y-2">
                     {renderMarkdown(displayedText)}
+                    {renderClickableOptions()}
                   </div>
                 ) : (
                   <div className="whitespace-pre-wrap break-words text-gray-100">
