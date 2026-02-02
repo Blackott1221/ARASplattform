@@ -775,3 +775,63 @@ export const dailyBriefings = pgTable("daily_briefings", {
 
 export type DailyBriefing = typeof dailyBriefings.$inferSelect;
 export type InsertDailyBriefing = typeof dailyBriefings.$inferInsert;
+
+// ============================================================================
+// ADMIN AUDIT LOG - Role changes and admin actions
+// ============================================================================
+// Tracks all role changes and sensitive admin actions for security audit
+// ============================================================================
+
+export const adminAuditLog = pgTable("admin_audit_log", {
+  id: serial("id").primaryKey(),
+  
+  // Who performed the action
+  actorUserId: varchar("actor_user_id").notNull().references(() => users.id),
+  
+  // Who was affected (for user-related actions)
+  targetUserId: varchar("target_user_id").references(() => users.id),
+  
+  // Action type
+  action: varchar("action", { 
+    enum: ["role_change", "password_reset", "user_delete", "plan_change", "bulk_role_change"] 
+  }).notNull(),
+  
+  // Before/after state as JSON
+  beforeState: jsonb("before_state").$type<Record<string, any>>(),
+  afterState: jsonb("after_state").$type<Record<string, any>>(),
+  
+  // Request metadata
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("admin_audit_log_actor_idx").on(table.actorUserId),
+  index("admin_audit_log_target_idx").on(table.targetUserId),
+  index("admin_audit_log_action_idx").on(table.action),
+  index("admin_audit_log_created_idx").on(table.createdAt),
+]);
+
+export type AdminAuditLog = typeof adminAuditLog.$inferSelect;
+export type InsertAdminAuditLog = typeof adminAuditLog.$inferInsert;
+
+// ============================================================================
+// STAFF ACTIVITY LOG - General staff/admin activity tracking
+// ============================================================================
+
+export const staffActivityLog = pgTable("staff_activity_log", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  action: varchar("action").notNull(),
+  targetType: varchar("target_type"), // "user", "contact", "deal", etc.
+  targetId: varchar("target_id"),
+  metadata: jsonb("metadata").$type<Record<string, any>>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("staff_activity_log_user_idx").on(table.userId),
+  index("staff_activity_log_created_idx").on(table.createdAt),
+]);
+
+export type StaffActivityLog = typeof staffActivityLog.$inferSelect;
+export type InsertStaffActivityLog = typeof staffActivityLog.$inferInsert;

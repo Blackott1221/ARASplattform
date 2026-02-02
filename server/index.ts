@@ -363,6 +363,12 @@ async function seedSubscriptionPlans() {
   const server = await registerRoutes(app);
   
   // ============================================================================
+  // 🔐 ADMIN BOOTSTRAP - Ensure at least one admin exists
+  // ============================================================================
+  const { bootstrapFirstAdmin } = await import('./middleware/admin');
+  await bootstrapFirstAdmin();
+  
+  // ============================================================================
   // 🎯 ARAS COMMAND CENTER - INTERNAL CRM ROUTES
   // ============================================================================
   // MUST be AFTER registerRoutes (passport session must be initialized first)

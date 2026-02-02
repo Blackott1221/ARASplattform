@@ -5,7 +5,8 @@ import {
   Users, Database, Calendar, Phone, MessageSquare, 
   Megaphone, Bug, TrendingUp, Search, Trash2, RefreshCw, 
   Shield, Clock, Key, CreditCard, RotateCcw, X, Check, Eye,
-  Zap, Crown, Star, Sparkles, Mail, Building2, AlertCircle, Wifi, Loader2
+  Zap, Crown, Star, Sparkles, Mail, Building2, AlertCircle, Wifi, Loader2,
+  UserCog, History, ShieldCheck, ChevronDown
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -37,8 +38,16 @@ const PLAN_OPTIONS: { key: string; label: string }[] = [
 ];
 const STATUS_OPTIONS = ['active', 'trialing', 'canceled', 'past_due'] as const;
 
+// Role options for RBAC
+const ROLE_OPTIONS = [
+  { key: 'user', label: 'User', color: '#6B7280', icon: Users },
+  { key: 'staff', label: 'Staff', color: '#8B5CF6', icon: Shield },
+  { key: 'admin', label: 'Admin', color: '#FE9100', icon: Crown },
+] as const;
+
 // Type for valid plan keys
 type PlanKey = 'free' | 'pro' | 'ultra' | 'ultimate';
+type RoleKey = 'user' | 'staff' | 'admin';
 
 // ═══════════════════════════════════════════════════════════════
 // UTILITY: Convert snake_case to camelCase for frontend compatibility
@@ -82,13 +91,17 @@ export default function AdminDashboard() {
   
   // Modal state - explicitly typed for clarity
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<'plan' | 'password' | 'details' | null>(null);
+  const [modalType, setModalType] = useState<'plan' | 'password' | 'details' | 'role' | 'audit' | null>(null);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   
   // Form state for modals
   const [formPlan, setFormPlan] = useState('free');
   const [formStatus, setFormStatus] = useState('active');
   const [formPassword, setFormPassword] = useState('');
+  const [formRole, setFormRole] = useState<RoleKey>('user');
+  
+  // Active tab for main view
+  const [activeTab, setActiveTab] = useState<'users' | 'audit'>('users');
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -96,15 +109,18 @@ export default function AdminDashboard() {
   // ═══════════════════════════════════════════════════════════════
   // MODAL HANDLERS - Explicit and debuggable
   // ═══════════════════════════════════════════════════════════════
-  const openModal = useCallback((type: 'plan' | 'password' | 'details', user: any) => {
+  const openModal = useCallback((type: 'plan' | 'password' | 'details' | 'role' | 'audit', user?: any) => {
     console.log('[AdminDashboard] Opening modal:', type, 'for user:', user?.username || user?.id);
     
     // Set user first
-    setSelectedUser(user);
+    setSelectedUser(user || null);
     
     // Set form defaults based on user data
-    setFormPlan(user?.subscriptionPlan || user?.subscription_plan || 'free');
-    setFormStatus(user?.subscriptionStatus || user?.subscription_status || 'active');
+    if (user) {
+      setFormPlan(user?.subscriptionPlan || user?.subscription_plan || 'free');
+      setFormStatus(user?.subscriptionStatus || user?.subscription_status || 'active');
+      setFormRole((user?.userRole || user?.user_role || 'user').toLowerCase() as RoleKey);
+    }
     setFormPassword('');
     
     // Set modal type and open
@@ -305,7 +321,71 @@ export default function AdminDashboard() {
     onError: () => toast({ title: "❌ Fehler", variant: "destructive" })
   });
 
+  // ═══════════════════════════════════════════════════════════════
+  // ROLE MANAGEMENT MUTATION
+  // ═══════════════════════════════════════════════════════════════
+  const changeRoleMutation = useMutation({
+    mutationFn: async ({ id, role }: { id: string; role: RoleKey }) => {
+      console.log('[AdminDashboard] Changing role:', { userId: id, role });
+      const res = await fetch(`/api/admin/users/${id}/role`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ role })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || data.error || `HTTP ${res.status}`);
+      }
+      return data;
+    },
+    onSuccess: (data) => {
+      console.log('[AdminDashboard] Role changed successfully:', data);
+      queryClient.invalidateQueries({ queryKey: ['admin-table'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-role-stats'] });
+      toast({ 
+        title: "✅ Rolle geändert!", 
+        description: `${data.user?.username || 'User'} ist jetzt ${data.user?.role?.toUpperCase() || formRole.toUpperCase()}`
+      });
+      closeModal();
+    },
+    onError: (error: any) => {
+      console.error('[AdminDashboard] Role change error:', error);
+      toast({ 
+        title: "❌ Rolle konnte nicht geändert werden", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
+  });
+
+  // Fetch role distribution stats
+  const { data: roleStats } = useQuery({
+    queryKey: ['admin-role-stats'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/roles/stats', { credentials: 'include' });
+      return res.ok ? res.json() : { distribution: { admin: 0, staff: 0, user: 0 }, total: 0 };
+    },
+    refetchInterval: 30000
+  });
+
+  // Fetch audit log
+  const { data: auditLog, isLoading: auditLoading } = useQuery({
+    queryKey: ['admin-audit'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/audit?limit=50', { credentials: 'include' });
+      return res.ok ? res.json() : { entries: [], pagination: {} };
+    },
+    enabled: activeTab === 'audit'
+  });
+
   const isOnline = (id: string) => onlineData?.onlineUserIds?.includes(id);
+  
+  // Get role color helper
+  const getRoleColor = (role: string) => {
+    const r = ROLE_OPTIONS.find(o => o.key === role?.toLowerCase());
+    return r?.color || '#6B7280';
+  };
   
   const filteredData = Array.isArray(tableData) 
     ? tableData.filter((item: any) =>
@@ -411,6 +491,18 @@ export default function AdminDashboard() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{user.username}</span>
+                        {/* Role Badge - clickable */}
+                        <button
+                          onClick={() => openModal('role', user)}
+                          className="text-xs px-2 py-0.5 rounded flex items-center gap-1 hover:opacity-80 transition-opacity"
+                          style={{ 
+                            backgroundColor: `${getRoleColor(user.userRole || user.user_role)}20`,
+                            color: getRoleColor(user.userRole || user.user_role)
+                          }}
+                        >
+                          {(user.userRole || user.user_role || 'user').toUpperCase()}
+                          <ChevronDown className="w-3 h-3" />
+                        </button>
                         <span className="text-xs px-2 py-0.5 rounded bg-[#FE9100]/20 text-[#FE9100]">
                           {user.subscriptionPlan || 'free'}
                         </span>
@@ -418,8 +510,8 @@ export default function AdminDashboard() {
                           {user.subscriptionStatus || 'active'}
                         </span>
                         {isOnline(user.id) && (
-                          <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
-                            ONLINE
+                          <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 animate-pulse">
+                            ● ONLINE
                           </span>
                         )}
                       </div>
@@ -539,6 +631,8 @@ export default function AdminDashboard() {
                   <><Key className="w-5 h-5 text-violet-400" /> Passwort ändern</>
                 ) : modalType === 'details' ? (
                   <><Eye className="w-5 h-5 text-white/60" /> User Details</>
+                ) : modalType === 'role' ? (
+                  <><UserCog className="w-5 h-5 text-[#FE9100]" /> Rolle ändern</>
                 ) : (
                   <><AlertCircle className="w-5 h-5 text-red-500" /> Modal (type: {String(modalType)})</>
                 )}
@@ -721,8 +815,90 @@ export default function AdminDashboard() {
                 </div>
               )}
 
+              {/* Case: User selected + Role modal */}
+              {selectedUser && modalType === 'role' && (
+                <div className="space-y-4">
+                  <div className="p-3 rounded-lg bg-white/5">
+                    <div className="text-sm text-white/50">User</div>
+                    <div className="text-lg font-bold">{selectedUser.username || selectedUser.email || '?'}</div>
+                    <div className="text-xs text-white/40 font-mono">ID: {selectedUser.id}</div>
+                    <div className="text-xs text-white/40 mt-1">
+                      Aktuelle Rolle: <span style={{ color: getRoleColor(selectedUser.userRole || selectedUser.user_role) }} className="font-medium">
+                        {(selectedUser.userRole || selectedUser.user_role || 'user').toUpperCase()}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-sm text-white/50 mb-2">Neue Rolle auswählen</div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {ROLE_OPTIONS.map(({ key, label, color, icon: Icon }) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setFormRole(key as RoleKey)}
+                          className={`p-4 rounded-xl text-center transition-all flex flex-col items-center gap-2 ${
+                            formRole === key 
+                              ? 'ring-2 font-bold' 
+                              : 'bg-white/10 hover:bg-white/20'
+                          }`}
+                          style={{ 
+                            backgroundColor: formRole === key ? `${color}20` : undefined,
+                            color: formRole === key ? color : 'white',
+                            boxShadow: formRole === key ? `0 0 0 2px ${color}` : undefined
+                          }}
+                        >
+                          <Icon className="w-5 h-5" />
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Warning for admin demotion */}
+                  {(selectedUser.userRole || selectedUser.user_role)?.toLowerCase() === 'admin' && formRole !== 'admin' && (
+                    <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+                      <AlertCircle className="w-4 h-4 inline mr-2" />
+                      <strong>Achtung:</strong> Du bist dabei, einen Admin herabzustufen. 
+                      Das System verhindert, dass der letzte Admin entfernt wird.
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-4">
+                    <button
+                      type="button"
+                      onClick={closeModal}
+                      className="flex-1 py-3 rounded-xl bg-white/10 hover:bg-white/20"
+                    >
+                      Abbrechen
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        changeRoleMutation.mutate({
+                          id: selectedUser.id,
+                          role: formRole
+                        });
+                      }}
+                      disabled={changeRoleMutation.isPending || formRole === (selectedUser.userRole || selectedUser.user_role || 'user').toLowerCase()}
+                      className="flex-1 py-3 rounded-xl font-bold disabled:opacity-50 flex items-center justify-center gap-2"
+                      style={{ 
+                        backgroundColor: getRoleColor(formRole),
+                        color: formRole === 'admin' ? 'black' : 'white'
+                      }}
+                    >
+                      {changeRoleMutation.isPending ? (
+                        <><Loader2 className="w-4 h-4 animate-spin" /> Speichere...</>
+                      ) : (
+                        <><UserCog className="w-4 h-4" /> Rolle ändern</>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Case: Unknown modalType */}
-              {selectedUser && modalType !== 'plan' && modalType !== 'password' && modalType !== 'details' && (
+              {selectedUser && modalType !== 'plan' && modalType !== 'password' && modalType !== 'details' && modalType !== 'role' && (
                 <div className="text-center py-8 text-red-400">
                   <AlertCircle className="w-8 h-8 mx-auto mb-2" />
                   <p>Unbekannter Modal-Typ: {String(modalType)}</p>

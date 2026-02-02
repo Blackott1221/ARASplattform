@@ -1,11 +1,13 @@
 // ============================================================================
-// ARAS Command Center - User Deep-Dive API
+// ARAS Command Center - User Deep-Dive API + Role Management
 // ============================================================================
 // Complete user data for the Deep-Dive Panel
+// Enhanced with role management, bulk actions, and audit logging
 // ============================================================================
 
 import { Router } from "express";
 import { db } from "../db";
+import { client } from "../db";
 import { 
   users, 
   leads, 
@@ -13,11 +15,47 @@ import {
   callLogs, 
   chatSessions,
   campaigns,
-  staffActivityLog
+  staffActivityLog,
+  adminAuditLog
 } from "@shared/schema";
 import { eq, desc, and, gte, sql, count } from "drizzle-orm";
-import { requireAdmin } from "../middleware/admin";
+import { requireAdmin, VALID_ROLES, type UserRole } from "../middleware/admin";
 import { logger } from "../logger";
+
+/**
+ * Helper: Get client IP from request
+ */
+function getClientIp(req: any): string {
+  return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+         req.socket?.remoteAddress || 
+         'unknown';
+}
+
+/**
+ * Helper: Log audit entry for admin actions
+ */
+async function logAudit(
+  actorUserId: string,
+  action: 'role_change' | 'password_reset' | 'user_delete' | 'plan_change' | 'bulk_role_change',
+  targetUserId: string | null,
+  beforeState: Record<string, any> | null,
+  afterState: Record<string, any> | null,
+  req: any
+): Promise<void> {
+  try {
+    await db.insert(adminAuditLog).values({
+      actorUserId,
+      targetUserId,
+      action,
+      beforeState,
+      afterState,
+      ipAddress: getClientIp(req),
+      userAgent: req.headers['user-agent'] || null,
+    });
+  } catch (err) {
+    logger.error("[AUDIT] Failed to log audit entry:", err);
+  }
+}
 
 const router = Router();
 
@@ -220,43 +258,275 @@ router.post("/users/:userId/password", requireAdmin, async (req: any, res) => {
 });
 
 // ============================================================================
-// PATCH /users/:userId/role - Update user role
+// PATCH /users/:userId/role - Update user role (ENHANCED with protections)
 // ============================================================================
 
 router.patch("/users/:userId/role", requireAdmin, async (req: any, res) => {
   try {
     const { userId } = req.params;
     const { role } = req.body;
+    const actorId = req.session.userId;
 
-    if (!["user", "staff", "admin"].includes(role)) {
-      return res.status(400).json({ error: "Invalid role" });
+    // Validate role
+    const normalizedRole = String(role || '').trim().toLowerCase();
+    if (!VALID_ROLES.includes(normalizedRole as UserRole)) {
+      return res.status(400).json({ 
+        error: "Invalid role", 
+        message: `Role must be one of: ${VALID_ROLES.join(', ')}`,
+        received: role
+      });
     }
 
-    // Prevent self-demotion
-    if (userId === req.session.userId && role !== "admin") {
-      return res.status(400).json({ error: "Cannot demote yourself" });
+    // Fetch target user
+    const [targetUser] = await client`
+      SELECT id, username, user_role FROM users WHERE id = ${userId}
+    `;
+
+    if (!targetUser) {
+      return res.status(404).json({ error: "User not found" });
     }
 
-    await db
-      .update(users)
-      .set({ userRole: role })
-      .where(eq(users.id, userId));
+    const oldRole = String(targetUser.user_role || 'user').toLowerCase();
 
-    // Log activity
-    await db.insert(staffActivityLog).values({
-      userId: req.session.userId,
-      action: "role_changed",
-      targetType: "user",
-      targetId: userId,
-      metadata: { newRole: role },
+    // Self-demotion protection
+    if (userId === actorId && normalizedRole !== 'admin') {
+      return res.status(400).json({ 
+        error: "Self-demotion blocked",
+        message: "Cannot demote yourself. Another admin must do this."
+      });
+    }
+
+    // Last-admin protection: if demoting an admin, ensure at least one admin remains
+    if (oldRole === 'admin' && normalizedRole !== 'admin') {
+      const [adminCount] = await client`
+        SELECT COUNT(*) as count FROM users WHERE LOWER(user_role) = 'admin'
+      `;
+      
+      if (parseInt(adminCount?.count || '0') <= 1) {
+        return res.status(400).json({ 
+          error: "Last admin protection",
+          message: "Cannot demote the last admin. Promote another user to admin first."
+        });
+      }
+    }
+
+    // Perform update
+    await client`
+      UPDATE users SET user_role = ${normalizedRole}, updated_at = NOW() WHERE id = ${userId}
+    `;
+
+    // Log to audit
+    await logAudit(
+      actorId,
+      'role_change',
+      userId,
+      { role: oldRole, username: targetUser.username },
+      { role: normalizedRole },
+      req
+    );
+
+    logger.info("[ADMIN] Role updated", { 
+      target: targetUser.username, 
+      oldRole, 
+      newRole: normalizedRole, 
+      by: actorId 
     });
 
-    logger.info("[ADMIN] Role updated", { userId, role, by: req.session.userId });
-    res.json({ success: true });
+    res.json({ 
+      success: true, 
+      user: { 
+        id: userId, 
+        username: targetUser.username, 
+        role: normalizedRole 
+      }
+    });
 
   } catch (error: any) {
     logger.error("[ADMIN] Error updating role:", error);
-    res.status(500).json({ error: "Failed to update role" });
+    res.status(500).json({ error: "Failed to update role", message: error.message });
+  }
+});
+
+// ============================================================================
+// PATCH /users/bulk-role - Bulk update user roles
+// ============================================================================
+
+router.patch("/users/bulk-role", requireAdmin, async (req: any, res) => {
+  try {
+    const { userIds, role } = req.body;
+    const actorId = req.session.userId;
+
+    // Validate input
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ error: "userIds must be a non-empty array" });
+    }
+
+    const normalizedRole = String(role || '').trim().toLowerCase();
+    if (!VALID_ROLES.includes(normalizedRole as UserRole)) {
+      return res.status(400).json({ 
+        error: "Invalid role", 
+        message: `Role must be one of: ${VALID_ROLES.join(', ')}`
+      });
+    }
+
+    // Prevent self-demotion via bulk
+    if (userIds.includes(actorId) && normalizedRole !== 'admin') {
+      return res.status(400).json({ 
+        error: "Self-demotion blocked",
+        message: "Cannot include yourself in bulk demotion"
+      });
+    }
+
+    // Last-admin protection for bulk demotion
+    if (normalizedRole !== 'admin') {
+      const [adminCount] = await client`
+        SELECT COUNT(*) as count FROM users 
+        WHERE LOWER(user_role) = 'admin' AND id != ALL(${userIds})
+      `;
+      
+      if (parseInt(adminCount?.count || '0') < 1) {
+        return res.status(400).json({ 
+          error: "Last admin protection",
+          message: "This action would remove all admins. At least one admin must remain."
+        });
+      }
+    }
+
+    // Fetch users for audit
+    const targetUsers = await client`
+      SELECT id, username, user_role FROM users WHERE id = ANY(${userIds})
+    `;
+
+    // Perform bulk update
+    await client`
+      UPDATE users SET user_role = ${normalizedRole}, updated_at = NOW() 
+      WHERE id = ANY(${userIds})
+    `;
+
+    // Log audit
+    await logAudit(
+      actorId,
+      'bulk_role_change',
+      null,
+      { 
+        userIds, 
+        users: targetUsers.map((u: any) => ({ id: u.id, username: u.username, oldRole: u.user_role }))
+      },
+      { role: normalizedRole, count: userIds.length },
+      req
+    );
+
+    logger.info("[ADMIN] Bulk role update", { 
+      count: userIds.length, 
+      newRole: normalizedRole, 
+      by: actorId 
+    });
+
+    res.json({ 
+      success: true, 
+      updated: userIds.length,
+      role: normalizedRole
+    });
+
+  } catch (error: any) {
+    logger.error("[ADMIN] Error in bulk role update:", error);
+    res.status(500).json({ error: "Failed to update roles", message: error.message });
+  }
+});
+
+// ============================================================================
+// GET /audit - Get admin audit log with pagination
+// ============================================================================
+
+router.get("/audit", requireAdmin, async (req: any, res) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+    const offset = (page - 1) * limit;
+    const action = req.query.action as string;
+
+    // Build query
+    let query = `
+      SELECT 
+        a.*,
+        actor.username as actor_username,
+        target.username as target_username
+      FROM admin_audit_log a
+      LEFT JOIN users actor ON a.actor_user_id = actor.id
+      LEFT JOIN users target ON a.target_user_id = target.id
+    `;
+
+    const params: any[] = [];
+    
+    if (action && ['role_change', 'password_reset', 'user_delete', 'plan_change', 'bulk_role_change'].includes(action)) {
+      query += ` WHERE a.action = $1`;
+      params.push(action);
+    }
+
+    query += ` ORDER BY a.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(limit, offset);
+
+    const entries = await client.unsafe(query, params);
+
+    // Get total count
+    let countQuery = `SELECT COUNT(*) as count FROM admin_audit_log`;
+    if (action) {
+      countQuery += ` WHERE action = $1`;
+    }
+    const [countResult] = action 
+      ? await client.unsafe(countQuery, [action])
+      : await client.unsafe(countQuery);
+
+    res.json({
+      entries,
+      pagination: {
+        page,
+        limit,
+        total: parseInt(countResult?.count || '0'),
+        totalPages: Math.ceil(parseInt(countResult?.count || '0') / limit)
+      }
+    });
+
+  } catch (error: any) {
+    logger.error("[ADMIN] Error fetching audit log:", error);
+    res.status(500).json({ error: "Failed to fetch audit log", message: error.message });
+  }
+});
+
+// ============================================================================
+// GET /roles/stats - Get role distribution stats
+// ============================================================================
+
+router.get("/roles/stats", requireAdmin, async (req: any, res) => {
+  try {
+    const stats = await client`
+      SELECT 
+        LOWER(COALESCE(user_role, 'user')) as role,
+        COUNT(*) as count
+      FROM users
+      GROUP BY LOWER(COALESCE(user_role, 'user'))
+      ORDER BY count DESC
+    `;
+
+    const distribution: Record<string, number> = {
+      admin: 0,
+      staff: 0,
+      user: 0
+    };
+
+    stats.forEach((row: any) => {
+      const role = row.role || 'user';
+      distribution[role] = parseInt(row.count);
+    });
+
+    res.json({
+      distribution,
+      total: Object.values(distribution).reduce((a, b) => a + b, 0)
+    });
+
+  } catch (error: any) {
+    logger.error("[ADMIN] Error fetching role stats:", error);
+    res.status(500).json({ error: "Failed to fetch role stats" });
   }
 });
 
