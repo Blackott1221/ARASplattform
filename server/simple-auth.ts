@@ -48,6 +48,12 @@ export function setupSimpleAuth(app: Express) {
     tableName: "sessions",
   });
 
+  // ============================================================================
+  // PRODUCTION COOKIE FIX: Domain must include leading dot for www + non-www
+  // ============================================================================
+  const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+  const COOKIE_DOMAIN = IS_PRODUCTION ? '.plattform-aras.ai' : undefined;
+  
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "aras-ai-production-secret-2024",
     resave: false,
@@ -56,14 +62,63 @@ export function setupSimpleAuth(app: Express) {
     cookie: {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       httpOnly: true,
-      secure: false, // Set to true in production with HTTPS
+      secure: IS_PRODUCTION, // true in production (HTTPS required)
+      sameSite: 'lax', // Prevents CSRF, works with same-site requests
+      path: '/',
+      domain: COOKIE_DOMAIN, // .plattform-aras.ai works for www and non-www
     },
   };
+  
+  console.log(`[AUTH] Cookie config: secure=${IS_PRODUCTION}, domain=${COOKIE_DOMAIN || 'localhost'}, sameSite=lax`);
 
   app.set("trust proxy", 1);
+  
+  // ============================================================================
+  // CANONICAL HOST REDIRECT: Force www.plattform-aras.ai in production
+  // ============================================================================
+  if (IS_PRODUCTION) {
+    app.use((req, res, next) => {
+      const host = req.hostname;
+      // Redirect non-www to www (canonical)
+      if (host === 'plattform-aras.ai') {
+        const redirectUrl = `https://www.plattform-aras.ai${req.originalUrl}`;
+        console.log(`[AUTH] Canonical redirect: ${host} -> www.plattform-aras.ai`);
+        return res.redirect(301, redirectUrl);
+      }
+      next();
+    });
+  }
+  
   app.use(session(sessionSettings));
   app.use(passport.initialize());
   app.use(passport.session());
+  
+  // ============================================================================
+  // PUBLIC HEALTH ENDPOINT: Returns 200 always (for diagnostics)
+  // ============================================================================
+  app.get('/api/health', (req, res) => {
+    const cookies = req.headers.cookie;
+    const cookieNames = cookies ? cookies.split(';').map(c => c.trim().split('=')[0]) : [];
+    
+    res.status(200).json({
+      ok: !!req.isAuthenticated?.(),
+      env: process.env.NODE_ENV || 'development',
+      host: req.hostname,
+      cookieHeaderPresent: !!cookies,
+      cookieNames,
+      hasSession: !!req.session,
+      isAuthenticated: req.isAuthenticated ? req.isAuthenticated() : false,
+      user: req.user ? {
+        id: (req.user as any).id,
+        username: (req.user as any).username,
+        role: (req.user as any).userRole || 'user'
+      } : null,
+      time: new Date().toISOString(),
+      trustProxy: app.get('trust proxy'),
+      cookieDomain: COOKIE_DOMAIN || 'not set (localhost)',
+    });
+  });
+  console.log('[AUTH] ✅ Public health endpoint registered at /api/health');
 
   passport.use(
     new LocalStrategy(async (username, password, done) => {

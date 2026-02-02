@@ -101,28 +101,81 @@ interface AButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 export const AButton = React.forwardRef<HTMLButtonElement, AButtonProps>(
   ({ className, variant = 'primary', size = 'md', icon: Icon, loading, children, disabled, ...props }, ref) => {
-    const variants = {
-      primary: 'bg-gradient-to-r from-[var(--aras-orange)] to-[var(--aras-gold-dark)] text-white hover:opacity-90',
-      secondary: 'bg-white/[0.08] text-[var(--aras-text)] border border-white/[0.12] hover:bg-white/[0.12]',
-      ghost: 'text-[var(--aras-muted)] hover:text-[var(--aras-text)] hover:bg-white/[0.06]',
-      gradient: 'bg-transparent text-white border border-[var(--aras-stroke-accent)] hover:border-[var(--aras-orange)]',
-    };
-
     const sizes = {
-      sm: 'h-8 px-3 text-xs rounded-lg',
-      md: 'h-10 px-4 text-sm rounded-xl',
-      lg: 'h-12 px-6 text-base rounded-xl',
+      sm: 'h-8 px-3 text-xs',
+      md: 'h-10 px-5 text-sm',
+      lg: 'h-12 px-6 text-base',
     };
 
+    // Primary: Premium animated gradient border + glow
+    if (variant === 'primary') {
+      return (
+        <button
+          ref={ref}
+          disabled={disabled || loading}
+          className={cn(
+            'aras-btn aras-btn--primary',
+            'relative inline-flex items-center justify-center gap-2',
+            'font-semibold rounded-full',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--aras-orange)] focus-visible:ring-offset-2 focus-visible:ring-offset-black',
+            'disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none',
+            sizes[size],
+            className
+          )}
+          style={{ fontFamily: 'Orbitron, sans-serif' }}
+          {...props}
+        >
+          {loading ? (
+            <RefreshCw className="w-4 h-4 animate-spin" />
+          ) : Icon ? (
+            <Icon className="w-4 h-4" />
+          ) : null}
+          <span className="relative z-10">{children}</span>
+        </button>
+      );
+    }
+
+    // Secondary: Subtle glass with gradient text on hover
+    if (variant === 'secondary') {
+      return (
+        <button
+          ref={ref}
+          disabled={disabled || loading}
+          className={cn(
+            'aras-btn aras-btn--secondary',
+            'relative inline-flex items-center justify-center gap-2',
+            'font-medium rounded-full',
+            'bg-white/[0.06] border border-white/[0.12]',
+            'text-[var(--aras-text)] hover:text-white hover:bg-white/[0.1] hover:border-white/[0.2]',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 focus-visible:ring-offset-2 focus-visible:ring-offset-black',
+            'disabled:opacity-50 disabled:cursor-not-allowed',
+            'transition-all duration-200',
+            sizes[size],
+            className
+          )}
+          {...props}
+        >
+          {loading ? (
+            <RefreshCw className="w-4 h-4 animate-spin" />
+          ) : Icon ? (
+            <Icon className="w-4 h-4" />
+          ) : null}
+          {children}
+        </button>
+      );
+    }
+
+    // Ghost: Minimal, text only
     return (
       <button
         ref={ref}
         disabled={disabled || loading}
         className={cn(
-          'inline-flex items-center justify-center gap-2 font-medium transition-all duration-200',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--aras-orange)] focus-visible:ring-offset-2 focus-visible:ring-offset-black',
+          'inline-flex items-center justify-center gap-2 font-medium rounded-full',
+          'text-[var(--aras-muted)] hover:text-[var(--aras-text)] hover:bg-white/[0.06]',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20',
           'disabled:opacity-50 disabled:cursor-not-allowed',
-          variants[variant],
+          'transition-all duration-200',
           sizes[size],
           className
         )}
