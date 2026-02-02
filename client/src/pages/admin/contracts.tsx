@@ -15,6 +15,7 @@ import {
   AlertCircle, X, User, Calendar, Download
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
+import { apiGet, apiDelete, apiPostFormData } from '@/lib/api';
 
 // Types
 interface Contract {
@@ -84,18 +85,18 @@ export default function AdminContractsPage() {
   const { data: contracts = [], isLoading, error } = useQuery<Contract[]>({
     queryKey: ['admin-contracts'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/contracts', { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch contracts');
-      return res.json();
+      const result = await apiGet<Contract[]>('/api/admin/contracts');
+      if (!result.ok) throw result.error;
+      return result.data || [];
     },
   });
 
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/admin/contracts/${id}`, { method: 'DELETE', credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to delete');
-      return res.json();
+      const result = await apiDelete(`/api/admin/contracts/${id}`);
+      if (!result.ok) throw new Error(result.error?.message || 'Failed to delete');
+      return result.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-contracts'] });
@@ -274,9 +275,9 @@ function UploadModal({ onClose }: { onClose: () => void }) {
   const { data: staffUsers = [] } = useQuery<StaffUser[]>({
     queryKey: ['admin-staff-users'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/contracts/users/staff', { credentials: 'include' });
-      if (!res.ok) return [];
-      return res.json();
+      const result = await apiGet<StaffUser[]>('/api/admin/contracts/users/staff');
+      if (!result.ok) return [];
+      return result.data || [];
     },
   });
 
@@ -311,15 +312,10 @@ function UploadModal({ onClose }: { onClose: () => void }) {
       formData.append('title', title);
       formData.append('assignedUserId', assignedUserId);
 
-      const res = await fetch('/api/admin/contracts', {
-        method: 'POST',
-        credentials: 'include',
-        body: formData,
-      });
+      const result = await apiPostFormData('/api/admin/contracts', formData);
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Upload fehlgeschlagen');
+      if (!result.ok) {
+        throw new Error(result.error?.message || 'Upload fehlgeschlagen');
       }
 
       queryClient.invalidateQueries({ queryKey: ['admin-contracts'] });

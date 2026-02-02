@@ -15,6 +15,7 @@ import {
   Search, Users, Building2, TrendingUp, CheckSquare, Phone,
   LayoutDashboard, Sparkles, Settings, Command, ArrowRight
 } from 'lucide-react';
+import { apiGet } from '@/lib/api';
 
 // Design Tokens
 const DT = {
@@ -167,9 +168,9 @@ export function InternalCommandPalette({
     queryKey: ['internal-search', debouncedQuery],
     queryFn: async () => {
       if (debouncedQuery.length < 2) return { results: [], totalResults: 0 };
-      const res = await fetch(`/api/internal/search?q=${encodeURIComponent(debouncedQuery)}&limit=5`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Search failed');
-      return res.json();
+      const result = await apiGet<{results: any[], totalResults: number}>(`/api/internal/search?q=${encodeURIComponent(debouncedQuery)}&limit=5`);
+      if (!result.ok) throw result.error;
+      return result.data || { results: [], totalResults: 0 };
     },
     enabled: debouncedQuery.length >= 2 && isOpen,
     staleTime: 30000,

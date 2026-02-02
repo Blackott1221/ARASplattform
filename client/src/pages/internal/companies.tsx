@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useArasDebug, useArasDebugMount } from "@/hooks/useArasDebug";
+import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api";
 
 interface Company {
   id: string;
@@ -42,12 +43,9 @@ export default function InternalCompanies() {
       const url = searchQuery 
         ? `/api/internal/companies?search=${encodeURIComponent(searchQuery)}`
         : '/api/internal/companies';
-      const res = await fetch(url, { credentials: 'include' });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || `HTTP ${res.status}`);
-      }
-      return res.json() as Promise<Company[]>;
+      const result = await apiGet<Company[]>(url);
+      if (!result.ok) throw result.error;
+      return result.data || [];
     }
   });
 
@@ -62,17 +60,9 @@ export default function InternalCompanies() {
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof newCompany) => {
-      const res = await fetch('/api/internal/companies', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || `HTTP ${res.status}`);
-      }
-      return res.json();
+      const result = await apiPost('/api/internal/companies', data);
+      if (!result.ok) throw new Error(result.error?.message || 'Failed to create company');
+      return result.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/internal/companies'] });
@@ -96,17 +86,9 @@ export default function InternalCompanies() {
   // Edit mutation
   const editMutation = useMutation({
     mutationFn: async (data: { id: string; name: string; website?: string; industry?: string }) => {
-      const res = await fetch(`/api/internal/companies/${data.id}`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: data.name, website: data.website, industry: data.industry })
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || `HTTP ${res.status}`);
-      }
-      return res.json();
+      const result = await apiPatch(`/api/internal/companies/${data.id}`, { name: data.name, website: data.website, industry: data.industry });
+      if (!result.ok) throw new Error(result.error?.message || 'Failed to update company');
+      return result.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/internal/companies'] });
@@ -121,11 +103,8 @@ export default function InternalCompanies() {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/internal/companies/${id}`, { method: 'DELETE', credentials: 'include' });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || `HTTP ${res.status}`);
-      }
+      const result = await apiDelete(`/api/internal/companies/${id}`);
+      if (!result.ok) throw new Error(result.error?.message || 'Failed to delete company');
       return true;
     },
     onSuccess: () => {

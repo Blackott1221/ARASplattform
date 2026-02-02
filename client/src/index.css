@@ -35,6 +35,20 @@
   --destructive-foreground: hsl(0, 0%, 98%);
   --ring: hsl(20, 100%, 53%);
   --radius: 0.5rem;
+  
+  /* ARAS AI CI Tokens */
+  --aras-gold-light: #e9d7c4;
+  --aras-gold-dark: #a34e00;
+  --aras-orange: #FE9100;
+  --aras-bg: #0f0f0f;
+  --aras-text: rgba(245, 245, 247, 0.94);
+  --aras-muted: rgba(245, 245, 247, 0.72);
+  --aras-soft: rgba(245, 245, 247, 0.56);
+  --aras-stroke: rgba(233, 215, 196, 0.14);
+  --aras-stroke-accent: rgba(254, 145, 0, 0.24);
+  --aras-shadow: rgba(0, 0, 0, 0.55);
+  --aras-glass: rgba(15, 15, 15, 0.85);
+  --aras-glass-border: rgba(255, 255, 255, 0.08);
 }
 
 .dark {

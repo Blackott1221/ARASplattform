@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useArasDebug, useArasDebugMount } from "@/hooks/useArasDebug";
+import { apiGet, apiPost, apiPatch } from "@/lib/api";
 
 type TaskStatus = "OPEN" | "IN_PROGRESS" | "DONE" | "CANCELLED";
 
@@ -51,12 +52,9 @@ export default function InternalTasks() {
       const url = filter === 'ALL' 
         ? '/api/internal/tasks'
         : `/api/internal/tasks?status=${filter}`;
-      const res = await fetch(url, { credentials: 'include' });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || `HTTP ${res.status}`);
-      }
-      return res.json() as Promise<Task[]>;
+      const result = await apiGet<Task[]>(url);
+      if (!result.ok) throw result.error;
+      return result.data || [];
     }
   });
 
@@ -71,20 +69,12 @@ export default function InternalTasks() {
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof newTask) => {
-      const res = await fetch('/api/internal/tasks', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const result = await apiPost('/api/internal/tasks', {
           ...data,
           dueDate: data.dueDate || undefined
-        })
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || `HTTP ${res.status}`);
-      }
-      return res.json();
+        });
+      if (!result.ok) throw new Error(result.error?.message || 'Failed to create task');
+      return result.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/internal/tasks'] });
@@ -99,17 +89,9 @@ export default function InternalTasks() {
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: TaskStatus }) => {
-      const res = await fetch(`/api/internal/tasks/${id}`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || `HTTP ${res.status}`);
-      }
-      return res.json();
+      const result = await apiPatch(`/api/internal/tasks/${id}`, { status });
+      if (!result.ok) throw new Error(result.error?.message || 'Failed to update task');
+      return result.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/internal/tasks'] });

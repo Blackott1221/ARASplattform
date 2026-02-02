@@ -12,6 +12,7 @@ import InternalLayout from "@/components/internal/internal-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useArasDebug, useArasDebugMount } from "@/hooks/useArasDebug";
+import { apiGet } from "@/lib/api";
 
 type CallSentiment = "POSITIVE" | "NEUTRAL" | "NEGATIVE" | "MIXED";
 type CallSource = "RETELL" | "ELEVENLABS" | "TWILIO" | "OTHER";
@@ -56,12 +57,9 @@ export default function InternalCalls() {
       const url = hoursFilter 
         ? `/api/internal/calls?hours=${hoursFilter}`
         : '/api/internal/calls';
-      const res = await fetch(url, { credentials: 'include' });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || `HTTP ${res.status}`);
-      }
-      return res.json() as Promise<CallLog[]>;
+      const result = await apiGet<CallLog[]>(url);
+      if (!result.ok) throw result.error;
+      return result.data || [];
     }
   });
 

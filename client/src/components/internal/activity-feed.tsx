@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { apiGet } from '@/lib/api';
 
 interface ActivityItem {
   id: number;
@@ -56,11 +57,9 @@ export function ActivityFeed({ limit = 10, showHeader = true }: ActivityFeedProp
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['/api/admin/activity', limit],
     queryFn: async () => {
-      const res = await fetch(`/api/admin/activity?limit=${limit}`, { credentials: 'include' });
-      if (!res.ok) {
-        throw new Error('Failed to fetch activity');
-      }
-      return res.json() as Promise<{ data: ActivityItem[]; total: number }>;
+      const result = await apiGet<{ data: ActivityItem[]; total: number }>(`/api/admin/activity?limit=${limit}`);
+      if (!result.ok) throw result.error;
+      return result.data || { data: [], total: 0 };
     },
     refetchInterval: 30000, // Refresh every 30s
   });

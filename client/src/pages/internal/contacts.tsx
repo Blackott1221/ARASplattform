@@ -15,6 +15,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useArasDebug, useArasDebugMount } from "@/hooks/useArasDebug";
+import { apiGet, apiPost, ApiError } from "@/lib/api";
+import { AStatePanel } from "@/components/ui/aras-primitives";
+import { useLocation } from "wouter";
 
 interface Contact {
   id: string;
@@ -40,6 +43,8 @@ export default function InternalContacts() {
   const [aiError, setAiError] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
+  const showDebug = typeof window !== 'undefined' && localStorage.getItem('aras_debug') === '1';
 
   // Dev-only debug mount tracking
   useArasDebugMount('InternalContacts', '/internal/contacts');
@@ -50,12 +55,9 @@ export default function InternalContacts() {
       const url = searchQuery 
         ? `/api/internal/contacts?search=${encodeURIComponent(searchQuery)}`
         : '/api/internal/contacts';
-      const res = await fetch(url, { credentials: 'include' });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || `HTTP ${res.status}`);
-      }
-      return res.json() as Promise<Contact[]>;
+      const result = await apiGet<Contact[]>(url);
+      if (!result.ok) throw result.error;
+      return result.data || [];
     }
   });
 
@@ -71,17 +73,9 @@ export default function InternalContacts() {
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof newContact) => {
-      const res = await fetch('/api/internal/contacts', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || `HTTP ${res.status}`);
-      }
-      return res.json();
+      const result = await apiPost('/api/internal/contacts', data);
+      if (!result.ok) throw new Error(result.error?.message || 'Failed to create contact');
+      return result.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/internal/contacts'] });
@@ -107,18 +101,9 @@ export default function InternalContacts() {
     setAiError(null);
     setAiSummary(null);
     try {
-      const res = await fetch('/api/internal/ai/contact-summary', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contactId })
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || `HTTP ${res.status}`);
-      }
-      const data = await res.json();
-      setAiSummary(data.summary);
+      const result = await apiPost<{summary: AIInsightData}>('/api/internal/ai/contact-summary', { contactId });
+      if (!result.ok) throw new Error(result.error?.message || 'Failed to fetch summary');
+      setAiSummary(result.data?.summary || null);
     } catch (err: any) {
       setAiError(err.message);
     } finally {

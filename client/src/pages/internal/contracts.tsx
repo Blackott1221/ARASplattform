@@ -16,6 +16,7 @@ import {
   ArrowLeft, ExternalLink, Loader2
 } from 'lucide-react';
 import InternalLayout from '@/components/internal/internal-layout';
+import { apiGet, apiPost } from '@/lib/api';
 
 // Types
 interface Contract {
@@ -75,9 +76,9 @@ function ContractsList() {
   const { data: contracts = [], isLoading, error } = useQuery<Contract[]>({
     queryKey: ['internal-contracts'],
     queryFn: async () => {
-      const res = await fetch('/api/internal/contracts', { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch contracts');
-      return res.json();
+      const result = await apiGet<Contract[]>('/api/internal/contracts');
+      if (!result.ok) throw result.error;
+      return result.data || [];
     },
   });
 
@@ -183,29 +184,24 @@ function ContractDetail({ id }: { id: string }) {
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState('');
 
-  const { data: contract, isLoading } = useQuery<Contract>({
+  const { data: contract, isLoading } = useQuery({
     queryKey: ['internal-contract', id],
-    queryFn: async () => {
-      const res = await fetch(`/api/internal/contracts/${id}`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch contract');
-      return res.json();
+    queryFn: async (): Promise<Contract> => {
+      const result = await apiGet<Contract>(`/api/internal/contracts/${id}`);
+      if (!result.ok) throw result.error;
+      if (!result.data) throw new Error('Contract not found');
+      return result.data;
     },
   });
 
   const approveMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/internal/contracts/${id}/approve`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const result = await apiPost(`/api/internal/contracts/${id}/approve`, {
           typedSignature,
           confirm: confirmed,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Approval failed');
-      return data;
+        });
+      if (!result.ok) throw new Error(result.error?.message || 'Approval failed');
+      return result.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['internal-contract', id] });

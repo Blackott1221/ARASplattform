@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useArasDebug, useArasDebugMount } from "@/hooks/useArasDebug";
+import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api";
 
 type DealStage = "IDEA" | "CONTACTED" | "NEGOTIATION" | "COMMITTED" | "CLOSED_WON" | "CLOSED_LOST";
 
@@ -57,12 +58,9 @@ export default function InternalDeals() {
   const { data: deals, isLoading, error, status, refetch } = useQuery({
     queryKey: ['/api/internal/deals'],
     queryFn: async () => {
-      const res = await fetch('/api/internal/deals', { credentials: 'include' });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || `HTTP ${res.status}`);
-      }
-      return res.json() as Promise<Deal[]>;
+      const result = await apiGet<Deal[]>('/api/internal/deals');
+      if (!result.ok) throw result.error;
+      return result.data || [];
     }
   });
 
@@ -77,17 +75,9 @@ export default function InternalDeals() {
 
   const createMutation = useMutation({
     mutationFn: async (data: { title: string; value?: number; stage: DealStage }) => {
-      const res = await fetch('/api/internal/deals', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || `HTTP ${res.status}`);
-      }
-      return res.json();
+      const result = await apiPost('/api/internal/deals', data);
+      if (!result.ok) throw new Error(result.error?.message || 'Failed to create deal');
+      return result.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/internal/deals'] });
@@ -102,17 +92,9 @@ export default function InternalDeals() {
 
   const updateStageMutation = useMutation({
     mutationFn: async ({ id, stage }: { id: string; stage: DealStage }) => {
-      const res = await fetch(`/api/internal/deals/${id}`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stage })
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || `HTTP ${res.status}`);
-      }
-      return res.json();
+      const result = await apiPatch(`/api/internal/deals/${id}`, { stage });
+      if (!result.ok) throw new Error(result.error?.message || 'Failed to update deal');
+      return result.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/internal/deals'] });
@@ -157,18 +139,9 @@ export default function InternalDeals() {
     setAiError(null);
     setAiNextSteps(null);
     try {
-      const res = await fetch('/api/internal/ai/deal-next-steps', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dealId })
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || `HTTP ${res.status}`);
-      }
-      const data = await res.json();
-      setAiNextSteps(data.steps);
+      const result = await apiPost<{steps: any}>('/api/internal/ai/deal-next-steps', { dealId });
+      if (!result.ok) throw new Error(result.error?.message || 'Failed to fetch AI steps');
+      setAiNextSteps(result.data?.steps);
     } catch (err: any) {
       setAiError(err.message);
     } finally {
@@ -178,11 +151,8 @@ export default function InternalDeals() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/internal/deals/${id}`, { method: 'DELETE', credentials: 'include' });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
-        throw new Error(err.error || `HTTP ${res.status}`);
-      }
+      const result = await apiDelete(`/api/internal/deals/${id}`);
+      if (!result.ok) throw new Error(result.error?.message || 'Failed to delete deal');
       return true;
     },
     onSuccess: () => {
