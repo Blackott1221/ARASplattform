@@ -2803,15 +2803,6 @@ export default function PortalDashboard() {
     });
   }, []);
   
-  // STEP 30B: QA Panel debug mode (qa=1 param + CEO role)
-  const isQaDebugMode = useMemo(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const hasQaParam = urlParams.get('qa') === '1';
-    const isCeo = session?.role === 'CEO';
-    return hasQaParam && isCeo;
-  }, [session?.role]);
-  const [showQaPanel, setShowQaPanel] = useState(false);
-  
   // STEP 22B: CSRF error handler - redirect to login with message
   const handleCsrfError = useCallback(() => {
     setViewToast('Session-Fehler. Bitte neu einloggen.');
@@ -2977,6 +2968,15 @@ export default function PortalDashboard() {
   const hasPermission = useCallback((perm: PortalPermission): boolean => {
     return session?.permissions?.includes(perm) ?? false;
   }, [session?.permissions]);
+  
+  // STEP 30B: QA Panel debug mode (qa=1 param + CEO role)
+  const isQaDebugMode = useMemo(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasQaParam = urlParams.get('qa') === '1';
+    const isCeo = session?.role === 'CEO';
+    return hasQaParam && isCeo;
+  }, [session?.role]);
+  const [showQaPanel, setShowQaPanel] = useState(false);
   
   // STEP 14: Convenience flags for common permission checks
   const canWrite = hasPermission('calls.write');

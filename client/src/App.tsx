@@ -45,6 +45,14 @@ import InvestorSchwabPage from "@/pages/app/investor/schwab";
 // 🎯 INTERNAL CRM SYSTEM - Command Center (admin/staff only)
 import InternalDashboard from "@/pages/internal/dashboard";
 import InternalContacts from "@/pages/internal/contacts";
+import InternalCompanies from "@/pages/internal/companies";
+import InternalDeals from "@/pages/internal/deals";
+import InternalTasks from "@/pages/internal/tasks";
+import InternalCalls from "@/pages/internal/calls";
+import InternalSettings from "@/pages/internal/settings";
+import InternalContracts from "@/pages/internal/contracts";
+import AcceptInvite from "@/pages/admin/accept-invite";
+import AdminContracts from "@/pages/admin/contracts";
 
 // Memoized video background component - never re-renders to keep video playing continuously
 const VideoBackground = memo(() => {
@@ -208,10 +216,23 @@ function Router() {
           {/* 🎯 INTERNAL CRM ROUTES - Only for admin/staff */}
           <Route path="/internal/dashboard" component={InternalDashboard} />
           <Route path="/internal/contacts" component={InternalContacts} />
+          <Route path="/internal/companies" component={InternalCompanies} />
+          <Route path="/internal/deals" component={InternalDeals} />
+          <Route path="/internal/tasks" component={InternalTasks} />
+          <Route path="/internal/calls" component={InternalCalls} />
+          <Route path="/internal/settings" component={InternalSettings} />
+          <Route path="/internal/contracts/:id" component={InternalContracts} />
+          <Route path="/internal/contracts" component={InternalContracts} />
           <Route path="/internal" component={() => {
             window.location.href = '/internal/dashboard';
             return null;
           }} />
+          
+          {/* Staff Invitation Accept Page */}
+          <Route path="/admin/accept-invite" component={AcceptInvite} />
+          
+          {/* Admin Contract Manager */}
+          <Route path="/admin/contracts" component={AdminContracts} />
           
         </>
       )}

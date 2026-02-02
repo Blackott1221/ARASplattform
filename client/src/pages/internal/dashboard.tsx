@@ -11,14 +11,21 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { TrendingUp, Users, CheckSquare, Phone, Building2, DollarSign, Clock, Sparkles } from "lucide-react";
 import InternalLayout from "@/components/internal/internal-layout";
+import { OnboardingTour } from "@/components/internal/onboarding-tour";
+import { HintButton, HINT_CONTENT } from "@/components/internal/hint-button";
+import { ActivityFeed } from "@/components/internal/activity-feed";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useArasDebug, useArasDebugMount } from "@/hooks/useArasDebug";
 
 export default function InternalDashboard() {
   const [aiInsights, setAiInsights] = useState<string | null>(null);
   const [loadingAI, setLoadingAI] = useState(false);
 
+  // Dev-only debug mount tracking
+  useArasDebugMount('InternalDashboard', '/internal/dashboard');
+
   // Fetch Dashboard Stats
-  const { data: stats, isLoading } = useQuery({
+  const { data: stats, isLoading, error, status } = useQuery({
     queryKey: ['/api/internal/dashboard/stats'],
     queryFn: async () => {
       const res = await fetch('/api/internal/dashboard/stats');
@@ -26,6 +33,16 @@ export default function InternalDashboard() {
       return res.json();
     },
     refetchInterval: 30000 // Refresh every 30s
+  });
+
+  // Dev-only debug logging
+  useArasDebug({
+    route: '/internal/dashboard',
+    queryKey: '/api/internal/dashboard/stats',
+    status: status as any,
+    data: stats,
+    error,
+    componentName: 'InternalDashboard'
   });
 
   const kpiCards = [
@@ -79,11 +96,20 @@ export default function InternalDashboard() {
     <InternalLayout>
       <div className="space-y-8">
         {/* Hero Section */}
+        {/* Onboarding Tour */}
+        <OnboardingTour />
+
+        {/* Hero Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center py-8"
+          className="text-center py-8 relative"
         >
+          {/* Hint Button */}
+          <div className="absolute top-8 right-0">
+            <HintButton content={HINT_CONTENT.dashboard} />
+          </div>
+          
           <h1 className="text-4xl font-bold text-white mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
             ARAS COMMAND CENTER
           </h1>
@@ -91,6 +117,34 @@ export default function InternalDashboard() {
             Alles hier ist ARAS AI – Interne Steuerzentrale für Leads, Investoren, Projekte und Calls
           </p>
         </motion.div>
+
+        {/* Error State */}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <Card className="bg-red-500/10 border-red-500/30">
+              <CardContent className="p-6 flex items-center justify-between">
+                <div className="flex items-center gap-3 text-red-400">
+                  <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                    <span className="text-lg">⚠️</span>
+                  </div>
+                  <div>
+                    <p className="font-medium">Fehler beim Laden der Dashboard-Daten</p>
+                    <p className="text-sm text-red-400/70">{(error as Error).message}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-all"
+                >
+                  Neu laden
+                </button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
@@ -203,6 +257,15 @@ export default function InternalDashboard() {
               </p>
             </CardContent>
           </Card>
+        </motion.div>
+
+        {/* Activity Feed */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+        >
+          <ActivityFeed limit={10} />
         </motion.div>
       </div>
     </InternalLayout>

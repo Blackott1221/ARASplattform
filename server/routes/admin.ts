@@ -8,8 +8,12 @@ import {
 } from '../../shared/schema';
 import { eq, desc, gt, sql, count } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
+import contractsRouter from './admin/contracts';
 
 const router = Router();
+
+// Mount contract routes
+router.use('/contracts', contractsRouter);
 
 // 🔒 Admin Auth Middleware (you should verify admin rights here)
 function requireAdmin(req: Request, res: Response, next: any) {

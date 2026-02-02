@@ -110,4 +110,76 @@ router.post("/deal-next-steps", async (req, res) => {
   }
 });
 
+/**
+ * POST /api/internal/ai/voice
+ * Text-to-Speech via ElevenLabs (server-proxied)
+ * Returns audio stream - no API key exposed to client
+ */
+router.post("/voice", async (req, res) => {
+  try {
+    const { text, voice = "rachel" } = req.body;
+    
+    if (!text || typeof text !== "string") {
+      return res.status(400).json({ error: "text is required" });
+    }
+    
+    if (text.length > 2000) {
+      return res.status(400).json({ error: "Text too long (max 2000 chars)" });
+    }
+
+    const apiKey = process.env.ELEVENLABS_API_KEY;
+    if (!apiKey) {
+      return res.status(503).json({ error: "ARAS AI Voice temporarily unavailable" });
+    }
+
+    // Voice IDs from ElevenLabs
+    const voiceIds: Record<string, string> = {
+      rachel: "21m00Tcm4TlvDq8ikWAM",
+      domi: "AZnzlk1XvdvUeBnXmlld",
+      bella: "EXAVITQu4vr4xnSDxMaL",
+      antoni: "ErXwobaYiN019PkySvjV",
+      elli: "MF3mGyEYCl7XYWbV9V6O",
+      josh: "TxGEqnHWrfWFTfGW9XjX",
+    };
+
+    const voiceId = voiceIds[voice] || voiceIds.rachel;
+
+    const response = await fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+      {
+        method: "POST",
+        headers: {
+          "xi-api-key": apiKey,
+          "Content-Type": "application/json",
+          "Accept": "audio/mpeg",
+        },
+        body: JSON.stringify({
+          text,
+          model_id: "eleven_multilingual_v2",
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75,
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      console.error("[AI-VOICE] ElevenLabs error:", response.status);
+      return res.status(503).json({ error: "ARAS AI Voice temporarily unavailable" });
+    }
+
+    // Stream audio response
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.setHeader("Cache-Control", "no-cache");
+    
+    const buffer = await response.arrayBuffer();
+    res.send(Buffer.from(buffer));
+
+  } catch (error: any) {
+    console.error("[AI-VOICE] Error:", error.message);
+    res.status(500).json({ error: "ARAS AI Voice temporarily unavailable" });
+  }
+});
+
 export default router;

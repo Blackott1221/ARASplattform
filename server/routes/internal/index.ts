@@ -13,6 +13,8 @@ import { z } from "zod";
 import { nanoid } from "nanoid";
 import * as storage from "../../storage-internal-crm";
 import aiRoutes from "./ai";
+import searchRoutes from "./search";
+import contractsRoutes from "./contracts";
 
 const router = Router();
 
@@ -25,6 +27,16 @@ router.use(requireInternal);
 // AI ROUTES
 // ============================================================================
 router.use("/ai", aiRoutes);
+
+// ============================================================================
+// GLOBAL SEARCH
+// ============================================================================
+router.use("/search", searchRoutes);
+
+// ============================================================================
+// CONTRACTS
+// ============================================================================
+router.use("/contracts", contractsRoutes);
 
 // ============================================================================
 // COMPANIES

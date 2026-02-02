@@ -120,7 +120,7 @@ function MissionHero({ briefing, onStartMission, onRefresh, refreshing, stats }:
       })
     : '--:--';
   
-  const modeLabel = briefing?.mode === 'realtime' ? 'Realtime (Gemini)' : 'Cache';
+  const modeLabel = briefing?.mode === 'realtime' ? 'ARAS AI Live' : 'Cache';
   
   // Detect mobile + reduced motion preference
   const [isMobile, setIsMobile] = useState(false);
@@ -462,7 +462,7 @@ function ModeToggle({
         </button>
         {!geminiEnabled && (
           <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 rounded bg-black/90 text-[9px] text-white/70 whitespace-nowrap opacity-0 hover:opacity-100 pointer-events-none z-10">
-            Gemini nicht konfiguriert
+            ARAS AI Live nicht verfügbar
           </span>
         )}
       </div>
@@ -752,7 +752,7 @@ export function DailyBriefing({
         {/* Pending Mode Status */}
         {pendingMode !== (briefing.mode || 'cached') && !error && (
           <div className="mx-4 mt-3 px-3 py-2 rounded-lg text-[10px] text-white/50" style={{ background: 'rgba(255,255,255,0.03)' }}>
-            Nächste Aktualisierung: <span className="text-white/70 font-medium">{pendingMode === 'realtime' ? 'Realtime (Gemini)' : 'Cache'}</span>
+            Nächste Aktualisierung: <span className="text-white/70 font-medium">{pendingMode === 'realtime' ? 'ARAS AI Live' : 'Cache'}</span>
           </div>
         )}
 

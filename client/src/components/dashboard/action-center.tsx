@@ -227,7 +227,7 @@ function EmptyState({ hasCalls, onGenerate }: { hasCalls: boolean; onGenerate?: 
   );
 }
 
-function GeminiDisabledState() {
+function AIDisabledState() {
   return (
     <div className="text-center py-6">
       <div 
@@ -236,7 +236,7 @@ function GeminiDisabledState() {
       >
         <AlertCircle size={20} className="text-yellow-500" />
       </div>
-      <p className="text-xs text-yellow-500/80 mb-1">Gemini nicht verfügbar</p>
+      <p className="text-xs text-yellow-500/80 mb-1">ARAS AI nicht verfügbar</p>
       <p className="text-[10px] text-white/30">
         KI-Empfehlungen sind für diese Umgebung deaktiviert
       </p>
@@ -363,7 +363,7 @@ export function ActionCenter({ calls, isLoading, onOpenCall, onOpenContact, gemi
           
           <span className="text-[9px] text-white/30 flex items-center gap-1">
             <Sparkles size={10} />
-            {showCachedBadge ? 'Cached' : 'Gemini AI'}
+            {showCachedBadge ? 'Cached' : 'ARAS AI'}
           </span>
         </div>
         <p className="text-[10px] text-white/40 mt-1">
@@ -378,7 +378,7 @@ export function ActionCenter({ calls, isLoading, onOpenCall, onOpenContact, gemi
         ) : error ? (
           <ErrorState error={error} />
         ) : !geminiEnabled && topActions.length === 0 ? (
-          <GeminiDisabledState />
+          <AIDisabledState />
         ) : topActions.length === 0 ? (
           <EmptyState hasCalls={safeCalls.length > 0} />
         ) : (

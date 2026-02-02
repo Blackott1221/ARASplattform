@@ -9,7 +9,7 @@
 
 import { ReactNode } from "react";
 import { motion } from "framer-motion";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { 
   LayoutDashboard, 
   Users, 
@@ -19,30 +19,39 @@ import {
   Phone,
   Settings,
   LogOut,
-  Shield
+  Shield,
+  Command,
+  FileText
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { InternalCommandPalette } from "./command-palette-internal";
 
 interface InternalLayoutProps {
   children: ReactNode;
 }
 
+// Feature flags - can be server-delivered or build-time
+const INTERNAL_FEATURES = {
+  settingsEnabled: false, // Settings page is in development
+};
+
 const NAV_ITEMS = [
-  { path: "/internal/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/internal/contacts", label: "Contacts", icon: Users },
-  { path: "/internal/companies", label: "Companies", icon: Building2 },
-  { path: "/internal/deals", label: "Deals & Pipeline", icon: TrendingUp },
-  { path: "/internal/tasks", label: "Tasks", icon: CheckSquare },
-  { path: "/internal/calls", label: "Call Logs", icon: Phone },
-  { path: "/internal/settings", label: "Settings", icon: Settings },
+  { path: "/internal/dashboard", label: "Dashboard", icon: LayoutDashboard, enabled: true },
+  { path: "/internal/contacts", label: "Contacts", icon: Users, enabled: true },
+  { path: "/internal/companies", label: "Companies", icon: Building2, enabled: true },
+  { path: "/internal/deals", label: "Deals & Pipeline", icon: TrendingUp, enabled: true },
+  { path: "/internal/tasks", label: "Tasks", icon: CheckSquare, enabled: true },
+  { path: "/internal/calls", label: "Call Logs", icon: Phone, enabled: true },
+  { path: "/internal/contracts", label: "Contracts", icon: FileText, enabled: true },
+  { path: "/internal/settings", label: "Settings", icon: Settings, enabled: INTERNAL_FEATURES.settingsEnabled },
 ];
 
 export default function InternalLayout({ children }: InternalLayoutProps) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { user } = useAuth();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950">
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 relative z-20">
       {/* Sidebar */}
       <aside className="fixed left-0 top-0 h-screen w-64 bg-black/40 backdrop-blur-xl border-r border-orange-500/20 z-50">
         {/* Logo & Title */}
@@ -67,18 +76,26 @@ export default function InternalLayout({ children }: InternalLayoutProps) {
           {NAV_ITEMS.map((item, index) => {
             const Icon = item.icon;
             const isActive = location === item.path;
+            const isDisabled = !item.enabled;
             
             return (
-              <Link key={item.path} href={item.path}>
-                <motion.a
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
+              <motion.div
+                key={item.path}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className="relative group"
+              >
+                <button
+                  onClick={() => !isDisabled && setLocation(item.path)}
+                  disabled={isDisabled}
                   className={`
-                    flex items-center gap-3 px-4 py-3 rounded-lg transition-all cursor-pointer
-                    ${isActive 
-                      ? 'bg-gradient-to-r from-orange-500/20 to-orange-600/20 text-orange-400 border border-orange-500/30' 
-                      : 'text-gray-400 hover:text-orange-300 hover:bg-white/5'
+                    w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all
+                    ${isDisabled 
+                      ? 'opacity-50 cursor-not-allowed text-gray-500' 
+                      : isActive 
+                        ? 'bg-gradient-to-r from-orange-500/20 to-orange-600/20 text-orange-400 border border-orange-500/30 cursor-pointer' 
+                        : 'text-gray-400 hover:text-orange-300 hover:bg-white/5 border border-transparent cursor-pointer'
                     }
                   `}
                 >
@@ -86,8 +103,14 @@ export default function InternalLayout({ children }: InternalLayoutProps) {
                   <span className="font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
                     {item.label}
                   </span>
-                </motion.a>
-              </Link>
+                </button>
+                {/* Disabled tooltip */}
+                {isDisabled && (
+                  <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-black/90 text-[10px] text-gray-400 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                    Coming soon
+                  </div>
+                )}
+              </motion.div>
             );
           })}
         </nav>
@@ -126,8 +149,22 @@ export default function InternalLayout({ children }: InternalLayoutProps) {
             </div>
             
             <div className="flex items-center gap-4">
+              {/* Command Palette Trigger */}
+              <button
+                onClick={() => {
+                  // Trigger Cmd+K programmatically
+                  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, ctrlKey: true }));
+                }}
+                className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-all text-sm border border-white/10"
+                title="⌘K / Ctrl+K"
+              >
+                <Command className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Suche</span>
+                <kbd className="hidden sm:inline px-1.5 py-0.5 text-[9px] bg-white/5 rounded border border-white/10">K</kbd>
+              </button>
+              
               {/* Timezone */}
-              <div className="text-sm text-gray-400">
+              <div className="text-sm text-gray-400 hidden md:block">
                 {new Date().toLocaleString('de-DE', { 
                   timeZone: 'Europe/Berlin',
                   hour: '2-digit',
@@ -181,6 +218,9 @@ export default function InternalLayout({ children }: InternalLayoutProps) {
           className="absolute -bottom-1/2 -left-1/2 w-full h-full bg-gradient-to-tr from-orange-600/10 to-transparent rounded-full blur-3xl"
         />
       </div>
+
+      {/* Command Palette */}
+      <InternalCommandPalette />
     </div>
   );
 }

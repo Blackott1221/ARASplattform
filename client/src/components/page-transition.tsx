@@ -1,41 +1,47 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'wouter';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
 interface PageTransitionProps {
   children: React.ReactNode;
 }
 
+// Check for reduced motion preference
+const prefersReducedMotion = typeof window !== 'undefined' 
+  ? window.matchMedia('(prefers-reduced-motion: reduce)').matches 
+  : false;
+
 /**
  * HIGH-END Page Transition Component
- * Provides smooth, modern page transitions with fade + slide
+ * FIXED: Removed delay that caused "video-only" bug
+ * Now uses immediate location change with smooth animation
+ * Respects reduced motion preference
  */
 export function PageTransition({ children }: PageTransitionProps) {
   const [location] = useLocation();
-  const [displayLocation, setDisplayLocation] = useState(location);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-
-  useEffect(() => {
-    if (location !== displayLocation) {
-      setIsTransitioning(true);
-      const timer = setTimeout(() => {
-        setDisplayLocation(location);
-        setIsTransitioning(false);
-      }, 150); // Fast transition
-      return () => clearTimeout(timer);
-    }
-  }, [location, displayLocation]);
+  
+  // Animation variants - respects reduced motion
+  const variants = useMemo(() => ({
+    initial: prefersReducedMotion 
+      ? { opacity: 0 } 
+      : { opacity: 0, y: 8 },
+    animate: { opacity: 1, y: 0, x: 0 },
+    exit: prefersReducedMotion 
+      ? { opacity: 0 } 
+      : { opacity: 0, y: -8 }
+  }), []);
 
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence mode="wait" initial={false}>
       <motion.div
-        key={displayLocation}
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -20 }}
+        key={location}
+        variants={variants}
+        initial="initial"
+        animate="animate"
+        exit="exit"
         transition={{
-          duration: 0.3,
-          ease: [0.4, 0, 0.2, 1] // Custom easing for smooth feel
+          duration: prefersReducedMotion ? 0.15 : 0.2,
+          ease: [0.4, 0, 0.2, 1]
         }}
         className="h-full w-full"
       >
@@ -47,19 +53,20 @@ export function PageTransition({ children }: PageTransitionProps) {
 
 /**
  * Alternative: Fade-only transition (faster, cleaner)
+ * Respects reduced motion preference
  */
 export function PageFadeTransition({ children }: PageTransitionProps) {
   const [location] = useLocation();
 
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence mode="wait" initial={false}>
       <motion.div
         key={location}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{
-          duration: 0.2,
+          duration: prefersReducedMotion ? 0.1 : 0.15,
           ease: "easeInOut"
         }}
         className="h-full w-full"
@@ -72,19 +79,31 @@ export function PageFadeTransition({ children }: PageTransitionProps) {
 
 /**
  * Alternative: Slide from bottom (for modal-like pages)
+ * Respects reduced motion preference
  */
 export function PageSlideTransition({ children }: PageTransitionProps) {
   const [location] = useLocation();
 
+  const variants = useMemo(() => ({
+    initial: prefersReducedMotion 
+      ? { opacity: 0 } 
+      : { opacity: 0, y: 30, scale: 0.98 },
+    animate: { opacity: 1, y: 0, scale: 1 },
+    exit: prefersReducedMotion 
+      ? { opacity: 0 } 
+      : { opacity: 0, y: -20, scale: 0.98 }
+  }), []);
+
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence mode="wait" initial={false}>
       <motion.div
         key={location}
-        initial={{ opacity: 0, y: 50, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: -50, scale: 0.95 }}
+        variants={variants}
+        initial="initial"
+        animate="animate"
+        exit="exit"
         transition={{
-          duration: 0.3,
+          duration: prefersReducedMotion ? 0.15 : 0.25,
           ease: [0.4, 0, 0.2, 1]
         }}
         className="h-full w-full"
