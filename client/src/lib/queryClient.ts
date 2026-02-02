@@ -1,5 +1,23 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+/**
+ * CRITICAL: Force same-origin by stripping any absolute URL to just the path.
+ * This prevents CORS issues when browser is on plattform-aras.ai vs www.plattform-aras.ai
+ */
+function toSameOrigin(url: string): string {
+  // If already relative, return as-is
+  if (url.startsWith('/')) return url;
+  
+  // If absolute URL, extract just the path
+  try {
+    const parsed = new URL(url);
+    return parsed.pathname + parsed.search;
+  } catch {
+    // Not a valid URL, ensure it starts with /
+    return url.startsWith('/') ? url : `/${url}`;
+  }
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -16,7 +34,8 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(url, {
+  const safeUrl = toSameOrigin(url);
+  const res = await fetch(safeUrl, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
@@ -37,7 +56,8 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey[0] as string, {
+    const safeUrl = toSameOrigin(queryKey[0] as string);
+    const res = await fetch(safeUrl, {
       credentials: "include",
     });
 

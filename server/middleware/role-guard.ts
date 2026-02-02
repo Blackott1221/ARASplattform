@@ -38,10 +38,21 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
 }
 
 /**
+ * Normalize role to lowercase for consistent comparison
+ * Handles: ADMIN → admin, Staff → staff, CLIENT → client
+ */
+function normalizeRole(role: any): string {
+  return String(role || '').trim().toLowerCase();
+}
+
+/**
  * Middleware: Prüft ob User eine bestimmte Rolle hat
  * @param allowedRoles - Array von erlaubten Rollen (z.B. ['admin', 'staff'])
  */
 export function requireRole(allowedRoles: string[]) {
+  // Normalize allowed roles once at middleware creation
+  const allowedNormalized = allowedRoles.map(r => r.toLowerCase());
+  
   return async (req: Request, res: Response, next: NextFunction) => {
     // 1. Prüfe ob User eingeloggt ist
     const isAuth = req.isAuthenticated ? req.isAuthenticated() : false;
@@ -70,41 +81,43 @@ export function requireRole(allowedRoles: string[]) {
     // 2. Hole User-Objekt
     const user = req.user as any; // Use 'any' to access all DB fields
     
-    // 🔍 DEBUG: Log full user object
-    console.log('[RBAC-DEBUG] Full user object:', {
-      id: user.id,
+    // 3. Get role from multiple possible fields (camelCase, snake_case, role)
+    const rawRole = user.userRole || user.user_role || user.role;
+    const userRole = normalizeRole(rawRole);
+    
+    // 🔍 DEBUG: Log role resolution
+    console.log('[RBAC] Role check:', {
+      path: req.originalUrl,
       username: user.username,
-      userRole: user.userRole,
-      user_role: user.user_role, // Check if it's snake_case in DB
-      allKeys: Object.keys(user)
+      rawRole,
+      normalizedRole: userRole,
+      allowedRoles: allowedNormalized,
     });
     
-    // 3. Prüfe ob userRole vorhanden (check both camelCase and snake_case)
-    const userRole = user.userRole || user.user_role;
-    
     if (!userRole) {
-      console.warn(`[RBAC] User ${user.username} hat keine Rolle gesetzt - access denied`);
-      console.warn(`[RBAC] User object:`, user);
+      console.warn(`[RBAC] User ${user.username} hat keine Rolle - access denied`);
       return res.status(403).json({ 
         error: "Forbidden",
-        message: "Access denied - no role found" 
+        message: "Access denied - no role found",
+        debug: { rawRole, userKeys: Object.keys(user) }
       });
     }
 
-    // 4. Prüfe ob User eine erlaubte Rolle hat
-    if (!allowedRoles.includes(userRole)) {
+    // 4. Prüfe ob User eine erlaubte Rolle hat (case-insensitive)
+    if (!allowedNormalized.includes(userRole)) {
       console.warn(
-        `[RBAC] User ${user.username} (${userRole}) tried to access ${req.path} - denied`
+        `[RBAC] User ${user.username} (${userRole}) tried to access ${req.path} - denied (need: ${allowedNormalized.join('|')})`
       );
       return res.status(403).json({ 
         error: "Forbidden",
-        message: "Insufficient permissions" 
+        message: "Insufficient permissions",
+        debug: { userRole, allowed: allowedNormalized }
       });
     }
 
     // 5. User hat passende Rolle - erlaubt
     console.log(
-      `[RBAC] User ${user.username} (${userRole}) accessing ${req.path} - allowed`
+      `[RBAC] ✅ User ${user.username} (${userRole}) accessing ${req.path}`
     );
     next();
   };
