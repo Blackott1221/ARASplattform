@@ -835,3 +835,77 @@ export const staffActivityLog = pgTable("staff_activity_log", {
 
 export type StaffActivityLog = typeof staffActivityLog.$inferSelect;
 export type InsertStaffActivityLog = typeof staffActivityLog.$inferInsert;
+
+// ============================================================================
+// TEAM FEED - Real-time activity stream for team communication
+// ============================================================================
+
+export const teamFeed = pgTable("team_feed", {
+  id: serial("id").primaryKey(),
+  authorUserId: varchar("author_user_id").notNull().references(() => users.id),
+  type: varchar("type").notNull().default('note'), // 'note', 'update', 'announcement', 'system'
+  message: text("message").notNull(),
+  category: varchar("category"), // 'CRM', 'Contract', 'Deal', 'Task', etc.
+  targetType: varchar("target_type"), // 'contact', 'company', 'deal', 'contract'
+  targetId: varchar("target_id"),
+  targetName: varchar("target_name"),
+  metadata: jsonb("metadata").$type<Record<string, any>>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("team_feed_author_idx").on(table.authorUserId),
+  index("team_feed_created_idx").on(table.createdAt),
+  index("team_feed_type_idx").on(table.type),
+]);
+
+export type TeamFeed = typeof teamFeed.$inferSelect;
+export type InsertTeamFeed = typeof teamFeed.$inferInsert;
+
+// ============================================================================
+// TEAM CALENDAR - Shared calendar events for team
+// ============================================================================
+
+export const teamCalendar = pgTable("team_calendar", {
+  id: serial("id").primaryKey(),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  startsAt: timestamp("starts_at").notNull(),
+  endsAt: timestamp("ends_at"),
+  allDay: boolean("all_day").default(false),
+  location: varchar("location"),
+  color: varchar("color").default('#FE9100'),
+  createdByUserId: varchar("created_by_user_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("team_calendar_starts_idx").on(table.startsAt),
+  index("team_calendar_creator_idx").on(table.createdByUserId),
+]);
+
+export type TeamCalendar = typeof teamCalendar.$inferSelect;
+export type InsertTeamCalendar = typeof teamCalendar.$inferInsert;
+
+// ============================================================================
+// TEAM TODOS - Shared task list for team
+// ============================================================================
+
+export const teamTodos = pgTable("team_todos", {
+  id: serial("id").primaryKey(),
+  title: varchar("title").notNull(),
+  description: text("description"),
+  dueAt: timestamp("due_at"),
+  priority: varchar("priority").default('medium'), // 'low', 'medium', 'high', 'critical'
+  status: varchar("status").default('pending'), // 'pending', 'in_progress', 'done'
+  assignedToUserId: varchar("assigned_to_user_id").references(() => users.id),
+  createdByUserId: varchar("created_by_user_id").notNull().references(() => users.id),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("team_todos_status_idx").on(table.status),
+  index("team_todos_due_idx").on(table.dueAt),
+  index("team_todos_assigned_idx").on(table.assignedToUserId),
+  index("team_todos_creator_idx").on(table.createdByUserId),
+]);
+
+export type TeamTodo = typeof teamTodos.$inferSelect;
+export type InsertTeamTodo = typeof teamTodos.$inferInsert;

@@ -15,6 +15,7 @@ import * as storage from "../../storage-internal-crm";
 import aiRoutes from "./ai";
 import searchRoutes from "./search";
 import contractsRoutes from "./contracts";
+import commandCenterRoutes from "./command-center";
 
 const router = Router();
 
@@ -37,6 +38,11 @@ router.use("/search", searchRoutes);
 // CONTRACTS
 // ============================================================================
 router.use("/contracts", contractsRoutes);
+
+// ============================================================================
+// COMMAND CENTER (Team Feed, Calendar, Todos, Actions)
+// ============================================================================
+router.use("/command-center", commandCenterRoutes);
 
 // ============================================================================
 // COMPANIES

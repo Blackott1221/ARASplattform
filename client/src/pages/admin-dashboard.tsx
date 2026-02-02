@@ -6,8 +6,9 @@ import {
   Megaphone, Bug, TrendingUp, Search, Trash2, RefreshCw, 
   Shield, Clock, Key, CreditCard, RotateCcw, X, Check, Eye,
   Zap, Crown, Star, Sparkles, Mail, Building2, AlertCircle, Wifi, Loader2,
-  UserCog, History, ShieldCheck, ChevronDown
+  UserCog, History, ShieldCheck, ChevronDown, LayoutGrid
 } from "lucide-react";
+import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
 // ═══════════════════════════════════════════════════════════════
@@ -105,6 +106,7 @@ export default function AdminDashboard() {
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
 
   // ═══════════════════════════════════════════════════════════════
   // MODAL HANDLERS - Explicit and debuggable
@@ -407,6 +409,29 @@ export default function AdminDashboard() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {/* Open CRM Button - Premium Pill */}
+          <button 
+            onClick={() => navigate('/internal/dashboard')}
+            className="group flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 hover:scale-[1.02]"
+            style={{
+              background: 'linear-gradient(135deg, rgba(254,145,0,0.15), rgba(163,78,0,0.15))',
+              border: '1px solid rgba(254,145,0,0.3)',
+              color: '#FE9100',
+              fontFamily: 'Orbitron, sans-serif',
+              boxShadow: '0 0 0 0 rgba(254,145,0,0)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.boxShadow = '0 0 20px rgba(254,145,0,0.3)';
+              e.currentTarget.style.borderColor = 'rgba(254,145,0,0.6)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.boxShadow = '0 0 0 0 rgba(254,145,0,0)';
+              e.currentTarget.style.borderColor = 'rgba(254,145,0,0.3)';
+            }}
+          >
+            <LayoutGrid className="w-4 h-4" />
+            <span>Open CRM</span>
+          </button>
           <div className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-sm">
             {onlineData?.onlineUserIds?.length || 0} online
           </div>
