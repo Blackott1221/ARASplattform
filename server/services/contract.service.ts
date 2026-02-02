@@ -52,9 +52,22 @@ interface ContractRegistry {
 // ============================================================================
 
 // Storage paths - configurable via env
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const DATA_DIR = process.env.CONTRACT_DATA_DIR || path.join(process.cwd(), 'data');
 const CONTRACTS_DIR = path.join(DATA_DIR, 'contracts');
 const REGISTRY_FILE = path.join(DATA_DIR, 'contracts-registry.json');
+const REGISTRY_BACKUP = path.join(DATA_DIR, 'contracts-registry.json.bak');
+
+// Storage status for admin warnings
+export interface StorageStatus {
+  isConfigured: boolean;
+  isPersistent: boolean;
+  dataDir: string;
+  contractCount: number;
+  warning?: string;
+}
+
+let storageWarningLogged = false;
 
 // Ensure directories exist on module load
 function ensureDirectories(): void {
@@ -67,9 +80,35 @@ function ensureDirectories(): void {
       fs.mkdirSync(CONTRACTS_DIR, { recursive: true });
       logger.info(`[CONTRACT] Created contracts directory: ${CONTRACTS_DIR}`);
     }
+    
+    // Production warning: if CONTRACT_DATA_DIR not set, storage may not persist
+    if (IS_PRODUCTION && !process.env.CONTRACT_DATA_DIR && !storageWarningLogged) {
+      logger.warn(`[CONTRACT] ⚠️ CONTRACT_DATA_DIR not set in production!`);
+      logger.warn(`[CONTRACT] Contracts stored in ${DATA_DIR} may not persist after redeploy.`);
+      logger.warn(`[CONTRACT] Set CONTRACT_DATA_DIR to a persistent volume (e.g., /var/data/aras).`);
+      storageWarningLogged = true;
+    }
   } catch (error: any) {
     logger.error(`[CONTRACT] Failed to create directories: ${error.message}`);
   }
+}
+
+/**
+ * Get storage status for admin UI warnings
+ */
+export function getStorageStatus(): StorageStatus {
+  const registry = readRegistry();
+  const isPersistent = IS_PRODUCTION ? !!process.env.CONTRACT_DATA_DIR : true;
+  
+  return {
+    isConfigured: true,
+    isPersistent,
+    dataDir: DATA_DIR,
+    contractCount: registry.contracts.length,
+    warning: !isPersistent && IS_PRODUCTION 
+      ? 'Contracts storage is not persistent. Set CONTRACT_DATA_DIR to a mounted volume.'
+      : undefined,
+  };
 }
 
 // Initialize directories
@@ -88,12 +127,37 @@ function readRegistry(): ContractRegistry {
     return JSON.parse(data);
   } catch (error: any) {
     logger.error(`[CONTRACT] Failed to read registry: ${error.message}`);
+    
+    // Try backup file if main registry is corrupted
+    if (fs.existsSync(REGISTRY_BACKUP)) {
+      try {
+        logger.warn(`[CONTRACT] Attempting to restore from backup...`);
+        const backupData = fs.readFileSync(REGISTRY_BACKUP, 'utf-8');
+        const backup = JSON.parse(backupData);
+        // Restore main registry from backup
+        fs.writeFileSync(REGISTRY_FILE, backupData, 'utf-8');
+        logger.info(`[CONTRACT] Registry restored from backup successfully`);
+        return backup;
+      } catch (backupError: any) {
+        logger.error(`[CONTRACT] Backup restore also failed: ${backupError.message}`);
+      }
+    }
+    
     return { version: 1, contracts: [] };
   }
 }
 
 function writeRegistry(registry: ContractRegistry): boolean {
   try {
+    // Create backup of current registry before writing
+    if (fs.existsSync(REGISTRY_FILE)) {
+      try {
+        fs.copyFileSync(REGISTRY_FILE, REGISTRY_BACKUP);
+      } catch (backupErr) {
+        logger.warn(`[CONTRACT] Failed to create backup: ${backupErr}`);
+      }
+    }
+    
     // Atomic write: write to temp file, then rename
     const tempFile = `${REGISTRY_FILE}.tmp`;
     fs.writeFileSync(tempFile, JSON.stringify(registry, null, 2), 'utf-8');

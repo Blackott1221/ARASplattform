@@ -75,7 +75,7 @@ function ContractsList() {
   const { data: contracts = [], isLoading, error } = useQuery<Contract[]>({
     queryKey: ['internal-contracts'],
     queryFn: async () => {
-      const res = await fetch('/api/internal/contracts');
+      const res = await fetch('/api/internal/contracts', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch contracts');
       return res.json();
     },
@@ -186,7 +186,7 @@ function ContractDetail({ id }: { id: string }) {
   const { data: contract, isLoading } = useQuery<Contract>({
     queryKey: ['internal-contract', id],
     queryFn: async () => {
-      const res = await fetch(`/api/internal/contracts/${id}`);
+      const res = await fetch(`/api/internal/contracts/${id}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch contract');
       return res.json();
     },
@@ -196,6 +196,7 @@ function ContractDetail({ id }: { id: string }) {
     mutationFn: async () => {
       const res = await fetch(`/api/internal/contracts/${id}/approve`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           typedSignature,

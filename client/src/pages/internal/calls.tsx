@@ -56,7 +56,7 @@ export default function InternalCalls() {
       const url = hoursFilter 
         ? `/api/internal/calls?hours=${hoursFilter}`
         : '/api/internal/calls';
-      const res = await fetch(url);
+      const res = await fetch(url, { credentials: 'include' });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Unknown error' }));
         throw new Error(err.error || `HTTP ${res.status}`);

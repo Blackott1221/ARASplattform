@@ -50,7 +50,7 @@ export default function InternalContacts() {
       const url = searchQuery 
         ? `/api/internal/contacts?search=${encodeURIComponent(searchQuery)}`
         : '/api/internal/contacts';
-      const res = await fetch(url);
+      const res = await fetch(url, { credentials: 'include' });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Unknown error' }));
         throw new Error(err.error || `HTTP ${res.status}`);
@@ -73,6 +73,7 @@ export default function InternalContacts() {
     mutationFn: async (data: typeof newContact) => {
       const res = await fetch('/api/internal/contacts', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
@@ -108,6 +109,7 @@ export default function InternalContacts() {
     try {
       const res = await fetch('/api/internal/ai/contact-summary', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contactId })
       });

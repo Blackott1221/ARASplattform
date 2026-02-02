@@ -51,7 +51,7 @@ export default function InternalTasks() {
       const url = filter === 'ALL' 
         ? '/api/internal/tasks'
         : `/api/internal/tasks?status=${filter}`;
-      const res = await fetch(url);
+      const res = await fetch(url, { credentials: 'include' });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Unknown error' }));
         throw new Error(err.error || `HTTP ${res.status}`);
@@ -73,6 +73,7 @@ export default function InternalTasks() {
     mutationFn: async (data: typeof newTask) => {
       const res = await fetch('/api/internal/tasks', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...data,
@@ -100,6 +101,7 @@ export default function InternalTasks() {
     mutationFn: async ({ id, status }: { id: string; status: TaskStatus }) => {
       const res = await fetch(`/api/internal/tasks/${id}`, {
         method: 'PATCH',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
       });

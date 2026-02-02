@@ -42,7 +42,7 @@ export default function InternalCompanies() {
       const url = searchQuery 
         ? `/api/internal/companies?search=${encodeURIComponent(searchQuery)}`
         : '/api/internal/companies';
-      const res = await fetch(url);
+      const res = await fetch(url, { credentials: 'include' });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Unknown error' }));
         throw new Error(err.error || `HTTP ${res.status}`);
@@ -64,6 +64,7 @@ export default function InternalCompanies() {
     mutationFn: async (data: typeof newCompany) => {
       const res = await fetch('/api/internal/companies', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
@@ -97,6 +98,7 @@ export default function InternalCompanies() {
     mutationFn: async (data: { id: string; name: string; website?: string; industry?: string }) => {
       const res = await fetch(`/api/internal/companies/${data.id}`, {
         method: 'PATCH',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: data.name, website: data.website, industry: data.industry })
       });
@@ -119,7 +121,7 @@ export default function InternalCompanies() {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/internal/companies/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/internal/companies/${id}`, { method: 'DELETE', credentials: 'include' });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Unknown error' }));
         throw new Error(err.error || `HTTP ${res.status}`);

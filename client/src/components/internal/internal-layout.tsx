@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { InternalCommandPalette } from "./command-palette-internal";
+import { DebugOverlay } from "./debug-overlay";
 
 interface InternalLayoutProps {
   children: ReactNode;
@@ -221,6 +222,9 @@ export default function InternalLayout({ children }: InternalLayoutProps) {
 
       {/* Command Palette */}
       <InternalCommandPalette />
+      
+      {/* Debug Overlay - only visible when localStorage.aras_debug = "1" */}
+      <DebugOverlay />
     </div>
   );
 }

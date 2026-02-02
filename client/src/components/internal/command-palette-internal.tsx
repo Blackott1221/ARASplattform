@@ -167,7 +167,7 @@ export function InternalCommandPalette({
     queryKey: ['internal-search', debouncedQuery],
     queryFn: async () => {
       if (debouncedQuery.length < 2) return { results: [], totalResults: 0 };
-      const res = await fetch(`/api/internal/search?q=${encodeURIComponent(debouncedQuery)}&limit=5`);
+      const res = await fetch(`/api/internal/search?q=${encodeURIComponent(debouncedQuery)}&limit=5`, { credentials: 'include' });
       if (!res.ok) throw new Error('Search failed');
       return res.json();
     },

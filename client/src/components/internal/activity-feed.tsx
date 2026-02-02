@@ -56,7 +56,7 @@ export function ActivityFeed({ limit = 10, showHeader = true }: ActivityFeedProp
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['/api/admin/activity', limit],
     queryFn: async () => {
-      const res = await fetch(`/api/admin/activity?limit=${limit}`);
+      const res = await fetch(`/api/admin/activity?limit=${limit}`, { credentials: 'include' });
       if (!res.ok) {
         throw new Error('Failed to fetch activity');
       }

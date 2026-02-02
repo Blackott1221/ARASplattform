@@ -84,7 +84,7 @@ export default function AdminContractsPage() {
   const { data: contracts = [], isLoading, error } = useQuery<Contract[]>({
     queryKey: ['admin-contracts'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/contracts');
+      const res = await fetch('/api/admin/contracts', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch contracts');
       return res.json();
     },
@@ -93,7 +93,7 @@ export default function AdminContractsPage() {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/admin/contracts/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/contracts/${id}`, { method: 'DELETE', credentials: 'include' });
       if (!res.ok) throw new Error('Failed to delete');
       return res.json();
     },
@@ -274,7 +274,7 @@ function UploadModal({ onClose }: { onClose: () => void }) {
   const { data: staffUsers = [] } = useQuery<StaffUser[]>({
     queryKey: ['admin-staff-users'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/contracts/users/staff');
+      const res = await fetch('/api/admin/contracts/users/staff', { credentials: 'include' });
       if (!res.ok) return [];
       return res.json();
     },
@@ -313,6 +313,7 @@ function UploadModal({ onClose }: { onClose: () => void }) {
 
       const res = await fetch('/api/admin/contracts', {
         method: 'POST',
+        credentials: 'include',
         body: formData,
       });
 

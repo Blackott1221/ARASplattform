@@ -38,6 +38,20 @@ const upload = multer({
 });
 
 // ============================================================================
+// ADMIN: GET STORAGE STATUS (for warning banners)
+// ============================================================================
+
+router.get('/storage-status', requireAdmin, async (req, res) => {
+  try {
+    const status = contractService.getStorageStatus();
+    res.json(status);
+  } catch (error: any) {
+    logger.error('[ADMIN-CONTRACTS] Error getting storage status:', error.message);
+    res.status(500).json({ error: 'Failed to get storage status' });
+  }
+});
+
+// ============================================================================
 // ADMIN: GET ALL CONTRACTS
 // ============================================================================
 

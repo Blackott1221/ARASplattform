@@ -28,7 +28,7 @@ export default function InternalDashboard() {
   const { data: stats, isLoading, error, status } = useQuery({
     queryKey: ['/api/internal/dashboard/stats'],
     queryFn: async () => {
-      const res = await fetch('/api/internal/dashboard/stats');
+      const res = await fetch('/api/internal/dashboard/stats', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch stats');
       return res.json();
     },
@@ -237,7 +237,7 @@ export default function InternalDashboard() {
                   onClick={async () => {
                     setLoadingAI(true);
                     try {
-                      const res = await fetch('/api/internal/ai/weekly-summary', { method: 'POST' });
+                      const res = await fetch('/api/internal/ai/weekly-summary', { method: 'POST', credentials: 'include' });
                       const data = await res.json();
                       setAiInsights(data.summary || 'Keine Insights verfügbar');
                     } catch (error) {

@@ -57,7 +57,7 @@ export default function InternalDeals() {
   const { data: deals, isLoading, error, status, refetch } = useQuery({
     queryKey: ['/api/internal/deals'],
     queryFn: async () => {
-      const res = await fetch('/api/internal/deals');
+      const res = await fetch('/api/internal/deals', { credentials: 'include' });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Unknown error' }));
         throw new Error(err.error || `HTTP ${res.status}`);
@@ -79,6 +79,7 @@ export default function InternalDeals() {
     mutationFn: async (data: { title: string; value?: number; stage: DealStage }) => {
       const res = await fetch('/api/internal/deals', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
@@ -103,6 +104,7 @@ export default function InternalDeals() {
     mutationFn: async ({ id, stage }: { id: string; stage: DealStage }) => {
       const res = await fetch(`/api/internal/deals/${id}`, {
         method: 'PATCH',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stage })
       });
@@ -157,6 +159,7 @@ export default function InternalDeals() {
     try {
       const res = await fetch('/api/internal/ai/deal-next-steps', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dealId })
       });
@@ -175,7 +178,7 @@ export default function InternalDeals() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/internal/deals/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/internal/deals/${id}`, { method: 'DELETE', credentials: 'include' });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Unknown error' }));
         throw new Error(err.error || `HTTP ${res.status}`);
