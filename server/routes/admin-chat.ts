@@ -36,7 +36,14 @@ router.get("/chat/channels", requireStaffOrAdmin, async (req: any, res) => {
         updatedAt: teamChatChannels.updatedAt,
       })
       .from(teamChatChannels)
-      .orderBy(teamChatChannels.name);
+      .orderBy(teamChatChannels.name)
+      .catch((dbErr: any) => {
+        if (dbErr.code === '42703' || dbErr.message?.includes('does not exist')) {
+          logger.warn('[CHAT] Schema mismatch - run: npx tsx scripts/run-chat-migration.ts');
+          return [];
+        }
+        throw dbErr;
+      });
 
     // Get message counts for each channel
     const channelsWithCounts = await Promise.all(
@@ -79,6 +86,12 @@ router.get("/chat/channels", requireStaffOrAdmin, async (req: any, res) => {
     res.json({ data: channelsWithCounts });
   } catch (error: any) {
     logger.error("[CHAT] Error fetching channels:", error);
+    if (error.code === '42703' || error.code === '42P01' || error.message?.includes('does not exist')) {
+      return res.status(503).json({ 
+        error: 'Chat tables need migration. Run: npx tsx scripts/run-chat-migration.ts',
+        code: 'MIGRATION_REQUIRED'
+      });
+    }
     res.status(500).json({ error: "Failed to fetch channels" });
   }
 });
@@ -416,6 +429,13 @@ router.post("/chat/channels", requireAdmin, async (req: any, res) => {
     res.status(201).json({ data: channel });
   } catch (error: any) {
     logger.error("[CHAT] Error creating channel:", error);
+    if (error.code === '42703' || error.code === '42P01' || error.message?.includes('does not exist')) {
+      return res.status(503).json({ 
+        error: 'Chat tables need migration. Run: npx tsx scripts/run-chat-migration.ts',
+        code: 'MIGRATION_REQUIRED',
+        details: error.message
+      });
+    }
     res.status(500).json({ error: "Failed to create channel" });
   }
 });
@@ -488,8 +508,12 @@ export async function seedDefaultChannel() {
       });
       logger.info("[CHAT-SEED] Created General channel");
     }
-  } catch (error) {
-    logger.error("[CHAT-SEED] Error seeding General channel:", error);
+  } catch (error: any) {
+    if (error.code === '42703' || error.code === '42P01' || error.message?.includes('does not exist')) {
+      logger.warn("[CHAT-SEED] Chat tables need migration. Run: npx tsx scripts/run-chat-migration.ts");
+    } else {
+      logger.error("[CHAT-SEED] Error seeding General channel:", error);
+    }
   }
 }
 
