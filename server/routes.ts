@@ -174,6 +174,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 🔧 Setup Admin API Routes
   const adminRoutes = await import('./routes/admin');
   app.use('/api/admin', adminRoutes.default);
+  
+  // 🔧 Setup Admin Users Routes (role management, deep-dive, audit)
+  const adminUsersRoutes = await import('./routes/admin-users');
+  app.use('/api/admin', adminUsersRoutes.default);
 
   // Debug route to check auth status
   app.get('/api/auth/status', (req: any, res) => {
