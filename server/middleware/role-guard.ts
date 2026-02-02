@@ -44,10 +44,26 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
 export function requireRole(allowedRoles: string[]) {
   return async (req: Request, res: Response, next: NextFunction) => {
     // 1. Prüfe ob User eingeloggt ist
-    if (!req.isAuthenticated || !req.isAuthenticated()) {
+    const isAuth = req.isAuthenticated ? req.isAuthenticated() : false;
+    
+    if (!isAuth) {
+      console.warn('[RBAC] 401 Unauthorized:', {
+        path: req.originalUrl,
+        isAuthenticatedFn: typeof req.isAuthenticated,
+        isAuthenticatedResult: isAuth,
+        hasSession: !!req.session,
+        sessionKeys: req.session ? Object.keys(req.session) : [],
+        hasUser: !!req.user,
+        cookiePresent: !!req.headers.cookie,
+      });
       return res.status(401).json({ 
         error: "Unauthorized",
-        message: "Authentication required" 
+        message: "Authentication required",
+        debug: {
+          hasSession: !!req.session,
+          hasPassport: !!(req.session as any)?.passport,
+          hasUser: !!req.user,
+        }
       });
     }
 

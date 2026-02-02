@@ -357,13 +357,18 @@ async function seedSubscriptionPlans() {
   app.post('/api/admin/delete-old-plans', deleteOldPlansHandler);
   
   // ============================================================================
+  // CRITICAL: registerRoutes MUST run FIRST (sets up passport session)
+  // Internal routes MUST be mounted AFTER so req.isAuthenticated() works
+  // ============================================================================
+  const server = await registerRoutes(app);
+  
+  // ============================================================================
   // 🎯 ARAS COMMAND CENTER - INTERNAL CRM ROUTES
   // ============================================================================
+  // MUST be AFTER registerRoutes (passport session must be initialized first)
   const internalRoutes = await import('./routes/internal/index');
   app.use('/api/internal', internalRoutes.default);
-  log('✅ ARAS Command Center routes registered at /api/internal/*');
-  
-  const server = await registerRoutes(app);
+  log('✅ ARAS Command Center routes registered at /api/internal/* (after passport init)');
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
