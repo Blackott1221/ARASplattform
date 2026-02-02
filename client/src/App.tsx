@@ -51,6 +51,7 @@ import InternalTasks from "@/pages/internal/tasks";
 import InternalCalls from "@/pages/internal/calls";
 import InternalSettings from "@/pages/internal/settings";
 import InternalContracts from "@/pages/internal/contracts";
+import InternalChat from "@/pages/internal/chat";
 import AcceptInvite from "@/pages/admin/accept-invite";
 import AdminContracts from "@/pages/admin/contracts";
 
@@ -220,6 +221,7 @@ function Router() {
           <Route path="/internal/deals" component={InternalDeals} />
           <Route path="/internal/tasks" component={InternalTasks} />
           <Route path="/internal/calls" component={InternalCalls} />
+          <Route path="/internal/chat" component={InternalChat} />
           <Route path="/internal/settings" component={InternalSettings} />
           <Route path="/internal/contracts/:id" component={InternalContracts} />
           <Route path="/internal/contracts" component={InternalContracts} />

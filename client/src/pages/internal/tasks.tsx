@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useArasDebug, useArasDebugMount } from "@/hooks/useArasDebug";
 import { apiGet, apiPost, apiPatch } from "@/lib/api";
+import { useHighlightEntity } from "@/hooks/useHighlightEntity";
 
 type TaskStatus = "OPEN" | "IN_PROGRESS" | "DONE" | "CANCELLED";
 
@@ -43,6 +44,7 @@ export default function InternalTasks() {
   const [newTask, setNewTask] = useState({ title: "", description: "", dueDate: "" });
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { getHighlightClass, registerRef } = useHighlightEntity();
 
   useArasDebugMount('InternalTasks', '/internal/tasks');
 
@@ -248,11 +250,12 @@ export default function InternalTasks() {
               return (
                 <motion.div
                   key={task.id}
+                  ref={(el) => registerRef(task.id, el)}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.03 }}
                 >
-                  <Card className={`bg-white/5 border-white/10 hover:bg-white/10 transition-all ${overdue ? 'border-red-500/30' : ''}`}>
+                  <Card className={`bg-white/5 border-white/10 hover:bg-white/10 transition-all ${overdue ? 'border-red-500/30' : ''} ${getHighlightClass(task.id)}`}>
                     <CardContent className="p-4 flex items-center gap-4">
                       {/* Status Toggle */}
                       <button

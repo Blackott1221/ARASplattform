@@ -16,7 +16,18 @@ import {
   User, Building2, TrendingUp
 } from "lucide-react";
 import InternalLayout from "@/components/internal/internal-layout";
+import { ArasDrawer } from "@/components/internal/aras-drawer";
+import {
+  FeedItemDrawerContent,
+  CalendarEventDrawerContent,
+  TodoDrawerContent,
+  UserProfileDrawerContent,
+  ContractDrawerContent,
+  ActionItemDrawerContent,
+} from "@/components/internal/drawer-contents";
+import { AIIntelligencePanel } from "@/components/internal/ai-intelligence-panel";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
 import { formatDistanceToNow, format, isToday, isTomorrow, addDays, startOfDay } from "date-fns";
 import { de } from "date-fns/locale";
 
@@ -196,12 +207,48 @@ function PriorityBadge({ priority }: { priority: string }) {
 // MAIN DASHBOARD COMPONENT
 // ============================================================================
 
+// Drawer types
+type DrawerType = 'feed' | 'calendar' | 'todo' | 'user' | 'contract' | 'action' | null;
+
 export default function InternalDashboard() {
   const [feedMessage, setFeedMessage] = useState("");
   const [showAddTodo, setShowAddTodo] = useState(false);
   const [newTodoTitle, setNewTodoTitle] = useState("");
+  
+  // Drawer state
+  const [drawerType, setDrawerType] = useState<DrawerType>(null);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
+
+  // Open drawer handler
+  const openDrawer = useCallback((type: DrawerType, item: any) => {
+    setDrawerType(type);
+    setSelectedItem(item);
+  }, []);
+
+  // Close drawer handler
+  const closeDrawer = useCallback(() => {
+    setDrawerType(null);
+    setSelectedItem(null);
+  }, []);
+
+  // Navigate to CRM page
+  const navigateToCRM = useCallback((entityType: string, entityId: string) => {
+    const routes: Record<string, string> = {
+      contact: '/internal/contacts',
+      company: '/internal/companies',
+      deal: '/internal/deals',
+      task: '/internal/tasks',
+      call: '/internal/calls',
+      contract: '/internal/contracts',
+    };
+    const route = routes[entityType] || '/internal/dashboard';
+    navigate(`${route}?selected=${entityId}`);
+    closeDrawer();
+  }, [navigate, closeDrawer]);
 
   // ============================================================================
   // DATA FETCHING
@@ -448,7 +495,11 @@ export default function InternalDashboard() {
                 <EmptyState icon={MessageSquare} message="No activity yet — post the first update" />
               ) : (
                 feedItems.map((item) => (
-                  <div key={item.id} className="flex gap-3 group">
+                  <button
+                    key={item.id}
+                    onClick={() => openDrawer('feed', item)}
+                    className="flex gap-3 group w-full text-left p-2 -mx-2 rounded-lg transition-colors hover:bg-white/[0.03]"
+                  >
                     <div 
                       className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-semibold"
                       style={{ background: 'linear-gradient(135deg, #FE9100, #a34e00)', color: 'white' }}
@@ -476,12 +527,79 @@ export default function InternalDashboard() {
                         </p>
                       )}
                     </div>
-                  </div>
+                    <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-50 transition-opacity" style={{ color: 'rgba(255,255,255,0.5)' }} />
+                  </button>
                 ))
               )}
             </div>
           </GlassCard>
         </motion.div>
+
+        {/* AI INTELLIGENCE + FEED ROW */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* AI Intelligence Panel - 1 column on desktop */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08 }}
+            className="lg:col-span-1"
+          >
+            <AIIntelligencePanel
+              onNavigate={(entityType, entityId) => navigateToCRM(entityType, entityId)}
+              onActionClick={(action) => {
+                if (action.entityType && action.entityId) {
+                  navigateToCRM(action.entityType, action.entityId);
+                }
+              }}
+            />
+          </motion.div>
+
+          {/* Quick Stats Cards - 2 columns on desktop */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.09 }}
+            className="lg:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-3"
+          >
+            {/* Stats Cards */}
+            <div 
+              className="p-4 rounded-xl text-center"
+              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(233,215,196,0.08)' }}
+            >
+              <p className="text-2xl font-bold" style={{ fontFamily: 'Orbitron, sans-serif', color: '#FE9100' }}>
+                {feedItems.length}
+              </p>
+              <p className="text-[10px] uppercase mt-1" style={{ color: 'rgba(255,255,255,0.4)' }}>Updates</p>
+            </div>
+            <div 
+              className="p-4 rounded-xl text-center"
+              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(233,215,196,0.08)' }}
+            >
+              <p className="text-2xl font-bold" style={{ fontFamily: 'Orbitron, sans-serif', color: '#FE9100' }}>
+                {todos.filter(t => t.status !== 'done').length}
+              </p>
+              <p className="text-[10px] uppercase mt-1" style={{ color: 'rgba(255,255,255,0.4)' }}>Open Tasks</p>
+            </div>
+            <div 
+              className="p-4 rounded-xl text-center"
+              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(233,215,196,0.08)' }}
+            >
+              <p className="text-2xl font-bold" style={{ fontFamily: 'Orbitron, sans-serif', color: '#FE9100' }}>
+                {calendarEvents.length}
+              </p>
+              <p className="text-[10px] uppercase mt-1" style={{ color: 'rgba(255,255,255,0.4)' }}>Events</p>
+            </div>
+            <div 
+              className="p-4 rounded-xl text-center"
+              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(233,215,196,0.08)' }}
+            >
+              <p className="text-2xl font-bold" style={{ fontFamily: 'Orbitron, sans-serif', color: pendingContracts.length > 0 ? '#EAB308' : '#FE9100' }}>
+                {pendingContracts.length}
+              </p>
+              <p className="text-[10px] uppercase mt-1" style={{ color: 'rgba(255,255,255,0.4)' }}>Pending</p>
+            </div>
+          </motion.div>
+        </div>
 
         {/* GRID - Responsive 2-3 columns */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -530,9 +648,10 @@ export default function InternalDashboard() {
                   <EmptyState icon={Calendar} message="No upcoming events" />
                 ) : (
                   calendarEvents.slice(0, 5).map((event) => (
-                    <div 
-                      key={event.id} 
-                      className="flex items-center gap-3 p-2 rounded-lg"
+                    <button
+                      key={event.id}
+                      onClick={() => openDrawer('calendar', event)}
+                      className="flex items-center gap-3 p-2 rounded-lg w-full text-left transition-colors hover:bg-white/[0.04]"
                       style={{ background: 'rgba(255,255,255,0.02)' }}
                     >
                       <div 
@@ -547,7 +666,8 @@ export default function InternalDashboard() {
                           {formatRelativeDate(event.startsAt)}
                         </p>
                       </div>
-                    </div>
+                      <ChevronRight className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.3)' }} />
+                    </button>
                   ))
                 )}
               </div>
@@ -575,9 +695,10 @@ export default function InternalDashboard() {
                   <EmptyState icon={Users} message="No team members found" />
                 ) : (
                   activeUsers.slice(0, 8).map((user) => (
-                    <div 
-                      key={user.id} 
-                      className="flex items-center gap-3 p-2 rounded-lg"
+                    <button
+                      key={user.id}
+                      onClick={() => openDrawer('user', user)}
+                      className="flex items-center gap-3 p-2 rounded-lg w-full text-left transition-colors hover:bg-white/[0.04]"
                       style={{ background: 'rgba(255,255,255,0.02)' }}
                     >
                       <div 
@@ -595,7 +716,7 @@ export default function InternalDashboard() {
                         </p>
                       </div>
                       <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                    </div>
+                    </button>
                   ))
                 )}
               </div>
@@ -653,11 +774,14 @@ export default function InternalDashboard() {
                   todos.slice(0, 6).map((todo) => (
                     <div 
                       key={todo.id} 
-                      className="flex items-center gap-3 p-2 rounded-lg group"
+                      className="flex items-center gap-3 p-2 rounded-lg group transition-colors hover:bg-white/[0.04]"
                       style={{ background: 'rgba(255,255,255,0.02)' }}
                     >
                       <button
-                        onClick={() => toggleTodoMutation.mutate({ id: todo.id, done: todo.status !== 'done' })}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleTodoMutation.mutate({ id: todo.id, done: todo.status !== 'done' });
+                        }}
                         className="w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition-colors"
                         style={{ 
                           borderColor: todo.status === 'done' ? '#10B981' : 'rgba(255,255,255,0.2)',
@@ -666,7 +790,10 @@ export default function InternalDashboard() {
                       >
                         {todo.status === 'done' && <Check className="w-3 h-3 text-white" />}
                       </button>
-                      <div className="flex-1 min-w-0">
+                      <button
+                        onClick={() => openDrawer('todo', todo)}
+                        className="flex-1 min-w-0 text-left"
+                      >
                         <p 
                           className="text-sm truncate"
                           style={{ 
@@ -681,7 +808,7 @@ export default function InternalDashboard() {
                             {formatRelativeDate(todo.dueAt)}
                           </p>
                         )}
-                      </div>
+                      </button>
                       <PriorityBadge priority={todo.priority} />
                     </div>
                   ))
@@ -706,9 +833,10 @@ export default function InternalDashboard() {
                   <EmptyState icon={FileText} message="No pending approvals" />
                 ) : (
                   pendingContracts.slice(0, 5).map((contract: any) => (
-                    <div 
-                      key={contract.id} 
-                      className="flex items-center gap-3 p-2 rounded-lg"
+                    <button
+                      key={contract.id}
+                      onClick={() => openDrawer('contract', contract)}
+                      className="flex items-center gap-3 p-2 rounded-lg w-full text-left transition-colors hover:bg-white/[0.04]"
                       style={{ background: 'rgba(255,255,255,0.02)' }}
                     >
                       <div 
@@ -731,7 +859,7 @@ export default function InternalDashboard() {
                       >
                         Pending
                       </span>
-                    </div>
+                    </button>
                   ))
                 )}
               </div>
@@ -757,9 +885,10 @@ export default function InternalDashboard() {
                   </div>
                 ) : (
                   actions.slice(0, 6).map((action) => (
-                    <div 
-                      key={`${action.type}-${action.id}`} 
-                      className="flex items-center gap-3 p-3 rounded-lg transition-colors hover:bg-white/[0.02]"
+                    <button
+                      key={`${action.type}-${action.id}`}
+                      onClick={() => openDrawer('action', action)}
+                      className="flex items-center gap-3 p-3 rounded-lg transition-colors hover:bg-white/[0.04] w-full text-left"
                       style={{ background: 'rgba(255,255,255,0.02)' }}
                     >
                       <div 
@@ -784,7 +913,7 @@ export default function InternalDashboard() {
                         </div>
                       </div>
                       <ChevronRight className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.3)' }} />
-                    </div>
+                    </button>
                   ))
                 )}
               </div>
@@ -804,6 +933,112 @@ export default function InternalDashboard() {
           </p>
         </motion.div>
       </div>
+
+      {/* DRAWER */}
+      <ArasDrawer
+        isOpen={drawerType !== null}
+        onClose={closeDrawer}
+        title={
+          drawerType === 'feed' ? 'Activity Details' :
+          drawerType === 'calendar' ? selectedItem?.title || 'Event Details' :
+          drawerType === 'todo' ? selectedItem?.title || 'Task Details' :
+          drawerType === 'user' ? selectedItem?.username || 'Team Member' :
+          drawerType === 'contract' ? selectedItem?.title || 'Contract Details' :
+          drawerType === 'action' ? 'Action Required' :
+          'Details'
+        }
+        subtitle={
+          drawerType === 'feed' ? selectedItem?.authorUsername :
+          drawerType === 'calendar' ? selectedItem?.startsAt ? format(new Date(selectedItem.startsAt), 'dd.MM.yyyy') : undefined :
+          drawerType === 'user' ? selectedItem?.userRole :
+          undefined
+        }
+        onOpenInCRM={
+          drawerType === 'feed' && selectedItem?.targetType && selectedItem?.targetId
+            ? () => navigateToCRM(selectedItem.targetType, selectedItem.targetId)
+            : drawerType === 'contract' && selectedItem?.id
+            ? () => navigateToCRM('contract', selectedItem.id)
+            : undefined
+        }
+      >
+        {drawerType === 'feed' && selectedItem && (
+          <FeedItemDrawerContent
+            item={selectedItem}
+            onOpenInCRM={(type, id) => navigateToCRM(type, id)}
+            onViewProfile={(userId) => {
+              const user = activeUsers.find(u => u.id === userId);
+              if (user) openDrawer('user', user);
+            }}
+          />
+        )}
+        {drawerType === 'calendar' && selectedItem && (
+          <CalendarEventDrawerContent
+            event={selectedItem}
+            onCreateTask={() => {
+              setShowAddTodo(true);
+              setNewTodoTitle(selectedItem.title);
+              closeDrawer();
+            }}
+          />
+        )}
+        {drawerType === 'todo' && selectedItem && (
+          <TodoDrawerContent
+            todo={selectedItem}
+            onToggleStatus={(done) => {
+              toggleTodoMutation.mutate({ id: selectedItem.id, done });
+              closeDrawer();
+            }}
+          />
+        )}
+        {drawerType === 'user' && selectedItem && (
+          <UserProfileDrawerContent
+            user={selectedItem}
+            onSendMessage={() => {
+              toast({ title: 'Opening chat...' });
+              navigate('/internal/chat');
+              closeDrawer();
+            }}
+            onAssignTask={() => {
+              setShowAddTodo(true);
+              closeDrawer();
+            }}
+          />
+        )}
+        {drawerType === 'contract' && selectedItem && (
+          <ContractDrawerContent
+            contract={selectedItem}
+            isAdmin={true}
+            onApprove={() => {
+              toast({ title: '✓ Contract approved' });
+              queryClient.invalidateQueries({ queryKey: ['command-center-contracts'] });
+              closeDrawer();
+            }}
+            onReject={(reason) => {
+              toast({ title: `Contract rejected: ${reason}` });
+              queryClient.invalidateQueries({ queryKey: ['command-center-contracts'] });
+              closeDrawer();
+            }}
+            onViewPDF={() => navigate(`/internal/contracts/${selectedItem.id}`)}
+          />
+        )}
+        {drawerType === 'action' && selectedItem && (
+          <ActionItemDrawerContent
+            action={selectedItem}
+            onExecute={() => {
+              if (selectedItem.type === 'todo') {
+                navigate('/internal/tasks');
+              } else if (selectedItem.type === 'event') {
+                // Could navigate to calendar if exists
+              }
+              closeDrawer();
+            }}
+            onSnooze={(duration) => {
+              toast({ title: `Snoozed for ${duration}` });
+              closeDrawer();
+            }}
+          />
+        )}
+      </ArasDrawer>
     </InternalLayout>
   );
 }

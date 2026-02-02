@@ -18,6 +18,7 @@ import { useArasDebug, useArasDebugMount } from "@/hooks/useArasDebug";
 import { apiGet, apiPost, ApiError } from "@/lib/api";
 import { AStatePanel } from "@/components/ui/aras-primitives";
 import { useLocation } from "wouter";
+import { useHighlightEntity } from "@/hooks/useHighlightEntity";
 
 interface Contact {
   id: string;
@@ -45,6 +46,7 @@ export default function InternalContacts() {
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
   const showDebug = typeof window !== 'undefined' && localStorage.getItem('aras_debug') === '1';
+  const { isHighlighted, getHighlightClass, registerRef } = useHighlightEntity();
 
   // Dev-only debug mount tracking
   useArasDebugMount('InternalContacts', '/internal/contacts');
@@ -244,12 +246,13 @@ export default function InternalContacts() {
             contacts?.map((contact: any, index: number) => (
               <motion.div
                 key={contact.id}
+                ref={(el) => registerRef(contact.id, el)}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
               >
                 <Card 
-                  className="bg-white/5 border-white/10 hover:bg-white/10 transition-all cursor-pointer rounded-2xl group"
+                  className={`bg-white/5 border-white/10 hover:bg-white/10 transition-all cursor-pointer rounded-2xl group ${getHighlightClass(contact.id)}`}
                   onClick={() => setSelectedContact(contact)}
                 >
                   <CardContent className="p-6">

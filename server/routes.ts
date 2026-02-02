@@ -20,6 +20,7 @@ import chatRouter from "./chat";
 import dashboardRouter from "./routes/dashboard";
 import callLogsRouter from "./routes/call-logs";
 import aiRecommendationsRouter from "./routes/ai-recommendations";
+import teamChatRouter from "./routes/admin-chat";
 import { requireAdmin } from "./middleware/admin";
 import { getKnowledgeDigest } from "./knowledge/context-builder";
 import { checkCallLimit, checkMessageLimit } from "./middleware/usage-limits";
@@ -2331,6 +2332,7 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   app.use("/api/dashboard", dashboardRouter);
   app.use("/api/call-logs", callLogsRouter);
   app.use("/api/ai", aiRecommendationsRouter);
+  app.use("/api/team", teamChatRouter);
 
   // RETELL AI VOICE CALLS
   app.post('/api/voice/retell/call', requireAuth, checkCallLimit, async (req: any, res) => {

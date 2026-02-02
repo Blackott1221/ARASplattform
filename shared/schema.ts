@@ -909,3 +909,57 @@ export const teamTodos = pgTable("team_todos", {
 
 export type TeamTodo = typeof teamTodos.$inferSelect;
 export type InsertTeamTodo = typeof teamTodos.$inferInsert;
+
+// ============================================================================
+// TEAM CHAT - Internal messaging system for staff/admin
+// ============================================================================
+
+export const teamChatChannels = pgTable("team_chat_channels", {
+  id: varchar("id").primaryKey().notNull().$defaultFn(() => `channel_${Math.random().toString(36).slice(2, 11)}`),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  type: varchar("type").default('public'), // 'public', 'private', 'dm'
+  createdByUserId: varchar("created_by_user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  index("team_chat_channels_type_idx").on(table.type),
+  index("team_chat_channels_created_idx").on(table.createdAt),
+]);
+
+export type TeamChatChannel = typeof teamChatChannels.$inferSelect;
+export type InsertTeamChatChannel = typeof teamChatChannels.$inferInsert;
+
+export const teamChatMessages = pgTable("team_chat_messages", {
+  id: serial("id").primaryKey(),
+  channelId: varchar("channel_id").references(() => teamChatChannels.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  content: text("content").notNull(),
+  replyToId: integer("reply_to_id"),
+  attachments: jsonb("attachments").$type<Array<{ name: string; url: string; type: string }>>(),
+  editedAt: timestamp("edited_at"),
+  deletedAt: timestamp("deleted_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("team_chat_messages_channel_idx").on(table.channelId),
+  index("team_chat_messages_user_idx").on(table.userId),
+  index("team_chat_messages_created_idx").on(table.createdAt),
+]);
+
+export type TeamChatMessage = typeof teamChatMessages.$inferSelect;
+export type InsertTeamChatMessage = typeof teamChatMessages.$inferInsert;
+
+export const teamChatChannelMembers = pgTable("team_chat_channel_members", {
+  id: serial("id").primaryKey(),
+  channelId: varchar("channel_id").references(() => teamChatChannels.id).notNull(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  role: varchar("role").default('member'), // 'owner', 'admin', 'member'
+  lastReadAt: timestamp("last_read_at"),
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+}, (table) => [
+  index("team_chat_members_channel_idx").on(table.channelId),
+  index("team_chat_members_user_idx").on(table.userId),
+]);
+
+export type TeamChatChannelMember = typeof teamChatChannelMembers.$inferSelect;
+export type InsertTeamChatChannelMember = typeof teamChatChannelMembers.$inferInsert;

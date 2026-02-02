@@ -17,6 +17,7 @@ import { z } from 'zod';
 import { db } from '../../db';
 import { 
   teamFeed, teamCalendar, teamTodos, users,
+  internalDeals, internalTasks, internalCallLogs, internalContacts,
   InsertTeamFeed, InsertTeamCalendar, InsertTeamTodo
 } from '../../../shared/schema';
 import { eq, desc, and, gte, lte, or, ne, sql, isNull } from 'drizzle-orm';
@@ -424,6 +425,291 @@ router.get('/action-center', requireInternal, async (req: any, res) => {
   } catch (error: any) {
     logger.error('[COMMAND-CENTER] Error fetching action center:', error.message);
     res.status(500).json({ error: 'Failed to fetch action center' });
+  }
+});
+
+// ============================================================================
+// AI INTELLIGENCE - Computed insights from CRM data
+// ============================================================================
+
+router.get('/ai-intelligence', async (req: any, res) => {
+  try {
+    const range = (req.query.range as string) || '24h';
+    
+    // Calculate date ranges
+    const now = new Date();
+    let startDate: Date;
+    
+    switch (range) {
+      case 'today':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        break;
+      case '7d':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '24h':
+      default:
+        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    }
+
+    // Gather data for insights
+    const [
+      recentDeals,
+      recentTasks,
+      recentCalls,
+      pendingContracts,
+      recentContacts,
+      recentFeed,
+    ] = await Promise.all([
+      // Deals with stage info
+      db.select()
+        .from(internalDeals)
+        .where(gte(internalDeals.updatedAt, startDate))
+        .orderBy(desc(internalDeals.updatedAt))
+        .limit(50),
+      
+      // Tasks
+      db.select()
+        .from(internalTasks)
+        .where(gte(internalTasks.updatedAt, startDate))
+        .orderBy(desc(internalTasks.updatedAt))
+        .limit(50),
+      
+      // Call logs
+      db.select()
+        .from(internalCallLogs)
+        .where(gte(internalCallLogs.createdAt, startDate))
+        .orderBy(desc(internalCallLogs.createdAt))
+        .limit(50),
+      
+      // Pending contracts - use file-based service
+      Promise.resolve(
+        contractService.getAllContracts()
+          .filter(c => c.status === 'pending_approval')
+          .slice(0, 20)
+      ),
+      
+      // New contacts
+      db.select()
+        .from(internalContacts)
+        .where(gte(internalContacts.createdAt, startDate))
+        .limit(30),
+      
+      // Recent feed activity
+      db.select()
+        .from(teamFeed)
+        .where(gte(teamFeed.createdAt, startDate))
+        .orderBy(desc(teamFeed.createdAt))
+        .limit(30),
+    ]);
+
+    // Compute insights
+    const highlights: Array<{
+      id: string;
+      title: string;
+      severity: 'info' | 'warning' | 'success';
+      tag: string;
+      entityType?: string;
+      entityId?: string;
+      text: string;
+    }> = [];
+
+    const risks: Array<{
+      id: string;
+      title: string;
+      severity: 'low' | 'medium' | 'high';
+      entityType?: string;
+      entityId?: string;
+      text: string;
+    }> = [];
+
+    const actions: Array<{
+      id: string;
+      title: string;
+      dueAt?: string;
+      entityType?: string;
+      entityId?: string;
+      ctaLabel: string;
+    }> = [];
+
+    // === HIGHLIGHTS ===
+    
+    // New contacts
+    if (recentContacts.length > 0) {
+      highlights.push({
+        id: 'new-contacts',
+        title: `${recentContacts.length} neue Kontakte`,
+        severity: 'success',
+        tag: 'CRM',
+        text: `${recentContacts.length} neue Kontakte wurden in den letzten ${range === 'today' ? 'heute' : range === '7d' ? '7 Tagen' : '24 Stunden'} erstellt.`,
+      });
+    }
+
+    // Deals won
+    const dealsWon = recentDeals.filter(d => d.stage === 'CLOSED_WON');
+    if (dealsWon.length > 0) {
+      const totalValue = dealsWon.reduce((sum, d) => sum + (d.value || 0), 0);
+      highlights.push({
+        id: 'deals-won',
+        title: `${dealsWon.length} Deal${dealsWon.length > 1 ? 's' : ''} gewonnen`,
+        severity: 'success',
+        tag: 'Sales',
+        text: `Gewonnene Deals mit einem Gesamtwert von €${(totalValue / 100).toLocaleString('de-DE')}.`,
+      });
+    }
+
+    // Tasks completed
+    const tasksCompleted = recentTasks.filter(t => t.status === 'DONE');
+    if (tasksCompleted.length > 0) {
+      highlights.push({
+        id: 'tasks-completed',
+        title: `${tasksCompleted.length} Tasks erledigt`,
+        severity: 'success',
+        tag: 'Productivity',
+        text: `Das Team hat ${tasksCompleted.length} Aufgaben abgeschlossen.`,
+      });
+    }
+
+    // Calls made
+    if (recentCalls.length > 0) {
+      const positiveCalls = recentCalls.filter(c => c.sentiment === 'POSITIVE');
+      highlights.push({
+        id: 'calls-summary',
+        title: `${recentCalls.length} Anrufe`,
+        severity: 'info',
+        tag: 'Calls',
+        text: `${recentCalls.length} Anrufe durchgeführt, davon ${positiveCalls.length} mit positivem Ergebnis.`,
+      });
+    }
+
+    // === RISKS ===
+
+    // Overdue tasks
+    const overdueTasks = recentTasks.filter(t => 
+      t.status !== 'DONE' && 
+      t.status !== 'CANCELLED' && 
+      t.dueDate && 
+      new Date(t.dueDate) < now
+    );
+    if (overdueTasks.length > 0) {
+      risks.push({
+        id: 'overdue-tasks',
+        title: `${overdueTasks.length} überfällige Tasks`,
+        severity: overdueTasks.length > 5 ? 'high' : overdueTasks.length > 2 ? 'medium' : 'low',
+        text: `${overdueTasks.length} Aufgaben sind überfällig und benötigen Aufmerksamkeit.`,
+      });
+    }
+
+    // Pending contracts
+    if (pendingContracts.length > 0) {
+      risks.push({
+        id: 'pending-contracts',
+        title: `${pendingContracts.length} Verträge warten auf Freigabe`,
+        severity: pendingContracts.length > 3 ? 'high' : 'medium',
+        text: `${pendingContracts.length} Vertrag${pendingContracts.length > 1 ? 'e' : ''} benötigt Genehmigung.`,
+      });
+    }
+
+    // Stuck deals (in same stage for too long)
+    const stuckDeals = recentDeals.filter(d => {
+      if (d.stage === 'CLOSED_WON' || d.stage === 'CLOSED_LOST') return false;
+      const daysSinceUpdate = (now.getTime() - new Date(d.updatedAt).getTime()) / (1000 * 60 * 60 * 24);
+      return daysSinceUpdate > 7;
+    });
+    if (stuckDeals.length > 0) {
+      risks.push({
+        id: 'stuck-deals',
+        title: `${stuckDeals.length} stagnierende Deals`,
+        severity: stuckDeals.length > 3 ? 'high' : 'medium',
+        entityType: 'deal',
+        entityId: stuckDeals[0]?.id,
+        text: `${stuckDeals.length} Deal${stuckDeals.length > 1 ? 's' : ''} hatte seit über 7 Tagen keine Aktivität.`,
+      });
+    }
+
+    // Negative call outcomes
+    const negativeCalls = recentCalls.filter(c => c.sentiment === 'NEGATIVE');
+    if (negativeCalls.length > 2) {
+      risks.push({
+        id: 'negative-calls',
+        title: `${negativeCalls.length} negative Anrufe`,
+        severity: 'medium',
+        text: `${negativeCalls.length} Anrufe mit negativem Ergebnis - Gesprächsstrategie prüfen.`,
+      });
+    }
+
+    // === ACTIONS ===
+
+    // Oldest overdue task
+    if (overdueTasks.length > 0) {
+      const oldestOverdue = overdueTasks.sort((a, b) => 
+        new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime()
+      )[0];
+      actions.push({
+        id: 'action-overdue-task',
+        title: oldestOverdue.title,
+        dueAt: oldestOverdue.dueDate?.toISOString(),
+        entityType: 'task',
+        entityId: oldestOverdue.id,
+        ctaLabel: 'Task öffnen',
+      });
+    }
+
+    // Pending contract to approve
+    if (pendingContracts.length > 0) {
+      const oldestContract = pendingContracts[0];
+      actions.push({
+        id: 'action-approve-contract',
+        title: `Vertrag freigeben: ${(oldestContract as any).title || 'Unbenannt'}`,
+        entityType: 'contract',
+        entityId: (oldestContract as any).id,
+        ctaLabel: 'Freigeben',
+      });
+    }
+
+    // Deal needing follow-up
+    if (stuckDeals.length > 0) {
+      const priorityDeal = stuckDeals.sort((a, b) => (b.value || 0) - (a.value || 0))[0];
+      actions.push({
+        id: 'action-followup-deal',
+        title: `Follow-up: ${priorityDeal.title}`,
+        entityType: 'deal',
+        entityId: priorityDeal.id,
+        ctaLabel: 'Deal öffnen',
+      });
+    }
+
+    // Open tasks to complete
+    const openTasks = recentTasks.filter(t => t.status === 'OPEN').slice(0, 2);
+    for (const task of openTasks) {
+      actions.push({
+        id: `action-task-${task.id}`,
+        title: task.title,
+        dueAt: task.dueDate?.toISOString(),
+        entityType: 'task',
+        entityId: task.id,
+        ctaLabel: 'Erledigen',
+      });
+    }
+
+    res.json({
+      range,
+      generatedAt: now.toISOString(),
+      stats: {
+        deals: recentDeals.length,
+        tasks: recentTasks.length,
+        calls: recentCalls.length,
+        contacts: recentContacts.length,
+        feedItems: recentFeed.length,
+      },
+      highlights: highlights.slice(0, 5),
+      risks: risks.slice(0, 5),
+      actions: actions.slice(0, 5),
+    });
+
+  } catch (error: any) {
+    console.error('[AI-INTELLIGENCE] Error:', error);
+    res.status(500).json({ error: 'Failed to generate insights' });
   }
 });
 
