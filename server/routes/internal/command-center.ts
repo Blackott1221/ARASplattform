@@ -36,32 +36,35 @@ router.get('/team-feed', requireInternal, async (req: any, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
     
-    // Use raw SQL with COALESCE for schema compatibility
+    // Use EXACT DB schema columns:
+    // id, actor_user_id, actor_name, author_user_id, author_name, action_type, entity_type, entity_id, title, body, message, type, meta, created_at
     const items = await db.execute(sql`
       SELECT 
         tf.id,
-        COALESCE(tf.author_user_id, tf.actor_user_id) as "authorUserId",
-        u.username as "authorUsername",
+        tf.actor_user_id as "actorUserId",
+        tf.actor_name as "actorName",
+        tf.author_user_id as "authorUserId",
+        COALESCE(tf.author_name, u.username) as "authorUsername",
+        tf.action_type as "actionType",
+        tf.entity_type as "entityType",
+        tf.entity_id as "entityId",
+        tf.title,
+        tf.body,
+        tf.message,
         tf.type,
-        COALESCE(tf.message, tf.content) as message,
-        tf.category,
-        COALESCE(tf.target_type, tf.entity_type) as "targetType",
-        COALESCE(tf.target_id, tf.entity_id) as "targetId",
-        tf.target_name as "targetName",
-        tf.metadata,
+        tf.meta,
         tf.created_at as "createdAt"
       FROM team_feed tf
-      LEFT JOIN users u ON COALESCE(tf.author_user_id, tf.actor_user_id) = u.id
+      LEFT JOIN users u ON tf.author_user_id = u.id
       ORDER BY tf.created_at DESC
       LIMIT ${limit}
     `);
     
-    res.json({ items: items.rows || items, total: (items.rows || items).length });
+    res.json({ items: (items as any) || [], total: ((items as any) || []).length });
   } catch (error: any) {
     logger.error('[COMMAND-CENTER] Error fetching team feed:', error.message);
-    // Return empty array instead of 500 when table/column doesn't exist
     if (error.message?.includes('does not exist') || error.code === '42P01' || error.code === '42703') {
-      return res.json({ items: [], total: 0, _warning: 'Run migration: npx tsx scripts/run-full-migration.ts' });
+      return res.json({ items: [], total: 0, _warning: 'Schema error - check DB columns' });
     }
     res.status(500).json({ error: 'Failed to fetch team feed' });
   }
@@ -70,41 +73,107 @@ router.get('/team-feed', requireInternal, async (req: any, res) => {
 router.post('/team-feed', requireInternal, async (req: any, res) => {
   try {
     const userId = req.user?.id || req.session?.userId;
+    const username = req.user?.username || req.session?.username || 'Unknown';
     if (!userId) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
+    // Validate input - matches actual DB schema
     const schema = z.object({
-      message: z.string().min(1).max(2000),
-      type: z.enum(['note', 'update', 'announcement']).default('note'),
-      category: z.string().optional(),
-      targetType: z.string().optional(),
-      targetId: z.string().optional(),
-      targetName: z.string().optional(),
+      message: z.string().min(1).max(2000).optional(),
+      body: z.string().optional(),
+      title: z.string().min(1).max(500).optional(),
+      type: z.enum(['post', 'note', 'update', 'announcement', 'system']).default('post'),
+      action_type: z.string().default('post'),
+      entity_type: z.string().optional(),
+      entity_id: z.string().optional(),
+      meta: z.record(z.any()).optional(),
     });
 
     const data = schema.parse(req.body);
     
-    // Use raw SQL for compatibility - write to author_user_id
+    // Build payload matching EXACT DB schema:
+    // actor_user_id, actor_name, author_user_id, author_name, action_type, entity_type, entity_id, title, body, message, type, meta, created_at
+    const payload = {
+      actor_user_id: userId,
+      actor_name: username,
+      author_user_id: userId,
+      author_name: username,
+      action_type: data.action_type || 'post',
+      entity_type: data.entity_type || null,
+      entity_id: data.entity_id || null,
+      title: data.title || data.message?.substring(0, 100) || 'Update',
+      body: data.body || data.message || null,
+      message: data.message || data.body || null,
+      type: data.type || 'post',
+      meta: JSON.stringify(data.meta || {}),
+    };
+
+    // Debug logging
+    console.log('[TEAM-FEED] INSERT payload:', JSON.stringify(payload, null, 2));
+
+    // Execute INSERT with EXPLICIT column list matching DB schema
     const result = await db.execute(sql`
-      INSERT INTO team_feed (author_user_id, type, message, category, target_type, target_id, target_name, created_at)
-      VALUES (${userId}, ${data.type}, ${data.message}, ${data.category || null}, ${data.targetType || null}, ${data.targetId || null}, ${data.targetName || null}, NOW())
-      RETURNING id, author_user_id as "authorUserId", type, message, category, target_type as "targetType", target_id as "targetId", target_name as "targetName", created_at as "createdAt"
+      INSERT INTO team_feed (
+        actor_user_id,
+        actor_name,
+        author_user_id,
+        author_name,
+        action_type,
+        entity_type,
+        entity_id,
+        title,
+        body,
+        message,
+        type,
+        meta,
+        created_at
+      ) VALUES (
+        ${payload.actor_user_id},
+        ${payload.actor_name},
+        ${payload.author_user_id},
+        ${payload.author_name},
+        ${payload.action_type},
+        ${payload.entity_type},
+        ${payload.entity_id},
+        ${payload.title},
+        ${payload.body},
+        ${payload.message},
+        ${payload.type},
+        ${payload.meta}::jsonb,
+        NOW()
+      )
+      RETURNING 
+        id,
+        actor_user_id as "actorUserId",
+        actor_name as "actorName",
+        author_user_id as "authorUserId",
+        author_name as "authorName",
+        action_type as "actionType",
+        entity_type as "entityType",
+        entity_id as "entityId",
+        title,
+        body,
+        message,
+        type,
+        meta,
+        created_at as "createdAt"
     `);
 
-    const item = (result.rows || result)[0];
-    
-    // Fetch username
-    const userResult = await db.execute(sql`SELECT username FROM users WHERE id = ${userId}`);
-    const username = (userResult.rows || userResult)[0]?.username;
+    console.log('[TEAM-FEED] INSERT success, result:', result);
 
-    res.status(201).json({ ...item, authorUsername: username });
+    const item = (result as any)[0] || result;
+    
+    res.status(201).json({ 
+      ...item, 
+      authorUsername: username 
+    });
   } catch (error: any) {
-    logger.error('[COMMAND-CENTER] Error creating feed post:', error.message);
+    logger.error('[COMMAND-CENTER] Error creating feed post:', error.message, error);
     if (error.code === '42703' || error.code === '42P01' || error.message?.includes('does not exist')) {
       return res.status(503).json({ 
-        error: 'Run migration: npx tsx scripts/run-full-migration.ts',
-        code: 'MIGRATION_REQUIRED'
+        error: `Schema mismatch: ${error.message}`,
+        code: 'SCHEMA_ERROR'
       });
     }
     res.status(400).json({ error: error.message });
