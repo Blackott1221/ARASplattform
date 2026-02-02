@@ -498,4 +498,37 @@ router.get("/dashboard/stats", async (req, res) => {
   }
 });
 
+// ============================================================================
+// HEALTH / DIAGNOSTICS (for debugging auth issues)
+// ============================================================================
+
+router.get("/health", async (req, res) => {
+  try {
+    const user = req.user as any;
+    const cookies = req.headers.cookie;
+    
+    res.json({
+      ok: true,
+      env: process.env.NODE_ENV || 'development',
+      hasSession: !!req.isAuthenticated?.() || !!user,
+      user: user ? {
+        id: user.id,
+        username: user.username,
+        role: user.userRole || user.user_role || 'unknown'
+      } : null,
+      cookieSeen: !!cookies,
+      host: req.headers.host || null,
+      origin: req.headers.origin || null,
+      referer: req.headers.referer || null,
+      time: new Date().toISOString()
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      ok: false, 
+      error: error.message,
+      time: new Date().toISOString()
+    });
+  }
+});
+
 export default router;

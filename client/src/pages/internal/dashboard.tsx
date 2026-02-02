@@ -14,10 +14,9 @@ import InternalLayout from "@/components/internal/internal-layout";
 import { OnboardingTour } from "@/components/internal/onboarding-tour";
 import { HintButton, HINT_CONTENT } from "@/components/internal/hint-button";
 import { ActivityFeed } from "@/components/internal/activity-feed";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useArasDebug, useArasDebugMount } from "@/hooks/useArasDebug";
 import { apiGet, apiPost, ApiError } from "@/lib/api";
-import { AStatePanel, AGlassCard, AKPICard, AGradientTitle } from "@/components/ui/aras-primitives";
+import { AStatePanel, AGlassCard, AKPICard, AGradientTitle, AButton, ASkeleton } from "@/components/ui/aras-primitives";
 import { useLocation } from "wouter";
 
 export default function InternalDashboard() {
@@ -55,41 +54,36 @@ export default function InternalDashboard() {
     componentName: 'InternalDashboard'
   });
 
-  const kpiCards = [
+  const kpiCards: { title: string; value: number; icon: any; color: 'blue' | 'green' | 'orange' | 'purple' | 'pink' }[] = [
     {
       title: "Companies",
       value: stats?.companies || 0,
       icon: Building2,
-      color: "from-blue-500 to-blue-600",
-      description: "Total registered"
+      color: "blue"
     },
     {
       title: "Active Contacts",
       value: stats?.contacts || 0,
       icon: Users,
-      color: "from-green-500 to-green-600",
-      description: "In database"
+      color: "green"
     },
     {
       title: "Active Deals",
       value: stats?.activeDeals || 0,
       icon: TrendingUp,
-      color: "from-orange-500 to-orange-600",
-      description: "In pipeline"
+      color: "orange"
     },
     {
-      title: "Tasks Due Today",
+      title: "Tasks Due",
       value: stats?.tasksDueToday || 0,
       icon: CheckSquare,
-      color: "from-purple-500 to-purple-600",
-      description: "Require attention"
+      color: "purple"
     },
     {
-      title: "Recent Calls (24h)",
+      title: "Calls (24h)",
       value: stats?.recentCalls || 0,
       icon: Phone,
-      color: "from-pink-500 to-pink-600",
-      description: "Last 24 hours"
+      color: "pink"
     },
   ];
 
@@ -109,22 +103,21 @@ export default function InternalDashboard() {
         {/* Onboarding Tour */}
         <OnboardingTour />
 
-        {/* Hero Section */}
+        {/* Hero Section - Premium */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center py-8 relative"
+          className="relative"
         >
-          {/* Hint Button */}
-          <div className="absolute top-8 right-0">
+          <div className="absolute top-0 right-0">
             <HintButton content={HINT_CONTENT.dashboard} />
           </div>
           
-          <h1 className="text-4xl font-bold text-white mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-            ARAS COMMAND CENTER
-          </h1>
-          <p className="text-gray-400 text-lg">
-            Alles hier ist ARAS AI – Interne Steuerzentrale für Leads, Investoren, Projekte und Calls
+          <AGradientTitle as="h1" size="xl" className="mb-1">
+            Dashboard
+          </AGradientTitle>
+          <p className="text-sm" style={{ color: 'var(--aras-soft)' }}>
+            Übersicht aller CRM-Aktivitäten
           </p>
         </motion.div>
 
@@ -139,127 +132,123 @@ export default function InternalDashboard() {
           />
         )}
 
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-          {kpiCards.map((kpi, index) => {
-            const Icon = kpi.icon;
-            return (
-              <motion.div
+        {/* KPI Cards - Premium */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {[1,2,3,4,5].map(i => <ASkeleton key={i} variant="card" />)}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {kpiCards.map((kpi, index) => (
+              <AKPICard
                 key={kpi.title}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <Card className="bg-white/5 border-white/10 backdrop-blur-sm hover:bg-white/10 transition-all">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className={`p-3 rounded-lg bg-gradient-to-r ${kpi.color}`}>
-                        <Icon className="w-6 h-6 text-white" />
-                      </div>
-                    </div>
-                    <div className="text-3xl font-bold text-white mb-1">
-                      {isLoading ? '...' : kpi.value}
-                    </div>
-                    <div className="text-sm text-gray-400 mb-1">{kpi.title}</div>
-                    <div className="text-xs text-gray-500">{kpi.description}</div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            );
-          })}
-        </div>
+                title={kpi.title}
+                value={kpi.value}
+                icon={kpi.icon}
+                color={kpi.color}
+              />
+            ))}
+          </div>
+        )}
 
-        {/* Pipeline Preview */}
+        {/* Pipeline Preview - Premium */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.15 }}
         >
-          <Card className="bg-white/5 border-white/10 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-orange-400" />
-                Sales Pipeline Overview
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                {pipelineStages.map((stage) => {
-                  const stageStats = stats?.pipeline?.[stage.key] || { count: 0, value: 0 };
-                  return (
-                    <div key={stage.key} className="text-center">
-                      <div className={`${stage.color} text-white px-4 py-3 rounded-lg mb-2`}>
-                        <div className="text-2xl font-bold">{stageStats.count}</div>
-                        <div className="text-xs opacity-80">{stage.label}</div>
-                      </div>
-                      <div className="text-xs text-gray-400">
-                        {((stageStats.value || 0) / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
-                      </div>
+          <AGlassCard>
+            <div className="flex items-center gap-2 mb-5">
+              <TrendingUp className="w-5 h-5" style={{ color: 'var(--aras-orange)' }} />
+              <h3 className="text-base font-semibold" style={{ color: 'var(--aras-text)' }}>
+                Sales Pipeline
+              </h3>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+              {pipelineStages.map((stage) => {
+                const stageStats = stats?.pipeline?.[stage.key] || { count: 0, value: 0 };
+                return (
+                  <div 
+                    key={stage.key} 
+                    className="text-center p-3 rounded-xl transition-colors hover:bg-white/[0.03]"
+                    style={{ background: 'rgba(255,255,255,0.02)' }}
+                  >
+                    <div className="text-2xl font-bold mb-0.5" style={{ color: 'var(--aras-text)' }}>
+                      {stageStats.count}
                     </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+                    <div className="text-xs font-medium mb-1" style={{ color: 'var(--aras-muted)' }}>
+                      {stage.label}
+                    </div>
+                    <div className="text-[10px]" style={{ color: 'var(--aras-soft)' }}>
+                      {((stageStats.value || 0) / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </AGlassCard>
         </motion.div>
 
-        {/* AI Insights */}
+        {/* AI Insights - Premium */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
+          transition={{ delay: 0.2 }}
         >
-          <Card className="bg-gradient-to-br from-orange-500/10 to-orange-600/5 border-orange-500/20 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-orange-400" />
+          <AGlassCard variant="elevated">
+            <div className="flex items-center gap-2 mb-4">
+              <Sparkles className="w-5 h-5" style={{ color: 'var(--aras-orange)' }} />
+              <h3 className="text-base font-semibold" style={{ color: 'var(--aras-text)' }}>
                 ARAS AI Insights
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-gray-300 text-sm">
-                KI-gestützte Analyse deiner CRM-Aktivitäten der letzten Woche
-              </p>
-              
-              {aiInsights ? (
-                <div className="bg-black/20 rounded-lg p-4 text-gray-200 whitespace-pre-wrap">
-                  {aiInsights}
-                </div>
-              ) : (
-                <button
-                  onClick={async () => {
-                    setLoadingAI(true);
-                    try {
-                      const result = await apiPost<{summary?: string}>('/api/internal/ai/weekly-summary');
-                      if (result.ok && result.data) {
-                        setAiInsights(result.data.summary || 'Keine Insights verfügbar');
-                      } else {
-                        setAiInsights('Fehler beim Laden der AI-Insights');
-                      }
-                    } catch (error) {
+              </h3>
+            </div>
+            <p className="text-sm mb-4" style={{ color: 'var(--aras-muted)' }}>
+              KI-gestützte Analyse deiner CRM-Aktivitäten
+            </p>
+            
+            {aiInsights ? (
+              <div 
+                className="rounded-xl p-4 mb-3 whitespace-pre-wrap text-sm"
+                style={{ background: 'rgba(0,0,0,0.3)', color: 'var(--aras-text)' }}
+              >
+                {aiInsights}
+              </div>
+            ) : (
+              <AButton
+                variant="primary"
+                icon={Sparkles}
+                loading={loadingAI}
+                onClick={async () => {
+                  setLoadingAI(true);
+                  try {
+                    const result = await apiPost<{summary?: string}>('/api/internal/ai/weekly-summary');
+                    if (result.ok && result.data) {
+                      setAiInsights(result.data.summary || 'Keine Insights verfügbar');
+                    } else {
                       setAiInsights('Fehler beim Laden der AI-Insights');
                     }
-                    setLoadingAI(false);
-                  }}
-                  disabled={loadingAI}
-                  className="w-full px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg font-semibold transition-all disabled:opacity-50"
-                >
-                  {loadingAI ? 'Analysiere...' : '🧠 Wöchentliche Analyse starten'}
-                </button>
-              )}
-              
-              <p className="text-xs text-gray-500 text-center">
-                Generiert von ARAS AI (intern) • Alle Daten bleiben vertraulich
-              </p>
-            </CardContent>
-          </Card>
+                  } catch (error) {
+                    setAiInsights('Fehler beim Laden der AI-Insights');
+                  }
+                  setLoadingAI(false);
+                }}
+                className="w-full justify-center"
+              >
+                Wöchentliche Analyse starten
+              </AButton>
+            )}
+            
+            <p className="text-[10px] text-center mt-3" style={{ color: 'var(--aras-soft)' }}>
+              Generiert von ARAS AI • Alle Daten bleiben vertraulich
+            </p>
+          </AGlassCard>
         </motion.div>
 
         {/* Activity Feed */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.25 }}
         >
           <ActivityFeed limit={10} />
         </motion.div>

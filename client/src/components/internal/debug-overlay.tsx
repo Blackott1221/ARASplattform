@@ -9,8 +9,9 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bug, Copy, Check, X, RefreshCw, User, Shield, Wifi, WifiOff } from 'lucide-react';
+import { Bug, Copy, Check, X, RefreshCw, User, Shield, Wifi, WifiOff, Activity, Server } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { apiGet } from '@/lib/api';
 
 interface AuthUser {
   id?: string;
@@ -26,11 +27,24 @@ interface ApiStatus {
   timestamp: Date;
 }
 
+interface HealthData {
+  ok: boolean;
+  env: string;
+  hasSession: boolean;
+  user: { id: string; username: string; role: string } | null;
+  cookieSeen: boolean;
+  host: string | null;
+  origin: string | null;
+  time: string;
+}
+
 export function DebugOverlay() {
   const [isVisible, setIsVisible] = useState(false);
   const [isMinimized, setIsMinimized] = useState(true);
   const [copied, setCopied] = useState(false);
   const [apiStatuses, setApiStatuses] = useState<ApiStatus[]>([]);
+  const [healthData, setHealthData] = useState<HealthData | null>(null);
+  const [healthLoading, setHealthLoading] = useState(false);
   const { user: rawUser } = useAuth();
   const user = rawUser as AuthUser | null;
 
@@ -122,6 +136,28 @@ export function DebugOverlay() {
   const refreshStatuses = () => {
     setApiStatuses([]);
   };
+
+  const fetchHealth = async () => {
+    setHealthLoading(true);
+    try {
+      const result = await apiGet<HealthData>('/api/internal/health');
+      if (result.ok && result.data) {
+        setHealthData(result.data);
+      } else {
+        setHealthData({ ok: false, env: 'unknown', hasSession: false, user: null, cookieSeen: false, host: null, origin: null, time: new Date().toISOString() });
+      }
+    } catch (e) {
+      setHealthData({ ok: false, env: 'error', hasSession: false, user: null, cookieSeen: false, host: null, origin: null, time: new Date().toISOString() });
+    }
+    setHealthLoading(false);
+  };
+
+  // Fetch health on mount when visible
+  useEffect(() => {
+    if (isVisible && !isMinimized && !healthData) {
+      fetchHealth();
+    }
+  }, [isVisible, isMinimized]);
 
   if (!isVisible) return null;
 
@@ -221,10 +257,63 @@ export function DebugOverlay() {
                     </div>
                   </div>
 
+                  {/* Health Check */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-[11px] text-white/50 uppercase tracking-wide">
+                        <Server className="w-3 h-3" />
+                        <span>Server Health</span>
+                      </div>
+                      <button
+                        onClick={fetchHealth}
+                        className="p-1 hover:bg-white/10 rounded transition-colors"
+                        disabled={healthLoading}
+                      >
+                        <RefreshCw className={`w-3 h-3 text-white/60 ${healthLoading ? 'animate-spin' : ''}`} />
+                      </button>
+                    </div>
+                    <div className="bg-white/5 rounded-lg p-2 space-y-1">
+                      {healthData ? (
+                        <>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-white/60">Status</span>
+                            <span className={healthData.ok ? 'text-green-400' : 'text-red-400'}>
+                              {healthData.ok ? 'OK' : 'ERROR'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-white/60">Env</span>
+                            <span className="text-white/90">{healthData.env}</span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-white/60">Session</span>
+                            <span className={healthData.hasSession ? 'text-green-400' : 'text-red-400'}>
+                              {healthData.hasSession ? 'Active' : 'None'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-white/60">Cookie</span>
+                            <span className={healthData.cookieSeen ? 'text-green-400' : 'text-yellow-400'}>
+                              {healthData.cookieSeen ? 'Yes' : 'No'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-white/60">Host</span>
+                            <span className="text-white/70 font-mono text-[10px] truncate max-w-[140px]">
+                              {healthData.host || 'N/A'}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-xs text-white/40 italic">Click refresh to check</div>
+                      )}
+                    </div>
+                  </div>
+
                   {/* API Statuses */}
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2 text-[11px] text-white/50 uppercase tracking-wide">
-                      <Shield className="w-3 h-3" />
+                      <Activity className="w-3 h-3" />
                       <span>Recent API Calls</span>
                     </div>
                     <div className="space-y-1 max-h-[120px] overflow-y-auto">

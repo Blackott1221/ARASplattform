@@ -390,3 +390,148 @@ export function ASectionHeader({ title, subtitle, action, className }: ASectionH
     </div>
   );
 }
+
+// ============================================================================
+// LIST ROW - Consistent row styling for lists/tables
+// ============================================================================
+
+interface AListRowProps extends React.HTMLAttributes<HTMLDivElement> {
+  hoverable?: boolean;
+  selected?: boolean;
+}
+
+export const AListRow = React.forwardRef<HTMLDivElement, AListRowProps>(
+  ({ className, hoverable = true, selected = false, children, ...props }, ref) => {
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          'px-4 py-3 border-b transition-colors duration-150',
+          hoverable && 'hover:bg-white/[0.03] cursor-pointer',
+          selected && 'bg-[var(--aras-orange)]/10 border-l-2 border-l-[var(--aras-orange)]',
+          className
+        )}
+        style={{ borderColor: 'var(--aras-stroke)' }}
+        {...props}
+      >
+        {children}
+      </div>
+    );
+  }
+);
+AListRow.displayName = 'AListRow';
+
+// ============================================================================
+// TABLE SHELL - Premium wrapper for tables/lists
+// ============================================================================
+
+interface ATableShellProps extends React.HTMLAttributes<HTMLDivElement> {
+  title?: string;
+  action?: React.ReactNode;
+}
+
+export function ATableShell({ title, action, className, children, ...props }: ATableShellProps) {
+  return (
+    <AGlassCard noPadding className={cn('overflow-hidden', className)} {...props}>
+      {(title || action) && (
+        <div 
+          className="px-5 py-4 flex items-center justify-between border-b"
+          style={{ borderColor: 'var(--aras-stroke)' }}
+        >
+          {title && (
+            <h3 className="text-base font-semibold" style={{ color: 'var(--aras-text)' }}>
+              {title}
+            </h3>
+          )}
+          {action}
+        </div>
+      )}
+      <div className="divide-y" style={{ borderColor: 'var(--aras-stroke)' }}>
+        {children}
+      </div>
+    </AGlassCard>
+  );
+}
+
+// ============================================================================
+// REDUCED MOTION HOOK - Respect user preferences
+// ============================================================================
+
+export function usePrefersReducedMotion(): boolean {
+  const [prefersReduced, setPrefersReduced] = React.useState(false);
+
+  React.useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setPrefersReduced(mediaQuery.matches);
+
+    const handler = (e: MediaQueryListEvent) => setPrefersReduced(e.matches);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, []);
+
+  return prefersReduced;
+}
+
+// ============================================================================
+// SKELETON LOADER - Premium shimmer effect
+// ============================================================================
+
+interface ASkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
+  variant?: 'text' | 'card' | 'avatar' | 'button';
+}
+
+export function ASkeleton({ variant = 'text', className, ...props }: ASkeletonProps) {
+  const variants = {
+    text: 'h-4 rounded-md',
+    card: 'h-24 rounded-xl',
+    avatar: 'w-10 h-10 rounded-full',
+    button: 'h-10 w-24 rounded-xl',
+  };
+
+  return (
+    <div
+      className={cn(
+        'bg-white/[0.06] animate-pulse',
+        variants[variant],
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
+// ============================================================================
+// TOOLTIP - Simple hover tooltip
+// ============================================================================
+
+interface ATooltipProps {
+  content: string;
+  children: React.ReactNode;
+  position?: 'top' | 'bottom' | 'left' | 'right';
+}
+
+export function ATooltip({ content, children, position = 'top' }: ATooltipProps) {
+  const positions = {
+    top: 'bottom-full left-1/2 -translate-x-1/2 mb-2',
+    bottom: 'top-full left-1/2 -translate-x-1/2 mt-2',
+    left: 'right-full top-1/2 -translate-y-1/2 mr-2',
+    right: 'left-full top-1/2 -translate-y-1/2 ml-2',
+  };
+
+  return (
+    <div className="relative group inline-block">
+      {children}
+      <div
+        className={cn(
+          'absolute z-50 px-2 py-1 text-xs rounded-lg whitespace-nowrap',
+          'opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none',
+          'bg-black/90 border border-white/10',
+          positions[position]
+        )}
+        style={{ color: 'var(--aras-text)' }}
+      >
+        {content}
+      </div>
+    </div>
+  );
+}
