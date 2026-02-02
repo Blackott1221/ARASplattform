@@ -36,31 +36,32 @@ router.get('/team-feed', requireInternal, async (req: any, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
     
-    const items = await db
-      .select({
-        id: teamFeed.id,
-        authorUserId: teamFeed.authorUserId,
-        authorUsername: users.username,
-        type: teamFeed.type,
-        message: teamFeed.message,
-        category: teamFeed.category,
-        targetType: teamFeed.targetType,
-        targetId: teamFeed.targetId,
-        targetName: teamFeed.targetName,
-        metadata: teamFeed.metadata,
-        createdAt: teamFeed.createdAt,
-      })
-      .from(teamFeed)
-      .leftJoin(users, eq(teamFeed.authorUserId, users.id))
-      .orderBy(desc(teamFeed.createdAt))
-      .limit(limit);
+    // Use raw SQL with COALESCE for schema compatibility
+    const items = await db.execute(sql`
+      SELECT 
+        tf.id,
+        COALESCE(tf.author_user_id, tf.actor_user_id) as "authorUserId",
+        u.username as "authorUsername",
+        tf.type,
+        COALESCE(tf.message, tf.content) as message,
+        tf.category,
+        COALESCE(tf.target_type, tf.entity_type) as "targetType",
+        COALESCE(tf.target_id, tf.entity_id) as "targetId",
+        tf.target_name as "targetName",
+        tf.metadata,
+        tf.created_at as "createdAt"
+      FROM team_feed tf
+      LEFT JOIN users u ON COALESCE(tf.author_user_id, tf.actor_user_id) = u.id
+      ORDER BY tf.created_at DESC
+      LIMIT ${limit}
+    `);
     
-    res.json({ items, total: items.length });
+    res.json({ items: items.rows || items, total: (items.rows || items).length });
   } catch (error: any) {
     logger.error('[COMMAND-CENTER] Error fetching team feed:', error.message);
-    // Return empty array instead of 500 when table doesn't exist
-    if (error.message?.includes('does not exist') || error.code === '42P01') {
-      return res.json({ items: [], total: 0, _warning: 'Table not yet created - run migration' });
+    // Return empty array instead of 500 when table/column doesn't exist
+    if (error.message?.includes('does not exist') || error.code === '42P01' || error.code === '42703') {
+      return res.json({ items: [], total: 0, _warning: 'Run migration: npx tsx scripts/run-full-migration.ts' });
     }
     res.status(500).json({ error: 'Failed to fetch team feed' });
   }
@@ -84,40 +85,28 @@ router.post('/team-feed', requireInternal, async (req: any, res) => {
 
     const data = schema.parse(req.body);
     
-    const [item] = await db
-      .insert(teamFeed)
-      .values({
-        authorUserId: userId,
-        type: data.type,
-        message: data.message,
-        category: data.category,
-        targetType: data.targetType,
-        targetId: data.targetId,
-        targetName: data.targetName,
-      })
-      .returning();
+    // Use raw SQL for compatibility - write to author_user_id
+    const result = await db.execute(sql`
+      INSERT INTO team_feed (author_user_id, type, message, category, target_type, target_id, target_name, created_at)
+      VALUES (${userId}, ${data.type}, ${data.message}, ${data.category || null}, ${data.targetType || null}, ${data.targetId || null}, ${data.targetName || null}, NOW())
+      RETURNING id, author_user_id as "authorUserId", type, message, category, target_type as "targetType", target_id as "targetId", target_name as "targetName", created_at as "createdAt"
+    `);
 
-    // Fetch with author info
-    const [result] = await db
-      .select({
-        id: teamFeed.id,
-        authorUserId: teamFeed.authorUserId,
-        authorUsername: users.username,
-        type: teamFeed.type,
-        message: teamFeed.message,
-        category: teamFeed.category,
-        targetType: teamFeed.targetType,
-        targetId: teamFeed.targetId,
-        targetName: teamFeed.targetName,
-        createdAt: teamFeed.createdAt,
-      })
-      .from(teamFeed)
-      .leftJoin(users, eq(teamFeed.authorUserId, users.id))
-      .where(eq(teamFeed.id, item.id));
+    const item = (result.rows || result)[0];
+    
+    // Fetch username
+    const userResult = await db.execute(sql`SELECT username FROM users WHERE id = ${userId}`);
+    const username = (userResult.rows || userResult)[0]?.username;
 
-    res.status(201).json(result);
+    res.status(201).json({ ...item, authorUsername: username });
   } catch (error: any) {
     logger.error('[COMMAND-CENTER] Error creating feed post:', error.message);
+    if (error.code === '42703' || error.code === '42P01' || error.message?.includes('does not exist')) {
+      return res.status(503).json({ 
+        error: 'Run migration: npx tsx scripts/run-full-migration.ts',
+        code: 'MIGRATION_REQUIRED'
+      });
+    }
     res.status(400).json({ error: error.message });
   }
 });

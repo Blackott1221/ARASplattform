@@ -3,8 +3,8 @@
  * ARAS COMMAND CENTER - Gemini AI Service
  * ============================================================================
  * AI-powered insights using Google Gemini API
- * Supports env vars: GEMINI_API_KEY or GOOGLE_GEMINI_API_KEY
- * AI_PROVIDER switch: gemini|openai (default: gemini if key exists)
+ * Supports env vars: GOOGLE_GEMINI_API_KEY (preferred) or GEMINI_API_KEY (fallback)
+ * Default model: gemini-2.5-flash (override via GEMINI_MODEL)
  * ============================================================================
  */
 
@@ -14,9 +14,22 @@ import { logger } from '../logger';
 // CONFIGURATION
 // ============================================================================
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
+/**
+ * Get Gemini API key from environment
+ * Prefers GOOGLE_GEMINI_API_KEY, falls back to GEMINI_API_KEY
+ */
+export function getGeminiKey(): string | null {
+  const key = process.env.GOOGLE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+  if (!key) {
+    logger.warn('[GEMINI] No API key found. Set GOOGLE_GEMINI_API_KEY or GEMINI_API_KEY');
+    return null;
+  }
+  return key;
+}
+
+const GEMINI_API_KEY = getGeminiKey();
 const AI_PROVIDER = process.env.AI_PROVIDER || (GEMINI_API_KEY ? 'gemini' : 'openai');
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds cache
 
 // Simple in-memory cache

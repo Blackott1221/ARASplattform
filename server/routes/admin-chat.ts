@@ -395,35 +395,45 @@ router.post("/chat/channels", requireAdmin, async (req: any, res) => {
       return res.status(400).json({ error: "Channel name is required" });
     }
 
-    if (!["public", "private", "direct"].includes(type)) {
+    if (!["public", "private", "direct", "dm"].includes(type)) {
       return res.status(400).json({ error: "Invalid channel type" });
     }
 
-    const [channel] = await db
-      .insert(teamChatChannels)
-      .values({
-        name: name.trim(),
-        description: description?.trim() || null,
-        type,
-        createdBy: userId,
-      })
-      .returning();
+    // Use raw SQL for schema compatibility
+    const channelId = `channel_${Date.now()}`;
+    const slug = name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    
+    const result = await db.execute(sql`
+      INSERT INTO team_chat_channels (id, name, slug, description, type, created_by, created_at, updated_at)
+      VALUES (${channelId}, ${name.trim()}, ${slug}, ${description?.trim() || null}, ${type}, ${userId}, NOW(), NOW())
+      RETURNING id, name, slug, description, type, created_by as "createdBy", created_at as "createdAt"
+    `);
+    
+    const channel = (result as any)[0] || result;
 
     // Add creator as owner
-    await db.insert(teamChatChannelMembers).values({
-      channelId: channel.id,
-      userId,
-      role: "owner",
-    });
+    try {
+      await db.execute(sql`
+        INSERT INTO team_chat_channel_members (channel_id, user_id, role, joined_at)
+        VALUES (${channelId}, ${userId}, 'owner', NOW())
+        ON CONFLICT (channel_id, user_id) DO NOTHING
+      `);
+    } catch (e) {
+      logger.warn("[CHAT] Could not add channel member:", e);
+    }
 
     // Log activity
-    await db.insert(staffActivityLog).values({
-      userId,
-      action: "channel_created",
-      targetType: "channel",
-      targetId: channel.id,
-      metadata: { name, type },
-    });
+    try {
+      await db.insert(staffActivityLog).values({
+        userId,
+        action: "channel_created",
+        targetType: "channel",
+        targetId: channel.id,
+        metadata: { name, type },
+      });
+    } catch (e) {
+      logger.warn("[CHAT] Could not log activity:", e);
+    }
 
     logger.info("[CHAT] Channel created", { channelId: channel.id, name });
     res.status(201).json({ data: channel });
@@ -431,7 +441,7 @@ router.post("/chat/channels", requireAdmin, async (req: any, res) => {
     logger.error("[CHAT] Error creating channel:", error);
     if (error.code === '42703' || error.code === '42P01' || error.message?.includes('does not exist')) {
       return res.status(503).json({ 
-        error: 'Chat tables need migration. Run: npx tsx scripts/run-chat-migration.ts',
+        error: 'Run migration: npx tsx scripts/run-full-migration.ts',
         code: 'MIGRATION_REQUIRED',
         details: error.message
       });
