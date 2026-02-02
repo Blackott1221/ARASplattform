@@ -24,6 +24,7 @@ import { eq, desc, and, gte, lte, or, ne, sql, isNull } from 'drizzle-orm';
 import { logger } from '../../logger';
 import { requireInternal } from '../../middleware/role-guard';
 import * as contractService from '../../services/contract.service';
+import * as geminiAI from '../../services/gemini-ai.service';
 
 const router = Router();
 
@@ -57,6 +58,10 @@ router.get('/team-feed', requireInternal, async (req: any, res) => {
     res.json({ items, total: items.length });
   } catch (error: any) {
     logger.error('[COMMAND-CENTER] Error fetching team feed:', error.message);
+    // Return empty array instead of 500 when table doesn't exist
+    if (error.message?.includes('does not exist') || error.code === '42P01') {
+      return res.json({ items: [], total: 0, _warning: 'Table not yet created - run migration' });
+    }
     res.status(500).json({ error: 'Failed to fetch team feed' });
   }
 });
@@ -148,6 +153,9 @@ router.get('/team-calendar', requireInternal, async (req: any, res) => {
     res.json({ events, total: events.length });
   } catch (error: any) {
     logger.error('[COMMAND-CENTER] Error fetching calendar:', error.message);
+    if (error.message?.includes('does not exist') || error.code === '42P01') {
+      return res.json({ events: [], total: 0, _warning: 'Table not yet created - run migration' });
+    }
     res.status(500).json({ error: 'Failed to fetch calendar' });
   }
 });
@@ -228,6 +236,9 @@ router.get('/team-todos', requireInternal, async (req: any, res) => {
     res.json({ todos, total: todos.length });
   } catch (error: any) {
     logger.error('[COMMAND-CENTER] Error fetching todos:', error.message);
+    if (error.message?.includes('does not exist') || error.code === '42P01') {
+      return res.json({ todos: [], total: 0, _warning: 'Table not yet created - run migration' });
+    }
     res.status(500).json({ error: 'Failed to fetch todos' });
   }
 });
@@ -329,6 +340,9 @@ router.get('/active-users', requireInternal, async (req: any, res) => {
     });
   } catch (error: any) {
     logger.error('[COMMAND-CENTER] Error fetching active users:', error.message);
+    if (error.message?.includes('does not exist') || error.code === '42P01') {
+      return res.json({ users: [], count: 0, timestamp: new Date().toISOString(), _warning: 'Table not yet created' });
+    }
     res.status(500).json({ error: 'Failed to fetch active users' });
   }
 });
@@ -358,7 +372,8 @@ router.get('/contracts/pending', requireInternal, async (req: any, res) => {
     });
   } catch (error: any) {
     logger.error('[COMMAND-CENTER] Error fetching pending contracts:', error.message);
-    res.status(500).json({ error: 'Failed to fetch pending contracts' });
+    // Always return empty array on error - contracts are file-based
+    res.json({ contracts: [], total: 0 });
   }
 });
 
@@ -424,6 +439,9 @@ router.get('/action-center', requireInternal, async (req: any, res) => {
     res.json({ actions, total: actions.length });
   } catch (error: any) {
     logger.error('[COMMAND-CENTER] Error fetching action center:', error.message);
+    if (error.message?.includes('does not exist') || error.code === '42P01') {
+      return res.json({ actions: [], total: 0, _warning: 'Tables not yet created - run migration' });
+    }
     res.status(500).json({ error: 'Failed to fetch action center' });
   }
 });
@@ -709,8 +727,122 @@ router.get('/ai-intelligence', async (req: any, res) => {
 
   } catch (error: any) {
     console.error('[AI-INTELLIGENCE] Error:', error);
-    res.status(500).json({ error: 'Failed to generate insights' });
+    // Return graceful fallback instead of 500
+    if (error.message?.includes('does not exist') || error.code === '42P01') {
+      return res.json({
+        range: req.query.range || '24h',
+        generatedAt: new Date().toISOString(),
+        stats: { deals: 0, tasks: 0, calls: 0, contacts: 0, feedItems: 0 },
+        highlights: [],
+        risks: [],
+        actions: [],
+        _warning: 'Some tables not yet created - run migration for full insights'
+      });
+    }
+    res.json({
+      range: req.query.range || '24h',
+      generatedAt: new Date().toISOString(),
+      stats: { deals: 0, tasks: 0, calls: 0, contacts: 0, feedItems: 0 },
+      highlights: [],
+      risks: [{ id: 'error', title: 'AI temporarily unavailable', severity: 'low', text: 'Could not generate insights at this time.' }],
+      actions: [],
+      _error: error.message
+    });
   }
+});
+
+// ============================================================================
+// AI SUMMARY - Gemini-powered executive summaries
+// ============================================================================
+
+router.get('/ai-summary', requireInternal, async (req: any, res) => {
+  try {
+    const range = (req.query.range as string) || '24h';
+    
+    // Calculate date range
+    const now = new Date();
+    let startDate: Date;
+    
+    switch (range) {
+      case 'today':
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        break;
+      case '7d':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '24h':
+      default:
+        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    }
+
+    // Gather data with graceful fallbacks
+    let deals: any[] = [];
+    let tasks: any[] = [];
+    let calls: any[] = [];
+    let contacts: any[] = [];
+    let feedItems: any[] = [];
+    let pendingContracts: any[] = [];
+
+    try {
+      deals = await db.select().from(internalDeals).where(gte(internalDeals.updatedAt, startDate)).limit(50);
+    } catch (e) { /* table may not exist */ }
+
+    try {
+      tasks = await db.select().from(internalTasks).where(gte(internalTasks.updatedAt, startDate)).limit(50);
+    } catch (e) { /* table may not exist */ }
+
+    try {
+      calls = await db.select().from(internalCallLogs).where(gte(internalCallLogs.createdAt, startDate)).limit(50);
+    } catch (e) { /* table may not exist */ }
+
+    try {
+      contacts = await db.select().from(internalContacts).where(gte(internalContacts.createdAt, startDate)).limit(30);
+    } catch (e) { /* table may not exist */ }
+
+    try {
+      feedItems = await db.select().from(teamFeed).where(gte(teamFeed.createdAt, startDate)).limit(30);
+    } catch (e) { /* table may not exist */ }
+
+    try {
+      pendingContracts = contractService.getAllContracts().filter(c => c.status === 'pending_approval');
+    } catch (e) { /* service may fail */ }
+
+    // Generate AI insights
+    const insights = await geminiAI.generateInsights({
+      range: range as '24h' | '7d' | 'today',
+      data: { deals, tasks, calls, contacts, feedItems, pendingContracts }
+    });
+
+    res.json({
+      ...insights,
+      aiConfigured: geminiAI.isAIConfigured(),
+      provider: geminiAI.getAIProvider(),
+    });
+
+  } catch (error: any) {
+    logger.error('[AI-SUMMARY] Error:', error.message);
+    res.json({
+      summary: 'KI-Analyse vorübergehend nicht verfügbar.',
+      keyChanges: [],
+      risksAndBlockers: [],
+      nextBestActions: ['Dashboard manuell prüfen'],
+      whoShouldDoWhat: [],
+      generatedAt: new Date().toISOString(),
+      provider: 'error',
+      cached: false,
+      aiConfigured: geminiAI.isAIConfigured(),
+      _error: error.message,
+    });
+  }
+});
+
+// AI status endpoint
+router.get('/ai-status', requireInternal, async (req: any, res) => {
+  res.json({
+    configured: geminiAI.isAIConfigured(),
+    provider: geminiAI.getAIProvider(),
+    model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+  });
 });
 
 export default router;

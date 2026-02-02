@@ -409,7 +409,7 @@ export default function AdminDashboard() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {/* Open CRM Button - Premium Pill */}
+          {/* Command Center Button - Premium Pill */}
           <button 
             onClick={() => navigate('/internal/dashboard')}
             className="group flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 hover:scale-[1.02]"
@@ -430,7 +430,7 @@ export default function AdminDashboard() {
             }}
           >
             <LayoutGrid className="w-4 h-4" />
-            <span>Open CRM</span>
+            <span>Command Center</span>
           </button>
           <div className="px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 text-sm">
             {onlineData?.onlineUserIds?.length || 0} online
