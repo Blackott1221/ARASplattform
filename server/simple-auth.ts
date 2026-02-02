@@ -54,8 +54,16 @@ export function setupSimpleAuth(app: Express) {
   const IS_PRODUCTION = process.env.NODE_ENV === 'production';
   const COOKIE_DOMAIN = IS_PRODUCTION ? '.plattform-aras.ai' : undefined;
   
+  // SESSION_SECRET must be set in production (Render ENV)
+  const SESSION_SECRET = process.env.SESSION_SECRET;
+  if (IS_PRODUCTION && !SESSION_SECRET) {
+    console.error('[AUTH] ❌ FATAL: SESSION_SECRET env var is required in production!');
+    console.error('[AUTH] Set it in Render Environment Variables.');
+    // Use fallback but warn loudly
+  }
+  
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || "aras-ai-production-secret-2024",
+    secret: SESSION_SECRET || "aras-ai-dev-secret-local-only",
     resave: false,
     saveUninitialized: false,
     store: sessionStore,
@@ -70,24 +78,9 @@ export function setupSimpleAuth(app: Express) {
   };
   
   console.log(`[AUTH] Cookie config: secure=${IS_PRODUCTION}, domain=${COOKIE_DOMAIN || 'localhost'}, sameSite=lax`);
+  console.log(`[AUTH] SESSION_SECRET: ${SESSION_SECRET ? 'SET (from ENV)' : 'NOT SET (using fallback)'}`);
 
-  app.set("trust proxy", 1);
-  
-  // ============================================================================
-  // CANONICAL HOST REDIRECT: Force www.plattform-aras.ai in production
-  // ============================================================================
-  if (IS_PRODUCTION) {
-    app.use((req, res, next) => {
-      const host = req.hostname;
-      // Redirect non-www to www (canonical)
-      if (host === 'plattform-aras.ai') {
-        const redirectUrl = `https://www.plattform-aras.ai${req.originalUrl}`;
-        console.log(`[AUTH] Canonical redirect: ${host} -> www.plattform-aras.ai`);
-        return res.redirect(301, redirectUrl);
-      }
-      next();
-    });
-  }
+  // NOTE: trust proxy and canonical redirect are now in server/index.ts (runs first)
   
   app.use(session(sessionSettings));
   app.use(passport.initialize());
@@ -104,9 +97,12 @@ export function setupSimpleAuth(app: Express) {
       ok: !!req.isAuthenticated?.(),
       env: process.env.NODE_ENV || 'development',
       host: req.hostname,
+      xForwardedHost: req.headers['x-forwarded-host'] || null,
+      xForwardedProto: req.headers['x-forwarded-proto'] || null,
       cookieHeaderPresent: !!cookies,
       cookieNames,
       hasSession: !!req.session,
+      sessionId: req.session?.id ? req.session.id.substring(0, 8) + '...' : null,
       isAuthenticated: req.isAuthenticated ? req.isAuthenticated() : false,
       user: req.user ? {
         id: (req.user as any).id,
@@ -114,8 +110,8 @@ export function setupSimpleAuth(app: Express) {
         role: (req.user as any).userRole || 'user'
       } : null,
       time: new Date().toISOString(),
-      trustProxy: app.get('trust proxy'),
       cookieDomain: COOKIE_DOMAIN || 'not set (localhost)',
+      sessionSecretSet: !!SESSION_SECRET,
     });
   });
   console.log('[AUTH] ✅ Public health endpoint registered at /api/health');

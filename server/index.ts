@@ -6,6 +6,34 @@ import { subscriptionPlans } from "@shared/schema";
 import { sql } from "drizzle-orm";
 
 const app = express();
+
+// ============================================================================
+// CRITICAL: Trust proxy + Canonical Host Redirect MUST be FIRST
+// ============================================================================
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
+app.set("trust proxy", 1);
+
+// Force canonical host (www.plattform-aras.ai) - BEFORE everything else
+if (IS_PRODUCTION) {
+  app.use((req, res, next) => {
+    const host = (req.headers["x-forwarded-host"] as string) || req.headers.host || "";
+    const proto = (req.headers["x-forwarded-proto"] as string) || "https";
+    const wantHost = "www.plattform-aras.ai";
+    
+    // Strip port if present for comparison
+    const hostWithoutPort = host.split(':')[0];
+    
+    if (proto !== "https" || hostWithoutPort !== wantHost) {
+      const redirectUrl = `https://${wantHost}${req.originalUrl}`;
+      log(`[REDIRECT] ${proto}://${host} -> ${redirectUrl}`);
+      return res.redirect(301, redirectUrl);
+    }
+    next();
+  });
+  log('[SERVER] ✅ Canonical host redirect active: -> www.plattform-aras.ai');
+}
+
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: false }));
 
