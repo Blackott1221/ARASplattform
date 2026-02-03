@@ -1,15 +1,102 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Component, ErrorInfo, ReactNode } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
-import { Loader2, Eye, EyeOff, AlertCircle, CheckCircle2, ArrowRight, Phone, Calendar, Sparkles, Building, Globe, User, Target, ChevronLeft, ChevronDown, Search, Mic, TrendingUp, Shield, ShieldCheck, Check, X } from "lucide-react";
+import { Loader2, Eye, EyeOff, AlertCircle, CheckCircle2, ArrowRight, Phone, Calendar, Sparkles, Building, Globe, User, Target, ChevronLeft, ChevronDown, Search, Mic, TrendingUp, Shield, ShieldCheck, Check, X, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { trackLogin, trackSignup, captureUTMParameters } from "@/lib/analytics";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { T } from "@/lib/auto-translate";
+
+// 🔥 HOTFIX: ErrorBoundary to prevent black screen crashes
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class AuthErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('[AUTH-PAGE] ErrorBoundary caught:', error, errorInfo);
+  }
+
+  handleReload = () => {
+    window.location.reload();
+  };
+
+  handleReset = () => {
+    this.setState({ hasError: false, error: null });
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen w-full flex items-center justify-center p-4"
+          style={{ background: 'linear-gradient(180deg, #0a0a0a 0%, #0f0f0f 50%, #0a0a0a 100%)' }}>
+          <div className="max-w-md w-full p-8 rounded-3xl text-center"
+            style={{
+              background: 'rgba(20, 20, 20, 0.95)',
+              border: '1px solid rgba(254, 145, 0, 0.3)',
+              boxShadow: '0 25px 80px rgba(0, 0, 0, 0.8), 0 0 40px rgba(254, 145, 0, 0.1)'
+            }}>
+            <div className="mb-6">
+              <AlertCircle className="w-16 h-16 mx-auto text-[#FE9100] mb-4" />
+              <h2 className="text-xl font-black mb-2"
+                style={{ fontFamily: 'Orbitron, sans-serif', color: '#FE9100' }}>
+                ARAS AI konnte die Seite nicht laden
+              </h2>
+              <p className="text-sm text-gray-400 mb-4">
+                Ein unerwarteter Fehler ist aufgetreten.
+              </p>
+              {this.state.error && (
+                <div className="p-3 rounded-lg text-left text-xs text-red-400/80 mb-4"
+                  style={{ background: 'rgba(255, 0, 0, 0.1)', border: '1px solid rgba(255, 0, 0, 0.2)' }}>
+                  {String(this.state.error.message || this.state.error).slice(0, 200)}
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={this.handleReload}
+                className="w-full py-3 rounded-full font-bold text-sm uppercase flex items-center justify-center gap-2"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  background: 'linear-gradient(135deg, #FE9100, #a34e00)',
+                  color: '#000'
+                }}>
+                <RefreshCw className="w-4 h-4" />
+                Seite neu laden
+              </button>
+              <button
+                onClick={this.handleReset}
+                className="w-full py-3 rounded-full font-bold text-sm uppercase"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  color: 'rgba(255, 255, 255, 0.7)'
+                }}>
+                Erneut versuchen
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const TYPED_LINES = [
   "Die Stimme, die verkauft.",
@@ -1815,101 +1902,6 @@ export default function AuthPage() {
     clearGlobalError();
   }, [activeTab]);
   
-  // 🔥 STEP 8B: INTELLIGENCE BRIEFING POLLING
-  useEffect(() => {
-    if (onboardingPhase !== 'briefing' || !briefingData || briefingData.status !== 'polling') return;
-    
-    const controller = new AbortController();
-    let pollCount = 0;
-    const MAX_POLLS = 20; // 20 polls * 2s = 40s max wait
-    
-    const pollProfileContext = async () => {
-      try {
-        const response = await fetch('/api/user/profile-context', {
-          signal: controller.signal,
-          credentials: 'include'
-        });
-        
-        if (!response.ok) {
-          console.warn('[BRIEFING] Poll failed:', response.status);
-          return;
-        }
-        
-        const data = await response.json();
-        pollCount++;
-        setBriefingPollingCount(pollCount);
-        
-        // Check enrichment status from aiProfile
-        const enrichmentStatus = data.aiProfile?.enrichmentMeta?.status || 'unknown';
-        const statusLabel = data.aiProfile?.enrichmentMeta?.statusLabel || '';
-        
-        console.log('[BRIEFING] Poll', pollCount, 'status:', enrichmentStatus, statusLabel);
-        
-        // Update briefing data with real enriched content if available
-        if (data.aiProfile) {
-          const profile = data.aiProfile;
-          setBriefingData(prev => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              enrichmentStatus,
-              companySnapshot: profile.companyDescription || prev.companySnapshot,
-              targetAudience: profile.targetAudience 
-                ? (Array.isArray(profile.targetAudience) ? profile.targetAudience : [profile.targetAudience])
-                : prev.targetAudience,
-              callAngles: profile.effectiveKeywords 
-                ? (Array.isArray(profile.effectiveKeywords) ? profile.effectiveKeywords.slice(0, 3) : [profile.effectiveKeywords])
-                : prev.callAngles,
-              objections: profile.objectionHandling 
-                ? (Array.isArray(profile.objectionHandling) ? profile.objectionHandling : prev.objections)
-                : prev.objections,
-              nextActions: prev.nextActions
-            };
-          });
-        }
-        
-        // Check if enrichment is complete
-        if (enrichmentStatus === 'ok' || enrichmentStatus === 'limited' || enrichmentStatus === 'fallback' || enrichmentStatus === 'error') {
-          // Enrichment done - mark as ready
-          setBriefingData(prev => prev ? { ...prev, status: 'ready' } : prev);
-          setOnboardingPhase('complete');
-          return;
-        }
-        
-        // Timeout after max polls
-        if (pollCount >= MAX_POLLS) {
-          console.warn('[BRIEFING] Timeout after', pollCount, 'polls');
-          setBriefingData(prev => prev ? { ...prev, status: 'timeout' } : prev);
-          setOnboardingPhase('complete');
-          return;
-        }
-        
-        // Continue polling
-        setTimeout(pollProfileContext, 2000);
-        
-      } catch (error: any) {
-        if (error.name === 'AbortError') return;
-        console.error('[BRIEFING] Poll error:', error);
-        // Continue polling on error
-        setTimeout(pollProfileContext, 2500);
-      }
-    };
-    
-    // Start polling after a short delay
-    const initialDelay = setTimeout(pollProfileContext, 1500);
-    
-    // Animate timeline steps
-    const timelineInterval = setInterval(() => {
-      setBriefingTimelineStep(prev => Math.min(prev + 1, 4));
-    }, 3000);
-    
-    return () => {
-      controller.abort();
-      clearTimeout(initialDelay);
-      clearInterval(timelineInterval);
-    };
-  }, [onboardingPhase, briefingData?.status]);
-  
   // 🔥 HERO FEATURE STATES
   const [benefitIndex, setBenefitIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0 });
@@ -2004,6 +1996,108 @@ export default function AuthPage() {
   } | null>(null);
   const [briefingPollingCount, setBriefingPollingCount] = useState(0);
   const [briefingTimelineStep, setBriefingTimelineStep] = useState(0);
+  
+  // 🔥 STEP 8B: INTELLIGENCE BRIEFING POLLING
+  useEffect(() => {
+    if (onboardingPhase !== 'briefing' || !briefingData || briefingData.status !== 'polling') return;
+    
+    const controller = new AbortController();
+    let pollCount = 0;
+    const MAX_POLLS = 20;
+    
+    const pollProfileContext = async () => {
+      try {
+        const response = await fetch('/api/user/profile-context', {
+          signal: controller.signal,
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          console.warn('[AUTH-PAGE] Poll failed:', response.status);
+          pollCount++;
+          if (pollCount < MAX_POLLS) {
+            setTimeout(pollProfileContext, 2500);
+          } else {
+            setBriefingData(prev => prev ? { ...prev, status: 'timeout' } : prev);
+            setOnboardingPhase('complete');
+          }
+          return;
+        }
+        
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          console.warn('[AUTH-PAGE] Non-JSON response:', contentType);
+          pollCount++;
+          if (pollCount < MAX_POLLS) {
+            setTimeout(pollProfileContext, 2500);
+          } else {
+            setBriefingData(prev => prev ? { ...prev, status: 'timeout' } : prev);
+            setOnboardingPhase('complete');
+          }
+          return;
+        }
+        
+        const data = await response.json();
+        pollCount++;
+        setBriefingPollingCount(pollCount);
+        
+        const enrichmentStatus = data.aiProfile?.enrichmentMeta?.status || 'unknown';
+        console.log('[BRIEFING] Poll', pollCount, 'status:', enrichmentStatus);
+        
+        if (data.aiProfile) {
+          const profile = data.aiProfile;
+          setBriefingData(prev => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              enrichmentStatus,
+              companySnapshot: profile.companyDescription || prev.companySnapshot,
+              targetAudience: profile.targetAudience 
+                ? (Array.isArray(profile.targetAudience) ? profile.targetAudience : [profile.targetAudience])
+                : prev.targetAudience,
+              callAngles: profile.effectiveKeywords 
+                ? (Array.isArray(profile.effectiveKeywords) ? profile.effectiveKeywords.slice(0, 3) : [profile.effectiveKeywords])
+                : prev.callAngles,
+              objections: profile.objectionHandling 
+                ? (Array.isArray(profile.objectionHandling) ? profile.objectionHandling : prev.objections)
+                : prev.objections,
+              nextActions: prev.nextActions
+            };
+          });
+        }
+        
+        if (enrichmentStatus === 'ok' || enrichmentStatus === 'limited' || enrichmentStatus === 'fallback' || enrichmentStatus === 'error') {
+          setBriefingData(prev => prev ? { ...prev, status: 'ready' } : prev);
+          setOnboardingPhase('complete');
+          return;
+        }
+        
+        if (pollCount >= MAX_POLLS) {
+          setBriefingData(prev => prev ? { ...prev, status: 'timeout' } : prev);
+          setOnboardingPhase('complete');
+          return;
+        }
+        
+        setTimeout(pollProfileContext, 2000);
+        
+      } catch (error: any) {
+        if (error.name === 'AbortError') return;
+        console.error('[BRIEFING] Poll error:', error);
+        setTimeout(pollProfileContext, 2500);
+      }
+    };
+    
+    const initialDelay = setTimeout(pollProfileContext, 1500);
+    const timelineInterval = setInterval(() => {
+      setBriefingTimelineStep(prev => Math.min(prev + 1, 4));
+    }, 3000);
+    
+    return () => {
+      controller.abort();
+      clearTimeout(initialDelay);
+      clearInterval(timelineInterval);
+    };
+  }, [onboardingPhase, briefingData?.status]);
   
   // Industry & Goal Options
   const industries = [
@@ -2454,6 +2548,7 @@ export default function AuthPage() {
   };
 
   return (
+    <AuthErrorBoundary>
     <div className="min-h-screen w-full text-white relative overflow-x-hidden">
       {/* Language Switcher */}
       <LanguageSwitcher />
@@ -2991,10 +3086,10 @@ export default function AuthPage() {
                             Best-fit Zielgruppe
                           </h3>
                           <ul className="space-y-1.5">
-                            {briefingData.targetAudience.map((audience, i) => (
+                            {(briefingData?.targetAudience ?? []).map((audience, i) => (
                               <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
                                 <span className="text-[#FE9100] mt-0.5">•</span>
-                                {audience}
+                                {audience || 'Wird ermittelt...'}
                               </li>
                             ))}
                           </ul>
@@ -3015,10 +3110,10 @@ export default function AuthPage() {
                             Suggested Call Angles
                           </h3>
                           <ul className="space-y-1.5">
-                            {briefingData.callAngles.map((angle, i) => (
+                            {(briefingData?.callAngles ?? []).map((angle, i) => (
                               <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
                                 <span className="text-[#FE9100] mt-0.5">→</span>
-                                {angle}
+                                {angle || 'Wird ermittelt...'}
                               </li>
                             ))}
                           </ul>
@@ -3040,13 +3135,13 @@ export default function AuthPage() {
                               Top 3 Einwände + Antworten
                             </h3>
                             <div className="space-y-3">
-                              {briefingData.objections.slice(0, 3).map((obj, i) => (
+                              {(briefingData?.objections ?? []).slice(0, 3).map((obj, i) => (
                                 <div key={i} className="space-y-1">
                                   <p className="text-xs text-red-400/80 font-medium">
-                                    "{obj.objection}"
+                                    "{obj?.objection || 'Einwand'}"
                                   </p>
                                   <p className="text-sm text-green-400/90 pl-3 border-l-2 border-green-500/30">
-                                    {obj.response}
+                                    {obj?.response || 'Antwort wird generiert...'}
                                   </p>
                                 </div>
                               ))}
@@ -3212,10 +3307,7 @@ export default function AuthPage() {
                           type="button"
                           onClick={clearGlobalError}
                           aria-label="Dismiss error"
-                          className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-offset-0"
-                          style={{ 
-                            focusRing: 'rgba(254, 145, 0, 0.55)'
-                          }}
+                          className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[rgba(254,145,0,0.55)] focus:ring-offset-0"
                         >
                           <X className="w-4 h-4 text-gray-400 hover:text-gray-200" />
                         </button>
@@ -5120,6 +5212,7 @@ export default function AuthPage() {
 
       <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
     </div>
+    </AuthErrorBoundary>
   );
 }
 
