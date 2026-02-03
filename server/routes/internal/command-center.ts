@@ -525,16 +525,19 @@ router.post('/team-feed/seed', requireInternal, async (req: any, res) => {
       { msg: '2FA ist jetzt pflicht für alle', type: 'update', author: 29 },
     ];
 
+    // Shuffle messages for natural distribution across all team members
+    const shuffledMessages = [...MESSAGES].sort(() => Math.random() - 0.5);
+    
     // Generate timestamps over last 7 months
     const now = new Date();
     const insertedItems: any[] = [];
     
-    for (let i = 0; i < MESSAGES.length; i++) {
-      const msgData = MESSAGES[i];
+    for (let i = 0; i < shuffledMessages.length; i++) {
+      const msgData = shuffledMessages[i];
       const author = TEAM[msgData.author];
       
       // Spread across 7 months (210 days)
-      const daysAgo = Math.floor((i / MESSAGES.length) * 210);
+      const daysAgo = Math.floor((i / shuffledMessages.length) * 210);
       const date = new Date(now);
       date.setDate(date.getDate() - daysAgo);
       
