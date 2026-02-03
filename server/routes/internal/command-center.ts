@@ -34,7 +34,7 @@ const router = Router();
 
 router.get('/team-feed', requireInternal, async (req: any, res) => {
   try {
-    const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
+    const limit = Math.min(parseInt(req.query.limit as string) || 100, 500);
     
     // Use EXACT DB schema columns:
     // id, actor_user_id, actor_name, author_user_id, author_name, action_type, entity_type, entity_id, title, body, message, type, meta, created_at
@@ -220,8 +220,48 @@ router.post('/team-feed/seed', requireInternal, async (req: any, res) => {
       { id: 'user_alexander', name: 'Alexander Kern' },
     ];
 
-    // 200+ ultra-realistic messages with typos, casual language, conversations
-    const MESSAGES = [
+    // Generate 500+ realistic messages programmatically
+    const MESSAGE_TEMPLATES = [
+      // Greetings & Small Talk
+      'guten morgen! ☕', 'moin moin!', 'morgen zusammen!', 'hey leute!', 'servus!',
+      'guten morgen allerseits', 'morgen! wer ist schon da?', 'hi! bin grad reingekommen',
+      'schönen feierabend! 🌅', 'bis morgen!', 'schönes wochenende!', 'ciao!',
+      
+      // Questions & Help
+      'kann mir jemand helfen?', 'hat jemand zeit kurz?', 'wer kennt sich aus mit...?',
+      'frage: wie mach ich...?', 'weiß jemand wo...?', 'kann das jemand prüfen?',
+      'brauch mal input', 'meinungen?', 'was denkt ihr?', 'feedback bitte!',
+      'hat jemand das schon gemacht?', 'wie habt ihr das gelöst?',
+      
+      // Responses & Confirmations  
+      'erledigt!', 'done ✅', 'fertig!', 'ist gemacht', 'hab ich gemacht',
+      'klar, mach ich', 'ja, kein problem', 'geht klar', 'ok 👍', 'alles klar',
+      'verstanden', 'danke!', 'super danke!', 'perfekt!', 'mega, danke dir!',
+      'top!', 'nice!', 'geil!', 'hammer!', 'läuft!', 'passt!',
+      
+      // Status Updates
+      'bin in nem meeting', 'bin gleich wieder da', 'kurz afk', 'bin im call',
+      'arbeite dran', 'fast fertig', 'dauert noch bisschen', 'mach ich nachher',
+      'schaff ich heute noch', 'wird eng aber sollte gehen', 'bin dran!',
+      
+      // Office Life
+      'kaffee? ☕', 'wer kommt mit mittagessen?', 'pizza oder asiate?',
+      'bin beim bäcker, soll ich was mitbringen?', 'snacks sind da 🍪',
+      'wer hat meinen kuli?', 'hat jemand n ladekabel?', 'wo ist der adapter?',
+      'klimaanlage ist kaputt', 'drucker spinnt wieder', 'internet ist langsam',
+      'meetingraum ist besetzt', 'parkplatz war voll', 'stau aufm weg',
+      
+      // Weekend & Personal
+      'wie wars wochenende?', 'war mega!', 'viel zu kurz haha', 'endlich freitag!',
+      'montag schon wieder...', 'diese woche war lang', 'brauch urlaub 😅',
+      'afterwork heute? 🍻', 'bin dabei!', 'leider keine zeit', 'nächstes mal!',
+      
+      // Celebrations
+      '🎉🎉🎉', 'mega!!', 'woohoo!', 'congrats!', 'stark!', 'respect!',
+      'großartig!', 'weltklasse!', 'unglaublich!', 'amazing!', 'so geil!',
+    ];
+    
+    const WORK_MESSAGES = [
       // ============ JUSTIN - CEO, sehr locker, casual, tippfehler ============
       { msg: 'Deal mit Müller AG abgeschlossen! 🎉 250k ARR, starker Q3-Start.', type: 'announcement', author: 0 },
       { msg: 'Mega Woche! Danke an alle fürs Gas geben 💪', type: 'post', author: 0 },
@@ -525,8 +565,19 @@ router.post('/team-feed/seed', requireInternal, async (req: any, res) => {
       { msg: '2FA ist jetzt pflicht für alle', type: 'update', author: 29 },
     ];
 
+    // Generate additional casual messages from templates (to reach 500+)
+    const additionalMessages: typeof WORK_MESSAGES = [];
+    for (let i = 0; i < 300; i++) {
+      const template = MESSAGE_TEMPLATES[Math.floor(Math.random() * MESSAGE_TEMPLATES.length)];
+      const authorIdx = Math.floor(Math.random() * TEAM.length);
+      additionalMessages.push({ msg: template, type: 'post', author: authorIdx });
+    }
+
+    // Combine work messages with casual messages
+    const allMessages = [...WORK_MESSAGES, ...additionalMessages];
+    
     // Shuffle messages for natural distribution across all team members
-    const shuffledMessages = [...MESSAGES].sort(() => Math.random() - 0.5);
+    const shuffledMessages = [...allMessages].sort(() => Math.random() - 0.5);
     
     // Generate timestamps over last 7 months
     const now = new Date();

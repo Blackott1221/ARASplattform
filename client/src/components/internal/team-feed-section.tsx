@@ -356,7 +356,7 @@ export function TeamFeedSection({
   const { data: feedData, isLoading } = useQuery({
     queryKey: ['command-center-feed'],
     queryFn: async () => {
-      const res = await fetch('/api/internal/command-center/team-feed?limit=30');
+      const res = await fetch('/api/internal/command-center/team-feed?limit=500');
       if (!res.ok) throw new Error('Failed to fetch feed');
       return res.json();
     },
