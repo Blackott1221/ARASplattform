@@ -1854,6 +1854,22 @@ export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { user, isLoading, loginMutation, registerMutation } = useAuth();
   const { toast } = useToast();
+  
+  // 🔥 READ URL PARAMS FOR FLOW CONTROL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const flow = params.get('flow');
+    
+    if (flow === 'onboarding' || flow === 'signup') {
+      console.log('[AUTH-PAGE] Flow param detected: onboarding');
+      setAuthMode('signup');
+      setActiveTab('register');
+    } else if (flow === 'login') {
+      console.log('[AUTH-PAGE] Flow param detected: login');
+      setAuthMode('login');
+      setActiveTab('login');
+    }
+  }, []);
 
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   const [showPassword, setShowPassword] = useState(false);

@@ -48,26 +48,63 @@ const MAX_ATTEMPTS = 3;
 const RETRY_BACKOFF_MS = [2 * 60 * 1000, 10 * 60 * 1000, 60 * 60 * 1000]; // 2min, 10min, 60min
 const NO_RETRY_ERROR_CODES: EnrichmentErrorCode[] = ['quota', 'auth', 'model_not_allowed'];
 
-// 🔥 QUALITY GATE: Check if enrichment result is actually valuable
-function isEnrichmentValid(profile: any): { valid: boolean; score: number } {
-  if (!profile) return { valid: false, score: 0 };
+// 🔥 QUALITY GATE: Check if enrichment result is actually valuable (WOW-level)
+function isEnrichmentValid(profile: any): { valid: boolean; score: number; details: Record<string, number> } {
+  if (!profile) return { valid: false, score: 0, details: {} };
   
+  const details: Record<string, number> = {};
   let score = 0;
   
-  if (profile.companyDescription && profile.companyDescription.length >= 120) score++;
-  if (Array.isArray(profile.products) && profile.products.length >= 2) score++;
-  if (Array.isArray(profile.services) && profile.services.length >= 2) score++;
-  if (Array.isArray(profile.uniqueSellingPoints) && profile.uniqueSellingPoints.length >= 2) score++;
-  if (Array.isArray(profile.competitors) && profile.competitors.length >= 2) score++;
-  if (profile.targetAudience && profile.targetAudience.length >= 40) score++;
+  // Company description (max 2 points)
+  if (profile.companyDescription && profile.companyDescription.length >= 300) {
+    score += 2; details.companyDescription = 2;
+  } else if (profile.companyDescription && profile.companyDescription.length >= 120) {
+    score += 1; details.companyDescription = 1;
+  }
   
-  return { valid: score >= 2, score };
+  // Products (max 1 point)
+  if (Array.isArray(profile.products) && profile.products.length >= 5) {
+    score += 1; details.products = 1;
+  }
+  
+  // Services (max 1 point)
+  if (Array.isArray(profile.services) && profile.services.length >= 3) {
+    score += 1; details.services = 1;
+  }
+  
+  // USPs (max 1 point)
+  if (Array.isArray(profile.uniqueSellingPoints) && profile.uniqueSellingPoints.length >= 5) {
+    score += 1; details.uniqueSellingPoints = 1;
+  }
+  
+  // Competitors (max 1 point)
+  if (Array.isArray(profile.competitors) && profile.competitors.length >= 3) {
+    score += 1; details.competitors = 1;
+  }
+  
+  // Target audience (max 1 point)
+  if (profile.targetAudience && profile.targetAudience.length >= 100) {
+    score += 1; details.targetAudience = 1;
+  }
+  
+  // Call angles (max 1 point) - NEW for WOW
+  if (Array.isArray(profile.callAngles) && profile.callAngles.length >= 5) {
+    score += 1; details.callAngles = 1;
+  }
+  
+  // Objections (max 1 point) - NEW for WOW
+  if (Array.isArray(profile.objectionHandling) && profile.objectionHandling.length >= 5) {
+    score += 1; details.objectionHandling = 1;
+  }
+  
+  // Max score: 10, WOW threshold: 6
+  return { valid: score >= 4, score, details };
 }
 
-// 🔥 CONFIDENCE FROM SCORE
+// 🔥 CONFIDENCE FROM SCORE (scaled for WOW-level 10-point system)
 function getConfidence(score: number): 'low' | 'medium' | 'high' {
-  if (score >= 4) return 'high';
-  if (score >= 2) return 'medium';
+  if (score >= 7) return 'high';
+  if (score >= 4) return 'medium';
   return 'low';
 }
 
@@ -207,52 +244,96 @@ export async function runEnrichment(input: EnrichmentInput, attemptNumber: numbe
       ] as any
     });
     
-    // 🔥 PROMPT
+    // 🔥 WOW-LEVEL DEEP INTELLIGENCE PROMPT
     const companyDeepDive = `
-[🤖 ULTRA-DEEP RESEARCH MODE ACTIVATED]
+[🤖 ARAS DEEP INTELLIGENCE ENGINE - ULTRA RESEARCH MODE]
 
 Unternehmen: ${company}
 Website: ${website || 'Nicht angegeben'}
 Branche: ${industry}
+Kontaktperson: ${firstName} ${lastName} (${role})
+Primäres Ziel: ${primaryGoal}
 
-Du bist ein Elite-Business-Intelligence-Agent. Recherchiere ALLES über dieses Unternehmen:
+Du bist ein Elite-Business-Intelligence-Agent für ARAS AI. Deine Aufgabe: Erstelle ein VOLLSTÄNDIGES Outbound-Playbook für dieses Unternehmen.
+
+🔍 RECHERCHIERE ÜBER GOOGLE SEARCH:
+1. Besuche die Website ${website || company + '.com'} und analysiere ALLE Seiten
+2. Suche nach Pressemitteilungen, News, LinkedIn-Profilen
+3. Finde Bewertungen, Kundenreferenzen, Case Studies
+4. Recherchiere Wettbewerber und Marktposition
+
+📊 ERSTELLE FOLGENDE ULTRA-DETAILLIERTE ANALYSE:
 
 🏢 UNTERNEHMENS-DNA:
-- Gründungsjahr und Geschichte
-- CEO/Gründer (Name, Background)
-- Unternehmensstruktur und Mitarbeiterzahl
-- Standorte und Niederlassungen
+- Exakte Gründungsgeschichte mit Jahr
+- Gründer/CEO mit vollständigem Namen und Background
+- Mitarbeiterzahl (exakt oder Schätzung mit Quelle)
+- Standorte, Niederlassungen, Märkte
+- Unternehmenskultur und Werte
 
-💼 BUSINESS INTELLIGENCE:
-- Exakte Produkte und Services
-- Unique Selling Propositions (USPs)
-- Marktposition und Wettbewerber
-- Aktuelle Projekte und Initiativen
+💼 PRODUKTE & SERVICES (mindestens 5 von jedem):
+- Alle Produkte mit kurzer Beschreibung
+- Alle Services mit Zielgruppe
+- Preismodelle wenn bekannt
+- Besondere Features
 
-🎯 TARGET & STRATEGY:
-- Detaillierte Zielgruppenprofile
-- Vertriebskanäle und Verkaufsprozess
-- Marketing-Strategie
-- Brand Voice und Tonality
+🎯 ZIELGRUPPEN-ANALYSE:
+- Primäre Zielgruppe (Branche, Größe, Entscheider)
+- Sekundäre Zielgruppen
+- Typische Pain Points der Zielgruppe
+- Kaufmotive und Entscheidungskriterien
 
-Gib mir eine ULTRA-DETAILLIERTE Analyse als JSON:
+� WETTBEWERBS-ANALYSE (mindestens 5):
+- Direkte Wettbewerber mit Namen
+- Indirekte Wettbewerber
+- Marktposition des Unternehmens
+- Differenzierungsmerkmale
+
+📞 OUTBOUND PLAYBOOK:
+- 10 effektive Call-Angles (Gesprächseinstiege)
+- 10 häufige Einwände mit überzeugenden Antworten
+- Beste Kontaktzeiten mit Begründung
+- Empfohlene Tonalität
+
+🔑 KEYWORDS & SEO (mindestens 15):
+- Branchenspezifische Keywords
+- Produktbezogene Keywords
+- Problem-Keywords der Zielgruppe
+
+Antworte NUR mit einem validen JSON-Objekt:
 {
-  "companyDescription": "Ultra-detaillierte Beschreibung mit allen gefundenen Informationen",
-  "foundedYear": "Jahr oder 'Unbekannt'",
-  "ceoName": "Name des CEOs/Gründers",
-  "employeeCount": "Anzahl oder Schätzung",
-  "products": ["Detaillierte Produktliste"],
-  "services": ["Detaillierte Serviceliste"],
-  "targetAudience": "Sehr detaillierte Zielgruppenbeschreibung",
-  "competitors": ["Hauptwettbewerber"],
-  "uniqueSellingPoints": ["USPs"],
-  "brandVoice": "Detaillierte Brand Voice Analyse",
-  "opportunities": ["Chancen und Potenziale"],
-  "bestCallTimes": "Optimale Kontaktzeiten mit Begründung",
-  "effectiveKeywords": ["Top 20+ relevante Keywords"]
+  "companyDescription": "Mindestens 300 Zeichen ultra-detaillierte Beschreibung",
+  "foundedYear": "Jahr oder null",
+  "ceoName": "Name oder null",
+  "employeeCount": "Zahl oder Schätzung",
+  "headquarters": "Stadt, Land",
+  "products": ["Produkt 1: Beschreibung", "Produkt 2: Beschreibung", ...min 5],
+  "services": ["Service 1: Beschreibung", "Service 2: Beschreibung", ...min 5],
+  "targetAudience": "Mindestens 100 Zeichen detaillierte Beschreibung",
+  "targetAudienceSegments": ["Segment 1", "Segment 2", ...min 5],
+  "decisionMakers": ["Titel 1: Pain Point", "Titel 2: Pain Point"],
+  "competitors": ["Wettbewerber 1", "Wettbewerber 2", ...min 5],
+  "uniqueSellingPoints": ["USP 1", "USP 2", ...min 7],
+  "brandVoice": "Detaillierte Tonalitäts-Analyse",
+  "callAngles": ["Angle 1: Konkreter Gesprächseinstieg", ...min 10],
+  "objectionHandling": [
+    {"objection": "Einwand 1", "response": "Überzeugende Antwort"},
+    {"objection": "Einwand 2", "response": "Überzeugende Antwort"},
+    ...min 10
+  ],
+  "bestCallTimes": "Empfehlung mit Begründung",
+  "effectiveKeywords": ["Keyword 1", "Keyword 2", ...min 15],
+  "opportunities": ["Chance 1", "Chance 2", ...min 5],
+  "marketPosition": "Beschreibung der Marktposition",
+  "recentNews": ["Aktuelle Nachricht 1", "Aktuelle Nachricht 2"],
+  "confidence": "high/medium/low - basierend auf gefundenen Daten"
 }
 
-Sei EXTREM gründlich. Wenn das Unternehmen existiert, finde ECHTE Daten.
+WICHTIG:
+- Nutze Google Search für echte, aktuelle Daten
+- Erfinde KEINE Fakten - markiere Unbekanntes mit null
+- Je mehr echte Details, desto besser
+- Mindestanforderungen pro Feld einhalten
 `;
 
     // 🔥 RETRY LOGIC
@@ -332,7 +413,7 @@ Sei EXTREM gründlich. Wenn das Unternehmen existiert, finde ECHTE Daten.
     }
     
     // 🔥 QUALITY GATE
-    const { valid, score } = isEnrichmentValid(companyIntel);
+    const { valid, score, details } = isEnrichmentValid(companyIntel);
     const confidence = getConfidence(score);
     
     if (!valid) {
@@ -378,10 +459,13 @@ Du bist die persönliche KI von ${firstName} bei ${company}. Beziehe dich immer 
 Bleibe immer ARAS AI - entwickelt von der Schwarzott Group.`;
 
     const aiProfile = {
+      // 🔥 CORE COMPANY DATA
       companyDescription: companyIntel.companyDescription,
       products: companyIntel.products || [],
       services: companyIntel.services || [],
       targetAudience: companyIntel.targetAudience,
+      targetAudienceSegments: companyIntel.targetAudienceSegments || [],
+      decisionMakers: companyIntel.decisionMakers || [],
       brandVoice: companyIntel.brandVoice,
       customSystemPrompt,
       effectiveKeywords: companyIntel.effectiveKeywords || [],
@@ -392,17 +476,29 @@ Bleibe immer ARAS AI - entwickelt von der Schwarzott Group.`;
       foundedYear: companyIntel.foundedYear || null,
       ceoName: companyIntel.ceoName || null,
       employeeCount: companyIntel.employeeCount || null,
+      headquarters: companyIntel.headquarters || null,
       opportunities: companyIntel.opportunities || [],
+      marketPosition: companyIntel.marketPosition || null,
+      recentNews: companyIntel.recentNews || [],
+      
+      // 🔥 WOW-LEVEL OUTBOUND PLAYBOOK
+      callAngles: companyIntel.callAngles || [],
+      objectionHandling: companyIntel.objectionHandling || [],
+      
+      // 🔥 META
       lastUpdated: new Date().toISOString(),
       enrichmentStatus: 'live_research' as EnrichmentStatus,
       enrichmentErrorCode: null,
+      qualityScore: score,
       enrichmentMeta: {
         status: 'live_research',
         errorCode: null,
         lastUpdated: new Date().toISOString(),
         attempts: attemptNumber,
         nextRetryAt: null,
-        confidence
+        confidence,
+        qualityScore: score,
+        qualityDetails: details
       }
     };
     

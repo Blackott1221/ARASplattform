@@ -293,6 +293,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 🔥 NEW: Trigger re-enrichment for user (manual retry)
+  app.post('/api/user/enrich/retry', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.session.userId;
+      
+      if (!userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+
+      // Import and call forceReEnrich
+      const { forceReEnrich } = await import('./services/enrichment.service');
+      const result = await forceReEnrich(userId);
+      
+      if (result.success) {
+        logger.info(`[ENRICH-RETRY] Triggered for user: ${userId}`);
+        return res.json({ success: true, message: result.message });
+      } else {
+        return res.status(400).json({ success: false, message: result.message });
+      }
+    } catch (error) {
+      logger.error('[ENRICH-RETRY] Error:', error);
+      return res.status(500).json({ 
+        error: 'Failed to trigger enrichment',
+        message: 'Internal server error'
+      });
+    }
+  });
+
   // Update AI Profile (Business Intelligence) - User can edit their business data
   app.patch('/api/user/ai-profile', requireAuth, async (req: any, res) => {
     try {
