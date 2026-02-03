@@ -336,29 +336,58 @@ WICHTIG:
 - Mindestanforderungen pro Feld einhalten
 `;
 
-    // 🔥 RETRY LOGIC
+    // 🔥 RETRY LOGIC WITH DETAILED LOGGING
     let response: string | null = null;
     let lastError: any = null;
-    const TIMEOUT_MS = 90000;
+    const TIMEOUT_MS = 60000; // 60s timeout (was 90s - too long)
     
     for (let retry = 1; retry <= 3; retry++) {
       try {
+        console.log('[enrich.gemini.attempt]', JSON.stringify({ 
+          userId: input.userId, 
+          retry, 
+          model: GEMINI_ENRICH_MODEL,
+          timeoutMs: TIMEOUT_MS 
+        }));
+        
         const resultPromise = model.generateContent(companyDeepDive);
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error(`Timeout after ${TIMEOUT_MS/1000}s`)), TIMEOUT_MS)
+          setTimeout(() => reject(new Error(`GEMINI_TIMEOUT after ${TIMEOUT_MS/1000}s`)), TIMEOUT_MS)
         );
         
         const result = await Promise.race([resultPromise, timeoutPromise]) as any;
         
+        console.log('[enrich.gemini.response]', JSON.stringify({ 
+          userId: input.userId, 
+          retry,
+          hasResponse: !!result?.response,
+          responseType: typeof result?.response
+        }));
+        
         if (result?.response) {
           const tempResponse = result.response.text();
-          if (tempResponse && tempResponse.length > 200) {
+          const responseLength = tempResponse?.length || 0;
+          console.log('[enrich.gemini.text]', JSON.stringify({ 
+            userId: input.userId, 
+            retry,
+            responseLength,
+            isValid: responseLength > 200
+          }));
+          
+          if (tempResponse && responseLength > 200) {
             response = tempResponse;
             break;
           }
         }
       } catch (error: any) {
         lastError = error;
+        console.log('[enrich.gemini.error]', JSON.stringify({ 
+          userId: input.userId, 
+          retry,
+          errorName: error?.name,
+          errorMessage: (error?.message || '').substring(0, 150),
+          willRetry: retry < 3
+        }));
         if (retry < 3) {
           await new Promise(resolve => setTimeout(resolve, retry * 2000));
         }
@@ -546,82 +575,144 @@ Bleibe immer ARAS AI - entwickelt von der Schwarzott Group.`;
 /**
  * 🔥 RUN ENRICHMENT JOB ASYNC (with DB update)
  * Called after user creation, updates the user's ai_profile
+ * CRITICAL: This function MUST always end in a terminal state (complete/failed/timeout)
  */
 export async function runEnrichmentJobAsync(input: EnrichmentInput): Promise<void> {
-  const user = await storage.getUser(input.userId);
-  if (!user) {
-    console.error('[enrich.job.fail] User not found:', input.userId);
-    return;
-  }
+  const startTime = Date.now();
+  let attemptNumber = 1;
   
-  // Get current attempt count
-  const currentMeta = (user.aiProfile as any)?.enrichmentMeta;
-  const attemptNumber = (currentMeta?.attempts || 0) + 1;
-  
-  // Check if we should skip (too many attempts or no-retry error)
-  if (attemptNumber > MAX_ATTEMPTS) {
-    console.log('[enrich.job.skip] Max attempts reached for user:', input.userId);
-    return;
-  }
-  
-  if (currentMeta?.errorCode && NO_RETRY_ERROR_CODES.includes(currentMeta.errorCode)) {
-    console.log('[enrich.job.skip] No-retry error code:', currentMeta.errorCode);
-    return;
-  }
-  
-  // Update status to in_progress
-  await storage.updateUserProfile(input.userId, {
-    aiProfile: {
-      ...(user.aiProfile || {}),
-      enrichmentMeta: {
-        ...currentMeta,
-        status: 'in_progress',
-        attempts: attemptNumber
+  try {
+    console.log('[enrich.async.start]', JSON.stringify({ userId: input.userId, timestamp: new Date().toISOString() }));
+    
+    const user = await storage.getUser(input.userId);
+    if (!user) {
+      console.error('[enrich.async.fail] User not found:', input.userId);
+      return;
+    }
+    
+    // Get current attempt count
+    const currentMeta = (user.aiProfile as any)?.enrichmentMeta;
+    attemptNumber = (currentMeta?.attempts || 0) + 1;
+    
+    // Check if we should skip (too many attempts or no-retry error)
+    if (attemptNumber > MAX_ATTEMPTS) {
+      console.log('[enrich.async.skip] Max attempts reached for user:', input.userId);
+      return;
+    }
+    
+    if (currentMeta?.errorCode && NO_RETRY_ERROR_CODES.includes(currentMeta.errorCode)) {
+      console.log('[enrich.async.skip] No-retry error code:', currentMeta.errorCode);
+      return;
+    }
+    
+    // Update status to in_progress
+    console.log('[enrich.step] status.in_progress', JSON.stringify({ userId: input.userId, attempt: attemptNumber }));
+    await storage.updateUserProfile(input.userId, {
+      aiProfile: {
+        ...(user.aiProfile || {}),
+        enrichmentMeta: {
+          ...currentMeta,
+          status: 'in_progress',
+          attempts: attemptNumber,
+          lastUpdated: new Date().toISOString()
+        }
+      }
+    });
+    
+    // Run enrichment
+    console.log('[enrich.step] gemini.calling', JSON.stringify({ userId: input.userId }));
+    const result = await runEnrichment(input, attemptNumber);
+    console.log('[enrich.step] gemini.returned', JSON.stringify({ 
+      userId: input.userId, 
+      success: result.enrichmentWasSuccessful,
+      status: result.enrichmentStatus,
+      confidence: result.confidence 
+    }));
+    
+    // Calculate next retry if failed
+    let nextRetryAt: string | null = null;
+    if (!result.enrichmentWasSuccessful && attemptNumber < MAX_ATTEMPTS) {
+      if (!NO_RETRY_ERROR_CODES.includes(result.enrichmentErrorCode)) {
+        const backoffMs = RETRY_BACKOFF_MS[attemptNumber - 1] || RETRY_BACKOFF_MS[RETRY_BACKOFF_MS.length - 1];
+        nextRetryAt = new Date(Date.now() + backoffMs).toISOString();
       }
     }
-  });
-  
-  // Run enrichment
-  const result = await runEnrichment(input, attemptNumber);
-  
-  // Calculate next retry if failed
-  let nextRetryAt: string | null = null;
-  if (!result.enrichmentWasSuccessful && attemptNumber < MAX_ATTEMPTS) {
-    if (!NO_RETRY_ERROR_CODES.includes(result.enrichmentErrorCode)) {
-      const backoffMs = RETRY_BACKOFF_MS[attemptNumber - 1] || RETRY_BACKOFF_MS[RETRY_BACKOFF_MS.length - 1];
-      nextRetryAt = new Date(Date.now() + backoffMs).toISOString();
-    }
-  }
-  
-  // Update user with result
-  const updatedMeta: EnrichmentMeta = {
-    status: result.enrichmentStatus,
-    errorCode: result.enrichmentErrorCode,
-    lastUpdated: new Date().toISOString(),
-    attempts: attemptNumber,
-    nextRetryAt,
-    confidence: result.confidence
-  };
-  
-  await storage.updateUserProfile(input.userId, {
-    aiProfile: {
-      ...result.aiProfile,
-      enrichmentMeta: updatedMeta
-    },
-    profileEnriched: result.enrichmentWasSuccessful,
-    lastEnrichmentDate: result.enrichmentWasSuccessful ? new Date() : user.lastEnrichmentDate
-  });
-  
-  // Schedule retry if needed
-  if (nextRetryAt && !result.enrichmentWasSuccessful) {
-    const backoffMs = RETRY_BACKOFF_MS[attemptNumber - 1] || RETRY_BACKOFF_MS[RETRY_BACKOFF_MS.length - 1];
-    console.log(`[enrich.job.retry] Scheduling retry in ${backoffMs / 1000}s for user:`, input.userId);
     
-    setTimeout(() => {
-      runEnrichmentJobAsync(input).catch(err => {
-        console.error('[enrich.job.retry.error]', err);
+    // Update user with result - use terminal status
+    const terminalStatus = result.enrichmentWasSuccessful ? 'complete' : 
+                          result.enrichmentErrorCode === 'timeout' ? 'timeout' : 'failed';
+    
+    const updatedMeta: EnrichmentMeta = {
+      status: terminalStatus as any,
+      errorCode: result.enrichmentErrorCode,
+      lastUpdated: new Date().toISOString(),
+      attempts: attemptNumber,
+      nextRetryAt,
+      confidence: result.confidence
+    };
+    
+    console.log('[enrich.step] db.updating', JSON.stringify({ userId: input.userId, status: terminalStatus }));
+    await storage.updateUserProfile(input.userId, {
+      aiProfile: {
+        ...result.aiProfile,
+        enrichmentMeta: updatedMeta,
+        enrichmentStatus: result.enrichmentStatus
+      },
+      profileEnriched: result.enrichmentWasSuccessful,
+      lastEnrichmentDate: result.enrichmentWasSuccessful ? new Date() : user.lastEnrichmentDate
+    });
+    
+    console.log('[enrich.async.end]', JSON.stringify({
+      userId: input.userId,
+      status: terminalStatus,
+      success: result.enrichmentWasSuccessful,
+      attempt: attemptNumber,
+      durationMs: Date.now() - startTime
+    }));
+    
+    // Schedule retry if needed
+    if (nextRetryAt && !result.enrichmentWasSuccessful) {
+      const backoffMs = RETRY_BACKOFF_MS[attemptNumber - 1] || RETRY_BACKOFF_MS[RETRY_BACKOFF_MS.length - 1];
+      console.log(`[enrich.async.retry] Scheduling retry in ${backoffMs / 1000}s for user:`, input.userId);
+      
+      setTimeout(() => {
+        runEnrichmentJobAsync(input).catch(err => {
+          console.error('[enrich.async.retry.error]', err);
+        });
+      }, backoffMs);
+    }
+    
+  } catch (error: any) {
+    // CRITICAL: Catch ALL errors and update DB with failed status
+    console.error('[enrich.async.crash]', JSON.stringify({
+      userId: input.userId,
+      error: (error?.message || 'Unknown error').substring(0, 200),
+      stack: (error?.stack || '').substring(0, 300),
+      attempt: attemptNumber,
+      durationMs: Date.now() - startTime
+    }));
+    
+    // Try to update DB with failed status
+    try {
+      const fallbackProfile = buildFallbackProfile(input, 'unknown');
+      await storage.updateUserProfile(input.userId, {
+        aiProfile: {
+          ...fallbackProfile,
+          enrichmentMeta: {
+            status: 'failed',
+            errorCode: 'unknown',
+            lastUpdated: new Date().toISOString(),
+            attempts: attemptNumber,
+            nextRetryAt: null,
+            confidence: 'low'
+          }
+        },
+        profileEnriched: false
       });
-    }, backoffMs);
+      console.log('[enrich.async.crash.recovered] DB updated with failed status');
+    } catch (dbError: any) {
+      console.error('[enrich.async.crash.db_fail]', dbError?.message);
+    }
   }
 }
 

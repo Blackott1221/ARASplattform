@@ -2106,8 +2106,18 @@ export default function AuthPage() {
           });
         }
         
-        if (enrichmentStatus === 'ok' || enrichmentStatus === 'limited' || enrichmentStatus === 'fallback' || enrichmentStatus === 'error') {
-          setBriefingData(prev => prev ? { ...prev, status: 'ready' } : prev);
+        // 🔥 Check for TERMINAL statuses from enrichment service
+        // complete = success, failed = error, timeout = took too long, fallback = used generic data
+        if (['complete', 'live_research', 'ok', 'limited'].includes(enrichmentStatus)) {
+          console.log('[BRIEFING] ✅ Enrichment complete with status:', enrichmentStatus);
+          setBriefingData(prev => prev ? { ...prev, status: 'ready', enrichmentStatus } : prev);
+          setOnboardingPhase('complete');
+          return;
+        }
+        
+        if (['failed', 'timeout', 'fallback', 'error'].includes(enrichmentStatus)) {
+          console.log('[BRIEFING] ⚠️ Enrichment ended with status:', enrichmentStatus);
+          setBriefingData(prev => prev ? { ...prev, status: 'ready', enrichmentStatus } : prev);
           setOnboardingPhase('complete');
           return;
         }
@@ -2953,12 +2963,12 @@ export default function AuthPage() {
                 <AnimatePresence>
                   {authMode === "idle" && (
                     <div className="flex flex-col gap-3">
-                      {/* PRIMARY: Kostenlos starten – Premium CI */}
+                      {/* PRIMARY: Kostenlos starten – TRIGGERS NEW CINEMATIC FLOW */}
                       <motion.button
                         type="button"
                         onClick={() => {
-                          setAuthMode("signup");
-                          setActiveTab("register");
+                          console.info('[AUTH] Navigating to cinematic onboarding flow');
+                          window.location.href = '/auth?flow=onboarding&v=' + Date.now();
                         }}
                         className="relative w-full h-11 md:h-[46px] rounded-full overflow-hidden uppercase font-extrabold text-[13px] focus:outline-none focus:ring-2 focus:ring-offset-0"
                         style={{ 
@@ -2979,12 +2989,12 @@ export default function AuthPage() {
                         Kostenlos starten
                       </motion.button>
 
-                      {/* SECONDARY: Login – Premium CI */}
+                      {/* SECONDARY: Login – NAVIGATES TO LOGIN FLOW */}
                       <motion.button
                         type="button"
                         onClick={() => {
-                          setAuthMode("login");
-                          setActiveTab("login");
+                          console.info('[AUTH] Navigating to login flow');
+                          window.location.href = '/auth?flow=login&v=' + Date.now();
                         }}
                         className="relative w-full h-11 md:h-[46px] rounded-full overflow-hidden uppercase font-extrabold text-[13px] focus:outline-none focus:ring-2 focus:ring-offset-0"
                         style={{ 
@@ -3304,9 +3314,43 @@ export default function AuthPage() {
                             <ArrowRight className="w-5 h-5" />
                           </motion.button>
                           
-                          {briefingData.status === 'timeout' && (
+                          {/* Show retry option for failed/timeout enrichments */}
+                          {(briefingData.enrichmentStatus === 'failed' || briefingData.enrichmentStatus === 'timeout' || briefingData.status === 'timeout') && (
+                            <div className="mt-4 p-3 rounded-lg" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                              <p className="text-xs text-red-400 mb-2">
+                                ⚠️ Intelligence Enrichment {briefingData.enrichmentStatus === 'timeout' ? 'hat zu lange gedauert' : 'ist fehlgeschlagen'}
+                              </p>
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    setBriefingData(prev => prev ? { ...prev, status: 'polling', enrichmentStatus: 'retrying' } : prev);
+                                    setOnboardingPhase('briefing');
+                                    const res = await fetch('/api/user/enrich/retry', { 
+                                      method: 'POST', 
+                                      credentials: 'include' 
+                                    });
+                                    if (res.ok) {
+                                      console.log('[BRIEFING] Retry triggered successfully');
+                                    }
+                                  } catch (e) {
+                                    console.error('[BRIEFING] Retry failed:', e);
+                                  }
+                                }}
+                                className="w-full py-2 rounded-lg text-xs font-bold uppercase"
+                                style={{ 
+                                  background: 'rgba(254, 145, 0, 0.2)', 
+                                  border: '1px solid rgba(254, 145, 0, 0.4)',
+                                  color: '#FE9100'
+                                }}
+                              >
+                                🔄 Erneut versuchen
+                              </button>
+                            </div>
+                          )}
+                          
+                          {briefingData.status !== 'timeout' && briefingData.enrichmentStatus !== 'failed' && (
                             <p className="text-xs text-center text-gray-500 mt-3">
-                              Enrichment läuft noch im Hintergrund. Du kannst trotzdem starten!
+                              Dein personalisiertes Outbound Playbook ist bereit!
                             </p>
                           )}
                         </motion.div>
