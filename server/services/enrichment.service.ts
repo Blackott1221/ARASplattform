@@ -7,6 +7,143 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { storage } from "../storage";
 import { type EnrichmentStatus, type EnrichmentErrorCode } from "@shared/schema";
 
+// 🔥 ROBUST JSON EXTRACTOR - handles markdown fences, extra text, repair
+function extractJsonFromText(rawText: string): { json: any | null; repaired: boolean; error: string | null } {
+  if (!rawText || typeof rawText !== 'string') {
+    return { json: null, repaired: false, error: 'empty_input' };
+  }
+  
+  let text = rawText.trim();
+  
+  // Step 1: Remove markdown code fences
+  text = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '');
+  
+  // Step 2: Remove common prefixes like "Here is the JSON:" or "Response:"
+  text = text.replace(/^[\s\S]*?(?=\{)/m, '');
+  
+  // Step 3: Find first { and last } - proper brace matching
+  const firstBrace = text.indexOf('{');
+  const lastBrace = text.lastIndexOf('}');
+  
+  if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+    console.log('[extractJson] No valid braces found', { firstBrace, lastBrace, textLength: text.length });
+    return { json: null, repaired: false, error: 'no_braces' };
+  }
+  
+  let jsonString = text.substring(firstBrace, lastBrace + 1);
+  
+  // Step 4: Try direct parse
+  try {
+    const parsed = JSON.parse(jsonString);
+    console.log('[extractJson] Direct parse success');
+    return { json: parsed, repaired: false, error: null };
+  } catch (directError: any) {
+    console.log('[extractJson] Direct parse failed:', directError.message?.substring(0, 100));
+  }
+  
+  // Step 5: Attempt repairs
+  let repaired = false;
+  
+  // Fix trailing commas before } or ]
+  jsonString = jsonString.replace(/,\s*([}\]])/g, '$1');
+  
+  // Fix single quotes to double quotes (careful with apostrophes)
+  jsonString = jsonString.replace(/([{,]\s*)'([^']+)'\s*:/g, '$1"$2":');
+  jsonString = jsonString.replace(/:\s*'([^']*)'/g, ': "$1"');
+  
+  // Fix unquoted keys
+  jsonString = jsonString.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
+  
+  // Try parse again
+  try {
+    const parsed = JSON.parse(jsonString);
+    console.log('[extractJson] Repaired parse success');
+    return { json: parsed, repaired: true, error: null };
+  } catch (repairError: any) {
+    console.log('[extractJson] Repaired parse failed:', repairError.message?.substring(0, 100));
+    console.log('[extractJson] First 300 chars:', jsonString.substring(0, 300));
+    console.log('[extractJson] Last 300 chars:', jsonString.substring(Math.max(0, jsonString.length - 300)));
+    return { json: null, repaired: false, error: 'parse_failed' };
+  }
+}
+
+// 🔥 SCHEMA REPAIR - ensure all required fields exist with defaults
+function repairEnrichmentSchema(data: any): { data: any; fieldsRepaired: string[] } {
+  const fieldsRepaired: string[] = [];
+  
+  // Ensure data is an object
+  if (!data || typeof data !== 'object') {
+    return { data: {}, fieldsRepaired: ['root'] };
+  }
+  
+  // Required string fields with defaults
+  const stringFields: Record<string, string> = {
+    companyDescription: 'Unternehmensbeschreibung wird noch analysiert...',
+    targetAudience: 'Zielgruppe wird analysiert...',
+    brandVoice: 'Neutral und professionell',
+    bestCallTimes: 'Vormittags 9-12 Uhr, Nachmittags 14-17 Uhr',
+    marketPosition: 'Marktposition wird analysiert...',
+    confidence: 'medium'
+  };
+  
+  for (const [field, defaultValue] of Object.entries(stringFields)) {
+    if (!data[field] || typeof data[field] !== 'string') {
+      data[field] = defaultValue;
+      fieldsRepaired.push(field);
+    }
+  }
+  
+  // Required array fields with defaults
+  const arrayFields: Record<string, string[]> = {
+    products: ['Produkte werden analysiert...'],
+    services: ['Services werden analysiert...'],
+    targetAudienceSegments: ['Zielgruppensegmente werden analysiert...'],
+    decisionMakers: ['Entscheider werden identifiziert...'],
+    competitors: ['Wettbewerber werden recherchiert...'],
+    uniqueSellingPoints: ['USPs werden analysiert...'],
+    callAngles: ['Gesprächseinstiege werden generiert...'],
+    effectiveKeywords: ['Keywords werden analysiert...'],
+    opportunities: ['Chancen werden identifiziert...'],
+    recentNews: []
+  };
+  
+  for (const [field, defaultValue] of Object.entries(arrayFields)) {
+    if (!Array.isArray(data[field])) {
+      // Try to convert string to array
+      if (typeof data[field] === 'string' && data[field].length > 0) {
+        data[field] = [data[field]];
+        fieldsRepaired.push(`${field}_converted`);
+      } else {
+        data[field] = defaultValue;
+        fieldsRepaired.push(field);
+      }
+    }
+  }
+  
+  // objectionHandling must be array of objects
+  if (!Array.isArray(data.objectionHandling)) {
+    data.objectionHandling = [
+      { objection: 'Kein Interesse', response: 'Verstehe ich. Darf ich kurz fragen, was der Hauptgrund ist?' },
+      { objection: 'Keine Zeit', response: 'Natürlich, wann passt es besser? Ich rufe gerne zurück.' },
+      { objection: 'Schicken Sie Infos', response: 'Sehr gerne! Welcher Aspekt interessiert Sie am meisten?' }
+    ];
+    fieldsRepaired.push('objectionHandling');
+  } else {
+    // Ensure each item has objection and response
+    data.objectionHandling = data.objectionHandling.map((item: any, i: number) => {
+      if (typeof item === 'string') {
+        return { objection: item, response: 'Antwort wird generiert...' };
+      }
+      return {
+        objection: item?.objection || `Einwand ${i + 1}`,
+        response: item?.response || 'Antwort wird generiert...'
+      };
+    });
+  }
+  
+  return { data, fieldsRepaired };
+}
+
 // 🔥 ENRICHMENT META: Stored in ai_profile JSONB
 export interface EnrichmentMeta {
   status: EnrichmentStatus | 'queued' | 'in_progress';
@@ -300,40 +437,47 @@ Du bist ein Elite-Business-Intelligence-Agent für ARAS AI. Deine Aufgabe: Erste
 - Produktbezogene Keywords
 - Problem-Keywords der Zielgruppe
 
-Antworte NUR mit einem validen JSON-Objekt:
+⚠️ KRITISCH - AUSGABEFORMAT:
+Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt.
+KEINE Markdown-Codeblöcke (\`\`\`), KEIN Text davor oder danach.
+Die Antwort MUSS mit { beginnen und mit } enden.
+
 {
-  "companyDescription": "Mindestens 300 Zeichen ultra-detaillierte Beschreibung",
-  "foundedYear": "Jahr oder null",
-  "ceoName": "Name oder null",
-  "employeeCount": "Zahl oder Schätzung",
-  "headquarters": "Stadt, Land",
-  "products": ["Produkt 1: Beschreibung", "Produkt 2: Beschreibung", ...min 5],
-  "services": ["Service 1: Beschreibung", "Service 2: Beschreibung", ...min 5],
-  "targetAudience": "Mindestens 100 Zeichen detaillierte Beschreibung",
-  "targetAudienceSegments": ["Segment 1", "Segment 2", ...min 5],
-  "decisionMakers": ["Titel 1: Pain Point", "Titel 2: Pain Point"],
-  "competitors": ["Wettbewerber 1", "Wettbewerber 2", ...min 5],
-  "uniqueSellingPoints": ["USP 1", "USP 2", ...min 7],
-  "brandVoice": "Detaillierte Tonalitäts-Analyse",
-  "callAngles": ["Angle 1: Konkreter Gesprächseinstieg", ...min 10],
+  "companyDescription": "string (min 300 Zeichen)",
+  "foundedYear": "string oder leerer String",
+  "ceoName": "string oder leerer String",
+  "employeeCount": "string",
+  "headquarters": "string",
+  "products": ["string", "string", "string", "string", "string"],
+  "services": ["string", "string", "string", "string", "string"],
+  "targetAudience": "string (min 100 Zeichen)",
+  "targetAudienceSegments": ["string", "string", "string"],
+  "decisionMakers": ["string", "string"],
+  "competitors": ["string", "string", "string"],
+  "uniqueSellingPoints": ["string", "string", "string"],
+  "brandVoice": "string",
+  "callAngles": ["string", "string", "string", "string", "string"],
   "objectionHandling": [
-    {"objection": "Einwand 1", "response": "Überzeugende Antwort"},
-    {"objection": "Einwand 2", "response": "Überzeugende Antwort"},
-    ...min 10
+    {"objection": "string", "response": "string"},
+    {"objection": "string", "response": "string"},
+    {"objection": "string", "response": "string"}
   ],
-  "bestCallTimes": "Empfehlung mit Begründung",
-  "effectiveKeywords": ["Keyword 1", "Keyword 2", ...min 15],
-  "opportunities": ["Chance 1", "Chance 2", ...min 5],
-  "marketPosition": "Beschreibung der Marktposition",
-  "recentNews": ["Aktuelle Nachricht 1", "Aktuelle Nachricht 2"],
-  "confidence": "high/medium/low - basierend auf gefundenen Daten"
+  "bestCallTimes": "string",
+  "effectiveKeywords": ["string", "string", "string", "string", "string"],
+  "opportunities": ["string", "string", "string"],
+  "marketPosition": "string",
+  "recentNews": ["string"],
+  "confidence": "high" | "medium" | "low"
 }
 
-WICHTIG:
-- Nutze Google Search für echte, aktuelle Daten
-- Erfinde KEINE Fakten - markiere Unbekanntes mit null
-- Je mehr echte Details, desto besser
-- Mindestanforderungen pro Feld einhalten
+STRENGE REGELN:
+1. NUR JSON - kein Text, kein Markdown, keine Erklärungen
+2. Alle Felder MÜSSEN vorhanden sein
+3. Arrays MÜSSEN Arrays sein (niemals Strings)
+4. Strings MÜSSEN Strings sein (niemals null - verwende "")
+5. objectionHandling MUSS ein Array von Objekten mit "objection" und "response" sein
+6. Nutze Google Search für echte Daten
+7. Bei Unbekanntem: leerer String "" oder leeres Array []
 `;
 
     // 🔥 RETRY LOGIC WITH DETAILED LOGGING
@@ -414,20 +558,26 @@ WICHTIG:
       };
     }
     
-    // 🔥 PARSE JSON
-    let companyIntel: any;
-    try {
-      const jsonMatch = response.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        companyIntel = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error('No JSON found');
-      }
-    } catch (parseError) {
+    // 🔥 ROBUST JSON EXTRACTION (handles markdown fences, extra text, repairs)
+    console.log('[enrich.parse.start]', JSON.stringify({ 
+      userId: input.userId, 
+      responseLength: response.length 
+    }));
+    
+    const extractResult = extractJsonFromText(response);
+    
+    if (!extractResult.json) {
+      console.log('[enrich.parse.fail]', JSON.stringify({
+        userId: input.userId,
+        error: extractResult.error,
+        responsePreview: response.substring(0, 200)
+      }));
+      
       console.log('[enrich.job.fail]', JSON.stringify({
         timestamp: new Date().toISOString(),
         userId: input.userId,
         errorCode: 'parse',
+        parseError: extractResult.error,
         attempt: attemptNumber,
         durationMs: Date.now() - startTime
       }));
@@ -439,6 +589,23 @@ WICHTIG:
         enrichmentErrorCode: 'parse',
         confidence: 'low'
       };
+    }
+    
+    // 🔥 SCHEMA REPAIR - ensure all required fields exist
+    const repairResult = repairEnrichmentSchema(extractResult.json);
+    const companyIntel = repairResult.data;
+    
+    if (repairResult.fieldsRepaired.length > 0) {
+      console.log('[enrich.parse.repaired]', JSON.stringify({
+        userId: input.userId,
+        jsonRepaired: extractResult.repaired,
+        fieldsRepaired: repairResult.fieldsRepaired
+      }));
+    } else {
+      console.log('[enrich.parse.success]', JSON.stringify({
+        userId: input.userId,
+        jsonRepaired: extractResult.repaired
+      }));
     }
     
     // 🔥 QUALITY GATE
