@@ -26,6 +26,7 @@ import {
   ActionItemDrawerContent,
 } from "@/components/internal/drawer-contents";
 import { AIIntelligencePanel } from "@/components/internal/ai-intelligence-panel";
+import { TeamFeedSection } from "@/components/internal/team-feed-section";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { formatDistanceToNow, format, isToday, isTomorrow, addDays, startOfDay } from "date-fns";
@@ -442,97 +443,18 @@ export default function InternalDashboard() {
           </div>
         </motion.div>
 
-        {/* TEAM FEED - Full Width */}
+        {/* TEAM FEED - Premium Chat-Style Section */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
+          className="-mx-6"
         >
-          <GlassCard hover={false}>
-            <WidgetHeader icon={MessageSquare} title="Team Feed" count={feedItems.length} />
-            
-            {/* Composer */}
-            <div className="flex gap-2 mb-4">
-              <input
-                type="text"
-                value={feedMessage}
-                onChange={(e) => setFeedMessage(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && feedMessage.trim() && postFeedMutation.mutate(feedMessage.trim())}
-                placeholder="Post an update..."
-                className="flex-1 px-3 py-2 rounded-lg text-sm outline-none transition-colors"
-                style={{ 
-                  background: 'rgba(255,255,255,0.03)', 
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  color: 'rgba(255,255,255,0.9)',
-                }}
-              />
-              <button
-                onClick={() => feedMessage.trim() && postFeedMutation.mutate(feedMessage.trim())}
-                disabled={!feedMessage.trim() || postFeedMutation.isPending}
-                className="px-4 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
-                style={{ 
-                  background: 'linear-gradient(135deg, #FE9100, #a34e00)',
-                  color: 'white',
-                }}
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Feed Items */}
-            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2" style={{ scrollbarWidth: 'thin' }}>
-              {feedLoading ? (
-                Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="flex gap-3">
-                    <Skeleton className="w-8 h-8 rounded-full flex-shrink-0" />
-                    <div className="flex-1">
-                      <Skeleton className="h-4 w-3/4 mb-2" />
-                      <Skeleton className="h-3 w-1/2" />
-                    </div>
-                  </div>
-                ))
-              ) : feedItems.length === 0 ? (
-                <EmptyState icon={MessageSquare} message="No activity yet — post the first update" />
-              ) : (
-                feedItems.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => openDrawer('feed', item)}
-                    className="flex gap-3 group w-full text-left p-2 -mx-2 rounded-lg transition-colors hover:bg-white/[0.03]"
-                  >
-                    <div 
-                      className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-semibold"
-                      style={{ background: 'linear-gradient(135deg, #FE9100, #a34e00)', color: 'white' }}
-                    >
-                      {item.authorUsername?.[0]?.toUpperCase() || '?'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.9)' }}>
-                          {item.authorUsername || 'Unknown'}
-                        </span>
-                        {item.category && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(254,145,0,0.15)', color: '#FE9100' }}>
-                            {item.category}
-                          </span>
-                        )}
-                        <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                          {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true, locale: de })}
-                        </span>
-                      </div>
-                      <p className="text-sm" style={{ color: 'rgba(255,255,255,0.7)' }}>{item.message}</p>
-                      {item.targetName && (
-                        <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                          → {item.targetName}
-                        </p>
-                      )}
-                    </div>
-                    <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-50 transition-opacity" style={{ color: 'rgba(255,255,255,0.5)' }} />
-                  </button>
-                ))
-              )}
-            </div>
-          </GlassCard>
+          <TeamFeedSection
+            currentUserId={undefined}
+            currentUsername={undefined}
+            onItemClick={(item) => openDrawer('feed', item)}
+          />
         </motion.div>
 
         {/* AI INTELLIGENCE + FEED ROW */}
