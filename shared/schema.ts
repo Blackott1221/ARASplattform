@@ -12,6 +12,23 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// 🔥 ENRICHMENT TYPE CONSTANTS (Single Source of Truth)
+export const ENRICHMENT_STATUSES = ['live_research', 'fallback'] as const;
+export type EnrichmentStatus = (typeof ENRICHMENT_STATUSES)[number];
+
+export const ENRICHMENT_ERROR_CODES = [
+  'timeout',
+  'auth', 
+  'quota',
+  'model_not_found',
+  'model_not_allowed',
+  'parse',
+  'missing_fields',
+  'quality_gate_failed',
+  'unknown'
+] as const;
+export type EnrichmentErrorCode = (typeof ENRICHMENT_ERROR_CODES)[number] | null;
+
 // Session storage table for authentication system
 export const sessions = pgTable(
   "sessions",
@@ -129,6 +146,10 @@ export const users = pgTable("users", {
     feedbackStyle?: string;  // How they give/receive feedback
     chatInsightsSummary?: string;  // Gemini-generated summary of all chats
     lastChatAnalysis?: string;  // Timestamp of last analysis
+    
+    // 🔥 ENRICHMENT METADATA (tracks real vs fallback enrichment)
+    enrichmentStatus?: EnrichmentStatus | null;  // Was real AI research or fallback used?
+    enrichmentErrorCode?: EnrichmentErrorCode;  // Error type if fallback
   }>(),
   
   profileEnriched: boolean("profile_enriched").default(false),

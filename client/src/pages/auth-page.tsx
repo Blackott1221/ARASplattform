@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
-import { Loader2, Eye, EyeOff, AlertCircle, CheckCircle2, ArrowRight, Phone, Calendar, Sparkles, Building, Globe, User, Target, ChevronLeft, ChevronDown, Search, Mic, TrendingUp, Shield, ShieldCheck, Check } from "lucide-react";
+import { Loader2, Eye, EyeOff, AlertCircle, CheckCircle2, ArrowRight, Phone, Calendar, Sparkles, Building, Globe, User, Target, ChevronLeft, ChevronDown, Search, Mic, TrendingUp, Shield, ShieldCheck, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { trackLogin, trackSignup, captureUTMParameters } from "@/lib/analytics";
@@ -1784,13 +1784,36 @@ export default function AuthPage() {
     role: "",
     phone: "",
     language: "de",
-    primaryGoal: ""
+    primaryGoal: "",
+    noWebsite: false  // 🔥 STEP 4A: "I don't have a website" flag
   });
 
   const [typedIndex, setTypedIndex] = useState(0);
   const [typedText, setTypedText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const [emailError, setEmailError] = useState("");
+  
+  // 🔥 STEP 7C: PERSISTENT ERROR SYSTEM
+  const [authGlobalError, setAuthGlobalError] = useState<{
+    type: 'error' | 'warning' | 'info';
+    title: string;
+    message: string;
+  } | null>(null);
+
+  // Helper to set global error
+  const setGlobalError = (type: 'error' | 'warning' | 'info', title: string, message: string) => {
+    setAuthGlobalError({ type, title, message });
+  };
+
+  // Helper to clear global error
+  const clearGlobalError = () => {
+    setAuthGlobalError(null);
+  };
+
+  // Clear error when switching tabs
+  useEffect(() => {
+    clearGlobalError();
+  }, [activeTab]);
   
   // 🔥 HERO FEATURE STATES
   const [benefitIndex, setBenefitIndex] = useState(0);
@@ -2097,20 +2120,13 @@ export default function AuthPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    clearGlobalError();
     try {
       const result = await loginMutation.mutateAsync(loginData);
       trackLogin('email', result?.id);
-      toast({
-        title: "Welcome back!",
-        description: "You have been successfully logged in."
-      });
       setLocation("/space");
     } catch (error: any) {
-      toast({
-        title: "Login Failed",
-        description: error.message || "Invalid credentials",
-        variant: "destructive"
-      });
+      setGlobalError('error', 'Login fehlgeschlagen', error.message || 'Ungültige Anmeldedaten. Bitte überprüfe Username und Passwort.');
     }
   };
 
@@ -2121,65 +2137,38 @@ export default function AuthPage() {
     if (registrationStep === 1) {
       // Check required fields
       if (!registerData.firstName) {
-        toast({
-          title: "Hey, wir brauchen deinen Vornamen! 😊",
-          description: "Damit deine KI dich persönlich ansprechen kann.",
-          variant: "destructive"
-        });
+        setGlobalError('error', 'Vorname fehlt', 'Bitte gib deinen Vornamen ein, damit deine KI dich persönlich ansprechen kann.');
         return;
       }
       if (!registerData.lastName) {
-        toast({
-          title: "Und deinen Nachnamen bitte! 👤",
-          description: "Das macht's offizieller und persönlicher.",
-          variant: "destructive"
-        });
+        setGlobalError('error', 'Nachname fehlt', 'Bitte gib deinen Nachnamen ein.');
         return;
       }
       if (!registerData.email) {
-        toast({
-          title: "E-Mail fehlt noch! 📧",
-          description: "Wir brauchen sie für wichtige Updates und Login.",
-          variant: "destructive"
-        });
+        setGlobalError('error', 'E-Mail fehlt', 'Wir brauchen deine E-Mail für wichtige Updates und Login.');
         return;
       }
       // Email validation
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(registerData.email)) {
-        toast({
-          title: "Hmm, die E-Mail sieht komisch aus 🤔",
-          description: "Bitte gib eine gültige E-Mail-Adresse ein (z.B. max@firma.de)",
-          variant: "destructive"
-        });
+        setGlobalError('error', 'Ungültige E-Mail', 'Bitte gib eine gültige E-Mail-Adresse ein (z.B. max@firma.de)');
         return;
       }
       if (!registerData.username) {
-        toast({
-          title: "Username vergessen! 💭",
-          description: "Wähle einen coolen Usernamen für dein Login.",
-          variant: "destructive"
-        });
+        setGlobalError('error', 'Username fehlt', 'Wähle einen Usernamen für dein Login.');
         return;
       }
       if (!registerData.password) {
-        toast({
-          title: "Passwort fehlt! 🔐",
-          description: "Ein sicheres Passwort schützt deinen Account.",
-          variant: "destructive"
-        });
+        setGlobalError('error', 'Passwort fehlt', 'Ein sicheres Passwort schützt deinen Account.');
         return;
       }
       // Password strength check
       if (registerData.password.length < 6) {
-        toast({
-          title: "Passwort zu kurz! ⚠️",
-          description: "Mindestens 6 Zeichen sind nötig für deine Sicherheit.",
-          variant: "destructive"
-        });
+        setGlobalError('warning', 'Passwort zu kurz', 'Mindestens 6 Zeichen sind nötig für deine Sicherheit.');
         return;
       }
       
+      clearGlobalError();
       setRegistrationStep(2);
       return;
     }
@@ -2187,38 +2176,28 @@ export default function AuthPage() {
     // STEP 2 VALIDATION - Business Intelligence
     if (registrationStep === 2) {
       if (!registerData.company) {
-        toast({
-          title: "Firmenname fehlt! 🏢",
-          description: "Damit deine KI weiß, für wen sie arbeitet.",
-          variant: "destructive"
-        });
+        setGlobalError('error', 'Firmenname fehlt', 'Damit deine KI weiß, für wen sie arbeitet.');
         return;
       }
       if (!registerData.industry) {
-        toast({
-          title: "Branche wählen! 🎯",
-          description: "Das hilft der KI, sich auf deine Branche zu spezialisieren.",
-          variant: "destructive"
-        });
+        setGlobalError('error', 'Branche wählen', 'Das hilft der KI, sich auf deine Branche zu spezialisieren.');
         return;
       }
       if (!registerData.role) {
-        toast({
-          title: "Deine Position fehlt! 👔",
-          description: "Sag uns, welche Rolle du im Unternehmen hast.",
-          variant: "destructive"
-        });
+        setGlobalError('error', 'Position fehlt', 'Sag uns, welche Rolle du im Unternehmen hast.');
         return;
       }
       
-      // Website validation (optional, but if provided must be valid)
-      if (registerData.website && registerData.website.trim() !== '') {
+      // 🔥 STEP 4A: Phone required (plausible format, min 8 chars)
+      if (!registerData.phone || registerData.phone.trim().length < 8) {
+        setGlobalError('error', 'Telefonnummer fehlt', 'Bitte gib eine gültige Telefonnummer an (mind. 8 Zeichen).');
+        return;
+      }
+      
+      // Website validation (optional, but if provided must be valid) - skip if noWebsite is true
+      if (!registerData.noWebsite && registerData.website && registerData.website.trim() !== '') {
         if (!validateWebsite(registerData.website)) {
-          toast({
-            title: "Website-Format nicht korrekt 🌐",
-            description: "Bitte gib eine gültige URL ein (z.B. firma.de, www.firma.de oder https://firma.de). Alle Formate sind akzeptiert!",
-            variant: "destructive"
-          });
+          setGlobalError('warning', 'Website-Format', 'Bitte gib eine gültige URL ein (z.B. firma.de oder https://firma.de).');
           return;
         }
         // Auto-add https:// ONLY if no protocol is present
@@ -2230,6 +2209,7 @@ export default function AuthPage() {
         }
       }
       
+      clearGlobalError();
       setRegistrationStep(3);
       return;
     }
@@ -2237,15 +2217,12 @@ export default function AuthPage() {
     // STEP 3 - Move to Live Research
     if (registrationStep === 3) {
       if (!registerData.primaryGoal) {
-        toast({
-          title: "Was ist dein Hauptziel?",
-          description: "Wähle aus, wobei die KI dir am meisten helfen soll.",
-          variant: "destructive"
-        });
+        setGlobalError('error', 'Hauptziel wählen', 'Wähle aus, wobei die KI dir am meisten helfen soll.');
         return;
       }
       
       // Move to Step 4: Live Research
+      clearGlobalError();
       setRegistrationStep(4);
       setIsResearching(true);
       
@@ -2287,10 +2264,6 @@ export default function AuthPage() {
             
             // Redirect faster - research is done server-side
             setTimeout(() => {
-              toast({
-                title: "🎉 Willkommen bei ARAS AI Pro Research™!",
-                description: `Hey ${registerData.firstName}! Deine KI hat ${registerData.company} komplett analysiert. Ready to blow your mind! 💪🔥`
-              });
               setLocation("/space");
             }, 2000); // Reduced from 3000ms
           }, 12000); // Reduced from 28000ms - much faster but still shows animation
@@ -2303,28 +2276,23 @@ export default function AuthPage() {
           
           // Better error messages from server with DETAILED feedback
           let errorMessage = "Ups, da ist was schief gelaufen. Versuch's nochmal!";
-          let errorTitle = "Registrierung fehlgeschlagen 😕";
+          let errorTitle = "Registrierung fehlgeschlagen";
           
           // Check if error message contains specific keywords
           const errorText = error.message || error.toString() || '';
           
           if (errorText.includes('email') || errorText.includes('E-Mail')) {
-            errorTitle = "E-Mail bereits registriert! 📧";
+            errorTitle = "E-Mail bereits registriert";
             errorMessage = `Die E-Mail-Adresse "${registerData.email}" ist bereits bei uns registriert. Möchtest du dich stattdessen einloggen?`;
           } else if (errorText.includes('username') || errorText.includes('Benutzername')) {
-            errorTitle = "Username bereits vergeben! 👤";
+            errorTitle = "Username bereits vergeben";
             errorMessage = `Der Username "${registerData.username}" ist leider schon vergeben. Bitte wähle einen anderen!`;
           } else if (errorText) {
             errorMessage = errorText;
           }
           
-          // Show PROMINENT error toast
-          toast({
-            title: errorTitle,
-            description: errorMessage,
-            variant: "destructive",
-            duration: 8000 // Show longer for errors
-          });
+          // Show PERSISTENT error panel
+          setGlobalError('error', errorTitle, errorMessage);
           
           // Go back to appropriate step based on error
           if (errorText.includes('email') || errorText.includes('username')) {
@@ -2344,6 +2312,7 @@ export default function AuthPage() {
 
   const goToPreviousStep = () => {
     if (registrationStep > 1) {
+      clearGlobalError();
       setRegistrationStep(registrationStep - 1);
     }
   };
@@ -2645,16 +2614,16 @@ export default function AuthPage() {
                 transition={{ duration: 4, repeat: Infinity }}
               />
 
-              {/* Main Card */}
+              {/* 🔥 STEP 7E: RESPONSIVE AUTH CARD */}
               <div
-                className="relative rounded-3xl p-8 md:p-9"
+                className="relative rounded-3xl p-5 sm:p-6 md:p-8 lg:p-9"
                 style={{
-                  background: 'rgba(0, 0, 0, 0.15)', // Schwächerer Background für mehr Kontrast zu Buttons
+                  background: 'rgba(0, 0, 0, 0.15)',
                   backdropFilter: 'blur(32px)',
                   WebkitBackdropFilter: 'blur(32px)',
                   border: '1px solid rgba(255, 255, 255, 0.06)',
                   boxShadow: '0 40px 80px rgba(0, 0, 0, 0.6)',
-                  overflow: 'hidden' // Damit das Licht nicht aus der Card rausläuft
+                  overflow: 'hidden'
                 }}
               >
                 {/* ✨ DIVINE LIGHT EFFECT - WOW MOMENT */}
@@ -2707,98 +2676,62 @@ export default function AuthPage() {
                     }
                   `
                 }} />
-                {/* IDLE STATE - CTA PANEL */}
+                {/* 🔥 STEP 7D: PREMIUM CTA BUTTONS (IDLE STATE) */}
                 <AnimatePresence>
                   {authMode === "idle" && (
                     <div className="flex flex-col gap-3">
-                      {/* PRIMARY: Alpha Zugang beitreten – NEON GLOW */}
-                      <button
+                      {/* PRIMARY: Kostenlos starten – Premium CI */}
+                      <motion.button
                         type="button"
                         onClick={() => {
                           setAuthMode("signup");
                           setActiveTab("register");
                         }}
-                        className="relative w-full rounded-full overflow-hidden uppercase tracking-[0.08em] font-bold text-sm md:text-base"
+                        className="relative w-full h-11 md:h-[46px] rounded-full overflow-hidden uppercase font-extrabold text-[13px] focus:outline-none focus:ring-2 focus:ring-offset-0"
                         style={{ 
-                          fontFamily: "Orbitron, sans-serif", 
-                          color: "#FFFFFF", // Helles Weiß
-                          textShadow: "0 0 15px rgba(254,145,0,0.8), 0 0 30px rgba(254,145,0,0.4)", // Starkes Leuchten
-                          boxShadow: "0 0 30px rgba(254,145,0,0.25)" 
+                          fontFamily: "Orbitron, sans-serif",
+                          letterSpacing: "0.08em",
+                          background: "linear-gradient(180deg, rgba(254,145,0,0.18), rgba(255,255,255,0.02))",
+                          border: "1px solid rgba(254,145,0,0.32)",
+                          color: "rgba(255,255,255,0.96)",
+                          boxShadow: "0 18px 64px rgba(254,145,0,0.12), 0 22px 74px rgba(0,0,0,0.60)"
                         }}
+                        whileHover={{ 
+                          y: -2,
+                          borderColor: "rgba(254,145,0,0.42)",
+                          boxShadow: "0 26px 92px rgba(254,145,0,0.14), 0 22px 74px rgba(0,0,0,0.60)"
+                        }}
+                        whileTap={{ y: 0, scale: 0.99 }}
                       >
-                        {/* Outline-Gradient (nur Rand) */}
-                        <span
-                          className="absolute inset-0 rounded-full pointer-events-none"
-                          style={{
-                            padding: "2px",
-                            background:
-                              "linear-gradient(120deg, #FE9100, #FFD700, #FE9100)", // Kräftigeres Gold/Orange
-                            backgroundSize: "200% 100%",
-                            animation: "aras-border-run 3s linear infinite", // Schnellerer Flow
-                          }}
-                        />
+                        Kostenlos starten
+                      </motion.button>
 
-                        {/* Innen transparent, Glow außen */}
-                        <motion.span
-                          className="relative flex items-center justify-center rounded-full px-6 py-3.5"
-                          style={{
-                            background: "rgba(0,0,0,0.2)", // Leicht abgedunkelt für Kontrast
-                          }}
-                          whileHover={{
-                            backgroundColor: "rgba(254,145,0,0.15)",
-                            scale: 1.02,
-                            textShadow: "0 0 25px rgba(254,145,0,1)"
-                          }}
-                          whileTap={{ scale: 0.97 }}
-                        >
-                          Kostenlos starten
-                        </motion.span>
-                      </button>
-
-                      {/* SECONDARY: Login – Leuchtendes Weiß */}
-                      <button
+                      {/* SECONDARY: Login – Premium CI */}
+                      <motion.button
                         type="button"
                         onClick={() => {
                           setAuthMode("login");
                           setActiveTab("login");
                         }}
-                        className="relative w-full rounded-full overflow-hidden uppercase tracking-[0.08em] font-bold text-xs md:text-sm"
+                        className="relative w-full h-11 md:h-[46px] rounded-full overflow-hidden uppercase font-extrabold text-[13px] focus:outline-none focus:ring-2 focus:ring-offset-0"
                         style={{ 
-                          fontFamily: "Orbitron, sans-serif", 
-                          color: "#FFFFFF",
-                          textShadow: "0 0 12px rgba(255,255,255,0.6)" // Weißes Leuchten
+                          fontFamily: "Orbitron, sans-serif",
+                          letterSpacing: "0.08em",
+                          background: "rgba(255,255,255,0.02)",
+                          border: "1px solid rgba(233,215,196,0.18)",
+                          color: "rgba(245,245,247,0.92)"
                         }}
+                        whileHover={{ 
+                          y: -2,
+                          borderColor: "rgba(254,145,0,0.26)",
+                          boxShadow: "0 20px 72px rgba(0,0,0,0.58)"
+                        }}
+                        whileTap={{ y: 0, scale: 0.99 }}
                       >
-                        {/* Orange/Gold Outline-Gradient */}
-                        <span
-                          className="absolute inset-0 rounded-full pointer-events-none"
-                          style={{
-                            padding: "1px",
-                            background:
-                              "linear-gradient(120deg, rgba(255,255,255,0.5), rgba(254,145,0,0.8), rgba(255,255,255,0.5))",
-                            backgroundSize: "260% 100%",
-                            animation: "aras-border-run 6s linear infinite",
-                          }}
-                        />
+                        Login
+                      </motion.button>
 
-                        {/* Innen transparent */}
-                        <motion.span
-                          className="relative flex items-center justify-center rounded-full px-6 py-3"
-                          style={{
-                            background: "rgba(0,0,0,0)", 
-                          }}
-                          whileHover={{
-                            backgroundColor: "rgba(255,255,255,0.05)",
-                            scale: 1.02,
-                            textShadow: "0 0 20px rgba(255,255,255,0.9)"
-                          }}
-                          whileTap={{ scale: 0.97 }}
-                        >
-                          Login
-                        </motion.span>
-                      </button>
-
-                      {/* Untertitel unter Buttons – statisch, clean */}
+                      {/* Untertitel unter Buttons */}
                       <p className="mt-2 text-[11px] text-center text-neutral-400">
                         Alpha Zugang ist kostenlos. Dein Account bleibt auch nach dem offiziellen Marktstart bestehen.
                       </p>
@@ -2862,6 +2795,72 @@ export default function AuthPage() {
                   </div>
                 </div>
 
+                {/* 🔥 STEP 7C: PERSISTENT ERROR PANEL */}
+                <AnimatePresence>
+                  {authGlobalError && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8, height: 0 }}
+                      animate={{ opacity: 1, y: 0, height: 'auto' }}
+                      exit={{ opacity: 0, y: -8, height: 0 }}
+                      transition={{ duration: 0.18 }}
+                      role="alert"
+                      aria-live="assertive"
+                      className="mb-4 rounded-2xl overflow-hidden"
+                      style={{
+                        background: authGlobalError.type === 'warning' 
+                          ? 'rgba(254, 145, 0, 0.08)' 
+                          : 'rgba(239, 68, 68, 0.08)',
+                        border: authGlobalError.type === 'warning'
+                          ? '1px solid rgba(254, 145, 0, 0.28)'
+                          : '1px solid rgba(239, 68, 68, 0.28)'
+                      }}
+                    >
+                      <div className="p-3 flex items-start gap-3">
+                        <AlertCircle 
+                          className="w-[18px] h-[18px] flex-shrink-0 mt-0.5" 
+                          style={{ 
+                            color: authGlobalError.type === 'warning' ? '#FE9100' : '#ef4444',
+                            opacity: 0.95
+                          }} 
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p 
+                            className="text-xs font-extrabold uppercase tracking-wider"
+                            style={{ 
+                              color: authGlobalError.type === 'warning' ? '#FE9100' : '#ef4444',
+                              fontSize: '12.5px',
+                              letterSpacing: '0.06em'
+                            }}
+                          >
+                            {authGlobalError.title}
+                          </p>
+                          <p 
+                            className="mt-1 text-sm leading-relaxed"
+                            style={{ 
+                              color: 'rgba(245, 245, 247, 0.82)',
+                              fontSize: '13.5px',
+                              lineHeight: '1.55'
+                            }}
+                          >
+                            {authGlobalError.message}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={clearGlobalError}
+                          aria-label="Dismiss error"
+                          className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg transition-colors hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-offset-0"
+                          style={{ 
+                            focusRing: 'rgba(254, 145, 0, 0.55)'
+                          }}
+                        >
+                          <X className="w-4 h-4 text-gray-400 hover:text-gray-200" />
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 {/* Forms */}
                 <AnimatePresence mode="wait">
                   {activeTab === 'login' ? (
@@ -2902,7 +2901,7 @@ export default function AuthPage() {
                               onChange={(e) => setLoginData(prev => ({ ...prev, username: e.target.value }))}
                               placeholder="Dein Username"
                               required
-                              className="relative bg-black/30 border-0 text-white rounded-xl px-4 py-3 text-sm"
+                              className="relative bg-black/30 border-0 text-white rounded-xl px-4 py-3 text-base sm:text-sm"
                               style={{
                                 boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
                               }}
@@ -2930,7 +2929,7 @@ export default function AuthPage() {
                               onChange={(e) => setLoginData(prev => ({ ...prev, password: e.target.value }))}
                               placeholder="Passwort eingeben"
                               required
-                              className="relative bg-black/70 border-0 text-white rounded-xl px-4 py-3 pr-12 text-sm"
+                              className="relative bg-black/70 border-0 text-white rounded-xl px-4 py-3 pr-12 text-base sm:text-sm"
                               style={{
                                 boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
                               }}
@@ -2947,39 +2946,28 @@ export default function AuthPage() {
                           </div>
                         </div>
 
-                        <AnimatePresence>
-                          {loginMutation.isError && (
-                            <motion.div
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: 'auto' }}
-                              exit={{ opacity: 0, height: 0 }}
-                              className="flex items-center gap-2 p-2.5 rounded-lg"
-                              style={{
-                                background: 'rgba(239, 68, 68, 0.1)',
-                                border: '1px solid rgba(239, 68, 68, 0.3)'
-                              }}
-                            >
-                              <AlertCircle className="w-3.5 h-3.5 text-red-400" />
-                              <p className="text-xs text-red-400 font-medium">
-                                Login fehlgeschlagen
-                              </p>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-
-                        <motion.div className="pt-3">
+                        {/* 🔥 STEP 7D: PREMIUM SUBMIT BUTTON */}
+                        <motion.div className="pt-4">
                           <motion.button
                             type="submit"
                             disabled={loginMutation.isPending}
-                            whileHover={{ scale: loginMutation.isPending ? 1 : 1.01 }}
-                            whileTap={{ scale: loginMutation.isPending ? 1 : 0.99 }}
-                            className="relative w-full py-3.5 rounded-xl font-black text-sm overflow-hidden flex items-center justify-center gap-2"
+                            whileHover={{ 
+                              y: loginMutation.isPending ? 0 : -2,
+                              boxShadow: loginMutation.isPending 
+                                ? '0 18px 64px rgba(254,145,0,0.12), 0 22px 74px rgba(0,0,0,0.60)'
+                                : '0 26px 92px rgba(254,145,0,0.14), 0 22px 74px rgba(0,0,0,0.60)'
+                            }}
+                            whileTap={{ y: 0, scale: loginMutation.isPending ? 1 : 0.99 }}
+                            className="relative w-full h-11 md:h-[46px] rounded-full font-extrabold text-[13px] uppercase overflow-hidden flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-offset-0"
                             style={{
                               fontFamily: 'Orbitron, sans-serif',
-                              background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00)',
-                              color: '#000000',
-                              boxShadow: '0 10px 30px rgba(254, 145, 0, 0.3)',
-                              cursor: loginMutation.isPending ? 'not-allowed' : 'pointer'
+                              letterSpacing: '0.08em',
+                              background: 'linear-gradient(180deg, rgba(254,145,0,0.18), rgba(255,255,255,0.02))',
+                              border: '1px solid rgba(254,145,0,0.32)',
+                              color: 'rgba(255,255,255,0.96)',
+                              boxShadow: '0 18px 64px rgba(254,145,0,0.12), 0 22px 74px rgba(0,0,0,0.60)',
+                              cursor: loginMutation.isPending ? 'not-allowed' : 'pointer',
+                              opacity: loginMutation.isPending ? 0.55 : 1
                             }}
                           >
                             {loginMutation.isPending ? (
@@ -3092,7 +3080,7 @@ export default function AuthPage() {
                                 onBlur={(e) => validateFirstName(e.target.value)}
                                 placeholder="Vorname"
                                 required
-                                className="relative bg-black/30 border-0 text-white rounded-lg px-3 py-2 text-xs"
+                                className="relative bg-black/30 border-0 text-white rounded-lg px-3 py-2.5 text-base sm:text-sm"
                                 style={{
                                   boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
                                 }}
@@ -3141,7 +3129,7 @@ export default function AuthPage() {
                                 onBlur={(e) => validateLastName(e.target.value)}
                                 placeholder="Nachname"
                                 required
-                                className="relative bg-black/30 border-0 text-white rounded-lg px-3 py-2 text-xs"
+                                className="relative bg-black/30 border-0 text-white rounded-lg px-3 py-2.5 text-base sm:text-sm"
                                 style={{
                                   boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
                                 }}
@@ -3189,7 +3177,7 @@ export default function AuthPage() {
                               }}
                               placeholder="Wähle einen Username"
                               required
-                              className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2 text-xs"
+                              className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2.5 text-base sm:text-sm"
                               style={{
                                 boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
                               }}
@@ -3236,7 +3224,7 @@ export default function AuthPage() {
                               }}
                               placeholder="name@example.com"
                               required
-                              className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2 text-xs"
+                              className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2.5 text-base sm:text-sm"
                               style={{
                                 boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
                               }}
@@ -3284,7 +3272,7 @@ export default function AuthPage() {
                               placeholder="Sicheres Passwort"
                               required
                               minLength={6}
-                              className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2 pr-10 text-xs"
+                              className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2.5 pr-10 text-base sm:text-sm"
                               style={{
                                 boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
                               }}
@@ -3377,7 +3365,7 @@ export default function AuthPage() {
                                   onBlur={(e) => validateCompany(e.target.value)}
                                   placeholder="Deine Firma"
                                   required
-                                  className="relative bg-black/30 border-0 text-white rounded-lg px-3 py-2 text-xs"
+                                  className="relative bg-black/30 border-0 text-white rounded-lg px-3 py-2.5 text-base sm:text-sm"
                                   style={{
                                     boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
                                   }}
@@ -3422,15 +3410,18 @@ export default function AuthPage() {
                                     setRegisterData(prev => ({ ...prev, website: e.target.value }));
                                     validateWebsite(e.target.value);
                                   }}
-                                  placeholder="firma.de oder www.firma.de"
-                                  className="relative bg-black/30 border-0 text-white rounded-lg px-3 py-2 text-xs"
+                                  placeholder={registerData.noWebsite ? "Keine Website" : "firma.de oder www.firma.de"}
+                                  disabled={registerData.noWebsite}
+                                  className={`relative bg-black/30 border-0 text-white rounded-lg px-3 py-2 text-xs ${
+                                    registerData.noWebsite ? 'opacity-50 cursor-not-allowed' : ''
+                                  }`}
                                   style={{
                                     boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
                                   }}
                                 />
                               </div>
                               <AnimatePresence>
-                                {websiteError && (
+                                {websiteError && !registerData.noWebsite && (
                                   <motion.p
                                     initial={{ opacity: 0, y: -3 }}
                                     animate={{ opacity: 1, y: 0 }}
@@ -3445,6 +3436,29 @@ export default function AuthPage() {
                                   </motion.p>
                                 )}
                               </AnimatePresence>
+                              
+                              {/* 🔥 STEP 4A: No-Website Toggle */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setRegisterData(prev => ({
+                                    ...prev,
+                                    noWebsite: !prev.noWebsite,
+                                    website: !prev.noWebsite ? '' : prev.website // Clear website when toggling on
+                                  }));
+                                  setWebsiteError('');
+                                }}
+                                className={`text-[10px] flex items-center gap-1.5 mt-1 transition-colors ${
+                                  registerData.noWebsite ? 'text-[#FE9100]' : 'text-gray-500 hover:text-gray-300'
+                                }`}
+                              >
+                                <div className={`w-3 h-3 rounded border flex items-center justify-center transition-colors ${
+                                  registerData.noWebsite ? 'bg-[#FE9100] border-[#FE9100]' : 'border-gray-500'
+                                }`}>
+                                  {registerData.noWebsite && <CheckCircle2 className="w-2 h-2 text-black" />}
+                                </div>
+                                {registerData.language === 'de' ? 'Ich habe keine Website' : "I don't have a website"}
+                              </button>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
@@ -3466,7 +3480,7 @@ export default function AuthPage() {
                                     value={registerData.industry}
                                     onChange={(e) => setRegisterData(prev => ({ ...prev, industry: e.target.value }))}
                                     required
-                                    className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2 text-xs w-full appearance-none"
+                                    className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2.5 text-base sm:text-sm w-full appearance-none"
                                     style={{
                                       boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
                                     }}
@@ -3499,7 +3513,7 @@ export default function AuthPage() {
                                     value={registerData.role}
                                     onChange={(e) => setRegisterData(prev => ({ ...prev, role: e.target.value }))}
                                     required
-                                    className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2 text-xs w-full appearance-none"
+                                    className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2.5 text-base sm:text-sm w-full appearance-none"
                                     style={{
                                       boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
                                     }}
@@ -3534,7 +3548,7 @@ export default function AuthPage() {
                                   value={registerData.phone}
                                   onChange={(e) => setRegisterData(prev => ({ ...prev, phone: e.target.value }))}
                                   placeholder="+49 123 456789"
-                                  className="relative bg-black/30 border-0 text-white rounded-lg px-3 py-2 text-xs"
+                                  className="relative bg-black/30 border-0 text-white rounded-lg px-3 py-2.5 text-base sm:text-sm"
                                   style={{
                                     boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
                                   }}
@@ -3565,7 +3579,7 @@ export default function AuthPage() {
                                   value={registerData.primaryGoal}
                                   onChange={(e) => setRegisterData(prev => ({ ...prev, primaryGoal: e.target.value }))}
                                   required
-                                  className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2 text-xs w-full appearance-none"
+                                  className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2.5 text-base sm:text-sm w-full appearance-none"
                                   style={{
                                     boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
                                   }}
@@ -3597,7 +3611,7 @@ export default function AuthPage() {
                                 <select
                                   value={registerData.language}
                                   onChange={(e) => setRegisterData(prev => ({ ...prev, language: e.target.value }))}
-                                  className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2 text-xs w-full appearance-none"
+                                  className="relative bg-black/70 border-0 text-white rounded-lg px-3 py-2.5 text-base sm:text-sm w-full appearance-none"
                                   style={{
                                     boxShadow: 'inset 0 2px 8px rgba(0, 0, 0, 0.6)'
                                   }}
@@ -3724,39 +3738,22 @@ export default function AuthPage() {
                           </>
                         )}
 
-                        <AnimatePresence>
-                          {registerMutation.isError && (
-                            <motion.div
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: 'auto' }}
-                              exit={{ opacity: 0, height: 0 }}
-                              className="flex items-center gap-2 p-2 rounded-lg"
-                              style={{
-                                background: 'rgba(239, 68, 68, 0.1)',
-                                border: '1px solid rgba(239, 68, 68, 0.3)'
-                              }}
-                            >
-                              <AlertCircle className="w-3 h-3 text-red-400" />
-                              <p className="text-[10px] text-red-400 font-medium">
-                                Registrierung fehlgeschlagen
-                              </p>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-
-                        <div className="pt-3 space-y-2">
+                        {/* 🔥 STEP 7D: PREMIUM FORM BUTTONS */}
+                        <div className="pt-4 space-y-3">
                           {/* Back Button for Step 2 & 3 */}
                           {registrationStep > 1 && (
                             <motion.button
                               type="button"
                               onClick={goToPreviousStep}
-                              whileHover={{ scale: 1.01 }}
-                              whileTap={{ scale: 0.99 }}
-                              className="relative w-full py-2.5 rounded-xl font-bold text-xs overflow-hidden flex items-center justify-center gap-2 text-gray-400 hover:text-gray-300"
+                              whileHover={{ y: -2, borderColor: 'rgba(254,145,0,0.26)' }}
+                              whileTap={{ y: 0, scale: 0.99 }}
+                              className="relative w-full h-10 rounded-full font-bold text-[12px] uppercase overflow-hidden flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-offset-0"
                               style={{
                                 fontFamily: 'Orbitron, sans-serif',
-                                background: 'rgba(255, 255, 255, 0.05)',
-                                border: '1px solid rgba(255, 255, 255, 0.1)'
+                                letterSpacing: '0.06em',
+                                background: 'rgba(255, 255, 255, 0.02)',
+                                border: '1px solid rgba(233,215,196,0.18)',
+                                color: 'rgba(245,245,247,0.72)'
                               }}
                             >
                               <ChevronLeft className="w-3.5 h-3.5" />
@@ -3768,15 +3765,23 @@ export default function AuthPage() {
                           <motion.button
                             type="submit"
                             disabled={registerMutation.isPending || isResearching}
-                            whileHover={{ scale: (registerMutation.isPending || isResearching) ? 1 : 1.01 }}
-                            whileTap={{ scale: (registerMutation.isPending || isResearching) ? 1 : 0.99 }}
-                            className="relative w-full py-3.5 rounded-xl font-black text-sm overflow-hidden flex items-center justify-center gap-2"
+                            whileHover={{ 
+                              y: (registerMutation.isPending || isResearching) ? 0 : -2,
+                              boxShadow: (registerMutation.isPending || isResearching) 
+                                ? '0 18px 64px rgba(254,145,0,0.12), 0 22px 74px rgba(0,0,0,0.60)'
+                                : '0 26px 92px rgba(254,145,0,0.14), 0 22px 74px rgba(0,0,0,0.60)'
+                            }}
+                            whileTap={{ y: 0, scale: (registerMutation.isPending || isResearching) ? 1 : 0.99 }}
+                            className="relative w-full h-11 md:h-[46px] rounded-full font-extrabold text-[13px] uppercase overflow-hidden flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-offset-0"
                             style={{
                               fontFamily: 'Orbitron, sans-serif',
-                              background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00)',
-                              color: '#000000',
-                              boxShadow: '0 10px 30px rgba(254, 145, 0, 0.3)',
-                              cursor: (registerMutation.isPending || isResearching) ? 'not-allowed' : 'pointer'
+                              letterSpacing: '0.08em',
+                              background: 'linear-gradient(180deg, rgba(254,145,0,0.18), rgba(255,255,255,0.02))',
+                              border: '1px solid rgba(254,145,0,0.32)',
+                              color: 'rgba(255,255,255,0.96)',
+                              boxShadow: '0 18px 64px rgba(254,145,0,0.12), 0 22px 74px rgba(0,0,0,0.60)',
+                              cursor: (registerMutation.isPending || isResearching) ? 'not-allowed' : 'pointer',
+                              opacity: (registerMutation.isPending || isResearching) ? 0.55 : 1
                             }}
                           >
                             {isResearching ? (

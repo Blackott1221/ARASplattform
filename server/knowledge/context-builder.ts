@@ -9,13 +9,38 @@
 
 import { storage } from '../storage';
 import { logger } from '../logger';
-import type { User, UserDataSource } from '@shared/schema';
+import type { User, UserDataSource, EnrichmentStatus, EnrichmentErrorCode } from '@shared/schema';
+
+// 🔥 STEP 6: EnrichmentMeta interface (matches enrichment.service.ts)
+interface EnrichmentMeta {
+  status: 'queued' | 'in_progress' | 'live_research' | 'fallback';
+  errorCode: EnrichmentErrorCode | null;
+  lastUpdated: string | null;
+  attempts: number;
+  nextRetryAt: string | null;
+  confidence: 'low' | 'medium' | 'high' | null;
+}
 
 // Configuration defaults
 const DEFAULT_MAX_SOURCES = 8;
 const DEFAULT_MAX_CHARS_SPACE = 3500;  // For SPACE chat
 const DEFAULT_MAX_CHARS_POWER = 2000;  // For POWER calls (shorter)
 const SNIPPET_MAX_CHARS = 800;         // Per-source snippet limit
+const INTEL_HEADER_MAX_CHARS = 220;    // 🔥 STEP 6: Budget for Intelligence Header
+
+// 🔥 STEP 6: Status label mapping (deterministic, no provider names)
+const STATUS_LABELS: Record<string, string> = {
+  'live_research': 'Up to date',
+  'queued': 'In progress',
+  'in_progress': 'In progress',
+  'fallback': 'Limited'
+};
+
+const CONFIDENCE_LABELS: Record<string, string> = {
+  'high': 'High',
+  'medium': 'Medium',
+  'low': 'Low'
+};
 
 export interface KnowledgeContextOptions {
   maxSources?: number;
@@ -87,18 +112,97 @@ function formatSourceEntry(source: UserDataSource, includeFileMeta: boolean): st
 }
 
 /**
+ * 🔥 STEP 6: Build Intelligence Status Header (always first, ~220 chars max)
+ * Format:
+ *   Intelligence: Up to date | In progress | Limited
+ *   Last updated: 2026-02-03 08:21 | —
+ *   Confidence: High | Medium | Low | —
+ */
+function buildIntelligenceHeader(aiProfile: Record<string, any> | null): string {
+  const meta = aiProfile?.enrichmentMeta as EnrichmentMeta | undefined;
+  const legacyStatus = aiProfile?.enrichmentStatus as string | undefined;
+  
+  // Determine status (prefer enrichmentMeta, fallback to legacy)
+  const rawStatus = meta?.status || legacyStatus || 'fallback';
+  const statusLabel = STATUS_LABELS[rawStatus] || 'Limited';
+  
+  // Determine confidence
+  let confidence = meta?.confidence || null;
+  if (!confidence && rawStatus === 'live_research') {
+    // Derive confidence for legacy users: if live_research, assume medium
+    confidence = 'medium';
+  }
+  const confidenceLabel = confidence ? CONFIDENCE_LABELS[confidence] || '—' : '—';
+  
+  // Format last updated (no PII, just date)
+  let lastUpdated = '—';
+  const rawDate = meta?.lastUpdated || aiProfile?.lastUpdated;
+  if (rawDate) {
+    try {
+      const d = new Date(rawDate);
+      lastUpdated = d.toISOString().slice(0, 16).replace('T', ' ');
+    } catch {
+      lastUpdated = '—';
+    }
+  }
+  
+  return `Intelligence: ${statusLabel} | Updated: ${lastUpdated} | Confidence: ${confidenceLabel}`;
+}
+
+/**
+ * 🔥 STEP 6: Check if enrichment is currently in progress (queued/in_progress)
+ */
+function isEnrichmentPending(aiProfile: Record<string, any> | null): boolean {
+  const meta = aiProfile?.enrichmentMeta as EnrichmentMeta | undefined;
+  const status = meta?.status || aiProfile?.enrichmentStatus || 'fallback';
+  return status === 'queued' || status === 'in_progress';
+}
+
+/**
+ * 🔥 STEP 6: Derive confidence for legacy users (lightweight heuristic)
+ */
+function deriveConfidence(aiProfile: Record<string, any> | null): 'low' | 'medium' | 'high' | null {
+  if (!aiProfile) return null;
+  
+  const meta = aiProfile.enrichmentMeta as EnrichmentMeta | undefined;
+  if (meta?.confidence) return meta.confidence;
+  
+  // Legacy heuristic: check if live_research with quality content
+  const status = meta?.status || aiProfile.enrichmentStatus || 'fallback';
+  if (status === 'live_research') {
+    // Check content quality (lightweight)
+    const hasDescription = aiProfile.companyDescription && aiProfile.companyDescription.length > 100;
+    const hasProducts = Array.isArray(aiProfile.products) && aiProfile.products.length > 0;
+    const hasUSPs = Array.isArray(aiProfile.uniqueSellingPoints) && aiProfile.uniqueSellingPoints.length > 0;
+    
+    if (hasDescription && hasProducts && hasUSPs) return 'high';
+    if (hasDescription || hasProducts) return 'medium';
+  }
+  
+  return 'low';
+}
+
+/**
  * Build AI Profile bullet points for digest
+ * 🔥 STEP 6: If enrichment is pending, show honest placeholder instead of fake data
  */
 function buildAiProfileBullets(aiProfile: Record<string, any> | null): string[] {
   if (!aiProfile) return [];
   
+  // 🔥 STEP 6: If enrichment is queued/in_progress, don't show fake company data
+  if (isEnrichmentPending(aiProfile)) {
+    return [
+      'Company profile is being analyzed. More details will appear automatically.'
+    ];
+  }
+  
   const bullets: string[] = [];
   
-  // Core company info
-  if (aiProfile.companyDescription) {
+  // Core company info - only show if arrays have real content
+  if (aiProfile.companyDescription && aiProfile.companyDescription.length > 50) {
     bullets.push(`Company: ${extractSnippet(aiProfile.companyDescription, 200)}`);
   }
-  if (aiProfile.targetAudience) {
+  if (aiProfile.targetAudience && aiProfile.targetAudience.length > 20) {
     bullets.push(`Target Audience: ${extractSnippet(aiProfile.targetAudience, 150)}`);
   }
   if (aiProfile.products && Array.isArray(aiProfile.products) && aiProfile.products.length > 0) {
@@ -110,7 +214,7 @@ function buildAiProfileBullets(aiProfile: Record<string, any> | null): string[] 
   if (aiProfile.competitors && Array.isArray(aiProfile.competitors) && aiProfile.competitors.length > 0) {
     bullets.push(`Competitors: ${aiProfile.competitors.slice(0, 4).join(', ')}`);
   }
-  if (aiProfile.brandVoice) {
+  if (aiProfile.brandVoice && aiProfile.brandVoice.length > 20) {
     bullets.push(`Brand Voice: ${extractSnippet(aiProfile.brandVoice, 100)}`);
   }
   
@@ -236,6 +340,10 @@ export async function buildKnowledgeContext(
     // Header
     digestParts.push('═══ USER KNOWLEDGE CONTEXT ═══');
     
+    // 🔥 STEP 6: Intelligence Status Header (ALWAYS first, ~220 chars, never truncated)
+    const intelHeader = buildIntelligenceHeader(aiProfile);
+    digestParts.push(intelHeader);
+    
     // AI Profile section
     const profileBullets = buildAiProfileBullets(aiProfile);
     if (profileBullets.length > 0) {
@@ -261,10 +369,23 @@ export async function buildKnowledgeContext(
     digestParts.push('═══════════════════════════════');
 
     // 4. Combine and clamp to budget
+    // 🔥 STEP 6: Budget guardrails - header stays, sources get truncated first
     let digest = digestParts.join('\n');
     
     if (digest.length > maxChars) {
-      digest = digest.substring(0, maxChars - 20) + '\n[...truncated...]';
+      // Calculate how much we need to cut
+      const headerEndIdx = digest.indexOf('📊 BUSINESS INTELLIGENCE:');
+      const headerSection = headerEndIdx > 0 ? digest.substring(0, headerEndIdx) : '';
+      
+      // If we have a header section, preserve it and truncate the rest
+      if (headerSection.length > 0 && headerSection.length < maxChars - 100) {
+        const remainingBudget = maxChars - headerSection.length - 25;
+        const restContent = digest.substring(headerEndIdx);
+        digest = headerSection + restContent.substring(0, remainingBudget) + '\n[...truncated...]';
+      } else {
+        // Fallback: simple truncation
+        digest = digest.substring(0, maxChars - 20) + '\n[...truncated...]';
+      }
       truncated = true;
     }
 
@@ -302,3 +423,27 @@ export async function getKnowledgeDigest(
   const context = await buildKnowledgeContext(userId, { mode });
   return context.digest;
 }
+
+/**
+ * 🔥 STEP 6: Self-check examples (no test framework needed)
+ * 
+ * === CASE A: queued ===
+ * aiProfile = { enrichmentMeta: { status: 'queued', confidence: null, lastUpdated: '2026-02-03T08:00:00Z' } }
+ * Expected Header: "Intelligence: In progress | Updated: 2026-02-03 08:00 | Confidence: —"
+ * Expected Bullets: ["Company profile is being analyzed. More details will appear automatically."]
+ * 
+ * === CASE B: fallback/low ===
+ * aiProfile = { enrichmentStatus: 'fallback', companyDescription: 'Short desc' }
+ * Expected Header: "Intelligence: Limited | Updated: — | Confidence: —"
+ * Expected Bullets: [] (companyDescription too short, < 50 chars)
+ * 
+ * === CASE C: live_research/high ===
+ * aiProfile = { 
+ *   enrichmentMeta: { status: 'live_research', confidence: 'high', lastUpdated: '2026-02-03T10:30:00Z' },
+ *   companyDescription: 'Very detailed company description with more than 100 characters...',
+ *   products: ['Product A', 'Product B'],
+ *   uniqueSellingPoints: ['USP 1', 'USP 2']
+ * }
+ * Expected Header: "Intelligence: Up to date | Updated: 2026-02-03 10:30 | Confidence: High"
+ * Expected Bullets: [Company: ..., Products/Services: ..., USPs: ...]
+ */
