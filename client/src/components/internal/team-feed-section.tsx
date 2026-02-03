@@ -594,7 +594,7 @@ export function TeamFeedSection({
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Update schreiben…"
+              placeholder="Teile es mit dem Team der Schwarzott Group! :)"
               className="flex-1 bg-transparent text-[14px] outline-none"
               style={{ color: 'rgba(255,255,255,0.9)', fontFamily: 'Inter, sans-serif' }}
             />

@@ -28,6 +28,7 @@ import {
 import { AIIntelligencePanel } from "@/components/internal/ai-intelligence-panel";
 import { TeamFeedSection } from "@/components/internal/team-feed-section";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { formatDistanceToNow, format, isToday, isTomorrow, addDays, startOfDay } from "date-fns";
 import { de } from "date-fns/locale";
@@ -221,6 +222,7 @@ export default function InternalDashboard() {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   
   const { toast } = useToast();
+  const { user } = useAuth() as { user: { id: string; username: string } | null };
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
 
@@ -451,8 +453,8 @@ export default function InternalDashboard() {
           className="-mx-6"
         >
           <TeamFeedSection
-            currentUserId={undefined}
-            currentUsername={undefined}
+            currentUserId={user?.id}
+            currentUsername={user?.username}
             onItemClick={(item) => openDrawer('feed', item)}
           />
         </motion.div>
