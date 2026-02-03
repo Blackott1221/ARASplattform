@@ -571,6 +571,23 @@ router.post('/team-feed/seed', requireInternal, async (req: any, res) => {
   }
 });
 
+// Clear seeded messages (messages with user_ prefixed IDs)
+router.post('/team-feed/clear-seed', requireInternal, async (req: any, res) => {
+  try {
+    const result = await db.execute(sql`
+      DELETE FROM team_feed 
+      WHERE author_user_id LIKE 'user_%'
+      RETURNING id
+    `);
+    const count = (result as any)?.length || 0;
+    logger.info(`[TEAM-FEED] Cleared ${count} seeded messages`);
+    res.json({ success: true, deleted: count });
+  } catch (error: any) {
+    logger.error('[TEAM-FEED] Clear seed error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ============================================================================
 // TEAM CALENDAR - Shared calendar events
 // ============================================================================
