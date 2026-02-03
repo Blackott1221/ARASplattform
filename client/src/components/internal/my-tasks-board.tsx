@@ -1,12 +1,9 @@
 /**
  * ============================================================================
- * MY TASKS BOARD - Kanban-Style Task Management
+ * MY TASKS BOARD v2 - Premium Task Management
  * ============================================================================
- * Premium drag-and-drop task board for the Team Command Center
- * - 4 columns: Eingang, Heute, Diese Woche, Erledigt
- * - Drag & Drop status changes
- * - Task details drawer
- * - Quick add functionality
+ * Modern Kanban board with Move menu (no drag & drop), premium tooltips,
+ * fixed portal drawer, and polished UI.
  * ============================================================================
  */
 
@@ -14,13 +11,28 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Plus, Filter, MoreHorizontal, Check, Edit3, Info,
-  GripVertical, Calendar, Clock, CheckCircle2, Inbox,
-  ChevronRight, X, Loader2
+  Plus, Filter, MoreHorizontal, Check, Info, X, Loader2,
+  Calendar, Clock, CheckCircle2, Inbox, ExternalLink,
+  RotateCcw, ChevronDown
 } from 'lucide-react';
-import { format, isToday, isTomorrow, addDays, startOfDay, endOfDay, isAfter, isBefore } from 'date-fns';
+import { format, isToday, isTomorrow, addDays, startOfDay, endOfDay, isBefore } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
+} from '@/components/ui/dropdown-menu';
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from '@/components/ui/hover-card';
+import { createPortal } from 'react-dom';
 
 // ============================================================================
 // TYPES
@@ -49,10 +61,10 @@ interface Column {
 }
 
 const COLUMNS: Column[] = [
-  { id: 'inbox', title: 'EINGANG', icon: Inbox, description: 'Neue Aufgaben ohne Termin' },
-  { id: 'today', title: 'HEUTE', icon: Clock, description: 'Alles, was heute erledigt werden sollte' },
-  { id: 'week', title: 'DIESE WOCHE', icon: Calendar, description: 'Aufgaben für die nächsten 7 Tage' },
-  { id: 'done', title: 'ERLEDIGT', icon: CheckCircle2, description: 'Abgeschlossene Aufgaben' },
+  { id: 'inbox', title: 'EINGANG', icon: Inbox, description: 'Neue Aufgaben ohne Termin oder mit Fälligkeit in mehr als 7 Tagen.' },
+  { id: 'today', title: 'HEUTE', icon: Clock, description: 'Aufgaben mit Fälligkeit heute oder bereits überfällig.' },
+  { id: 'week', title: 'DIESE WOCHE', icon: Calendar, description: 'Aufgaben für die nächsten 7 Tage.' },
+  { id: 'done', title: 'ERLEDIGT', icon: CheckCircle2, description: 'Abgeschlossene Aufgaben.' },
 ];
 
 // ============================================================================
@@ -83,39 +95,32 @@ function getTaskColumn(task: InternalTask): ColumnId {
   return 'inbox';
 }
 
-function getPriorityFromColumn(columnId: ColumnId): string | undefined {
-  // Map columns to implicit priority for sorting
-  switch (columnId) {
-    case 'today': return 'high';
-    case 'week': return 'medium';
-    default: return undefined;
-  }
-}
-
 // ============================================================================
-// TASK CARD COMPONENT
+// TASK CARD COMPONENT (No Drag & Drop - Move Menu Instead)
 // ============================================================================
 
 interface TaskCardProps {
   task: InternalTask;
+  currentColumn: ColumnId;
   onComplete: (taskId: string) => void;
+  onReopen: (taskId: string) => void;
+  onMove: (taskId: string, columnId: ColumnId) => void;
   onClick: (task: InternalTask) => void;
-  isDragging?: boolean;
 }
 
-function TaskCard({ task, onComplete, onClick, isDragging }: TaskCardProps) {
+function TaskCard({ task, currentColumn, onComplete, onReopen, onMove, onClick }: TaskCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   
-  // Priority dot color
   const getPriorityColor = () => {
     if (task.status === 'DONE') return 'rgba(107,114,128,0.6)';
     if (!task.dueDate) return 'rgba(107,114,128,0.6)';
     
     const dueDate = new Date(task.dueDate);
-    if (isBefore(dueDate, startOfDay(new Date()))) return '#EF4444'; // Overdue
-    if (isToday(dueDate)) return '#F97316'; // Today
-    if (isTomorrow(dueDate)) return '#EAB308'; // Tomorrow
-    return 'rgba(107,114,128,0.6)'; // Default
+    if (isBefore(dueDate, startOfDay(new Date()))) return '#EF4444';
+    if (isToday(dueDate)) return '#F97316';
+    if (isTomorrow(dueDate)) return '#EAB308';
+    return 'rgba(107,114,128,0.6)';
   };
   
   const formatDueDate = () => {
@@ -126,20 +131,16 @@ function TaskCard({ task, onComplete, onClick, isDragging }: TaskCardProps) {
     return format(date, 'EEE, dd.MM', { locale: de });
   };
 
+  const showMenu = isHovered || menuOpen;
+
   return (
     <motion.div
       layout
       initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: isDragging ? 0.65 : 1, y: 0, scale: isDragging ? 0.98 : 1 }}
+      animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       whileHover={{ y: -1 }}
-      whileTap={{ y: 0 }}
       transition={{ duration: 0.14, ease: [0.2, 0.8, 0.2, 1] }}
-      draggable
-      onDragStart={(e: any) => {
-        e.dataTransfer.setData('taskId', task.id);
-        e.dataTransfer.effectAllowed = 'move';
-      }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={() => onClick(task)}
@@ -149,7 +150,7 @@ function TaskCard({ task, onComplete, onClick, isDragging }: TaskCardProps) {
         border: '1px solid rgba(255,255,255,0.08)',
       }}
     >
-      {/* Title Row */}
+      {/* Header Row */}
       <div className="flex items-start gap-2 mb-2">
         <p 
           className="flex-1 text-[14px] font-semibold leading-tight line-clamp-2"
@@ -160,6 +161,102 @@ function TaskCard({ task, onComplete, onClick, isDragging }: TaskCardProps) {
         >
           {task.title}
         </p>
+        
+        {/* Move Menu Button */}
+        <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+          <DropdownMenuTrigger asChild>
+            <button
+              onClick={(e) => e.stopPropagation()}
+              className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg transition-all duration-150 outline-none focus:ring-2 focus:ring-[#ff6a00]/60"
+              style={{
+                opacity: showMenu ? 1 : 0,
+                pointerEvents: showMenu ? 'auto' : 'none',
+                background: menuOpen ? 'rgba(255,106,0,0.15)' : 'transparent',
+              }}
+              onMouseEnter={(e) => {
+                if (!menuOpen) e.currentTarget.style.background = 'rgba(255,106,0,0.10)';
+              }}
+              onMouseLeave={(e) => {
+                if (!menuOpen) e.currentTarget.style.background = 'transparent';
+              }}
+            >
+              <MoreHorizontal className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.7)' }} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            sideOffset={4}
+            onClick={(e) => e.stopPropagation()}
+            className="w-[260px] p-1.5 rounded-xl border-0"
+            style={{
+              background: 'rgba(0,0,0,0.92)',
+              backdropFilter: 'blur(14px)',
+              border: '1px solid rgba(255,106,0,0.22)',
+              boxShadow: '0 18px 60px rgba(0,0,0,0.75)',
+            }}
+          >
+            <DropdownMenuItem
+              onClick={() => onClick(task)}
+              className="h-[34px] rounded-[10px] px-3 text-[13px] cursor-pointer"
+              style={{ color: 'rgba(255,255,255,0.85)' }}
+            >
+              <ExternalLink className="w-4 h-4 mr-2" style={{ color: 'rgba(255,255,255,0.5)' }} />
+              Öffnen
+            </DropdownMenuItem>
+            
+            <DropdownMenuSeparator className="my-1.5 bg-white/10" />
+            
+            <DropdownMenuLabel className="px-3 py-1.5 text-[11px] font-normal uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.4)' }}>
+              Verschieben nach
+            </DropdownMenuLabel>
+            
+            {COLUMNS.filter(col => col.id !== 'done').map((col) => {
+              const isActive = currentColumn === col.id;
+              const Icon = col.icon;
+              return (
+                <DropdownMenuItem
+                  key={col.id}
+                  onClick={() => onMove(task.id, col.id)}
+                  className="h-[34px] rounded-[10px] px-3 text-[13px] cursor-pointer relative"
+                  style={{ 
+                    color: isActive ? '#e9d7c4' : 'rgba(255,255,255,0.85)',
+                    background: isActive ? 'rgba(255,106,0,0.08)' : 'transparent',
+                  }}
+                >
+                  {isActive && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-r bg-[#ff6a00]" />
+                  )}
+                  <Icon className="w-4 h-4 mr-2" style={{ color: isActive ? '#FE9100' : 'rgba(255,255,255,0.5)' }} />
+                  {col.title.charAt(0) + col.title.slice(1).toLowerCase()}
+                </DropdownMenuItem>
+              );
+            })}
+            
+            <DropdownMenuSeparator className="my-1.5 bg-white/10" />
+            
+            {task.status !== 'DONE' ? (
+              <DropdownMenuItem
+                onClick={() => onComplete(task.id)}
+                className="h-[34px] rounded-[10px] px-3 text-[13px] cursor-pointer"
+                style={{ color: '#10B981' }}
+              >
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                Als erledigt markieren
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem
+                onClick={() => onReopen(task.id)}
+                className="h-[34px] rounded-[10px] px-3 text-[13px] cursor-pointer"
+                style={{ color: '#FE9100' }}
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Wieder öffnen
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+        
+        {/* Priority Dot */}
         <div 
           className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5"
           style={{ background: getPriorityColor() }}
@@ -170,104 +267,25 @@ function TaskCard({ task, onComplete, onClick, isDragging }: TaskCardProps) {
       <div className="flex items-center gap-2 text-[11px]" style={{ color: 'rgba(255,255,255,0.55)' }}>
         <span>Fällig: {formatDueDate()}</span>
       </div>
-      
-      {/* Action Row - visible on hover */}
-      <AnimatePresence>
-        {isHovered && task.status !== 'DONE' && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="flex items-center gap-1 mt-2 pt-2"
-            style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
-          >
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onComplete(task.id);
-              }}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] transition-colors"
-              style={{ 
-                background: 'transparent',
-                color: 'rgba(255,255,255,0.6)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255,106,0,0.10)';
-                e.currentTarget.style.color = '#FE9100';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = 'rgba(255,255,255,0.6)';
-              }}
-            >
-              <Check className="w-3.5 h-3.5" />
-              <span>Erledigen</span>
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onClick(task);
-              }}
-              className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] transition-colors"
-              style={{ 
-                background: 'transparent',
-                color: 'rgba(255,255,255,0.6)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255,106,0,0.10)';
-                e.currentTarget.style.color = '#FE9100';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = 'rgba(255,255,255,0.6)';
-              }}
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-              <span>Notiz</span>
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 }
 
 // ============================================================================
-// COLUMN COMPONENT
+// COLUMN COMPONENT (No Drag & Drop - HoverCard for Info)
 // ============================================================================
 
 interface ColumnProps {
   column: Column;
   tasks: InternalTask[];
   onTaskComplete: (taskId: string) => void;
+  onTaskReopen: (taskId: string) => void;
+  onTaskMove: (taskId: string, columnId: ColumnId) => void;
   onTaskClick: (task: InternalTask) => void;
-  onDrop: (taskId: string, columnId: ColumnId) => void;
   onAddTask: () => void;
 }
 
-function KanbanColumn({ column, tasks, onTaskComplete, onTaskClick, onDrop, onAddTask }: ColumnProps) {
-  const [isDragOver, setIsDragOver] = useState(false);
-  const [showInfo, setShowInfo] = useState(false);
-  
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    setIsDragOver(true);
-  };
-  
-  const handleDragLeave = () => {
-    setIsDragOver(false);
-  };
-  
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    const taskId = e.dataTransfer.getData('taskId');
-    if (taskId) {
-      onDrop(taskId, column.id);
-    }
-  };
-
+function KanbanColumn({ column, tasks, onTaskComplete, onTaskReopen, onTaskMove, onTaskClick, onAddTask }: ColumnProps) {
   const Icon = column.icon;
 
   return (
@@ -275,12 +293,8 @@ function KanbanColumn({ column, tasks, onTaskComplete, onTaskClick, onDrop, onAd
       className="flex flex-col min-w-[240px] rounded-2xl p-3 h-full"
       style={{
         background: 'rgba(0,0,0,0.38)',
-        border: isDragOver ? '1px solid rgba(255,106,0,0.4)' : '1px solid rgba(255,255,255,0.08)',
-        transition: 'border-color 0.15s ease',
+        border: '1px solid rgba(255,255,255,0.08)',
       }}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
     >
       {/* Column Header */}
       <div className="flex items-center justify-between mb-3 px-1">
@@ -293,54 +307,48 @@ function KanbanColumn({ column, tasks, onTaskComplete, onTaskClick, onDrop, onAd
             {column.title}
           </h3>
           <span 
-            className="text-[10px] px-1.5 py-0.5 rounded-full"
-            style={{ background: 'rgba(254,145,0,0.15)', color: '#FE9100' }}
+            className="text-[10px] min-w-[22px] h-[18px] flex items-center justify-center rounded-full"
+            style={{ 
+              background: 'rgba(255,106,0,0.10)', 
+              border: '1px solid rgba(255,106,0,0.18)',
+              color: '#FE9100' 
+            }}
           >
             {tasks.length}
           </span>
         </div>
-        <div className="relative">
-          <button
-            onClick={() => setShowInfo(!showInfo)}
-            className="p-1 rounded-md transition-colors"
-            style={{ color: 'rgba(255,255,255,0.4)' }}
-            onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.7)'}
-            onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.4)'}
+        
+        {/* Info HoverCard */}
+        <HoverCard openDelay={200} closeDelay={100}>
+          <HoverCardTrigger asChild>
+            <button
+              className="p-1 rounded-md transition-colors outline-none"
+              style={{ color: 'rgba(255,255,255,0.4)' }}
+              onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.7)'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.4)'}
+            >
+              <Info className="w-3.5 h-3.5" />
+            </button>
+          </HoverCardTrigger>
+          <HoverCardContent 
+            side="top" 
+            align="end"
+            sideOffset={8}
+            collisionPadding={12}
+            className="w-[280px] p-3 rounded-[14px] border-0"
+            style={{
+              background: 'rgba(0,0,0,0.92)',
+              backdropFilter: 'blur(14px)',
+              border: '1px solid rgba(255,106,0,0.22)',
+              boxShadow: '0 18px 60px rgba(0,0,0,0.75)',
+            }}
           >
-            <Info className="w-3.5 h-3.5" />
-          </button>
-          
-          {/* Tooltip */}
-          <AnimatePresence>
-            {showInfo && (
-              <motion.div
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 5 }}
-                className="absolute right-0 top-full mt-2 z-50 w-[220px] p-2.5 rounded-xl"
-                style={{
-                  background: 'rgba(0,0,0,0.85)',
-                  backdropFilter: 'blur(10px)',
-                  border: '1px solid rgba(255,106,0,0.22)',
-                  boxShadow: '0 18px 50px rgba(0,0,0,0.7)',
-                }}
-              >
-                <p className="text-[12px]" style={{ color: 'rgba(255,255,255,0.8)' }}>
-                  {column.description}
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+            <p className="text-[12px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.8)' }}>
+              {column.description}
+            </p>
+          </HoverCardContent>
+        </HoverCard>
       </div>
-      
-      {/* Drop Indicator */}
-      {isDragOver && (
-        <div 
-          className="h-0.5 rounded-full mb-2 mx-2"
-          style={{ background: '#FE9100' }}
-        />
-      )}
       
       {/* Tasks */}
       <div className="flex-1 space-y-2 overflow-y-auto min-h-[100px] max-h-[400px] pr-1 custom-scrollbar">
@@ -350,12 +358,13 @@ function KanbanColumn({ column, tasks, onTaskComplete, onTaskClick, onDrop, onAd
             <p className="text-[11px] mb-3" style={{ color: 'rgba(255,255,255,0.4)' }}>
               Keine Aufgaben
             </p>
-            {column.id !== 'done' && (
+            {column.id === 'inbox' && (
               <button
                 onClick={onAddTask}
-                className="flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] transition-colors"
+                className="flex items-center gap-1 h-8 px-3 rounded-[10px] text-[11px] transition-colors"
                 style={{ 
                   background: 'rgba(255,106,0,0.1)',
+                  border: '1px solid rgba(255,106,0,0.18)',
                   color: '#FE9100',
                 }}
               >
@@ -370,7 +379,10 @@ function KanbanColumn({ column, tasks, onTaskComplete, onTaskClick, onDrop, onAd
               <TaskCard
                 key={task.id}
                 task={task}
+                currentColumn={column.id}
                 onComplete={onTaskComplete}
+                onReopen={onTaskReopen}
+                onMove={onTaskMove}
                 onClick={onTaskClick}
               />
             ))}
@@ -382,7 +394,7 @@ function KanbanColumn({ column, tasks, onTaskComplete, onTaskClick, onDrop, onAd
 }
 
 // ============================================================================
-// TASK DETAILS DRAWER
+// TASK DETAILS DRAWER (Portal + Fixed - Premium)
 // ============================================================================
 
 interface TaskDetailsDrawerProps {
@@ -390,23 +402,23 @@ interface TaskDetailsDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   onComplete: (taskId: string) => void;
+  onReopen: (taskId: string) => void;
   onUpdate: (taskId: string, data: Partial<InternalTask>) => void;
+  onMove: (taskId: string, columnId: ColumnId) => void;
 }
 
-function TaskDetailsDrawer({ task, isOpen, onClose, onComplete, onUpdate }: TaskDetailsDrawerProps) {
+function TaskDetailsDrawer({ task, isOpen, onClose, onComplete, onReopen, onUpdate, onMove }: TaskDetailsDrawerProps) {
   const [notes, setNotes] = useState(task?.description || '');
   const drawerRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
   const notesTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Sync notes when task changes
   useEffect(() => {
     if (task) {
       setNotes(task.description || '');
     }
   }, [task?.id, task?.description]);
   
-  // Auto-save notes with debounce
   useEffect(() => {
     if (!task || notes === (task.description || '')) return;
     
@@ -425,7 +437,6 @@ function TaskDetailsDrawer({ task, isOpen, onClose, onComplete, onUpdate }: Task
     };
   }, [notes, task, onUpdate]);
   
-  // Handle escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -476,8 +487,9 @@ function TaskDetailsDrawer({ task, isOpen, onClose, onComplete, onUpdate }: Task
   if (!task) return null;
 
   const statusStyle = getStatusColor(task.status);
+  const currentColumn = getTaskColumn(task);
 
-  return (
+  const drawerContent = (
     <AnimatePresence>
       {isOpen && (
         <>
@@ -487,7 +499,7 @@ function TaskDetailsDrawer({ task, isOpen, onClose, onComplete, onUpdate }: Task
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-40"
+            className="fixed inset-0 z-[9998]"
             style={{ 
               background: 'rgba(0,0,0,0.55)',
               backdropFilter: 'blur(6px)',
@@ -498,119 +510,278 @@ function TaskDetailsDrawer({ task, isOpen, onClose, onComplete, onUpdate }: Task
           <motion.div
             ref={drawerRef}
             tabIndex={-1}
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
+            initial={{ x: '100%', opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: '100%', opacity: 0 }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed right-0 top-0 bottom-0 w-full sm:w-[520px] z-50 flex flex-col outline-none"
+            className="fixed z-[9999] flex flex-col outline-none overflow-hidden"
             style={{
-              background: 'linear-gradient(180deg, rgba(20,20,22,0.98) 0%, rgba(12,12,14,0.99) 100%)',
-              borderLeft: '1px solid rgba(233,215,196,0.1)',
-              boxShadow: '-20px 0 60px rgba(0,0,0,0.5)',
+              top: '12px',
+              right: '12px',
+              width: 'min(560px, 92vw)',
+              height: 'calc(100vh - 24px)',
+              borderRadius: '18px',
+              background: 'rgba(0,0,0,0.92)',
+              backdropFilter: 'blur(18px)',
+              border: '1px solid rgba(255,106,0,0.20)',
+              boxShadow: '0 30px 120px rgba(0,0,0,0.85)',
             }}
           >
-            {/* Header */}
+            {/* Header (fixed) */}
             <div 
-              className="flex items-center justify-between p-4 border-b"
-              style={{ borderColor: 'rgba(255,255,255,0.08)' }}
+              className="flex-shrink-0 flex items-center justify-between p-4"
+              style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}
             >
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <h2 
-                  className="text-lg font-semibold mb-1"
+                  className="text-[18px] font-semibold mb-1 truncate"
                   style={{ color: 'rgba(255,255,255,0.95)' }}
                 >
                   {task.title}
                 </h2>
-                <div className="flex items-center gap-2">
-                  <span 
-                    className="text-[11px] px-2 py-0.5 rounded-full"
-                    style={{ background: statusStyle.bg, color: statusStyle.color }}
-                  >
-                    {getStatusLabel(task.status)}
-                  </span>
-                </div>
+                <p className="text-[12px]" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                  Aufgabe · Details
+                </p>
               </div>
               <button
                 onClick={onClose}
-                className="p-2 rounded-lg transition-colors"
-                style={{ color: 'rgba(255,255,255,0.5)' }}
+                className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-[10px] transition-colors"
+                style={{ 
+                  background: 'rgba(255,255,255,0.05)',
+                  color: 'rgba(255,255,255,0.5)' 
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.8)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.5)';
+                }}
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             
-            {/* Content */}
+            {/* Body (scroll) */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {/* Due Date */}
+              {/* Status Section */}
               <div>
                 <label 
-                  className="text-[11px] uppercase tracking-wider mb-2 block"
-                  style={{ color: 'rgba(255,255,255,0.5)' }}
+                  className="text-[10px] uppercase tracking-[0.20em] mb-2 block"
+                  style={{ fontFamily: 'Orbitron, sans-serif', color: 'rgba(255,255,255,0.65)' }}
                 >
-                  Fälligkeitsdatum
+                  STATUS
                 </label>
-                <div 
-                  className="flex items-center gap-2 p-3 rounded-lg"
-                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
-                >
-                  <Calendar className="w-4 h-4" style={{ color: '#FE9100' }} />
-                  <span style={{ color: 'rgba(255,255,255,0.8)' }}>
-                    {task.dueDate ? format(new Date(task.dueDate), 'EEEE, dd. MMMM yyyy, HH:mm', { locale: de }) : 'Kein Termin festgelegt'}
+                <div className="flex items-center gap-3">
+                  <span 
+                    className="h-8 px-4 flex items-center rounded-full text-[13px] font-medium"
+                    style={{ background: statusStyle.bg, color: statusStyle.color }}
+                  >
+                    {getStatusLabel(task.status)}
                   </span>
+                  
+                  {/* Status Change Dropdown */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        className="h-8 px-3 flex items-center gap-1 rounded-lg text-[12px] transition-colors"
+                        style={{ 
+                          background: 'rgba(255,255,255,0.05)',
+                          color: 'rgba(255,255,255,0.6)',
+                        }}
+                      >
+                        Status ändern
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="start"
+                      sideOffset={4}
+                      className="w-[220px] p-1.5 rounded-xl border-0"
+                      style={{
+                        background: 'rgba(0,0,0,0.92)',
+                        backdropFilter: 'blur(14px)',
+                        border: '1px solid rgba(255,106,0,0.22)',
+                        boxShadow: '0 18px 60px rgba(0,0,0,0.75)',
+                      }}
+                    >
+                      {COLUMNS.filter(col => col.id !== 'done').map((col) => {
+                        const isActive = currentColumn === col.id;
+                        const Icon = col.icon;
+                        return (
+                          <DropdownMenuItem
+                            key={col.id}
+                            onClick={() => onMove(task.id, col.id)}
+                            className="h-[34px] rounded-[10px] px-3 text-[13px] cursor-pointer relative"
+                            style={{ 
+                              color: isActive ? '#e9d7c4' : 'rgba(255,255,255,0.85)',
+                              background: isActive ? 'rgba(255,106,0,0.08)' : 'transparent',
+                            }}
+                          >
+                            {isActive && (
+                              <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-r bg-[#ff6a00]" />
+                            )}
+                            <Icon className="w-4 h-4 mr-2" style={{ color: isActive ? '#FE9100' : 'rgba(255,255,255,0.5)' }} />
+                            {col.title.charAt(0) + col.title.slice(1).toLowerCase()}
+                          </DropdownMenuItem>
+                        );
+                      })}
+                      <DropdownMenuSeparator className="my-1.5 bg-white/10" />
+                      {task.status !== 'DONE' ? (
+                        <DropdownMenuItem
+                          onClick={() => onComplete(task.id)}
+                          className="h-[34px] rounded-[10px] px-3 text-[13px] cursor-pointer"
+                          style={{ color: '#10B981' }}
+                        >
+                          <CheckCircle2 className="w-4 h-4 mr-2" />
+                          Als erledigt markieren
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem
+                          onClick={() => onReopen(task.id)}
+                          className="h-[34px] rounded-[10px] px-3 text-[13px] cursor-pointer"
+                          style={{ color: '#FE9100' }}
+                        >
+                          <RotateCcw className="w-4 h-4 mr-2" />
+                          Wieder öffnen
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
               
-              {/* Notes */}
+              {/* Due Date Section */}
               <div>
                 <label 
-                  className="text-[11px] uppercase tracking-wider mb-2 block"
-                  style={{ color: 'rgba(255,255,255,0.5)' }}
+                  className="text-[10px] uppercase tracking-[0.20em] mb-2 block"
+                  style={{ fontFamily: 'Orbitron, sans-serif', color: 'rgba(255,255,255,0.65)' }}
                 >
-                  Notizen
+                  FÄLLIGKEIT
+                </label>
+                <div className="flex items-center gap-3">
+                  <div 
+                    className="flex items-center gap-2 h-10 px-3 rounded-lg flex-1"
+                    style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}
+                  >
+                    <Calendar className="w-4 h-4 flex-shrink-0" style={{ color: '#FE9100' }} />
+                    <span className="text-[13px]" style={{ color: 'rgba(255,255,255,0.8)' }}>
+                      {task.dueDate ? format(new Date(task.dueDate), 'EEEE, dd. MMMM yyyy', { locale: de }) : 'Kein Termin festgelegt'}
+                    </span>
+                  </div>
+                  
+                  {/* Quick Date Presets */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        className="h-10 px-3 flex items-center gap-1 rounded-lg text-[12px] transition-colors"
+                        style={{ 
+                          background: 'rgba(255,255,255,0.05)',
+                          color: 'rgba(255,255,255,0.6)',
+                        }}
+                      >
+                        Ändern
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="end"
+                      sideOffset={4}
+                      className="w-[180px] p-1.5 rounded-xl border-0"
+                      style={{
+                        background: 'rgba(0,0,0,0.92)',
+                        backdropFilter: 'blur(14px)',
+                        border: '1px solid rgba(255,106,0,0.22)',
+                        boxShadow: '0 18px 60px rgba(0,0,0,0.75)',
+                      }}
+                    >
+                      <DropdownMenuItem
+                        onClick={() => onUpdate(task.id, { dueDate: endOfDay(new Date()).toISOString() })}
+                        className="h-[34px] rounded-[10px] px-3 text-[13px] cursor-pointer"
+                        style={{ color: 'rgba(255,255,255,0.85)' }}
+                      >
+                        Heute
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => onUpdate(task.id, { dueDate: endOfDay(addDays(new Date(), 1)).toISOString() })}
+                        className="h-[34px] rounded-[10px] px-3 text-[13px] cursor-pointer"
+                        style={{ color: 'rgba(255,255,255,0.85)' }}
+                      >
+                        Morgen
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => onUpdate(task.id, { dueDate: endOfDay(addDays(new Date(), 7)).toISOString() })}
+                        className="h-[34px] rounded-[10px] px-3 text-[13px] cursor-pointer"
+                        style={{ color: 'rgba(255,255,255,0.85)' }}
+                      >
+                        In 7 Tagen
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator className="my-1.5 bg-white/10" />
+                      <DropdownMenuItem
+                        onClick={() => onUpdate(task.id, { dueDate: null })}
+                        className="h-[34px] rounded-[10px] px-3 text-[13px] cursor-pointer"
+                        style={{ color: 'rgba(239,68,68,0.9)' }}
+                      >
+                        Entfernen
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+              
+              {/* Notes Section */}
+              <div>
+                <label 
+                  className="text-[10px] uppercase tracking-[0.20em] mb-2 block"
+                  style={{ fontFamily: 'Orbitron, sans-serif', color: 'rgba(255,255,255,0.65)' }}
+                >
+                  NOTIZEN
                 </label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Notiz hinzufügen…"
-                  rows={6}
-                  className="w-full p-3 rounded-lg resize-none outline-none transition-colors"
+                  className="w-full p-3 rounded-lg outline-none transition-colors text-[13px]"
                   style={{ 
+                    minHeight: '140px',
+                    resize: 'none',
                     background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    border: '1px solid rgba(255,255,255,0.10)',
                     color: 'rgba(255,255,255,0.9)',
                   }}
-                  onFocus={(e) => e.currentTarget.style.borderColor = 'rgba(254,145,0,0.3)'}
-                  onBlur={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'}
+                  onFocus={(e) => e.currentTarget.style.borderColor = 'rgba(255,106,0,0.4)'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)'}
                 />
+                <p className="text-[11px] mt-1.5" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                  Notizen werden automatisch gespeichert.
+                </p>
               </div>
               
-              {/* Activity */}
+              {/* Activity Section */}
               <div>
                 <label 
-                  className="text-[11px] uppercase tracking-wider mb-2 block"
-                  style={{ color: 'rgba(255,255,255,0.5)' }}
+                  className="text-[10px] uppercase tracking-[0.20em] mb-2 block"
+                  style={{ fontFamily: 'Orbitron, sans-serif', color: 'rgba(255,255,255,0.65)' }}
                 >
-                  Aktivität
+                  AKTIVITÄT
                 </label>
-                <div 
-                  className="space-y-2 p-3 rounded-lg"
-                  style={{ background: 'rgba(255,255,255,0.02)' }}
-                >
-                  <div className="flex items-center justify-between text-[12px]">
-                    <span style={{ color: 'rgba(255,255,255,0.5)' }}>Erstellt</span>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span style={{ color: 'rgba(255,255,255,0.55)' }}>Erstellt:</span>
                     <span style={{ color: 'rgba(255,255,255,0.7)' }}>
                       {format(new Date(task.createdAt), 'dd.MM.yyyy, HH:mm', { locale: de })}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-[12px]">
-                    <span style={{ color: 'rgba(255,255,255,0.5)' }}>Zuletzt geändert</span>
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span style={{ color: 'rgba(255,255,255,0.55)' }}>Zuletzt geändert:</span>
                     <span style={{ color: 'rgba(255,255,255,0.7)' }}>
                       {format(new Date(task.updatedAt), 'dd.MM.yyyy, HH:mm', { locale: de })}
                     </span>
                   </div>
                   {task.assignedUserId && (
-                    <div className="flex items-center justify-between text-[12px]">
-                      <span style={{ color: 'rgba(255,255,255,0.5)' }}>Zugewiesen an</span>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span style={{ color: 'rgba(255,255,255,0.55)' }}>Zugewiesen an:</span>
                       <span style={{ color: 'rgba(255,255,255,0.7)' }}>{task.assignedUserId}</span>
                     </div>
                   )}
@@ -618,38 +789,54 @@ function TaskDetailsDrawer({ task, isOpen, onClose, onComplete, onUpdate }: Task
               </div>
             </div>
             
-            {/* Footer */}
+            {/* Footer (fixed bottom) */}
             <div 
-              className="flex items-center justify-end gap-3 p-4 border-t"
-              style={{ borderColor: 'rgba(255,255,255,0.08)' }}
+              className="flex-shrink-0 flex items-center justify-end gap-3 p-4"
+              style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}
             >
               <button
                 onClick={onClose}
-                className="px-4 py-2 rounded-lg text-[13px] transition-colors"
+                className="h-10 px-4 rounded-xl text-[13px] transition-colors"
                 style={{ 
                   background: 'rgba(255,255,255,0.05)',
                   color: 'rgba(255,255,255,0.7)',
                 }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
               >
                 Schließen
               </button>
-              {task.status !== 'DONE' && (
+              {task.status !== 'DONE' ? (
                 <button
                   onClick={() => {
                     onComplete(task.id);
                     onClose();
                   }}
-                  className="px-4 py-2 rounded-lg text-[13px] font-medium transition-all"
+                  className="h-10 px-4 rounded-xl text-[13px] font-medium transition-all flex items-center gap-2"
                   style={{ 
                     background: 'linear-gradient(135deg, #ff6a00, #a34e00)',
                     color: 'white',
                     boxShadow: '0 4px 15px rgba(255,106,0,0.25)',
                   }}
                 >
-                  <span className="flex items-center gap-2">
-                    <Check className="w-4 h-4" />
-                    Erledigen
-                  </span>
+                  <Check className="w-4 h-4" />
+                  Erledigen
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    onReopen(task.id);
+                    onClose();
+                  }}
+                  className="h-10 px-4 rounded-xl text-[13px] font-medium transition-all flex items-center gap-2"
+                  style={{ 
+                    background: 'linear-gradient(135deg, #ff6a00, #a34e00)',
+                    color: 'white',
+                    boxShadow: '0 4px 15px rgba(255,106,0,0.25)',
+                  }}
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Wieder öffnen
                 </button>
               )}
             </div>
@@ -658,6 +845,8 @@ function TaskDetailsDrawer({ task, isOpen, onClose, onComplete, onUpdate }: Task
       )}
     </AnimatePresence>
   );
+
+  return createPortal(drawerContent, document.body);
 }
 
 // ============================================================================
@@ -813,7 +1002,7 @@ export function MyTasksSidebar({ tasks, onAddTask, showCompleted, onToggleComple
           </li>
           <li className="flex items-start gap-2">
             <span style={{ color: '#FE9100' }}>•</span>
-            <span>Drag & Drop ändert den Status.</span>
+            <span>Status ändern über das Menü (⋯).</span>
           </li>
           <li className="flex items-start gap-2">
             <span style={{ color: '#FE9100' }}>•</span>
@@ -988,13 +1177,19 @@ export function MyTasksBoard({ className = '' }: MyTasksBoardProps) {
     toast({ title: '✓ Aufgabe erledigt' });
   }, [updateMutation, toast]);
 
+  // Reopen task
+  const handleReopen = useCallback((taskId: string) => {
+    updateMutation.mutate({ id: taskId, data: { status: 'OPEN' } });
+    toast({ title: 'Aufgabe wieder geöffnet' });
+  }, [updateMutation, toast]);
+
   // Update task
   const handleUpdate = useCallback((taskId: string, data: Partial<InternalTask>) => {
     updateMutation.mutate({ id: taskId, data });
   }, [updateMutation]);
 
-  // Handle drop
-  const handleDrop = useCallback((taskId: string, columnId: ColumnId) => {
+  // Handle move (status change via menu)
+  const handleMove = useCallback((taskId: string, columnId: ColumnId) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
     
@@ -1087,8 +1282,8 @@ export function MyTasksBoard({ className = '' }: MyTasksBoardProps) {
               >
                 MEINE AUFGABEN
               </h2>
-              <p className="text-[12px] mt-1" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                Drag & Drop, um den Status zu ändern.
+              <p className="text-[12px] mt-1" style={{ color: 'rgba(255,255,255,0.60)' }}>
+                Status ändern über Menü · Klick öffnet Details.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -1158,8 +1353,9 @@ export function MyTasksBoard({ className = '' }: MyTasksBoardProps) {
                   column={column}
                   tasks={columnTasks[column.id]}
                   onTaskComplete={handleComplete}
+                  onTaskReopen={handleReopen}
+                  onTaskMove={handleMove}
                   onTaskClick={handleTaskClick}
-                  onDrop={handleDrop}
                   onAddTask={() => setIsAddModalOpen(true)}
                 />
               ))}
@@ -1184,7 +1380,9 @@ export function MyTasksBoard({ className = '' }: MyTasksBoardProps) {
         isOpen={isDrawerOpen}
         onClose={handleCloseDrawer}
         onComplete={handleComplete}
+        onReopen={handleReopen}
         onUpdate={handleUpdate}
+        onMove={handleMove}
       />
       
       {/* Quick Add Modal */}
