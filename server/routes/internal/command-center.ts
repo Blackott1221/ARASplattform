@@ -169,7 +169,7 @@ router.post('/team-feed', requireInternal, async (req: any, res) => {
       authorUsername: username 
     });
   } catch (error: any) {
-    logger.error('[COMMAND-CENTER] Error creating feed post:', error.message, error);
+    logger.error('[COMMAND-CENTER] Error creating feed post:', { message: error.message, error });
     if (error.code === '42703' || error.code === '42P01' || error.message?.includes('does not exist')) {
       return res.status(503).json({ 
         error: `Schema mismatch: ${error.message}`,
@@ -177,6 +177,122 @@ router.post('/team-feed', requireInternal, async (req: any, res) => {
       });
     }
     res.status(400).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// TEAM FEED SEED - One-time historical data population
+// ============================================================================
+
+router.post('/team-feed/seed', requireInternal, async (req: any, res) => {
+  try {
+    // Team members for realistic messages
+    const TEAM = [
+      { id: 'user_justin', name: 'Justin Schwarzott' },
+      { id: 'user_herbert', name: 'Herbert Schöttl' },
+      { id: 'user_sarah', name: 'Sarah Anderst' },
+      { id: 'user_michael', name: 'Michael Gruber' },
+      { id: 'user_anna', name: 'Anna Hofer' },
+      { id: 'user_thomas', name: 'Thomas Maier' },
+      { id: 'user_lisa', name: 'Lisa Weber' },
+      { id: 'user_markus', name: 'Markus Bauer' },
+      { id: 'user_julia', name: 'Julia Steiner' },
+      { id: 'user_andreas', name: 'Andreas Huber' },
+      { id: 'user_sandra', name: 'Sandra Koch' },
+      { id: 'user_peter', name: 'Peter Wagner' },
+      { id: 'user_maria', name: 'Maria Berger' },
+      { id: 'user_florian', name: 'Florian Eder' },
+      { id: 'user_stefanie', name: 'Stefanie Fuchs' },
+    ];
+
+    const MESSAGES = [
+      { msg: 'Deal mit Müller AG abgeschlossen! 🎉 250k ARR, starker Q3-Start.', type: 'announcement', author: 0 },
+      { msg: 'Pipeline Review heute um 14:00. Bitte alle Deals aktualisieren.', type: 'update', author: 4 },
+      { msg: 'Neuer Lead: Schneider GmbH, sehr interessiert an Enterprise-Paket.', type: 'post', author: 5 },
+      { msg: 'Vertriebsmeeting verschoben auf Donnerstag 10:00.', type: 'update', author: 3 },
+      { msg: 'Demo bei Weber & Partner war super! Proposal geht heute raus.', type: 'post', author: 4 },
+      { msg: 'Q2 Zahlen sehen gut aus, 15% über Plan 💪', type: 'announcement', author: 3 },
+      { msg: 'Server-Wartung Samstag 02:00-04:00 Uhr. Kurze Downtime möglich.', type: 'announcement', author: 2 },
+      { msg: 'Neues Onboarding-Template ist live. Bitte nutzen!', type: 'update', author: 11 },
+      { msg: 'Prozessoptimierung Phase 2 startet nächste Woche.', type: 'post', author: 2 },
+      { msg: 'Support-Tickets heute alle bearbeitet ✅', type: 'post', author: 12 },
+      { msg: 'Quartalsabschluss fertig. Report im Shared Drive.', type: 'announcement', author: 1 },
+      { msg: 'Neue Datenschutzrichtlinien ab 01. des Monats.', type: 'update', author: 9 },
+      { msg: 'Budget für Q4 genehmigt. Details im Meeting morgen.', type: 'announcement', author: 1 },
+      { msg: 'Release 2.4 ist live! Neue Dashboard-Features.', type: 'announcement', author: 13 },
+      { msg: 'Bug im Export-Modul gefixt. Bitte testen.', type: 'update', author: 7 },
+      { msg: 'Neue UI-Designs für Mobile sind fertig. Feedback willkommen!', type: 'post', author: 14 },
+      { msg: 'API-Performance um 40% verbessert 🚀', type: 'announcement', author: 7 },
+      { msg: 'Neue Kampagne startet Montag. Content ist ready.', type: 'announcement', author: 6 },
+      { msg: 'Zwei neue Kollegen starten nächste Woche!', type: 'announcement', author: 8 },
+      { msg: 'Webinar nächsten Donnerstag. Bitte weiterleiten!', type: 'update', author: 6 },
+      { msg: 'Strategie-Meeting war produktiv. Zusammenfassung folgt.', type: 'post', author: 0 },
+      { msg: 'Partnerschaft mit TechVenture ist fix! 🎉', type: 'announcement', author: 0 },
+      { msg: 'Investorengespräch lief sehr gut. Update im Führungskreis.', type: 'post', author: 0 },
+      { msg: 'Bitte alle KPIs bis Freitag aktualisieren.', type: 'update', author: 1 },
+      { msg: 'Wochenstart-Call heute 09:00. Kurzes Update von jedem Team.', type: 'update', author: 2 },
+      { msg: 'NPS gestiegen auf 72! Danke an alle 💪', type: 'announcement', author: 12 },
+      { msg: 'Super Teamwork diese Woche! 🙌', type: 'post', author: 0 },
+      { msg: 'Bitte Urlaubsanträge rechtzeitig einreichen.', type: 'update', author: 8 },
+      { msg: 'Danke für den Einsatz beim Kundenprojekt!', type: 'post', author: 1 },
+      { msg: 'Q3 war unser bestes Quartal! Danke an alle 🙏', type: 'announcement', author: 0 },
+      { msg: 'Dark Mode ist jetzt verfügbar!', type: 'announcement', author: 14 },
+      { msg: 'Churn Rate auf Rekordtief! 0.8% 🎯', type: 'announcement', author: 12 },
+      { msg: 'LinkedIn-Post hat 5000+ Views! 🎉', type: 'post', author: 6 },
+      { msg: 'Wir wachsen! 5 neue Stellen offen.', type: 'announcement', author: 0 },
+      { msg: 'Neue Büroräume werden bezogen. Timeline im Wiki.', type: 'update', author: 2 },
+      { msg: 'Compliance-Schulung für alle Mitarbeiter geplant.', type: 'announcement', author: 9 },
+      { msg: 'Infrastruktur-Update erfolgreich durchgeführt.', type: 'post', author: 2 },
+      { msg: 'Newsletter wurde versendet. 42% Open Rate!', type: 'post', author: 6 },
+      { msg: 'Kundenschulung nächste Woche - alle eingeladen.', type: 'update', author: 12 },
+      { msg: 'Team-Lunch morgen 12:30. Alle dabei?', type: 'post', author: 8 },
+      { msg: 'Datenbank-Migration erfolgreich abgeschlossen.', type: 'post', author: 7 },
+      { msg: 'Wochenende steht vor der Tür! Allen einen guten Feierabend 🌅', type: 'post', author: 2 },
+      { msg: 'Neukunde Bauer Holding ist onboard! Großes Potenzial.', type: 'post', author: 5 },
+      { msg: 'Sprint Review heute 15:00. Alle willkommen.', type: 'update', author: 13 },
+      { msg: 'Jahresplanung 2025 startet. Input willkommen!', type: 'post', author: 1 },
+    ];
+
+    // Generate timestamps over last 7 months
+    const now = new Date();
+    const insertedItems: any[] = [];
+    
+    for (let i = 0; i < MESSAGES.length; i++) {
+      const msgData = MESSAGES[i];
+      const author = TEAM[msgData.author];
+      
+      // Spread across 7 months (210 days)
+      const daysAgo = Math.floor((i / MESSAGES.length) * 210);
+      const date = new Date(now);
+      date.setDate(date.getDate() - daysAgo);
+      
+      // Working hours: 09:00 - 18:00
+      date.setHours(9 + Math.floor(Math.random() * 9), Math.floor(Math.random() * 60), 0, 0);
+      
+      // Skip weekends
+      const day = date.getDay();
+      if (day === 0) date.setDate(date.getDate() + 1);
+      if (day === 6) date.setDate(date.getDate() + 2);
+
+      await db.execute(sql`
+        INSERT INTO team_feed (
+          actor_user_id, actor_name, author_user_id, author_name,
+          action_type, entity_type, entity_id, title, body, message, type, meta, created_at
+        ) VALUES (
+          ${author.id}, ${author.name}, ${author.id}, ${author.name},
+          'post', NULL, NULL, ${msgData.msg.substring(0, 100)}, ${msgData.msg}, ${msgData.msg},
+          ${msgData.type}, '{}'::jsonb, ${date.toISOString()}
+        )
+      `);
+      
+      insertedItems.push({ date: date.toISOString(), author: author.name, msg: msgData.msg.substring(0, 40) + '...' });
+    }
+
+    logger.info(`[TEAM-FEED] Seeded ${insertedItems.length} historical messages`);
+    res.json({ success: true, count: insertedItems.length, items: insertedItems });
+  } catch (error: any) {
+    logger.error('[TEAM-FEED] Seed error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
