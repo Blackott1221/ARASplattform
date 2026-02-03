@@ -25,8 +25,8 @@ import {
   ContractDrawerContent,
   ActionItemDrawerContent,
 } from "@/components/internal/drawer-contents";
-import { AIIntelligencePanel } from "@/components/internal/ai-intelligence-panel";
 import { TeamFeedSection } from "@/components/internal/team-feed-section";
+import { MyTasksBoard } from "@/components/internal/my-tasks-board";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
@@ -459,71 +459,15 @@ export default function InternalDashboard() {
           />
         </motion.div>
 
-        {/* AI INTELLIGENCE + FEED ROW */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* AI Intelligence Panel - 1 column on desktop */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.08 }}
-            className="lg:col-span-1"
-          >
-            <AIIntelligencePanel
-              onNavigate={(entityType, entityId) => navigateToCRM(entityType, entityId)}
-              onActionClick={(action) => {
-                if (action.entityType && action.entityId) {
-                  navigateToCRM(action.entityType, action.entityId);
-                }
-              }}
-            />
-          </motion.div>
-
-          {/* Quick Stats Cards - 2 columns on desktop */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.09 }}
-            className="lg:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-3"
-          >
-            {/* Stats Cards */}
-            <div 
-              className="p-4 rounded-xl text-center"
-              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(233,215,196,0.08)' }}
-            >
-              <p className="text-2xl font-bold" style={{ fontFamily: 'Orbitron, sans-serif', color: '#FE9100' }}>
-                {feedItems.length}
-              </p>
-              <p className="text-[10px] uppercase mt-1" style={{ color: 'rgba(255,255,255,0.4)' }}>Updates</p>
-            </div>
-            <div 
-              className="p-4 rounded-xl text-center"
-              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(233,215,196,0.08)' }}
-            >
-              <p className="text-2xl font-bold" style={{ fontFamily: 'Orbitron, sans-serif', color: '#FE9100' }}>
-                {todos.filter(t => t.status !== 'done').length}
-              </p>
-              <p className="text-[10px] uppercase mt-1" style={{ color: 'rgba(255,255,255,0.4)' }}>Open Tasks</p>
-            </div>
-            <div 
-              className="p-4 rounded-xl text-center"
-              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(233,215,196,0.08)' }}
-            >
-              <p className="text-2xl font-bold" style={{ fontFamily: 'Orbitron, sans-serif', color: '#FE9100' }}>
-                {calendarEvents.length}
-              </p>
-              <p className="text-[10px] uppercase mt-1" style={{ color: 'rgba(255,255,255,0.4)' }}>Events</p>
-            </div>
-            <div 
-              className="p-4 rounded-xl text-center"
-              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(233,215,196,0.08)' }}
-            >
-              <p className="text-2xl font-bold" style={{ fontFamily: 'Orbitron, sans-serif', color: pendingContracts.length > 0 ? '#EAB308' : '#FE9100' }}>
-                {pendingContracts.length}
-              </p>
-              <p className="text-[10px] uppercase mt-1" style={{ color: 'rgba(255,255,255,0.4)' }}>Pending</p>
-            </div>
-          </motion.div>
-        </div>
+        {/* MY TASKS BOARD - Kanban Style */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08 }}
+          className="mt-16"
+        >
+          <MyTasksBoard />
+        </motion.div>
 
         {/* GRID - Responsive 2-3 columns */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -853,7 +797,7 @@ export default function InternalDashboard() {
           className="text-center pt-8"
         >
           <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.25)' }}>
-            Powered by <span style={{ color: 'rgba(254,145,0,0.5)' }}>Schwarzott Group</span>
+            <span style={{ color: 'rgba(254,145,0,0.5)' }}>ARAS</span> Team Command Center
           </p>
         </motion.div>
       </div>
