@@ -379,11 +379,6 @@ export function TeamFeedSection({
     },
   });
 
-  // Auto-scroll to bottom on new messages
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [feedItems.length]);
-
   // TASK 5: Local typing indicator simulation (300ms inactivity timeout)
   useEffect(() => {
     if (message.length > 0) {
