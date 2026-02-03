@@ -271,6 +271,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'User not found' });
       }
 
+      // 🔥 NO-CACHE: Ensure enriched profile is never stuck due to caching
+      res.set({
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
+      
       // Return sanitized profile context for AI enhancement
       return res.json({
         id: user.id,

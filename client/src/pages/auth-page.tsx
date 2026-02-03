@@ -2030,7 +2030,8 @@ export default function AuthPage() {
       try {
         const response = await fetch('/api/user/profile-context', {
           signal: controller.signal,
-          credentials: 'include'
+          credentials: 'include',
+          cache: 'no-store'
         });
         
         if (!response.ok) {
