@@ -1999,15 +1999,20 @@ export default function AuthPage() {
   const [researchStatus, setResearchStatus] = useState<string>("");
   const [researchProgress, setResearchProgress] = useState<number>(0);
   
-  // 🔥 STEP 8: CINEMATIC ONBOARDING - Intelligence Briefing State
+  // 🔥 STEP 8: CINEMATIC ONBOARDING - Intelligence Briefing State (WOW-Level)
   const [onboardingPhase, setOnboardingPhase] = useState<'signup' | 'briefing' | 'complete'>('signup');
   const [briefingData, setBriefingData] = useState<{
     status: 'polling' | 'ready' | 'timeout';
     enrichmentStatus: string;
+    qualityScore: number;
     companySnapshot: string;
     targetAudience: string[];
+    targetAudienceSegments: string[];
     callAngles: string[];
     objections: { objection: string; response: string }[];
+    competitors: string[];
+    uniqueSellingPoints: string[];
+    decisionMakers: string[];
     nextActions: string[];
   } | null>(null);
   const [briefingPollingCount, setBriefingPollingCount] = useState(0);
@@ -2062,21 +2067,40 @@ export default function AuthPage() {
         
         if (data.aiProfile) {
           const profile = data.aiProfile;
+          const qualityScore = profile.enrichmentMeta?.qualityScore || profile.qualityScore || 0;
+          
           setBriefingData(prev => {
             if (!prev) return prev;
             return {
               ...prev,
               enrichmentStatus,
+              qualityScore,
               companySnapshot: profile.companyDescription || prev.companySnapshot,
-              targetAudience: profile.targetAudience 
-                ? (Array.isArray(profile.targetAudience) ? profile.targetAudience : [profile.targetAudience])
-                : prev.targetAudience,
-              callAngles: profile.effectiveKeywords 
-                ? (Array.isArray(profile.effectiveKeywords) ? profile.effectiveKeywords.slice(0, 3) : [profile.effectiveKeywords])
+              // 🔥 WOW-Level: Real call angles from Gemini
+              callAngles: profile.callAngles && Array.isArray(profile.callAngles) && profile.callAngles.length > 0
+                ? profile.callAngles
                 : prev.callAngles,
-              objections: profile.objectionHandling 
-                ? (Array.isArray(profile.objectionHandling) ? profile.objectionHandling : prev.objections)
+              // 🔥 WOW-Level: Real objection handling from Gemini
+              objections: profile.objectionHandling && Array.isArray(profile.objectionHandling) && profile.objectionHandling.length > 0
+                ? profile.objectionHandling
                 : prev.objections,
+              // 🔥 Target audience segments
+              targetAudience: profile.targetAudienceSegments && Array.isArray(profile.targetAudienceSegments)
+                ? profile.targetAudienceSegments
+                : (profile.targetAudience ? [profile.targetAudience] : prev.targetAudience),
+              targetAudienceSegments: profile.targetAudienceSegments || prev.targetAudienceSegments,
+              // 🔥 Competitors
+              competitors: profile.competitors && Array.isArray(profile.competitors)
+                ? profile.competitors
+                : prev.competitors,
+              // 🔥 USPs
+              uniqueSellingPoints: profile.uniqueSellingPoints && Array.isArray(profile.uniqueSellingPoints)
+                ? profile.uniqueSellingPoints
+                : prev.uniqueSellingPoints,
+              // 🔥 Decision makers
+              decisionMakers: profile.decisionMakers && Array.isArray(profile.decisionMakers)
+                ? profile.decisionMakers
+                : prev.decisionMakers,
               nextActions: prev.nextActions
             };
           });
@@ -2480,26 +2504,28 @@ export default function AuthPage() {
           setResearchProgress(100);
           setResearchStatus("Account erstellt! Starte Intelligence Briefing...");
           
-          // Initialize briefing with user input data (shown immediately)
+          // Initialize briefing with user input data (shown immediately while Gemini works)
           setBriefingData({
             status: 'polling',
             enrichmentStatus: 'in_progress',
-            companySnapshot: `${registerData.company} ist ein Unternehmen in der ${registerData.industry || 'Geschäfts'}-Branche.`,
+            qualityScore: 0,
+            companySnapshot: `${registerData.company} ist ein Unternehmen in der ${registerData.industry || 'Geschäfts'}-Branche. ARAS AI analysiert gerade alle verfügbaren Informationen...`,
             targetAudience: [
               `Entscheider in ${registerData.industry || 'relevanten'} Unternehmen`,
-              `Interessenten für ${registerData.primaryGoal === 'mehr_termine' ? 'Terminvereinbarungen' : registerData.primaryGoal === 'lead_qualifizierung' ? 'qualifizierte Leads' : 'Outbound-Lösungen'}`,
+              `${registerData.primaryGoal === 'mehr_termine' ? 'Terminvereinbarungen' : registerData.primaryGoal === 'lead_qualifizierung' ? 'qualifizierte Leads' : 'Outbound-Lösungen'}`,
               'B2B-Kunden mit Wachstumspotenzial'
             ],
+            targetAudienceSegments: [],
             callAngles: [
-              `Fokus auf ${registerData.primaryGoal === 'mehr_termine' ? 'Terminvereinbarung' : registerData.primaryGoal === 'lead_qualifizierung' ? 'Lead-Qualifizierung' : 'Effizienzsteigerung'}`,
-              'Branchenspezifische Schmerzpunkte ansprechen',
-              'ROI und Zeitersparnis hervorheben'
+              'ARAS AI recherchiert Gesprächseinstiege...',
+              'Branchenspezifische Angles werden geladen...'
             ],
             objections: [
-              { objection: 'Wir haben schon einen Dienstleister', response: 'Verstehe ich. Darf ich fragen, wie zufrieden Sie mit der Lead-Qualität sind?' },
-              { objection: 'Kein Interesse', response: 'Das respektiere ich. Darf ich fragen, was Ihr aktuell größtes Wachstumshindernis ist?' },
-              { objection: 'Zu teuer', response: 'Lassen Sie uns über den ROI sprechen - unsere Kunden sehen meist 3-5x Return.' }
+              { objection: 'Einwände werden analysiert...', response: 'Überzeugende Antworten werden generiert...' }
             ],
+            competitors: [],
+            uniqueSellingPoints: [],
+            decisionMakers: [],
             nextActions: [
               'Erste Kampagne erstellen',
               'Zielgruppe definieren',
@@ -3135,8 +3161,8 @@ export default function AuthPage() {
                           </ul>
                         </motion.div>
 
-                        {/* Objection Handling (only show when complete) */}
-                        {onboardingPhase === 'complete' && (
+                        {/* 🔥 WOW-Level: Objection Handling */}
+                        {(briefingData?.objections ?? []).length > 0 && (
                           <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -3148,10 +3174,10 @@ export default function AuthPage() {
                             }}
                           >
                             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
-                              Top 3 Einwände + Antworten
+                              🎯 Einwandbehandlung ({(briefingData?.objections ?? []).length} Einwände)
                             </h3>
                             <div className="space-y-3">
-                              {(briefingData?.objections ?? []).slice(0, 3).map((obj, i) => (
+                              {(briefingData?.objections ?? []).slice(0, 5).map((obj, i) => (
                                 <div key={i} className="space-y-1">
                                   <p className="text-xs text-red-400/80 font-medium">
                                     "{obj?.objection || 'Einwand'}"
@@ -3161,6 +3187,91 @@ export default function AuthPage() {
                                   </p>
                                 </div>
                               ))}
+                            </div>
+                          </motion.div>
+                        )}
+
+                        {/* 🔥 WOW-Level: Competitors (only when available) */}
+                        {(briefingData?.competitors ?? []).length > 0 && onboardingPhase === 'complete' && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.7 }}
+                            className="p-4 rounded-xl"
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.03)',
+                              border: '1px solid rgba(255, 255, 255, 0.08)'
+                            }}
+                          >
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
+                              🆚 Wettbewerber-Analyse
+                            </h3>
+                            <ul className="space-y-1.5">
+                              {(briefingData?.competitors ?? []).slice(0, 5).map((comp, i) => (
+                                <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
+                                  <span className="text-yellow-500 mt-0.5">⚡</span>
+                                  {comp}
+                                </li>
+                              ))}
+                            </ul>
+                          </motion.div>
+                        )}
+
+                        {/* 🔥 WOW-Level: USPs (only when available) */}
+                        {(briefingData?.uniqueSellingPoints ?? []).length > 0 && onboardingPhase === 'complete' && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.8 }}
+                            className="p-4 rounded-xl"
+                            style={{
+                              background: 'rgba(254, 145, 0, 0.05)',
+                              border: '1px solid rgba(254, 145, 0, 0.15)'
+                            }}
+                          >
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-[#FE9100] mb-2">
+                              💎 Unique Selling Points
+                            </h3>
+                            <ul className="space-y-1.5">
+                              {(briefingData?.uniqueSellingPoints ?? []).slice(0, 7).map((usp, i) => (
+                                <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
+                                  <span className="text-[#FE9100] mt-0.5">✓</span>
+                                  {usp}
+                                </li>
+                              ))}
+                            </ul>
+                          </motion.div>
+                        )}
+
+                        {/* Quality Score Badge (when complete) */}
+                        {onboardingPhase === 'complete' && briefingData?.qualityScore > 0 && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.9 }}
+                            className="flex items-center justify-center gap-2 py-2"
+                          >
+                            <div 
+                              className="px-3 py-1 rounded-full text-xs font-bold"
+                              style={{
+                                background: briefingData.qualityScore >= 7 
+                                  ? 'rgba(34, 197, 94, 0.2)' 
+                                  : briefingData.qualityScore >= 4 
+                                    ? 'rgba(234, 179, 8, 0.2)' 
+                                    : 'rgba(239, 68, 68, 0.2)',
+                                color: briefingData.qualityScore >= 7 
+                                  ? '#22c55e' 
+                                  : briefingData.qualityScore >= 4 
+                                    ? '#eab308' 
+                                    : '#ef4444',
+                                border: `1px solid ${briefingData.qualityScore >= 7 
+                                  ? 'rgba(34, 197, 94, 0.3)' 
+                                  : briefingData.qualityScore >= 4 
+                                    ? 'rgba(234, 179, 8, 0.3)' 
+                                    : 'rgba(239, 68, 68, 0.3)'}`
+                              }}
+                            >
+                              Intelligence Score: {briefingData.qualityScore}/10
                             </div>
                           </motion.div>
                         )}
