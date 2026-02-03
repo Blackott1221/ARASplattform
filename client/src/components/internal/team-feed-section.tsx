@@ -4,12 +4,13 @@
  * ============================================================================
  * Premium chat-style collaboration feed
  * ARAS CI: "Apple meets Neuralink"
+ * DE-Texte, Farb-Logik, Premium-Akzente
  * ============================================================================
  */
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Send, Paperclip, Image, X, MessageSquare } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -49,16 +50,36 @@ interface TeamFeedSectionProps {
 }
 
 // ============================================================================
+// MOTION VARIANTS (Reduced Motion Support)
+// ============================================================================
+
+const messageVariants = {
+  hidden: { opacity: 0, y: 6 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.18, ease: [0.2, 0.8, 0.2, 1] }
+  },
+  hiddenReduced: { opacity: 0 },
+  visibleReduced: { 
+    opacity: 1,
+    transition: { duration: 0.15 }
+  },
+};
+
+// ============================================================================
 // LIVE PULSE DOT
 // ============================================================================
 
 function LivePulseDot() {
+  const shouldReduceMotion = useReducedMotion();
+  
   return (
     <div className="flex items-center gap-2">
       <motion.div
         className="w-1.5 h-1.5 rounded-full"
         style={{ backgroundColor: '#22c55e' }}
-        animate={{ opacity: [0.4, 1, 0.4] }}
+        animate={shouldReduceMotion ? {} : { opacity: [0.4, 1, 0.4] }}
         transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
       />
       <span
@@ -76,11 +97,17 @@ function LivePulseDot() {
 // ============================================================================
 
 function TypingIndicator({ username }: { username?: string }) {
+  const shouldReduceMotion = useReducedMotion();
+  
   return (
     <div className="flex items-center gap-3 px-4 py-2">
       <div
         className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold"
-        style={{ background: 'linear-gradient(135deg, #FE9100, #a34e00)', color: 'white' }}
+        style={{ 
+          background: 'linear-gradient(135deg, #FE9100, #a34e00)', 
+          color: 'white',
+          boxShadow: '0 0 0 2px rgba(255,255,255,0.12)'
+        }}
       >
         {username?.[0]?.toUpperCase() || '?'}
       </div>
@@ -91,7 +118,7 @@ function TypingIndicator({ username }: { username?: string }) {
               key={i}
               className="w-1 h-1 rounded-full"
               style={{ backgroundColor: '#ff6a00' }}
-              animate={{ scale: [0.8, 1, 0.8] }}
+              animate={shouldReduceMotion ? {} : { scale: [0.8, 1, 0.8] }}
               transition={{
                 duration: 0.6,
                 repeat: Infinity,
@@ -102,7 +129,7 @@ function TypingIndicator({ username }: { username?: string }) {
           ))}
         </div>
         <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.5)' }}>
-          is typing…
+          tippt…
         </span>
       </div>
     </div>
@@ -122,45 +149,81 @@ function MessageBubble({
   isOwn: boolean;
   onClick?: () => void;
 }) {
+  const shouldReduceMotion = useReducedMotion();
+  
   const getRoleBadge = (type: string) => {
     const badges: Record<string, string> = {
-      announcement: 'Announcement',
+      announcement: 'Ankündigung',
       update: 'Update',
-      note: 'Note',
+      note: 'Notiz',
       system: 'System',
-      post: 'Post',
+      post: 'Beitrag',
     };
     return badges[type] || type;
   };
 
+  // Bubble styles based on own vs other
+  const bubbleStyles = isOwn
+    ? {
+        background: 'rgba(255,106,0,0.08)',
+        border: '1px solid rgba(255,106,0,0.22)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+      }
+    : {
+        background: 'rgba(233,215,196,0.06)',
+        border: '1px solid rgba(255,255,255,0.10)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+      };
+
+  // Avatar ring color
+  const avatarRingStyle = isOwn
+    ? { boxShadow: '0 0 0 2px rgba(255,106,0,0.30)' }
+    : { boxShadow: '0 0 0 2px rgba(255,255,255,0.12)' };
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={shouldReduceMotion ? 'hiddenReduced' : 'hidden'}
+      animate={shouldReduceMotion ? 'visibleReduced' : 'visible'}
+      variants={messageVariants}
       className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
       style={{ maxWidth: '100%' }}
     >
       <button
         onClick={onClick}
-        className="group text-left transition-all duration-[140ms] hover:-translate-y-px focus:outline-none focus:ring-2 focus:ring-orange-500/30 rounded-[14px]"
+        className={`group text-left rounded-[14px] focus:outline-none focus:ring-2 focus:ring-orange-500/30 ${
+          shouldReduceMotion ? '' : 'transition-all duration-[140ms] hover:-translate-y-px'
+        }`}
         style={{
           maxWidth: '72%',
           cursor: 'pointer',
         }}
       >
         <div
-          className="rounded-[14px] p-3 transition-shadow duration-[140ms] group-hover:shadow-lg"
-          style={{
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-          }}
+          className={`relative rounded-[14px] p-3 overflow-hidden ${
+            shouldReduceMotion ? '' : 'transition-shadow duration-[140ms] group-hover:shadow-lg'
+          }`}
+          style={bubbleStyles}
         >
+          {/* Accent Line (inside bubble) */}
+          <div
+            className="absolute top-0 bottom-0 w-[2px] rounded-full"
+            style={{
+              [isOwn ? 'right' : 'left']: '0',
+              background: isOwn 
+                ? 'linear-gradient(180deg, rgba(255,106,0,0.4) 0%, rgba(163,78,0,0.1) 100%)'
+                : 'linear-gradient(180deg, rgba(233,215,196,0.3) 0%, rgba(233,215,196,0.05) 100%)',
+            }}
+          />
+
           {/* Message Header */}
           <div className="flex items-center gap-2 mb-2">
             <div
               className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #FE9100, #a34e00)', color: 'white' }}
+              style={{ 
+                background: 'linear-gradient(135deg, #FE9100, #a34e00)', 
+                color: 'white',
+                ...avatarRingStyle,
+              }}
             >
               {item.authorUsername?.[0]?.toUpperCase() || item.actorName?.[0]?.toUpperCase() || '?'}
             </div>
@@ -168,7 +231,7 @@ function MessageBubble({
               className="text-[13px] font-semibold"
               style={{ color: 'rgba(255,255,255,0.9)', fontFamily: 'Inter, sans-serif' }}
             >
-              {item.authorUsername || item.actorName || 'Unknown'}
+              {isOwn ? 'Du' : (item.authorUsername || item.actorName || 'Unbekannt')}
             </span>
             <span
               className="text-[10px] px-2 py-0.5 rounded-full"
@@ -276,11 +339,13 @@ export function TeamFeedSection({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [message, setMessage] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [typingUser, setTypingUser] = useState<string | undefined>();
+  const [showOwnTyping, setShowOwnTyping] = useState(false);
 
   // Fetch feed items
   const { data: feedData, isLoading } = useQuery({
@@ -310,6 +375,7 @@ export function TeamFeedSection({
       queryClient.invalidateQueries({ queryKey: ['command-center-feed'] });
       setMessage('');
       setAttachments([]);
+      setShowOwnTyping(false);
     },
   });
 
@@ -318,25 +384,47 @@ export function TeamFeedSection({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [feedItems.length]);
 
-  // Simulate typing indicator (in real app, this would come from WebSocket)
+  // TASK 5: Local typing indicator simulation (300ms inactivity timeout)
   useEffect(() => {
     if (message.length > 0) {
-      // In a real app, emit typing event via WebSocket
+      setShowOwnTyping(true);
+      
+      // Clear existing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      // Set new timeout to hide typing after 300ms of inactivity
+      typingTimeoutRef.current = setTimeout(() => {
+        setShowOwnTyping(false);
+      }, 300);
+    } else {
+      setShowOwnTyping(false);
     }
+    
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
   }, [message]);
 
-  const handleSend = () => {
-    if (message.trim()) {
+  // Check if can send (message OR attachments)
+  const canSend = message.trim().length > 0 || attachments.length > 0;
+
+  const handleSend = useCallback(() => {
+    if (canSend && !postMutation.isPending) {
       postMutation.mutate(message.trim());
     }
-  };
+  }, [canSend, message, postMutation]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Enter = send, Shift+Enter = newline
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
-  };
+  }, [handleSend]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'file' | 'image') => {
     const files = Array.from(e.target.files || []);
@@ -388,13 +476,13 @@ export function TeamFeedSection({
               className="text-[14px] font-bold tracking-[0.18em] uppercase"
               style={{ fontFamily: 'Orbitron, sans-serif', color: '#e9d7c4' }}
             >
-              TEAM FEED
+              TEAM-FEED
             </h2>
             <p
               className="text-[12px] mt-0.5"
               style={{ fontFamily: 'Inter, sans-serif', color: 'rgba(255,255,255,0.65)' }}
             >
-              Internal updates & collaboration
+              Interne Updates & Abstimmung
             </p>
           </div>
           <LivePulseDot />
@@ -435,8 +523,11 @@ export function TeamFeedSection({
             // Empty state
             <div className="flex flex-col items-center justify-center py-12">
               <MessageSquare className="w-10 h-10 mb-3" style={{ color: 'rgba(255,255,255,0.2)' }} />
-              <p className="text-[13px]" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                No activity yet — post the first update
+              <p className="text-[13px] mb-1" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                Noch keine Updates.
+              </p>
+              <p className="text-[12px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                Schreib das erste Update
               </p>
             </div>
           ) : (
@@ -503,7 +594,7 @@ export function TeamFeedSection({
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Write an update…"
+              placeholder="Update schreiben…"
               className="flex-1 bg-transparent text-[14px] outline-none"
               style={{ color: 'rgba(255,255,255,0.9)', fontFamily: 'Inter, sans-serif' }}
             />
@@ -513,6 +604,7 @@ export function TeamFeedSection({
               onClick={() => fileInputRef.current?.click()}
               className="w-9 h-9 flex items-center justify-center rounded-lg transition-colors hover:bg-white/10"
               style={{ color: 'rgba(255,255,255,0.5)' }}
+              title="Datei anhängen"
             >
               <Paperclip className="w-4 h-4" />
             </button>
@@ -528,6 +620,7 @@ export function TeamFeedSection({
               onClick={() => imageInputRef.current?.click()}
               className="w-9 h-9 flex items-center justify-center rounded-lg transition-colors hover:bg-white/10"
               style={{ color: 'rgba(255,255,255,0.5)' }}
+              title="Bild hinzufügen"
             >
               <Image className="w-4 h-4" />
             </button>
@@ -543,12 +636,17 @@ export function TeamFeedSection({
           {/* Send Button */}
           <button
             onClick={handleSend}
-            disabled={!message.trim() || postMutation.isPending}
-            className="w-11 h-11 flex items-center justify-center rounded-xl transition-all disabled:opacity-50 hover:shadow-lg hover:shadow-orange-500/20"
+            disabled={!canSend || postMutation.isPending}
+            className={`w-11 h-11 flex items-center justify-center rounded-xl transition-all ${
+              !canSend || postMutation.isPending 
+                ? 'opacity-[0.45] cursor-not-allowed' 
+                : 'hover:shadow-lg hover:shadow-orange-500/20'
+            }`}
             style={{
               background: 'linear-gradient(135deg, #FE9100, #a34e00)',
               color: 'white',
             }}
+            title="Senden"
           >
             <Send className="w-4 h-4" />
           </button>
