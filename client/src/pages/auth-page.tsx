@@ -1815,6 +1815,101 @@ export default function AuthPage() {
     clearGlobalError();
   }, [activeTab]);
   
+  // 🔥 STEP 8B: INTELLIGENCE BRIEFING POLLING
+  useEffect(() => {
+    if (onboardingPhase !== 'briefing' || !briefingData || briefingData.status !== 'polling') return;
+    
+    const controller = new AbortController();
+    let pollCount = 0;
+    const MAX_POLLS = 20; // 20 polls * 2s = 40s max wait
+    
+    const pollProfileContext = async () => {
+      try {
+        const response = await fetch('/api/user/profile-context', {
+          signal: controller.signal,
+          credentials: 'include'
+        });
+        
+        if (!response.ok) {
+          console.warn('[BRIEFING] Poll failed:', response.status);
+          return;
+        }
+        
+        const data = await response.json();
+        pollCount++;
+        setBriefingPollingCount(pollCount);
+        
+        // Check enrichment status from aiProfile
+        const enrichmentStatus = data.aiProfile?.enrichmentMeta?.status || 'unknown';
+        const statusLabel = data.aiProfile?.enrichmentMeta?.statusLabel || '';
+        
+        console.log('[BRIEFING] Poll', pollCount, 'status:', enrichmentStatus, statusLabel);
+        
+        // Update briefing data with real enriched content if available
+        if (data.aiProfile) {
+          const profile = data.aiProfile;
+          setBriefingData(prev => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              enrichmentStatus,
+              companySnapshot: profile.companyDescription || prev.companySnapshot,
+              targetAudience: profile.targetAudience 
+                ? (Array.isArray(profile.targetAudience) ? profile.targetAudience : [profile.targetAudience])
+                : prev.targetAudience,
+              callAngles: profile.effectiveKeywords 
+                ? (Array.isArray(profile.effectiveKeywords) ? profile.effectiveKeywords.slice(0, 3) : [profile.effectiveKeywords])
+                : prev.callAngles,
+              objections: profile.objectionHandling 
+                ? (Array.isArray(profile.objectionHandling) ? profile.objectionHandling : prev.objections)
+                : prev.objections,
+              nextActions: prev.nextActions
+            };
+          });
+        }
+        
+        // Check if enrichment is complete
+        if (enrichmentStatus === 'ok' || enrichmentStatus === 'limited' || enrichmentStatus === 'fallback' || enrichmentStatus === 'error') {
+          // Enrichment done - mark as ready
+          setBriefingData(prev => prev ? { ...prev, status: 'ready' } : prev);
+          setOnboardingPhase('complete');
+          return;
+        }
+        
+        // Timeout after max polls
+        if (pollCount >= MAX_POLLS) {
+          console.warn('[BRIEFING] Timeout after', pollCount, 'polls');
+          setBriefingData(prev => prev ? { ...prev, status: 'timeout' } : prev);
+          setOnboardingPhase('complete');
+          return;
+        }
+        
+        // Continue polling
+        setTimeout(pollProfileContext, 2000);
+        
+      } catch (error: any) {
+        if (error.name === 'AbortError') return;
+        console.error('[BRIEFING] Poll error:', error);
+        // Continue polling on error
+        setTimeout(pollProfileContext, 2500);
+      }
+    };
+    
+    // Start polling after a short delay
+    const initialDelay = setTimeout(pollProfileContext, 1500);
+    
+    // Animate timeline steps
+    const timelineInterval = setInterval(() => {
+      setBriefingTimelineStep(prev => Math.min(prev + 1, 4));
+    }, 3000);
+    
+    return () => {
+      controller.abort();
+      clearTimeout(initialDelay);
+      clearInterval(timelineInterval);
+    };
+  }, [onboardingPhase, briefingData?.status]);
+  
   // 🔥 HERO FEATURE STATES
   const [benefitIndex, setBenefitIndex] = useState(0);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0 });
@@ -1895,6 +1990,20 @@ export default function AuthPage() {
   const [isResearching, setIsResearching] = useState(false);
   const [researchStatus, setResearchStatus] = useState<string>("");
   const [researchProgress, setResearchProgress] = useState<number>(0);
+  
+  // 🔥 STEP 8: CINEMATIC ONBOARDING - Intelligence Briefing State
+  const [onboardingPhase, setOnboardingPhase] = useState<'signup' | 'briefing' | 'complete'>('signup');
+  const [briefingData, setBriefingData] = useState<{
+    status: 'polling' | 'ready' | 'timeout';
+    enrichmentStatus: string;
+    companySnapshot: string;
+    targetAudience: string[];
+    callAngles: string[];
+    objections: { objection: string; response: string }[];
+    nextActions: string[];
+  } | null>(null);
+  const [briefingPollingCount, setBriefingPollingCount] = useState(0);
+  const [briefingTimelineStep, setBriefingTimelineStep] = useState(0);
   
   // Industry & Goal Options
   const industries = [
@@ -2255,18 +2364,45 @@ export default function AuthPage() {
           const result = await registerMutation.mutateAsync(registerData);
           trackSignup('email', result?.id);
           
-          // FIXED: Show animation but redirect much faster (research continues in background)
-          // The AI analysis happens server-side and will be ready when user arrives at /space
+          // 🔥 STEP 8: CINEMATIC ONBOARDING - Transition to Intelligence Briefing
+          // DON'T redirect immediately - show briefing and poll for enrichment
+          clearInterval(stepInterval);
+          setResearchProgress(100);
+          setResearchStatus("Account erstellt! Starte Intelligence Briefing...");
+          
+          // Initialize briefing with user input data (shown immediately)
+          setBriefingData({
+            status: 'polling',
+            enrichmentStatus: 'in_progress',
+            companySnapshot: `${registerData.company} ist ein Unternehmen in der ${registerData.industry || 'Geschäfts'}-Branche.`,
+            targetAudience: [
+              `Entscheider in ${registerData.industry || 'relevanten'} Unternehmen`,
+              `Interessenten für ${registerData.primaryGoal === 'mehr_termine' ? 'Terminvereinbarungen' : registerData.primaryGoal === 'lead_qualifizierung' ? 'qualifizierte Leads' : 'Outbound-Lösungen'}`,
+              'B2B-Kunden mit Wachstumspotenzial'
+            ],
+            callAngles: [
+              `Fokus auf ${registerData.primaryGoal === 'mehr_termine' ? 'Terminvereinbarung' : registerData.primaryGoal === 'lead_qualifizierung' ? 'Lead-Qualifizierung' : 'Effizienzsteigerung'}`,
+              'Branchenspezifische Schmerzpunkte ansprechen',
+              'ROI und Zeitersparnis hervorheben'
+            ],
+            objections: [
+              { objection: 'Wir haben schon einen Dienstleister', response: 'Verstehe ich. Darf ich fragen, wie zufrieden Sie mit der Lead-Qualität sind?' },
+              { objection: 'Kein Interesse', response: 'Das respektiere ich. Darf ich fragen, was Ihr aktuell größtes Wachstumshindernis ist?' },
+              { objection: 'Zu teuer', response: 'Lassen Sie uns über den ROI sprechen - unsere Kunden sehen meist 3-5x Return.' }
+            ],
+            nextActions: [
+              'Erste Kampagne erstellen',
+              'Zielgruppe definieren',
+              'ARAS AI Anruf testen'
+            ]
+          });
+          
+          // Transition to briefing phase after short delay
           setTimeout(() => {
-            clearInterval(stepInterval);
-            setResearchProgress(100);
-            setResearchStatus("ULTRA-DEEP Research abgeschlossen! ARAS AI kennt jetzt ALLES über " + registerData.company + "!");
-            
-            // Redirect faster - research is done server-side
-            setTimeout(() => {
-              setLocation("/space");
-            }, 2000); // Reduced from 3000ms
-          }, 12000); // Reduced from 28000ms - much faster but still shows animation
+            setOnboardingPhase('briefing');
+            setIsResearching(false);
+            setBriefingTimelineStep(0);
+          }, 1500);
           
         } catch (error: any) {
           clearInterval(stepInterval);
@@ -2739,8 +2875,235 @@ export default function AuthPage() {
                   )}
                 </AnimatePresence>
 
+                {/* 🔥 STEP 8C: INTELLIGENCE BRIEFING SCREEN */}
+                <AnimatePresence mode="wait">
+                  {(onboardingPhase === 'briefing' || onboardingPhase === 'complete') && briefingData && (
+                    <motion.div
+                      key="intelligence-briefing"
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.4, ease: "easeOut" }}
+                      className="space-y-6"
+                    >
+                      {/* Briefing Header */}
+                      <div className="text-center mb-6">
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.2 }}
+                        >
+                          <h2 
+                            className="text-xl md:text-2xl font-black mb-2"
+                            style={{ fontFamily: 'Orbitron, sans-serif', color: '#FE9100' }}
+                          >
+                            {onboardingPhase === 'complete' ? 'DEIN OUTBOUND PLAYBOOK' : 'ARAS AI INTELLIGENCE BRIEFING'}
+                          </h2>
+                          <p className="text-sm text-gray-400">
+                            {onboardingPhase === 'complete' 
+                              ? `Personalisiert für ${registerData.company}`
+                              : 'Wir verbinden deine Angaben mit öffentlichen Signalen...'}
+                          </p>
+                        </motion.div>
+                      </div>
+
+                      {/* Live Timeline (while polling) */}
+                      {briefingData.status === 'polling' && (
+                        <motion.div 
+                          className="space-y-3 mb-6"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                        >
+                          {['Parsing Website & Domain', 'Analysiere Zielgruppe', 'Erstelle Call-Strategie', 'Generiere Einwandbehandlung'].map((step, i) => (
+                            <motion.div
+                              key={step}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: briefingTimelineStep >= i ? 1 : 0.4, x: 0 }}
+                              transition={{ delay: i * 0.3 }}
+                              className="flex items-center gap-3"
+                            >
+                              <div 
+                                className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
+                                style={{
+                                  background: briefingTimelineStep >= i 
+                                    ? 'linear-gradient(135deg, #FE9100, #a34e00)' 
+                                    : 'rgba(255,255,255,0.1)',
+                                  color: briefingTimelineStep >= i ? '#000' : '#666'
+                                }}
+                              >
+                                {briefingTimelineStep > i ? '✓' : i + 1}
+                              </div>
+                              <span className={`text-sm ${briefingTimelineStep >= i ? 'text-white' : 'text-gray-500'}`}>
+                                {step}
+                              </span>
+                              {briefingTimelineStep === i && (
+                                <motion.div
+                                  animate={{ opacity: [0.5, 1, 0.5] }}
+                                  transition={{ duration: 1.5, repeat: Infinity }}
+                                  className="ml-auto"
+                                >
+                                  <Loader2 className="w-4 h-4 animate-spin text-[#FE9100]" />
+                                </motion.div>
+                              )}
+                            </motion.div>
+                          ))}
+                        </motion.div>
+                      )}
+
+                      {/* Intelligence Cards */}
+                      <div className="space-y-4">
+                        {/* Company Snapshot */}
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.3 }}
+                          className="p-4 rounded-xl"
+                          style={{
+                            background: 'rgba(254, 145, 0, 0.08)',
+                            border: '1px solid rgba(254, 145, 0, 0.2)'
+                          }}
+                        >
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-[#FE9100] mb-2">
+                            Company Snapshot
+                          </h3>
+                          <p className="text-sm text-gray-300 leading-relaxed">
+                            {briefingData.companySnapshot}
+                          </p>
+                          {briefingData.status === 'polling' && (
+                            <p className="text-xs text-gray-500 mt-2 italic">
+                              Basierend auf deinen Angaben • wird aktualisiert...
+                            </p>
+                          )}
+                        </motion.div>
+
+                        {/* Target Audience */}
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.4 }}
+                          className="p-4 rounded-xl"
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            border: '1px solid rgba(255, 255, 255, 0.08)'
+                          }}
+                        >
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
+                            Best-fit Zielgruppe
+                          </h3>
+                          <ul className="space-y-1.5">
+                            {briefingData.targetAudience.map((audience, i) => (
+                              <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
+                                <span className="text-[#FE9100] mt-0.5">•</span>
+                                {audience}
+                              </li>
+                            ))}
+                          </ul>
+                        </motion.div>
+
+                        {/* Call Angles */}
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.5 }}
+                          className="p-4 rounded-xl"
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            border: '1px solid rgba(255, 255, 255, 0.08)'
+                          }}
+                        >
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
+                            Suggested Call Angles
+                          </h3>
+                          <ul className="space-y-1.5">
+                            {briefingData.callAngles.map((angle, i) => (
+                              <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
+                                <span className="text-[#FE9100] mt-0.5">→</span>
+                                {angle}
+                              </li>
+                            ))}
+                          </ul>
+                        </motion.div>
+
+                        {/* Objection Handling (only show when complete) */}
+                        {onboardingPhase === 'complete' && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.6 }}
+                            className="p-4 rounded-xl"
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.03)',
+                              border: '1px solid rgba(255, 255, 255, 0.08)'
+                            }}
+                          >
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
+                              Top 3 Einwände + Antworten
+                            </h3>
+                            <div className="space-y-3">
+                              {briefingData.objections.slice(0, 3).map((obj, i) => (
+                                <div key={i} className="space-y-1">
+                                  <p className="text-xs text-red-400/80 font-medium">
+                                    "{obj.objection}"
+                                  </p>
+                                  <p className="text-sm text-green-400/90 pl-3 border-l-2 border-green-500/30">
+                                    {obj.response}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </div>
+
+                      {/* CTA: Enter SPACE */}
+                      {onboardingPhase === 'complete' && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.7 }}
+                          className="pt-4"
+                        >
+                          <motion.button
+                            onClick={() => setLocation('/space')}
+                            whileHover={{ y: -2, boxShadow: '0 26px 92px rgba(254,145,0,0.18), 0 22px 74px rgba(0,0,0,0.60)' }}
+                            whileTap={{ y: 0, scale: 0.99 }}
+                            className="relative w-full h-12 md:h-14 rounded-full font-extrabold text-sm uppercase overflow-hidden flex items-center justify-center gap-3 focus:outline-none focus:ring-2 focus:ring-offset-0"
+                            style={{
+                              fontFamily: 'Orbitron, sans-serif',
+                              letterSpacing: '0.08em',
+                              background: 'linear-gradient(180deg, rgba(254,145,0,0.22), rgba(255,255,255,0.04))',
+                              border: '1px solid rgba(254,145,0,0.4)',
+                              color: 'rgba(255,255,255,0.98)',
+                              boxShadow: '0 18px 64px rgba(254,145,0,0.15), 0 22px 74px rgba(0,0,0,0.60)'
+                            }}
+                          >
+                            <Sparkles className="w-5 h-5" />
+                            ENTER SPACE
+                            <ArrowRight className="w-5 h-5" />
+                          </motion.button>
+                          
+                          {briefingData.status === 'timeout' && (
+                            <p className="text-xs text-center text-gray-500 mt-3">
+                              Enrichment läuft noch im Hintergrund. Du kannst trotzdem starten!
+                            </p>
+                          )}
+                        </motion.div>
+                      )}
+
+                      {/* Polling indicator */}
+                      {briefingData.status === 'polling' && (
+                        <div className="text-center pt-2">
+                          <p className="text-xs text-gray-500">
+                            Analysiere... ({briefingPollingCount}/20)
+                          </p>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 {/* FORM STATE */}
-                {authMode !== 'idle' && (
+                {authMode !== 'idle' && onboardingPhase === 'signup' && (
                   <motion.div
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
