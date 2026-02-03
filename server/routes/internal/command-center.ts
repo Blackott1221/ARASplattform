@@ -186,7 +186,7 @@ router.post('/team-feed', requireInternal, async (req: any, res) => {
 
 router.post('/team-feed/seed', requireInternal, async (req: any, res) => {
   try {
-    // Team members for realistic messages
+    // Extended team members - 30 people
     const TEAM = [
       { id: 'user_justin', name: 'Justin Schwarzott' },
       { id: 'user_herbert', name: 'Herbert Schöttl' },
@@ -203,54 +203,246 @@ router.post('/team-feed/seed', requireInternal, async (req: any, res) => {
       { id: 'user_maria', name: 'Maria Berger' },
       { id: 'user_florian', name: 'Florian Eder' },
       { id: 'user_stefanie', name: 'Stefanie Fuchs' },
+      { id: 'user_max', name: 'Max Lehner' },
+      { id: 'user_katharina', name: 'Katharina Wimmer' },
+      { id: 'user_christoph', name: 'Christoph Pichler' },
+      { id: 'user_nina', name: 'Nina Reiter' },
+      { id: 'user_david', name: 'David Moser' },
+      { id: 'user_laura', name: 'Laura Brunner' },
+      { id: 'user_simon', name: 'Simon Haas' },
+      { id: 'user_melanie', name: 'Melanie Stadler' },
+      { id: 'user_patrick', name: 'Patrick Winkler' },
+      { id: 'user_sabrina', name: 'Sabrina Egger' },
+      { id: 'user_daniel', name: 'Daniel Aigner' },
+      { id: 'user_martina', name: 'Martina Holzer' },
+      { id: 'user_tobias', name: 'Tobias Lang' },
+      { id: 'user_claudia', name: 'Claudia Schwarz' },
+      { id: 'user_alexander', name: 'Alexander Kern' },
     ];
 
+    // 120+ messages with realistic typos and human-like communication
     const MESSAGES = [
+      // Justin - CEO, locker aber professionell, gelegentlich Tippfehler
       { msg: 'Deal mit Müller AG abgeschlossen! 🎉 250k ARR, starker Q3-Start.', type: 'announcement', author: 0 },
-      { msg: 'Pipeline Review heute um 14:00. Bitte alle Deals aktualisieren.', type: 'update', author: 4 },
-      { msg: 'Neuer Lead: Schneider GmbH, sehr interessiert an Enterprise-Paket.', type: 'post', author: 5 },
-      { msg: 'Vertriebsmeeting verschoben auf Donnerstag 10:00.', type: 'update', author: 3 },
-      { msg: 'Demo bei Weber & Partner war super! Proposal geht heute raus.', type: 'post', author: 4 },
-      { msg: 'Q2 Zahlen sehen gut aus, 15% über Plan 💪', type: 'announcement', author: 3 },
-      { msg: 'Server-Wartung Samstag 02:00-04:00 Uhr. Kurze Downtime möglich.', type: 'announcement', author: 2 },
-      { msg: 'Neues Onboarding-Template ist live. Bitte nutzen!', type: 'update', author: 11 },
-      { msg: 'Prozessoptimierung Phase 2 startet nächste Woche.', type: 'post', author: 2 },
-      { msg: 'Support-Tickets heute alle bearbeitet ✅', type: 'post', author: 12 },
-      { msg: 'Quartalsabschluss fertig. Report im Shared Drive.', type: 'announcement', author: 1 },
-      { msg: 'Neue Datenschutzrichtlinien ab 01. des Monats.', type: 'update', author: 9 },
-      { msg: 'Budget für Q4 genehmigt. Details im Meeting morgen.', type: 'announcement', author: 1 },
-      { msg: 'Release 2.4 ist live! Neue Dashboard-Features.', type: 'announcement', author: 13 },
-      { msg: 'Bug im Export-Modul gefixt. Bitte testen.', type: 'update', author: 7 },
-      { msg: 'Neue UI-Designs für Mobile sind fertig. Feedback willkommen!', type: 'post', author: 14 },
-      { msg: 'API-Performance um 40% verbessert 🚀', type: 'announcement', author: 7 },
-      { msg: 'Neue Kampagne startet Montag. Content ist ready.', type: 'announcement', author: 6 },
-      { msg: 'Zwei neue Kollegen starten nächste Woche!', type: 'announcement', author: 8 },
-      { msg: 'Webinar nächsten Donnerstag. Bitte weiterleiten!', type: 'update', author: 6 },
-      { msg: 'Strategie-Meeting war produktiv. Zusammenfassung folgt.', type: 'post', author: 0 },
+      { msg: 'Mega Woche! Danke an alle fürs Gas geben 💪', type: 'post', author: 0 },
       { msg: 'Partnerschaft mit TechVenture ist fix! 🎉', type: 'announcement', author: 0 },
-      { msg: 'Investorengespräch lief sehr gut. Update im Führungskreis.', type: 'post', author: 0 },
-      { msg: 'Bitte alle KPIs bis Freitag aktualisieren.', type: 'update', author: 1 },
-      { msg: 'Wochenstart-Call heute 09:00. Kurzes Update von jedem Team.', type: 'update', author: 2 },
-      { msg: 'NPS gestiegen auf 72! Danke an alle 💪', type: 'announcement', author: 12 },
-      { msg: 'Super Teamwork diese Woche! 🙌', type: 'post', author: 0 },
-      { msg: 'Bitte Urlaubsanträge rechtzeitig einreichen.', type: 'update', author: 8 },
-      { msg: 'Danke für den Einsatz beim Kundenprojekt!', type: 'post', author: 1 },
+      { msg: 'Investorengespräch lief mega gut. Update folgt im Führungskreis.', type: 'post', author: 0 },
       { msg: 'Q3 war unser bestes Quartal! Danke an alle 🙏', type: 'announcement', author: 0 },
-      { msg: 'Dark Mode ist jetzt verfügbar!', type: 'announcement', author: 14 },
-      { msg: 'Churn Rate auf Rekordtief! 0.8% 🎯', type: 'announcement', author: 12 },
-      { msg: 'LinkedIn-Post hat 5000+ Views! 🎉', type: 'post', author: 6 },
-      { msg: 'Wir wachsen! 5 neue Stellen offen.', type: 'announcement', author: 0 },
+      { msg: 'Super Teamwork diese Woche! 🙌', type: 'post', author: 0 },
+      { msg: 'Wir wachsen! 5 neue Stellen offen. Bitte teilen!', type: 'announcement', author: 0 },
+      { msg: 'Strategie-Meeting war produktiv. Zusammnefassung folgt.', type: 'post', author: 0 },
+      { msg: 'hab grad den neuen pitch deck reviewed - sieht hammer aus!', type: 'post', author: 0 },
+      { msg: 'Leute, wichtig: morgen 10:00 All-Hands, bitte alle dabei sein', type: 'update', author: 0 },
+      { msg: 'kurzes update: kunde hat unterschrieben, 180k deal 🔥', type: 'post', author: 0 },
+      { msg: 'bin ab 14 uhr im meeting, danach erreichbar', type: 'post', author: 0 },
+      
+      // Herbert - CFO, formeller, wenig Emojis, streng
+      { msg: 'Quartalsabschluss fertig. Report im Shared Drive.', type: 'announcement', author: 1 },
+      { msg: 'Budget für Q4 genehmigt. Details im Meeting morgen.', type: 'announcement', author: 1 },
+      { msg: 'Bitte alle KPIs bis Freitag aktualisieren.', type: 'update', author: 1 },
+      { msg: 'Danke für den Einsatz beim Kundenprojekt.', type: 'post', author: 1 },
+      { msg: 'Jahresplanung 2025 startet. Input willkommen.', type: 'post', author: 1 },
+      { msg: 'Reisekostenabrechnung bitte bis Ende der Woche einreichen.', type: 'update', author: 1 },
+      { msg: 'Audit-Vorbereitung läuft. Dokumente bis Freitag.', type: 'update', author: 1 },
+      { msg: 'Neue Reisekostenrichtlinie ab nächstem Monat aktiv.', type: 'update', author: 1 },
+      { msg: 'Forecast Q1 muss noch angepasst werden. Bitte prüfen.', type: 'update', author: 1 },
+      { msg: 'Monatsabschluss verzögert sich um einen Tag.', type: 'post', author: 1 },
+      
+      // Sarah - COO, sachlich, strukturiert
+      { msg: 'Server-Wartung Samstag 02:00-04:00 Uhr. Kurze Downtime möglich.', type: 'announcement', author: 2 },
+      { msg: 'Prozessoptimierung Phase 2 startet nächste Woche.', type: 'post', author: 2 },
+      { msg: 'Wochenstart-Call heute 09:00. Kurzes Update von jedem Team.', type: 'update', author: 2 },
       { msg: 'Neue Büroräume werden bezogen. Timeline im Wiki.', type: 'update', author: 2 },
-      { msg: 'Compliance-Schulung für alle Mitarbeiter geplant.', type: 'announcement', author: 9 },
       { msg: 'Infrastruktur-Update erfolgreich durchgeführt.', type: 'post', author: 2 },
-      { msg: 'Newsletter wurde versendet. 42% Open Rate!', type: 'post', author: 6 },
-      { msg: 'Kundenschulung nächste Woche - alle eingeladen.', type: 'update', author: 12 },
-      { msg: 'Team-Lunch morgen 12:30. Alle dabei?', type: 'post', author: 8 },
-      { msg: 'Datenbank-Migration erfolgreich abgeschlossen.', type: 'post', author: 7 },
       { msg: 'Wochenende steht vor der Tür! Allen einen guten Feierabend 🌅', type: 'post', author: 2 },
+      { msg: 'Reminder: Dokumentation aktuell halten!', type: 'update', author: 2 },
+      { msg: 'Neuer Prozess für Kundenanfragen ist live. Bitte beachten.', type: 'update', author: 2 },
+      { msg: 'Status Meeting auf 14:30 vershoben', type: 'update', author: 2 },
+      { msg: 'OKRs für Q4 sind finalisiert und im Confluence.', type: 'announcement', author: 2 },
+      
+      // Michael - Head of Sales, motiviert, viele Emojis
+      { msg: 'Pipeline Review heute um 14:00. Bitte alle Deals aktualisieren.', type: 'update', author: 3 },
+      { msg: 'Q2 Zahlen sehen gut aus, 15% über Plan 💪', type: 'announcement', author: 3 },
+      { msg: 'Neuer Rekord! 12 Demos diese Woche 🚀', type: 'post', author: 3 },
+      { msg: 'Wichtig: Preislsite wurde aktualisiert. Neue Version im Drive.', type: 'update', author: 3 },
+      { msg: 'Vertriebsmeeting verschoben auf Donnerstag 10:00.', type: 'update', author: 3 },
+      { msg: 'hat jemand die präsentation von gestern? brauch die asap', type: 'post', author: 3 },
+      { msg: 'Deal mit Huber & Co fast durch, nur noch Legal 🤞', type: 'post', author: 3 },
+      { msg: 'leute der monat läuft mega, weiter so!!', type: 'post', author: 3 },
+      
+      // Anna - Sales Manager
+      { msg: 'Demo bei Weber & Partner war super! Proposal geht heute raus.', type: 'post', author: 4 },
+      { msg: 'Neuer Lead reinbekommen, sieht vielversprechend aus', type: 'post', author: 4 },
+      { msg: 'Forecast für nächstes Quartal eingetragen.', type: 'update', author: 4 },
+      { msg: 'kunde möchte termin verschieben auf nächste woche', type: 'post', author: 4 },
+      { msg: 'CRM ist geupdated, alle deals sind drin', type: 'post', author: 4 },
+      { msg: 'wer kann morgen bei der demo supporten?', type: 'post', author: 4 },
+      
+      // Thomas - Key Account Manager
+      { msg: 'Neuer Lead: Schneider GmbH, sehr interessiert an Enterprise-Paket.', type: 'post', author: 5 },
       { msg: 'Neukunde Bauer Holding ist onboard! Großes Potenzial.', type: 'post', author: 5 },
+      { msg: 'Vertrag mit Meier AG verlängert, 3 Jahre 🎉', type: 'announcement', author: 5 },
+      { msg: 'meeting mit großkunde war super, follow up ist scheduled', type: 'post', author: 5 },
+      { msg: 'brauche unterstützung beim angebot für fischer gmbh', type: 'post', author: 5 },
+      
+      // Lisa - Marketing Lead
+      { msg: 'Neue Kampagne startet Montag. Content ist ready.', type: 'announcement', author: 6 },
+      { msg: 'Webinar nächsten Donnerstag. Bitte weiterleiten!', type: 'update', author: 6 },
+      { msg: 'LinkedIn-Post hat 5000+ Views! 🎉', type: 'post', author: 6 },
+      { msg: 'Newsletter wurde versendet. 42% Open Rate!', type: 'post', author: 6 },
+      { msg: 'neue landingpage ist live, feedback wilkommen', type: 'post', author: 6 },
+      { msg: 'social media report ist im drive, sieht gut aus diesen monat', type: 'post', author: 6 },
+      { msg: 'Branding Update kommt näcshte Woche, stay tuned', type: 'update', author: 6 },
+      
+      // Markus - Developer
+      { msg: 'Bug im Export-Modul gefixt. Bitte testen.', type: 'update', author: 7 },
+      { msg: 'API-Performance um 40% verbessert 🚀', type: 'announcement', author: 7 },
+      { msg: 'Datenbank-Migration erfolgreich abgeschlossen.', type: 'post', author: 7 },
+      { msg: 'hotfix ist deployed, sollte jetz gehen', type: 'post', author: 7 },
+      { msg: 'neue API doku ist online', type: 'post', author: 7 },
+      { msg: 'CI/CD pipeline läuft wieder', type: 'post', author: 7 },
+      { msg: 'wer hat zeit für code review? ist dringend', type: 'post', author: 7 },
+      { msg: 'security patch eingespielt, alles stabil', type: 'update', author: 7 },
+      
+      // Julia - HR Manager
+      { msg: 'Zwei neue Kollegen starten nächste Woche!', type: 'announcement', author: 8 },
+      { msg: 'Team-Event nächsten Freitag. Bitte anmelden!', type: 'post', author: 8 },
+      { msg: 'Bitte Urlaubsanträge rechtzeitig einreichen.', type: 'update', author: 8 },
+      { msg: 'Team-Lunch morgen 12:30. Alle dabei?', type: 'post', author: 8 },
+      { msg: 'Neue Kaffeemaschine ist da! ☕', type: 'post', author: 8 },
+      { msg: 'Mitarbeitergespräche Q4 - Termine werden versandt.', type: 'update', author: 8 },
+      { msg: 'Geburstag heute: Alles Gute an Thomas! 🎂', type: 'post', author: 8 },
+      { msg: 'onboarding für die neuen ist vorbereitet', type: 'post', author: 8 },
+      
+      // Andreas - Legal
+      { msg: 'Neue Datenschutzrichtlinien ab 01. des Monats.', type: 'update', author: 9 },
+      { msg: 'Verträge für Huber Projekt sind unterschrieben.', type: 'post', author: 9 },
+      { msg: 'Compliance-Schulung für alle Mitarbeiter geplant.', type: 'announcement', author: 9 },
+      { msg: 'NDA ist freigegeben, kann rausgeschickt werden', type: 'post', author: 9 },
+      { msg: 'Reminder: Sicherheitsschulung bis Ende des Monats.', type: 'update', author: 9 },
+      { msg: 'vertrag ist geprüft, keine einwände', type: 'post', author: 9 },
+      
+      // Sandra - Finance
+      { msg: 'Rechnungen für September sind raus.', type: 'post', author: 10 },
+      { msg: 'Bitte Timesheets bis Freitag eintragen.', type: 'update', author: 10 },
+      { msg: 'Neue Reisekostenrichtlinie ab nächstem Monat.', type: 'update', author: 10 },
+      { msg: 'Spesenabrechnung bitte mit Belegen einreichen', type: 'update', author: 10 },
+      { msg: 'Zahlungseingänge von diese Woche sind verbucht', type: 'post', author: 10 },
+      
+      // Peter - Operations
+      { msg: 'Neues Onboarding-Template ist live. Bitte nutzen!', type: 'update', author: 11 },
+      { msg: 'Wochenplanung steht. Alle Tasks zugewiesen.', type: 'update', author: 11 },
+      { msg: 'Parkplatz 5 ist diese Woche gesperrt.', type: 'update', author: 11 },
+      { msg: 'Office-Renovierung startet am Wochenende.', type: 'update', author: 11 },
+      { msg: 'Neue SLA-Richtlinien sind aktiv. Bitte beachten!', type: 'update', author: 11 },
+      { msg: 'meetingraum 2 ist diese woche nicht verfügbar', type: 'update', author: 11 },
+      { msg: 'drucker im 2. stock funktioniert wieder', type: 'post', author: 11 },
+      
+      // Maria - Customer Success
+      { msg: 'Support-Tickets heute alle bearbeitet ✅', type: 'post', author: 12 },
+      { msg: 'NPS gestiegen auf 72! Danke an alle 💪', type: 'announcement', author: 12 },
+      { msg: 'Onboarding für Meier AG erfolgreich abgeschlossen.', type: 'post', author: 12 },
+      { msg: 'Churn Rate auf Rekordtief! 0.8% 🎯', type: 'announcement', author: 12 },
+      { msg: 'Kundenschulung nächste Woche - alle eingeladen.', type: 'update', author: 12 },
+      { msg: 'Kundenfeedback war super positiv diese Woche!', type: 'post', author: 12 },
+      { msg: 'kunde hat 5 sterne bewertung gegeben 🌟', type: 'post', author: 12 },
+      { msg: 'neues help center artikel ist live', type: 'post', author: 12 },
+      
+      // Florian - Product Manager
+      { msg: 'Release 2.4 ist live! Neue Dashboard-Features.', type: 'announcement', author: 13 },
       { msg: 'Sprint Review heute 15:00. Alle willkommen.', type: 'update', author: 13 },
-      { msg: 'Jahresplanung 2025 startet. Input willkommen!', type: 'post', author: 1 },
+      { msg: 'Neue Analytics-Features in der Pipeline.', type: 'post', author: 13 },
+      { msg: 'roadmap für Q1 ist fertig, review morgen', type: 'post', author: 13 },
+      { msg: 'user research ergebnisse sind da, sehr interessant', type: 'post', author: 13 },
+      { msg: 'backlog grooming um 14 uhr, bitte teilnehmen', type: 'update', author: 13 },
+      
+      // Stefanie - UX Designer
+      { msg: 'Neue UI-Designs für Mobile sind fertig. Feedback willkommen!', type: 'post', author: 14 },
+      { msg: 'Dark Mode ist jetzt verfügbar!', type: 'announcement', author: 14 },
+      { msg: 'Prototyp für neues Feature ist in Figma', type: 'post', author: 14 },
+      { msg: 'usability test war erfolgreich, paar kleine änderungen kommen', type: 'post', author: 14 },
+      { msg: 'design system update kommt diese woche', type: 'update', author: 14 },
+      
+      // Max - Junior Developer
+      { msg: 'hab den bug gefunden, war ein typo im code 😅', type: 'post', author: 15 },
+      { msg: 'tests laufen alle durch jetzt', type: 'post', author: 15 },
+      { msg: 'kann jemand bei dem merge conflict helfen?', type: 'post', author: 15 },
+      { msg: 'dokumentation für die API ist aktualisiert', type: 'post', author: 15 },
+      
+      // Katharina - Senior Sales
+      { msg: 'großer deal ist signed! 300k ARR 🎉🎉', type: 'announcement', author: 16 },
+      { msg: 'kunde ist super happy mit der lösung', type: 'post', author: 16 },
+      { msg: 'nächste woche 3 wichtige termine, drückt mir die daumen', type: 'post', author: 16 },
+      { msg: 'wer hat erfahrung mit enterprise kunden im healthcare bereich?', type: 'post', author: 16 },
+      
+      // Christoph - DevOps
+      { msg: 'deployment war erfolgreich, keine issues', type: 'post', author: 17 },
+      { msg: 'monitoring alerts sind angepasst', type: 'post', author: 17 },
+      { msg: 'kubernetes cluster läuft stabil', type: 'post', author: 17 },
+      { msg: 'backup von letzte nacht war erfolgreich', type: 'post', author: 17 },
+      
+      // Nina - Content Manager
+      { msg: 'blogpost ist online, bitte teilen!', type: 'post', author: 18 },
+      { msg: 'case study mit Müller AG ist fertig', type: 'post', author: 18 },
+      { msg: 'content kalender für näcshten monat steht', type: 'update', author: 18 },
+      { msg: 'video testimonial ist geschnitten, sieht super aus', type: 'post', author: 18 },
+      
+      // David - Data Analyst
+      { msg: 'monatlicher report ist fertig, im drive', type: 'post', author: 19 },
+      { msg: 'interessante insights aus den nutzerdaten', type: 'post', author: 19 },
+      { msg: 'dashboard ist geupdated mit neuen metriken', type: 'post', author: 19 },
+      { msg: 'conversion rate ist um 15% gestiegen 📈', type: 'announcement', author: 19 },
+      
+      // Laura - Account Manager
+      { msg: 'kunde möchte upgraden auf enterprise paket!', type: 'post', author: 20 },
+      { msg: 'quarterly review mit Schneider AG war positiv', type: 'post', author: 20 },
+      { msg: 'churn risiko bei einem kunden, brauche support', type: 'post', author: 20 },
+      
+      // Simon - Backend Developer
+      { msg: 'neue API endpoints sind deployed', type: 'post', author: 21 },
+      { msg: 'performance optimization ist live', type: 'post', author: 21 },
+      { msg: 'cache layer funktoiniert jetzt richtig', type: 'post', author: 21 },
+      
+      // Melanie - QA Engineer
+      { msg: 'alle testfälle sind grün ✅', type: 'post', author: 22 },
+      { msg: 'hab noch 2 bugs gefunden, tickets sind erstellt', type: 'post', author: 22 },
+      { msg: 'regression tests laufen durch', type: 'post', author: 22 },
+      
+      // Patrick - Sales Development
+      { msg: 'hab heute 15 calls gemacht, 3 interessenten', type: 'post', author: 23 },
+      { msg: 'neuer lead sieht sehr vielversprechend aus', type: 'post', author: 23 },
+      { msg: 'outbound kampagne läuft gut diese woche', type: 'post', author: 23 },
+      
+      // Sabrina - Customer Support
+      { msg: 'ticket queue ist leer, alles bearbeitet 🎉', type: 'post', author: 24 },
+      { msg: 'häufige fragen FAQ ist aktualisiert', type: 'post', author: 24 },
+      { msg: 'kunde hatte technisches problem, ist gelöst', type: 'post', author: 24 },
+      
+      // Daniel - Frontend Developer
+      { msg: 'neue komponente ist fertig, PR ist offen', type: 'post', author: 25 },
+      { msg: 'responsive design fix ist deployed', type: 'post', author: 25 },
+      { msg: 'lighthouse score ist jetzt bei 95 🚀', type: 'post', author: 25 },
+      
+      // Martina - Office Manager
+      { msg: 'paket von amazon ist angekommen, liegt am empfang', type: 'post', author: 26 },
+      { msg: 'küche wird morgen gereinigt, bitte aufräumen', type: 'update', author: 26 },
+      { msg: 'meetingraum buchungen bitte über den kalender', type: 'update', author: 26 },
+      
+      // Tobias - Project Manager
+      { msg: 'projekt timeline ist aktualisiert', type: 'update', author: 27 },
+      { msg: 'milestone erreicht! 🎯', type: 'post', author: 27 },
+      { msg: 'sprint planning morgen um 10', type: 'update', author: 27 },
+      { msg: 'ressourcenplanung für Q1 ist fertig', type: 'post', author: 27 },
+      
+      // Claudia - Business Development
+      { msg: 'neuer partner ist interessiert, meeting next week', type: 'post', author: 28 },
+      { msg: 'marktanalyse ist fertig, ergebnisse im meeting', type: 'post', author: 28 },
+      { msg: 'konkurrenz hat neues produkt gelaunched, fyi', type: 'post', author: 28 },
+      
+      // Alexander - Security Engineer
+      { msg: 'security audit bestanden! keine kritischen findings', type: 'announcement', author: 29 },
+      { msg: 'passwort policy wurde verschärft', type: 'update', author: 29 },
+      { msg: 'phishing simulation nächste woche, bitte nicht weitersagen 😉', type: 'post', author: 29 },
     ];
 
     // Generate timestamps over last 7 months
