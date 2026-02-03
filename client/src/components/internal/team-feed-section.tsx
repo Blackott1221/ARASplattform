@@ -12,8 +12,9 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Send, Paperclip, Image, X, MessageSquare } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format, isToday, isSameDay } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { isDemoModeActive, getDemoFeedItems, type DemoFeedItem } from '@/lib/internal/team-feed-demo-seed';
 
 // ============================================================================
 // TYPES
@@ -144,10 +145,12 @@ function MessageBubble({
   item,
   isOwn,
   onClick,
+  hideHeader = false,
 }: {
   item: FeedItem;
   isOwn: boolean;
   onClick?: () => void;
+  hideHeader?: boolean | null;
 }) {
   const shouldReduceMotion = useReducedMotion();
   
@@ -215,41 +218,43 @@ function MessageBubble({
             }}
           />
 
-          {/* Message Header */}
-          <div className="flex items-center gap-2 mb-2">
-            <div
-              className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold flex-shrink-0"
-              style={{ 
-                background: 'linear-gradient(135deg, #FE9100, #a34e00)', 
-                color: 'white',
-                ...avatarRingStyle,
-              }}
-            >
-              {item.authorUsername?.[0]?.toUpperCase() || item.actorName?.[0]?.toUpperCase() || '?'}
+          {/* Message Header (hidden for grouped messages) */}
+          {!hideHeader && (
+            <div className="flex items-center gap-2 mb-2">
+              <div
+                className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold flex-shrink-0"
+                style={{ 
+                  background: 'linear-gradient(135deg, #FE9100, #a34e00)', 
+                  color: 'white',
+                  ...avatarRingStyle,
+                }}
+              >
+                {item.authorUsername?.[0]?.toUpperCase() || item.actorName?.[0]?.toUpperCase() || '?'}
+              </div>
+              <span
+                className="text-[13px] font-semibold"
+                style={{ color: 'rgba(255,255,255,0.9)', fontFamily: 'Inter, sans-serif' }}
+              >
+                {isOwn ? 'Du' : (item.authorUsername || item.actorName || 'Unbekannt')}
+              </span>
+              <span
+                className="text-[10px] px-2 py-0.5 rounded-full"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(254,145,0,0.08), rgba(163,78,0,0.08))',
+                  color: '#FE9100',
+                  fontFamily: 'Inter, sans-serif',
+                }}
+              >
+                {getRoleBadge(item.type)}
+              </span>
+              <span
+                className="text-[11px] ml-auto"
+                style={{ color: 'rgba(255,255,255,0.45)', fontFamily: 'Inter, sans-serif' }}
+              >
+                {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true, locale: de })}
+              </span>
             </div>
-            <span
-              className="text-[13px] font-semibold"
-              style={{ color: 'rgba(255,255,255,0.9)', fontFamily: 'Inter, sans-serif' }}
-            >
-              {isOwn ? 'Du' : (item.authorUsername || item.actorName || 'Unbekannt')}
-            </span>
-            <span
-              className="text-[10px] px-2 py-0.5 rounded-full"
-              style={{
-                background: 'linear-gradient(135deg, rgba(254,145,0,0.08), rgba(163,78,0,0.08))',
-                color: '#FE9100',
-                fontFamily: 'Inter, sans-serif',
-              }}
-            >
-              {getRoleBadge(item.type)}
-            </span>
-            <span
-              className="text-[11px] ml-auto"
-              style={{ color: 'rgba(255,255,255,0.45)', fontFamily: 'Inter, sans-serif' }}
-            >
-              {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true, locale: de })}
-            </span>
-          </div>
+          )}
 
           {/* Message Content */}
           <p
@@ -358,7 +363,35 @@ export function TeamFeedSection({
     refetchInterval: 15000,
   });
 
-  const feedItems: FeedItem[] = feedData?.items || [];
+  const apiFeedItems: FeedItem[] = feedData?.items || [];
+  
+  // Demo mode detection
+  const isDemo = useMemo(() => isDemoModeActive(), []);
+  const demoItems = useMemo(() => isDemo ? getDemoFeedItems() : [], [isDemo]);
+  
+  // Merge demo data with real data (demo data only in demo mode)
+  const feedItems: FeedItem[] = useMemo(() => {
+    if (!isDemo) return apiFeedItems;
+    // In demo mode, show demo data (converted to FeedItem format)
+    return demoItems.slice(0, 80).map(d => ({
+      id: d.id,
+      authorUserId: d.authorUserId,
+      authorUsername: d.authorUsername,
+      type: d.type,
+      message: d.message,
+      body: d.body,
+      createdAt: d.createdAt,
+      meta: d.meta,
+    }));
+  }, [isDemo, apiFeedItems, demoItems]);
+  
+  // Load more state for demo mode
+  const [loadedCount, setLoadedCount] = useState(80);
+  const hasMoreDemoItems = isDemo && demoItems.length > loadedCount;
+  
+  const loadMoreDemoItems = useCallback(() => {
+    setLoadedCount(prev => Math.min(prev + 80, 280));
+  }, []);
 
   // Post mutation
   const postMutation = useMutation({
@@ -480,7 +513,24 @@ export function TeamFeedSection({
               Interne Updates & Abstimmung
             </p>
           </div>
-          <LivePulseDot />
+          <div className="flex items-center gap-3">
+            {/* Demo Badge */}
+            {isDemo && (
+              <div
+                className="px-2.5 py-1 rounded-full text-[10px] font-medium tracking-[0.16em] uppercase"
+                style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  background: 'rgba(255,106,0,0.10)',
+                  border: '1px solid rgba(255,106,0,0.22)',
+                  color: '#ff6a00',
+                }}
+                title="Synthetische Daten für UI-Demo & Tests"
+              >
+                DEMO-DATEN
+              </div>
+            )}
+            <LivePulseDot />
+          </div>
         </div>
 
         {/* Message List */}
@@ -526,16 +576,74 @@ export function TeamFeedSection({
               </p>
             </div>
           ) : (
-            // Messages
+            // Messages with Day Separators and Grouping
             <>
-              {sortedItems.map((item) => (
-                <MessageBubble
-                  key={item.id}
-                  item={item}
-                  isOwn={item.authorUserId === currentUserId}
-                  onClick={() => onItemClick?.(item)}
-                />
-              ))}
+              {sortedItems.map((item, index) => {
+                const currentDate = new Date(item.createdAt);
+                const prevItem = index > 0 ? sortedItems[index - 1] : null;
+                const prevDate = prevItem ? new Date(prevItem.createdAt) : null;
+                
+                // Show day separator if date changed
+                const showDaySeparator = !prevDate || !isSameDay(currentDate, prevDate);
+                
+                // Message grouping: hide header if same author within 8 minutes
+                const timeDiff = prevDate ? (currentDate.getTime() - prevDate.getTime()) / 60000 : Infinity;
+                const isSameAuthorGroup = prevItem && 
+                  prevItem.authorUserId === item.authorUserId && 
+                  timeDiff < 8 &&
+                  !showDaySeparator;
+                
+                return (
+                  <div key={item.id}>
+                    {/* Day Separator */}
+                    {showDaySeparator && (
+                      <div className="flex items-center gap-3 my-4">
+                        <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
+                        <span
+                          className="text-[10px] font-medium tracking-[0.20em] uppercase px-2"
+                          style={{ 
+                            fontFamily: 'Orbitron, sans-serif',
+                            color: isToday(currentDate) ? '#ff6a00' : 'rgba(255,255,255,0.55)',
+                            background: isToday(currentDate) ? 'rgba(255,106,0,0.10)' : 'transparent',
+                            border: isToday(currentDate) ? '1px solid rgba(255,106,0,0.22)' : 'none',
+                            borderRadius: isToday(currentDate) ? '999px' : '0',
+                            padding: isToday(currentDate) ? '4px 10px' : '0 8px',
+                          }}
+                        >
+                          {isToday(currentDate) ? 'HEUTE' : format(currentDate, 'EEEE, d. MMMM', { locale: de })}
+                        </span>
+                        <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
+                      </div>
+                    )}
+                    
+                    {/* Message Bubble */}
+                    <MessageBubble
+                      item={item}
+                      isOwn={item.authorUserId === currentUserId}
+                      onClick={() => onItemClick?.(item)}
+                      hideHeader={isSameAuthorGroup}
+                    />
+                  </div>
+                );
+              })}
+              
+              {/* Load More Button (Demo Mode) */}
+              {hasMoreDemoItems && (
+                <div className="flex justify-center pt-4">
+                  <button
+                    onClick={loadMoreDemoItems}
+                    className="px-4 py-2 rounded-lg text-[12px] font-medium transition-all hover:scale-105"
+                    style={{
+                      background: 'rgba(255,106,0,0.10)',
+                      border: '1px solid rgba(255,106,0,0.22)',
+                      color: '#ff6a00',
+                    }}
+                  >
+                    Mehr laden
+                  </button>
+                </div>
+              )}
+              
               <div ref={messagesEndRef} />
             </>
           )}
