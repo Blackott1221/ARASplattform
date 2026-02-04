@@ -300,7 +300,7 @@ function KanbanColumn({ column, tasks, onTaskComplete, onTaskReopen, onTaskMove,
 
   return (
     <div 
-      className="flex flex-col min-w-[240px] h-full"
+      className="flex flex-col min-w-[200px] h-full"
       style={{
         borderRadius: '16px',
         padding: '14px',
@@ -1350,7 +1350,7 @@ export function MyTasksBoard({ className = '' }: MyTasksBoardProps) {
                   opacity: 0.95 
                 }}
               >
-                MEINE AUFGABEN v3.1
+                MEINE AUFGABEN
               </h2>
               <p 
                 className="text-[12px] mt-1.5" 
@@ -1442,7 +1442,7 @@ export function MyTasksBoard({ className = '' }: MyTasksBoardProps) {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 overflow-x-auto pb-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 overflow-x-auto pb-2">
               {COLUMNS.map((column) => (
                 <KanbanColumn
                   key={column.id}
