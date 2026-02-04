@@ -1,8 +1,9 @@
 /**
  * ============================================================================
- * MY TASKS BOARD v3 - ULTRA PREMIUM 2026
+ * MY TASKS BOARD v3.1 - ULTRA PREMIUM 2026
  * ============================================================================
  * Schwarzott Group · Executive Level · Command Center
+ * Build: 2026-02-04T19:11
  * 
  * - NO Drag & Drop (bewusste Statuswechsel)
  * - Premium Glassmorphism (rgba(0,0,0,0.42) + blur 18px)
