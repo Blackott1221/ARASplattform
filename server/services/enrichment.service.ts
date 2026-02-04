@@ -1,9 +1,10 @@
 /**
  * 🔥 ENRICHMENT SERVICE
  * Async company intelligence enrichment with retry + quality gate
+ * 🔥 SWITCHED TO OPENAI GPT-4o - More reliable than Gemini
  */
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 import { storage } from "../storage";
 import { type EnrichmentStatus, type EnrichmentErrorCode } from "@shared/schema";
 
@@ -177,9 +178,9 @@ export interface EnrichmentResult {
   confidence: 'low' | 'medium' | 'high';
 }
 
-// 🔥 MODEL ALLOWLIST - Use ONLY valid Google AI SDK model names!
-// Valid as of Feb 2026: gemini-1.5-flash, gemini-1.5-pro, gemini-2.0-flash-exp
-const ALLOWED_ENRICH_MODELS = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash-exp'] as const;
+// 🔥 MODEL ALLOWLIST - OpenAI models (much more reliable than Gemini)
+const ALLOWED_ENRICH_MODELS = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'] as const;
+const DEFAULT_ENRICH_MODEL = 'gpt-4o';
 
 // 🔥 RETRY CONFIG
 const MAX_ATTEMPTS = 3;
@@ -333,12 +334,11 @@ export async function runEnrichment(input: EnrichmentInput, attemptNumber: numbe
     hasWebsite: !!website
   }));
   
-  // 🔥 MODEL VALIDATION
-  // 🔥 DEFAULT: gemini-1.5-flash (STABLE, VERIFIED WORKING)
-  const GEMINI_ENRICH_MODEL = process.env.GEMINI_ENRICH_MODEL ?? 'gemini-1.5-flash';
+  // 🔥 MODEL VALIDATION - OpenAI GPT-4o
+  const ENRICH_MODEL = process.env.OPENAI_ENRICH_MODEL ?? DEFAULT_ENRICH_MODEL;
   
-  if (!ALLOWED_ENRICH_MODELS.includes(GEMINI_ENRICH_MODEL as any)) {
-    console.error(`[enrich.job.fail] Model not allowed: ${GEMINI_ENRICH_MODEL}`);
+  if (!ALLOWED_ENRICH_MODELS.includes(ENRICH_MODEL as any)) {
+    console.error(`[enrich.job.fail] Model not allowed: ${ENRICH_MODEL}`);
     return {
       aiProfile: buildFallbackProfile(input, 'model_not_allowed'),
       enrichmentWasSuccessful: false,
@@ -349,10 +349,10 @@ export async function runEnrichment(input: EnrichmentInput, attemptNumber: numbe
   }
   
   try {
-    // 🔥 API KEY VALIDATION
-    const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
-    if (!apiKey || !apiKey.startsWith('AIza')) {
-      console.error('[enrich.job.fail] Invalid or missing API key');
+    // 🔥 API KEY VALIDATION - OpenAI
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey || !apiKey.startsWith('sk-')) {
+      console.error('[enrich.job.fail] Invalid or missing OpenAI API key');
       return {
         aiProfile: buildFallbackProfile(input, 'auth'),
         enrichmentWasSuccessful: false,
@@ -362,27 +362,11 @@ export async function runEnrichment(input: EnrichmentInput, attemptNumber: numbe
       };
     }
     
-    console.log('[enrich.model.init]', JSON.stringify({ model: GEMINI_ENRICH_MODEL, userId: input.userId }));
+    console.log('[enrich.model.init]', JSON.stringify({ model: ENRICH_MODEL, provider: 'openai', userId: input.userId }));
     
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ 
-      model: GEMINI_ENRICH_MODEL,
-      generationConfig: {
-        temperature: 0.7,  // 🔥 Lower temp for more reliable JSON output
-        topP: 0.95,
-        topK: 40,
-        maxOutputTokens: 8192,
-      },
-      // 🔥 REMOVED: googleSearch tool - causes silent crashes if not enabled for API key
-      safetySettings: [
-        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-      ] as any
-    });
+    const openai = new OpenAI({ apiKey });
     
-    console.log('[enrich.model.ready]', JSON.stringify({ model: GEMINI_ENRICH_MODEL, userId: input.userId }));
+    console.log('[enrich.model.ready]', JSON.stringify({ model: ENRICH_MODEL, provider: 'openai', userId: input.userId }));
     
     // 🔥 WOW-LEVEL DEEP INTELLIGENCE PROMPT
     const companyDeepDive = `
@@ -483,31 +467,63 @@ STRENGE REGELN:
 7. Bei Unbekanntem: leerer String "" oder leeres Array []
 `;
 
-    // 🔥 RETRY LOGIC WITH DETAILED LOGGING
+    // 🔥 RETRY LOGIC WITH DETAILED LOGGING - OpenAI GPT-4o
     let response: string | null = null;
     let lastError: any = null;
-    const TIMEOUT_MS = 60000; // 60s timeout (was 90s - too long)
+    const TIMEOUT_MS = 90000; // 90s timeout for GPT-4o (thorough analysis)
     
     for (let retry = 1; retry <= 3; retry++) {
       try {
-        console.log('[enrich.gemini.attempt]', JSON.stringify({ 
+        console.log('[enrich.openai.attempt]', JSON.stringify({ 
           userId: input.userId, 
           retry, 
-          model: GEMINI_ENRICH_MODEL,
+          model: ENRICH_MODEL,
           timeoutMs: TIMEOUT_MS 
         }));
         
-        // 🔥 WRAPPED API CALL with explicit error catching
-        let result: any;
+        // 🔥 OpenAI API CALL with timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+        
         try {
-          const resultPromise = model.generateContent(companyDeepDive);
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error(`GEMINI_TIMEOUT after ${TIMEOUT_MS/1000}s`)), TIMEOUT_MS)
-          );
+          const completion = await openai.chat.completions.create({
+            model: ENRICH_MODEL,
+            messages: [
+              {
+                role: 'system',
+                content: 'Du bist ein Elite-Business-Intelligence-Agent. Antworte AUSSCHLIESSLICH mit validem JSON. Keine Markdown-Codeblöcke, kein Text davor oder danach. Die Antwort MUSS mit { beginnen und mit } enden.'
+              },
+              {
+                role: 'user',
+                content: companyDeepDive
+              }
+            ],
+            temperature: 0.7,
+            max_tokens: 8192,
+            response_format: { type: 'json_object' }  // 🔥 Force JSON output
+          }, { signal: controller.signal });
           
-          result = await Promise.race([resultPromise, timeoutPromise]);
+          clearTimeout(timeoutId);
+          
+          const tempResponse = completion.choices[0]?.message?.content;
+          const responseLength = tempResponse?.length || 0;
+          
+          console.log('[enrich.openai.response]', JSON.stringify({ 
+            userId: input.userId, 
+            retry,
+            hasResponse: !!tempResponse,
+            responseLength,
+            finishReason: completion.choices[0]?.finish_reason,
+            tokensUsed: completion.usage?.total_tokens
+          }));
+          
+          if (tempResponse && responseLength > 200) {
+            response = tempResponse;
+            break;
+          }
         } catch (apiError: any) {
-          console.log('[enrich.gemini.api.error]', JSON.stringify({
+          clearTimeout(timeoutId);
+          console.log('[enrich.openai.api.error]', JSON.stringify({
             userId: input.userId,
             retry,
             errorType: apiError?.constructor?.name || 'Unknown',
@@ -515,32 +531,9 @@ STRENGE REGELN:
           }));
           throw apiError;
         }
-        
-        console.log('[enrich.gemini.response]', JSON.stringify({ 
-          userId: input.userId, 
-          retry,
-          hasResponse: !!result?.response,
-          responseType: typeof result?.response
-        }));
-        
-        if (result?.response) {
-          const tempResponse = result.response.text();
-          const responseLength = tempResponse?.length || 0;
-          console.log('[enrich.gemini.text]', JSON.stringify({ 
-            userId: input.userId, 
-            retry,
-            responseLength,
-            isValid: responseLength > 200
-          }));
-          
-          if (tempResponse && responseLength > 200) {
-            response = tempResponse;
-            break;
-          }
-        }
       } catch (error: any) {
         lastError = error;
-        console.log('[enrich.gemini.error]', JSON.stringify({ 
+        console.log('[enrich.openai.error]', JSON.stringify({ 
           userId: input.userId, 
           retry,
           errorName: error?.name,
@@ -558,10 +551,10 @@ STRENGE REGELN:
       const errorMsg = lastError?.message || '';
       let errorCode: EnrichmentErrorCode = 'unknown';
       
-      if (errorMsg.includes('Timeout')) errorCode = 'timeout';
-      else if (errorMsg.includes('quota')) errorCode = 'quota';
-      else if (errorMsg.includes('403') || errorMsg.includes('PERMISSION_DENIED') || errorMsg.includes('unregistered callers')) errorCode = 'auth';
-      else if (errorMsg.includes('API Key') || errorMsg.includes('API key')) errorCode = 'auth';
+      if (errorMsg.includes('timeout') || errorMsg.includes('abort')) errorCode = 'timeout';
+      else if (errorMsg.includes('quota') || errorMsg.includes('rate_limit')) errorCode = 'quota';
+      else if (errorMsg.includes('401') || errorMsg.includes('invalid_api_key')) errorCode = 'auth';
+      else if (errorMsg.includes('insufficient_quota')) errorCode = 'quota';
       
       console.log('[enrich.job.fail]', JSON.stringify({
         timestamp: new Date().toISOString(),
@@ -570,7 +563,7 @@ STRENGE REGELN:
         errorMessage: errorMsg.substring(0, 200),
         attempt: attemptNumber,
         durationMs: Date.now() - startTime,
-        hint: errorCode === 'auth' ? 'Enable Generative Language API in Google Cloud Console: https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com' : null
+        hint: errorCode === 'auth' ? 'Check OPENAI_API_KEY in environment variables' : null
       }));
       
       return {
