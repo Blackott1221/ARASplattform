@@ -360,19 +360,18 @@ export async function runEnrichment(input: EnrichmentInput, attemptNumber: numbe
       };
     }
     
+    console.log('[enrich.model.init]', JSON.stringify({ model: GEMINI_ENRICH_MODEL, userId: input.userId }));
+    
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ 
       model: GEMINI_ENRICH_MODEL,
       generationConfig: {
-        temperature: 1.0,
+        temperature: 0.7,  // 🔥 Lower temp for more reliable JSON output
         topP: 0.95,
-        topK: 64,
+        topK: 40,
         maxOutputTokens: 8192,
-        candidateCount: 1,
       },
-      tools: [{
-        googleSearch: {}
-      }] as any,
+      // 🔥 REMOVED: googleSearch tool - causes silent crashes if not enabled for API key
       safetySettings: [
         { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
         { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
@@ -380,6 +379,8 @@ export async function runEnrichment(input: EnrichmentInput, attemptNumber: numbe
         { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
       ] as any
     });
+    
+    console.log('[enrich.model.ready]', JSON.stringify({ model: GEMINI_ENRICH_MODEL, userId: input.userId }));
     
     // 🔥 WOW-LEVEL DEEP INTELLIGENCE PROMPT
     const companyDeepDive = `
@@ -494,12 +495,24 @@ STRENGE REGELN:
           timeoutMs: TIMEOUT_MS 
         }));
         
-        const resultPromise = model.generateContent(companyDeepDive);
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error(`GEMINI_TIMEOUT after ${TIMEOUT_MS/1000}s`)), TIMEOUT_MS)
-        );
-        
-        const result = await Promise.race([resultPromise, timeoutPromise]) as any;
+        // 🔥 WRAPPED API CALL with explicit error catching
+        let result: any;
+        try {
+          const resultPromise = model.generateContent(companyDeepDive);
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error(`GEMINI_TIMEOUT after ${TIMEOUT_MS/1000}s`)), TIMEOUT_MS)
+          );
+          
+          result = await Promise.race([resultPromise, timeoutPromise]);
+        } catch (apiError: any) {
+          console.log('[enrich.gemini.api.error]', JSON.stringify({
+            userId: input.userId,
+            retry,
+            errorType: apiError?.constructor?.name || 'Unknown',
+            errorMessage: (apiError?.message || String(apiError)).substring(0, 300)
+          }));
+          throw apiError;
+        }
         
         console.log('[enrich.gemini.response]', JSON.stringify({ 
           userId: input.userId, 
