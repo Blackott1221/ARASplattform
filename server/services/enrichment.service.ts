@@ -177,8 +177,8 @@ export interface EnrichmentResult {
   confidence: 'low' | 'medium' | 'high';
 }
 
-// 🔥 MODEL ALLOWLIST (use gemini-1.5-flash as default - stable and fast)
-const ALLOWED_ENRICH_MODELS = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash-exp', 'gemini-pro'] as const;
+// 🔥 MODEL ALLOWLIST (Feb 2026 - use gemini-2.0-flash as default)
+const ALLOWED_ENRICH_MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-exp', 'gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-flash', 'gemini-1.5-pro'] as const;
 
 // 🔥 RETRY CONFIG
 const MAX_ATTEMPTS = 3;
@@ -333,7 +333,7 @@ export async function runEnrichment(input: EnrichmentInput, attemptNumber: numbe
   }));
   
   // 🔥 MODEL VALIDATION
-  const GEMINI_ENRICH_MODEL = process.env.GEMINI_ENRICH_MODEL ?? 'gemini-1.5-flash';
+  const GEMINI_ENRICH_MODEL = process.env.GEMINI_ENRICH_MODEL ?? 'gemini-2.0-flash';
   
   if (!ALLOWED_ENRICH_MODELS.includes(GEMINI_ENRICH_MODEL as any)) {
     console.error(`[enrich.job.fail] Model not allowed: ${GEMINI_ENRICH_MODEL}`);
@@ -539,14 +539,23 @@ STRENGE REGELN:
     }
     
     if (!response) {
-      const errorCode: EnrichmentErrorCode = lastError?.message?.includes('Timeout') ? 'timeout' : 
-                                             lastError?.message?.includes('quota') ? 'quota' : 'unknown';
+      // 🔥 BETTER ERROR DETECTION for common API issues
+      const errorMsg = lastError?.message || '';
+      let errorCode: EnrichmentErrorCode = 'unknown';
+      
+      if (errorMsg.includes('Timeout')) errorCode = 'timeout';
+      else if (errorMsg.includes('quota')) errorCode = 'quota';
+      else if (errorMsg.includes('403') || errorMsg.includes('PERMISSION_DENIED') || errorMsg.includes('unregistered callers')) errorCode = 'auth';
+      else if (errorMsg.includes('API Key') || errorMsg.includes('API key')) errorCode = 'auth';
+      
       console.log('[enrich.job.fail]', JSON.stringify({
         timestamp: new Date().toISOString(),
         userId: input.userId,
         errorCode,
+        errorMessage: errorMsg.substring(0, 200),
         attempt: attemptNumber,
-        durationMs: Date.now() - startTime
+        durationMs: Date.now() - startTime,
+        hint: errorCode === 'auth' ? 'Enable Generative Language API in Google Cloud Console: https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com' : null
       }));
       
       return {
