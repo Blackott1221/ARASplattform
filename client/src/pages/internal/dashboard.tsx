@@ -27,6 +27,7 @@ import {
 } from "@/components/internal/drawer-contents";
 import { TeamFeedSection } from "@/components/internal/team-feed-section";
 import { MyTasksBoard } from "@/components/internal/my-tasks-board";
+import { TeamCalendar } from "@/components/internal/team-calendar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
@@ -469,84 +470,25 @@ export default function InternalDashboard() {
           <MyTasksBoard />
         </motion.div>
 
-        {/* GRID - Responsive 2-3 columns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* GRID - Calendar takes more weight, then 2 columns for others */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
           
-          {/* CALENDAR */}
+          {/* TEAM CALENDAR - Executive Time Command Center (5 cols = ~42%) */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
+            className="lg:col-span-5"
           >
-            <GlassCard className="h-full">
-              <WidgetHeader icon={Calendar} title="Team Calendar" count={calendarEvents.length} />
-              
-              {/* Mini Calendar */}
-              <div className="flex gap-1 mb-4">
-                {next7Days.map((day) => {
-                  const isCurrentDay = isToday(day);
-                  return (
-                    <div 
-                      key={day.toISOString()} 
-                      className="flex-1 text-center py-2 rounded-lg transition-colors"
-                      style={{ 
-                        background: isCurrentDay ? 'rgba(254,145,0,0.15)' : 'rgba(255,255,255,0.02)',
-                        border: isCurrentDay ? '1px solid rgba(254,145,0,0.3)' : '1px solid transparent',
-                      }}
-                    >
-                      <div className="text-[9px] uppercase" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                        {format(day, 'EEE', { locale: de })}
-                      </div>
-                      <div 
-                        className="text-sm font-semibold"
-                        style={{ color: isCurrentDay ? '#FE9100' : 'rgba(255,255,255,0.7)' }}
-                      >
-                        {format(day, 'd')}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Events */}
-              <div className="space-y-2">
-                {calendarLoading ? (
-                  Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12" />)
-                ) : calendarEvents.length === 0 ? (
-                  <EmptyState icon={Calendar} message="No upcoming events" />
-                ) : (
-                  calendarEvents.slice(0, 5).map((event) => (
-                    <button
-                      key={event.id}
-                      onClick={() => openDrawer('calendar', event)}
-                      className="flex items-center gap-3 p-2 rounded-lg w-full text-left transition-colors hover:bg-white/[0.04]"
-                      style={{ background: 'rgba(255,255,255,0.02)' }}
-                    >
-                      <div 
-                        className="w-1 h-8 rounded-full"
-                        style={{ background: event.color || '#FE9100' }}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate" style={{ color: 'rgba(255,255,255,0.9)' }}>
-                          {event.title}
-                        </p>
-                        <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                          {formatRelativeDate(event.startsAt)}
-                        </p>
-                      </div>
-                      <ChevronRight className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.3)' }} />
-                    </button>
-                  ))
-                )}
-              </div>
-            </GlassCard>
+            <TeamCalendar />
           </motion.div>
 
-          {/* ACTIVE EMPLOYEES */}
+          {/* ACTIVE EMPLOYEES (3.5 cols) */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
+            className="lg:col-span-4"
           >
             <GlassCard className="h-full">
               <WidgetHeader icon={Users} title="Team Members" count={activeUsers.length} />
@@ -591,11 +533,12 @@ export default function InternalDashboard() {
             </GlassCard>
           </motion.div>
 
-          {/* TODOS */}
+          {/* TODOS (3 cols) */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
+            className="lg:col-span-3"
           >
             <GlassCard className="h-full">
               <WidgetHeader 
