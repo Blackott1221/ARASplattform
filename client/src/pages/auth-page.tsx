@@ -4157,7 +4157,7 @@ export default function AuthPage() {
                             </div>
 
                             <div className="space-y-1.5">
-                              <Label className="text-[10px] font-bold text-gray-400">Telefon (optional)</Label>
+                              <Label className="text-[10px] font-bold text-gray-400">Telefon</Label>
                               <div className="relative group">
                                 <motion.div
                                   className="absolute -inset-[1px] rounded-lg opacity-0 group-focus-within:opacity-100 transition-opacity"

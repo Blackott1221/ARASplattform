@@ -177,8 +177,8 @@ export interface EnrichmentResult {
   confidence: 'low' | 'medium' | 'high';
 }
 
-// 🔥 MODEL ALLOWLIST
-const ALLOWED_ENRICH_MODELS = ['gemini-2.5-flash', 'gemini-2.5-pro'] as const;
+// 🔥 MODEL ALLOWLIST (use gemini-1.5-flash as default - stable and fast)
+const ALLOWED_ENRICH_MODELS = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash-exp', 'gemini-pro'] as const;
 
 // 🔥 RETRY CONFIG
 const MAX_ATTEMPTS = 3;
@@ -333,7 +333,7 @@ export async function runEnrichment(input: EnrichmentInput, attemptNumber: numbe
   }));
   
   // 🔥 MODEL VALIDATION
-  const GEMINI_ENRICH_MODEL = process.env.GEMINI_ENRICH_MODEL ?? 'gemini-2.5-flash';
+  const GEMINI_ENRICH_MODEL = process.env.GEMINI_ENRICH_MODEL ?? 'gemini-1.5-flash';
   
   if (!ALLOWED_ENRICH_MODELS.includes(GEMINI_ENRICH_MODEL as any)) {
     console.error(`[enrich.job.fail] Model not allowed: ${GEMINI_ENRICH_MODEL}`);
