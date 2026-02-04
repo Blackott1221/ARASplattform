@@ -178,9 +178,9 @@ export interface EnrichmentResult {
   confidence: 'low' | 'medium' | 'high';
 }
 
-// 🔥 MODEL ALLOWLIST - OpenAI models (much more reliable than Gemini)
-const ALLOWED_ENRICH_MODELS = ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'] as const;
-const DEFAULT_ENRICH_MODEL = 'gpt-4o';
+// 🔥 MODEL ALLOWLIST - OpenAI Feb 2026 (use o3-deep-research for BEST analysis)
+const ALLOWED_ENRICH_MODELS = ['o3-deep-research', 'o4-mini-deep-research', 'gpt-5.2', 'gpt-5.2-pro', 'gpt-5-mini'] as const;
+const DEFAULT_ENRICH_MODEL = 'o3-deep-research'; // 🔥 BEST for company research!
 
 // 🔥 RETRY CONFIG
 const MAX_ATTEMPTS = 3;
