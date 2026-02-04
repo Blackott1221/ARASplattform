@@ -1350,7 +1350,7 @@ export function MyTasksBoard({ className = '' }: MyTasksBoardProps) {
                   opacity: 0.95 
                 }}
               >
-                MEINE AUFGABEN
+                MEINE AUFGABEN v3.1
               </h2>
               <p 
                 className="text-[12px] mt-1.5" 
