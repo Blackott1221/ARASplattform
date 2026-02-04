@@ -500,7 +500,7 @@ STRENGE REGELN:
               }
             ],
             temperature: 0.7,
-            max_tokens: 8192,
+            max_completion_tokens: 8192,  // 🔥 GPT-5.x uses max_completion_tokens instead of max_tokens
             response_format: { type: 'json_object' }  // 🔥 Force JSON output
           }, { signal: controller.signal });
           
