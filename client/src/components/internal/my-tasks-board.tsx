@@ -1323,7 +1323,6 @@ export function MyTasksBoard({ className = '' }: MyTasksBoardProps) {
   return (
     <div 
       className={`max-w-[1200px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5 ${className}`}
-      style={{ marginTop: '72px' }}
     >
       {/* Main Board - 8 columns */}
       <div className="lg:col-span-8">
