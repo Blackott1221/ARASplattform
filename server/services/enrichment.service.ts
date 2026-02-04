@@ -178,9 +178,10 @@ export interface EnrichmentResult {
   confidence: 'low' | 'medium' | 'high';
 }
 
-// 🔥 MODEL ALLOWLIST - OpenAI Feb 2026 (use o3-deep-research for BEST analysis)
-const ALLOWED_ENRICH_MODELS = ['o3-deep-research', 'o4-mini-deep-research', 'gpt-5.2', 'gpt-5.2-pro', 'gpt-5-mini'] as const;
-const DEFAULT_ENRICH_MODEL = 'o3-deep-research'; // 🔥 BEST for company research!
+// 🔥 MODEL ALLOWLIST - OpenAI Feb 2026
+// NOTE: o3-deep-research requires org verification - using gpt-5.2 instead
+const ALLOWED_ENRICH_MODELS = ['gpt-5.2', 'gpt-5.2-pro', 'gpt-5-mini', 'gpt-5', 'gpt-4.1'] as const;
+const DEFAULT_ENRICH_MODEL = 'gpt-5.2'; // 🔥 Best frontier model, no verification needed
 
 // 🔥 RETRY CONFIG
 const MAX_ATTEMPTS = 3;
