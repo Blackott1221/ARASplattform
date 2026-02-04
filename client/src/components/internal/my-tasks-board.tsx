@@ -1,9 +1,14 @@
 /**
  * ============================================================================
- * MY TASKS BOARD v2 - Premium Task Management
+ * MY TASKS BOARD v3 - ULTRA PREMIUM 2026
  * ============================================================================
- * Modern Kanban board with Move menu (no drag & drop), premium tooltips,
- * fixed portal drawer, and polished UI.
+ * Schwarzott Group · Executive Level · Command Center
+ * 
+ * - NO Drag & Drop (bewusste Statuswechsel)
+ * - Premium Glassmorphism (rgba(0,0,0,0.42) + blur 18px)
+ * - Portal-based Drawer (position: fixed, 560px)
+ * - Move-Menü statt Kanban-Kitsch
+ * - 12-Column Grid (8/4 Split)
  * ============================================================================
  */
 
@@ -61,10 +66,10 @@ interface Column {
 }
 
 const COLUMNS: Column[] = [
-  { id: 'inbox', title: 'EINGANG', icon: Inbox, description: 'Neue Aufgaben ohne Termin oder mit Fälligkeit in mehr als 7 Tagen.' },
-  { id: 'today', title: 'HEUTE', icon: Clock, description: 'Aufgaben mit Fälligkeit heute oder bereits überfällig.' },
-  { id: 'week', title: 'DIESE WOCHE', icon: Calendar, description: 'Aufgaben für die nächsten 7 Tage.' },
-  { id: 'done', title: 'ERLEDIGT', icon: CheckCircle2, description: 'Abgeschlossene Aufgaben.' },
+  { id: 'inbox', title: 'EINGANG', icon: Inbox, description: 'Neue Aufgaben ohne Termin oder mit Fälligkeit in mehr als 7 Tagen. Ihr Posteingang für alles, was noch keinen festen Platz hat.' },
+  { id: 'today', title: 'HEUTE', icon: Clock, description: 'Aufgaben mit heutiger Priorität oder Fälligkeit. Halten Sie diese Liste bewusst klein.' },
+  { id: 'week', title: 'DIESE WOCHE', icon: Calendar, description: 'Aufgaben für die nächsten 7 Tage. Planen Sie voraus, aber überfordern Sie sich nicht.' },
+  { id: 'done', title: 'ERLEDIGT', icon: CheckCircle2, description: 'Abgeschlossene Aufgaben. Ihre Erfolge auf einen Blick.' },
 ];
 
 // ============================================================================
@@ -144,8 +149,10 @@ function TaskCard({ task, currentColumn, onComplete, onReopen, onMove, onClick }
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={() => onClick(task)}
-      className="group cursor-pointer rounded-xl p-3 transition-all duration-150"
+      className="group cursor-pointer transition-all duration-150"
       style={{
+        borderRadius: '14px',
+        padding: '14px',
         background: isHovered ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.03)',
         border: '1px solid rgba(255,255,255,0.08)',
       }}
@@ -185,14 +192,16 @@ function TaskCard({ task, currentColumn, onComplete, onReopen, onMove, onClick }
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
-            sideOffset={4}
+            sideOffset={6}
             onClick={(e) => e.stopPropagation()}
-            className="w-[260px] p-1.5 rounded-xl border-0"
+            className="w-[240px] p-1.5 border-0"
             style={{
-              background: 'rgba(0,0,0,0.92)',
-              backdropFilter: 'blur(14px)',
-              border: '1px solid rgba(255,106,0,0.22)',
-              boxShadow: '0 18px 60px rgba(0,0,0,0.75)',
+              borderRadius: '14px',
+              background: 'rgba(0,0,0,0.94)',
+              backdropFilter: 'blur(18px)',
+              WebkitBackdropFilter: 'blur(18px)',
+              border: '1px solid rgba(255,255,255,0.10)',
+              boxShadow: '0 20px 70px rgba(0,0,0,0.8)',
             }}
           >
             <DropdownMenuItem
@@ -290,10 +299,12 @@ function KanbanColumn({ column, tasks, onTaskComplete, onTaskReopen, onTaskMove,
 
   return (
     <div 
-      className="flex flex-col min-w-[240px] rounded-2xl p-3 h-full"
+      className="flex flex-col min-w-[240px] h-full"
       style={{
-        background: 'rgba(0,0,0,0.38)',
-        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: '16px',
+        padding: '14px',
+        background: 'rgba(0,0,0,0.28)',
+        border: '1px solid rgba(255,255,255,0.06)',
       }}
     >
       {/* Column Header */}
@@ -520,27 +531,33 @@ function TaskDetailsDrawer({ task, isOpen, onClose, onComplete, onReopen, onUpda
               right: '12px',
               width: 'min(560px, 92vw)',
               height: 'calc(100vh - 24px)',
-              borderRadius: '18px',
-              background: 'rgba(0,0,0,0.92)',
-              backdropFilter: 'blur(18px)',
-              border: '1px solid rgba(255,106,0,0.20)',
-              boxShadow: '0 30px 120px rgba(0,0,0,0.85)',
+              borderRadius: '22px',
+              background: 'rgba(0,0,0,0.94)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255,106,0,0.18)',
+              boxShadow: '0 40px 140px rgba(0,0,0,0.9)',
             }}
           >
-            {/* Header (fixed) */}
+            {/* Header (fixed) - Premium Executive */}
             <div 
-              className="flex-shrink-0 flex items-center justify-between p-4"
-              style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}
+              className="flex-shrink-0 flex items-center justify-between"
+              style={{ 
+                padding: '20px',
+                borderBottom: '1px solid rgba(255,255,255,0.06)' 
+              }}
             >
               <div className="flex-1 min-w-0">
                 <h2 
-                  className="text-[18px] font-semibold mb-1 truncate"
-                  style={{ color: 'rgba(255,255,255,0.95)' }}
+                  className="text-[17px] font-semibold mb-1.5 truncate"
+                  style={{ color: 'rgba(255,255,255,0.95)', fontFamily: 'Inter, sans-serif' }}
                 >
                   {task.title}
                 </h2>
-                <p className="text-[12px]" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                  Aufgabe · Details
+                <p 
+                  className="text-[11px]" 
+                  style={{ color: 'rgba(255,255,255,0.45)', letterSpacing: '0.02em' }}
+                >
+                  Aufgabe · ID {task.id.slice(-8)}
                 </p>
               </div>
               <button
@@ -563,8 +580,11 @@ function TaskDetailsDrawer({ task, isOpen, onClose, onComplete, onReopen, onUpda
               </button>
             </div>
             
-            {/* Body (scroll) */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* Body (scroll) - Premium spacing */}
+            <div 
+              className="flex-1 overflow-y-auto space-y-5"
+              style={{ padding: '20px' }}
+            >
               {/* Status Section */}
               <div>
                 <label 
@@ -597,13 +617,15 @@ function TaskDetailsDrawer({ task, isOpen, onClose, onComplete, onReopen, onUpda
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
                       align="start"
-                      sideOffset={4}
-                      className="w-[220px] p-1.5 rounded-xl border-0"
+                      sideOffset={6}
+                      className="w-[220px] p-1.5 border-0"
                       style={{
-                        background: 'rgba(0,0,0,0.92)',
-                        backdropFilter: 'blur(14px)',
-                        border: '1px solid rgba(255,106,0,0.22)',
-                        boxShadow: '0 18px 60px rgba(0,0,0,0.75)',
+                        borderRadius: '14px',
+                        background: 'rgba(0,0,0,0.94)',
+                        backdropFilter: 'blur(18px)',
+                        WebkitBackdropFilter: 'blur(18px)',
+                        border: '1px solid rgba(255,255,255,0.10)',
+                        boxShadow: '0 20px 70px rgba(0,0,0,0.8)',
                       }}
                     >
                       {COLUMNS.filter(col => col.id !== 'done').map((col) => {
@@ -687,13 +709,15 @@ function TaskDetailsDrawer({ task, isOpen, onClose, onComplete, onReopen, onUpda
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
                       align="end"
-                      sideOffset={4}
-                      className="w-[180px] p-1.5 rounded-xl border-0"
+                      sideOffset={6}
+                      className="w-[180px] p-1.5 border-0"
                       style={{
-                        background: 'rgba(0,0,0,0.92)',
-                        backdropFilter: 'blur(14px)',
-                        border: '1px solid rgba(255,106,0,0.22)',
-                        boxShadow: '0 18px 60px rgba(0,0,0,0.75)',
+                        borderRadius: '14px',
+                        background: 'rgba(0,0,0,0.94)',
+                        backdropFilter: 'blur(18px)',
+                        WebkitBackdropFilter: 'blur(18px)',
+                        border: '1px solid rgba(255,255,255,0.10)',
+                        boxShadow: '0 20px 70px rgba(0,0,0,0.8)',
                       }}
                     >
                       <DropdownMenuItem
@@ -789,10 +813,13 @@ function TaskDetailsDrawer({ task, isOpen, onClose, onComplete, onReopen, onUpda
               </div>
             </div>
             
-            {/* Footer (fixed bottom) */}
+            {/* Footer (fixed bottom) - Premium */}
             <div 
-              className="flex-shrink-0 flex items-center justify-end gap-3 p-4"
-              style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}
+              className="flex-shrink-0 flex items-center justify-end gap-3"
+              style={{ 
+                padding: '16px 20px',
+                borderTop: '1px solid rgba(255,255,255,0.06)' 
+              }}
             >
               <button
                 onClick={onClose}
@@ -980,63 +1007,67 @@ export function MyTasksSidebar({ tasks, onAddTask, showCompleted, onToggleComple
   }).length;
 
   return (
-    <div className="space-y-3">
-      {/* Quick Guide */}
+    <div className="space-y-4">
+      {/* Quick Guide - 3 klare Sätze, kein Marketing */}
       <div 
-        className="rounded-2xl p-4"
         style={{
-          background: 'rgba(255,255,255,0.02)',
-          border: '1px solid rgba(233,215,196,0.08)',
+          borderRadius: '16px',
+          padding: '16px',
+          background: 'rgba(0,0,0,0.28)',
+          border: '1px solid rgba(255,255,255,0.06)',
         }}
       >
         <h4 
-          className="text-[11px] tracking-[0.15em] mb-3"
-          style={{ fontFamily: 'Orbitron, sans-serif', color: '#e9d7c4', opacity: 0.9 }}
+          className="text-[10px] mb-3"
+          style={{ 
+            fontFamily: 'Orbitron, sans-serif', 
+            letterSpacing: '0.18em',
+            color: '#e9d7c4', 
+            opacity: 0.85 
+          }}
         >
           KURZANLEITUNG
         </h4>
-        <ul className="space-y-2 text-[12px]" style={{ color: 'rgba(255,255,255,0.65)' }}>
-          <li className="flex items-start gap-2">
-            <span style={{ color: '#FE9100' }}>•</span>
-            <span>+ Aufgabe erstellt eine neue Aufgabe.</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span style={{ color: '#FE9100' }}>•</span>
-            <span>Status ändern über das Menü (⋯).</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span style={{ color: '#FE9100' }}>•</span>
-            <span>Klick öffnet Details & Notizen.</span>
-          </li>
-        </ul>
+        <p 
+          className="text-[12px] leading-relaxed" 
+          style={{ color: 'rgba(255,255,255,0.6)' }}
+        >
+          Öffnen Sie Aufgaben per Klick. Den Status ändern Sie über das Menü (⋯) oben rechts. Neue Aufgaben erstellen Sie mit dem + Button.
+        </p>
       </div>
       
-      {/* Focus Today */}
-      <div 
-        className="rounded-2xl p-4"
-        style={{
-          background: 'rgba(255,255,255,0.02)',
-          border: '1px solid rgba(233,215,196,0.08)',
-        }}
-      >
-        <h4 
-          className="text-[11px] tracking-[0.15em] mb-3"
-          style={{ fontFamily: 'Orbitron, sans-serif', color: '#e9d7c4', opacity: 0.9 }}
+      {/* Focus Today - nur wenn relevant */}
+      {(todayCount > 0 || overdueCount > 0) && (
+        <div 
+          style={{
+            borderRadius: '16px',
+            padding: '16px',
+            background: 'rgba(0,0,0,0.28)',
+            border: '1px solid rgba(255,255,255,0.06)',
+          }}
         >
-          FOKUS HEUTE
-        </h4>
-        {todayCount === 0 && overdueCount === 0 ? (
-          <p className="text-[12px]" style={{ color: 'rgba(255,255,255,0.5)' }}>
-            Heute ist alles im grünen Bereich.
-          </p>
-        ) : (
-          <div className="space-y-2">
+          <h4 
+            className="text-[10px] mb-3"
+            style={{ 
+              fontFamily: 'Orbitron, sans-serif', 
+              letterSpacing: '0.18em',
+              color: '#e9d7c4', 
+              opacity: 0.85 
+            }}
+          >
+            FOKUS HEUTE
+          </h4>
+          <div className="space-y-2.5">
             {todayCount > 0 && (
               <div className="flex items-center justify-between">
-                <span className="text-[12px]" style={{ color: 'rgba(255,255,255,0.7)' }}>Heute fällig</span>
+                <span className="text-[12px]" style={{ color: 'rgba(255,255,255,0.65)' }}>Heute fällig</span>
                 <span 
-                  className="text-[13px] font-semibold px-2 py-0.5 rounded"
-                  style={{ background: 'rgba(254,145,0,0.15)', color: '#FE9100' }}
+                  className="text-[12px] font-medium min-w-[24px] h-6 flex items-center justify-center"
+                  style={{ 
+                    borderRadius: '8px',
+                    background: 'rgba(254,145,0,0.12)', 
+                    color: '#FE9100' 
+                  }}
                 >
                   {todayCount}
                 </span>
@@ -1044,40 +1075,58 @@ export function MyTasksSidebar({ tasks, onAddTask, showCompleted, onToggleComple
             )}
             {overdueCount > 0 && (
               <div className="flex items-center justify-between">
-                <span className="text-[12px]" style={{ color: 'rgba(255,255,255,0.7)' }}>Überfällig</span>
+                <span className="text-[12px]" style={{ color: 'rgba(255,255,255,0.65)' }}>Überfällig</span>
                 <span 
-                  className="text-[13px] font-semibold px-2 py-0.5 rounded"
-                  style={{ background: 'rgba(239,68,68,0.15)', color: '#EF4444' }}
+                  className="text-[12px] font-medium min-w-[24px] h-6 flex items-center justify-center"
+                  style={{ 
+                    borderRadius: '8px',
+                    background: 'rgba(239,68,68,0.12)', 
+                    color: '#EF4444' 
+                  }}
                 >
                   {overdueCount}
                 </span>
               </div>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
       
       {/* Quick Actions */}
       <div 
-        className="rounded-2xl p-4"
         style={{
-          background: 'rgba(255,255,255,0.02)',
-          border: '1px solid rgba(233,215,196,0.08)',
+          borderRadius: '16px',
+          padding: '16px',
+          background: 'rgba(0,0,0,0.28)',
+          border: '1px solid rgba(255,255,255,0.06)',
         }}
       >
         <h4 
-          className="text-[11px] tracking-[0.15em] mb-3"
-          style={{ fontFamily: 'Orbitron, sans-serif', color: '#e9d7c4', opacity: 0.9 }}
+          className="text-[10px] mb-3"
+          style={{ 
+            fontFamily: 'Orbitron, sans-serif', 
+            letterSpacing: '0.18em',
+            color: '#e9d7c4', 
+            opacity: 0.85 
+          }}
         >
           SCHNELLAKTIONEN
         </h4>
         <div className="space-y-2">
           <button
             onClick={onAddTask}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] transition-colors"
+            className="w-full flex items-center gap-2 h-9 px-3 text-[12px] transition-all duration-150"
             style={{ 
-              background: 'rgba(255,106,0,0.1)',
+              borderRadius: '10px',
+              background: 'rgba(255,106,0,0.10)',
+              border: '1px solid rgba(255,106,0,0.15)',
               color: '#FE9100',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255,106,0,0.15)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255,106,0,0.10)';
             }}
           >
             <Plus className="w-4 h-4" />
@@ -1085,10 +1134,20 @@ export function MyTasksSidebar({ tasks, onAddTask, showCompleted, onToggleComple
           </button>
           <button
             onClick={onToggleCompleted}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] transition-colors"
+            className="w-full flex items-center gap-2 h-9 px-3 text-[12px] transition-all duration-150"
             style={{ 
-              background: showCompleted ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)',
-              color: 'rgba(255,255,255,0.6)',
+              borderRadius: '10px',
+              background: showCompleted ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              color: 'rgba(255,255,255,0.55)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+              e.currentTarget.style.color = 'rgba(255,255,255,0.75)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = showCompleted ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.03)';
+              e.currentTarget.style.color = 'rgba(255,255,255,0.55)';
             }}
           >
             <CheckCircle2 className="w-4 h-4" />
@@ -1262,67 +1321,104 @@ export function MyTasksBoard({ className = '' }: MyTasksBoardProps) {
   }, [tasks, showCompleted]);
 
   return (
-    <div className={`grid grid-cols-1 lg:grid-cols-12 gap-4 ${className}`}>
+    <div 
+      className={`max-w-[1200px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5 ${className}`}
+      style={{ marginTop: '72px' }}
+    >
       {/* Main Board - 8 columns */}
       <div className="lg:col-span-8">
         <div 
-          className="rounded-2xl p-4"
           style={{
-            background: 'rgba(255,255,255,0.02)',
-            border: '1px solid rgba(233,215,196,0.08)',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.2)',
+            borderRadius: '20px',
+            padding: '20px',
+            background: 'rgba(0,0,0,0.42)',
+            backdropFilter: 'blur(18px)',
+            WebkitBackdropFilter: 'blur(18px)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
           }}
         >
-          {/* Board Header */}
-          <div className="flex items-center justify-between mb-4">
+          {/* Board Header - Executive ruhig */}
+          <div className="flex items-center justify-between mb-5">
             <div>
               <h2 
-                className="text-[13px] tracking-[0.22em]"
-                style={{ fontFamily: 'Orbitron, sans-serif', color: '#e9d7c4', opacity: 0.92 }}
+                className="text-[13px]"
+                style={{ 
+                  fontFamily: 'Orbitron, sans-serif', 
+                  letterSpacing: '0.24em',
+                  color: '#e9d7c4', 
+                  opacity: 0.95 
+                }}
               >
                 MEINE AUFGABEN
               </h2>
-              <p className="text-[12px] mt-1" style={{ color: 'rgba(255,255,255,0.60)' }}>
-                Status ändern über Menü · Klick öffnet Details.
+              <p 
+                className="text-[12px] mt-1.5" 
+                style={{ color: 'rgba(255,255,255,0.55)', fontFamily: 'Inter, sans-serif' }}
+              >
+                Status ändern über Menü · Klick öffnet Details
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              {/* Filter Ghost Button */}
               <button
-                className="px-3 py-1.5 rounded-lg text-[12px] transition-colors"
+                className="h-9 px-3.5 flex items-center gap-2 text-[12px] transition-all duration-150"
                 style={{ 
-                  background: 'rgba(255,255,255,0.03)',
-                  color: 'rgba(255,255,255,0.6)',
-                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '10px',
+                  background: 'transparent',
+                  color: 'rgba(255,255,255,0.55)',
+                  border: '1px solid rgba(255,255,255,0.10)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.75)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.55)';
                 }}
               >
-                <Filter className="w-3.5 h-3.5 inline mr-1.5" />
+                <Filter className="w-3.5 h-3.5" />
                 Filter
               </button>
+              
+              {/* + Aufgabe Primary Button */}
               <button
                 onClick={() => setIsAddModalOpen(true)}
-                className="px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all"
+                className="h-9 px-4 flex items-center gap-2 text-[12px] font-medium transition-all duration-150"
                 style={{ 
-                  background: 'linear-gradient(135deg, #ff6a00, #a34e00)',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #ff6a00 0%, #b55400 100%)',
                   color: 'white',
-                  boxShadow: '0 4px 15px rgba(255,106,0,0.2)',
+                  boxShadow: '0 4px 16px rgba(255,106,0,0.25)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(255,106,0,0.35)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(255,106,0,0.25)';
+                }}
+                onMouseDown={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
                 }}
               >
-                <Plus className="w-3.5 h-3.5 inline mr-1" />
+                <Plus className="w-4 h-4" />
                 Aufgabe
               </button>
             </div>
           </div>
           
-          {/* Glow Line */}
+          {/* Subtle Separator */}
           <div 
-            className="h-px mb-4 relative"
-            style={{ background: 'rgba(255,106,0,0.22)' }}
+            className="h-px mb-5 relative overflow-hidden"
+            style={{ background: 'rgba(255,255,255,0.06)' }}
           >
             <div 
-              className="absolute inset-0"
+              className="absolute left-0 top-0 h-full w-24"
               style={{ 
-                background: 'rgba(255,106,0,0.15)',
-                filter: 'blur(6px)',
+                background: 'linear-gradient(90deg, rgba(255,106,0,0.3), transparent)',
               }}
             />
           </div>
