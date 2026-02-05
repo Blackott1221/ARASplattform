@@ -598,21 +598,49 @@ function CalendarEmptyState() {
 interface EventDetailDrawerProps {
   event: CalendarEvent | null;
   isOpen: boolean;
+  mode: DrawerMode;
   onClose: () => void;
+  onSave: (data: Partial<CalendarEvent>) => void;
+  onDelete: (id: number) => void;
+  isSaving?: boolean;
+  isDeleting?: boolean;
 }
 
-function EventDetailDrawer({ event, isOpen, onClose }: EventDetailDrawerProps) {
-  const [description, setDescription] = useState(event?.description || '');
-  const [internalNotes, setInternalNotes] = useState(event?.internalNotes || '');
-  const [selectedTags, setSelectedTags] = useState<string[]>((event?.contextTags as string[]) || []);
-  const [showSaveIndicator, setShowSaveIndicator] = useState(false);
+function EventDetailDrawer({ 
+  event, 
+  isOpen, 
+  mode,
+  onClose, 
+  onSave,
+  onDelete,
+  isSaving = false,
+  isDeleting = false,
+}: EventDetailDrawerProps) {
+  // Form state
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [internalNotes, setInternalNotes] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [eventType, setEventType] = useState<string>('INTERN');
+  const [startDate, setStartDate] = useState('');
+  const [startTime, setStartTime] = useState('09:00');
+  const [endTime, setEndTime] = useState('10:00');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
+  const isEditing = mode === 'edit' || mode === 'create';
+  const isCreate = mode === 'create';
   
   // Update local state when event changes
   useEffect(() => {
     if (event) {
+      setTitle(event.title || '');
       setDescription(event.description || '');
       setInternalNotes(event.internalNotes || '');
       setSelectedTags((event.contextTags as string[]) || []);
+      setEventType(event.eventType || event.type || 'INTERN');
+      setStartDate(event.date ? format(event.date, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'));
+      setStartTime(event.startTime || '09:00');
+      setEndTime(event.endTime || '10:00');
     }
   }, [event]);
   
@@ -627,19 +655,6 @@ function EventDetailDrawer({ event, isOpen, onClose }: EventDetailDrawerProps) {
     return () => window.removeEventListener('keydown', handleEsc);
   }, [isOpen, onClose]);
   
-  // Simulate auto-save
-  const handleDescriptionChange = (value: string) => {
-    setDescription(value);
-    setShowSaveIndicator(true);
-    setTimeout(() => setShowSaveIndicator(false), 1500);
-  };
-  
-  const handleNotesChange = (value: string) => {
-    setInternalNotes(value);
-    setShowSaveIndicator(true);
-    setTimeout(() => setShowSaveIndicator(false), 1500);
-  };
-  
   const toggleTag = (tag: ContextTag) => {
     if (event?.isReadOnly) return;
     setSelectedTags(prev => 
@@ -647,14 +662,45 @@ function EventDetailDrawer({ event, isOpen, onClose }: EventDetailDrawerProps) {
         ? prev.filter(t => t !== tag)
         : [...prev, tag]
     );
-    setShowSaveIndicator(true);
-    setTimeout(() => setShowSaveIndicator(false), 1500);
+  };
+  
+  const handleSave = () => {
+    if (!title.trim()) return;
+    
+    // Build date/time
+    const startsAt = new Date(`${startDate}T${startTime}:00`);
+    const endsAt = new Date(`${startDate}T${endTime}:00`);
+    
+    const data: Partial<CalendarEvent> = {
+      title: title.trim(),
+      description: description.trim() || undefined,
+      startsAt: startsAt.toISOString(),
+      endsAt: endsAt.toISOString(),
+      eventType,
+      internalNotes: internalNotes.trim() || undefined,
+      contextTags: selectedTags.length > 0 ? selectedTags : undefined,
+    };
+    
+    if (!isCreate && event?.id) {
+      (data as any).id = typeof event.id === 'string' ? parseInt(event.id) : event.id;
+    }
+    
+    onSave(data);
+  };
+  
+  const handleDelete = () => {
+    if (event?.id && typeof event.id === 'number') {
+      onDelete(event.id);
+    } else if (event?.id && typeof event.id === 'string' && event.id !== 'new') {
+      onDelete(parseInt(event.id));
+    }
+    setShowDeleteConfirm(false);
   };
   
   if (!event) return null;
   
-  const color = EVENT_COLORS[event.type];
-  const label = EVENT_LABELS[event.type].toUpperCase();
+  const color = EVENT_COLORS[event.type] || EVENT_COLORS['INTERN'] || '#FE9100';
+  const label = (EVENT_LABELS[event.type] || EVENT_LABELS['INTERN'] || 'Intern').toUpperCase();
   
   const allTags: ContextTag[] = ['strategie', 'organisation', 'finance', 'board', 'intern', 'legal', 'hr', 'tech'];
   
@@ -704,32 +750,70 @@ function EventDetailDrawer({ event, isOpen, onClose }: EventDetailDrawerProps) {
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  <h2 
-                    className="text-[20px] font-semibold leading-tight mb-2"
-                    style={{ 
-                      color: 'rgba(255,255,255,0.95)',
-                      fontFamily: 'Inter, sans-serif',
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    {event.title}
-                  </h2>
-                  {/* Type Badge */}
-                  <span
-                    className="inline-flex items-center text-[10px] tracking-[0.22em] px-3"
-                    style={{
-                      height: '26px',
-                      borderRadius: '999px',
-                      background: `${color}18`,
-                      color: color,
-                      fontFamily: 'Orbitron, sans-serif',
-                    }}
-                  >
-                    {label}
-                  </span>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="Titel eingeben..."
+                      className="w-full text-[20px] font-semibold leading-tight mb-2 bg-transparent outline-none"
+                      style={{ 
+                        color: 'rgba(255,255,255,0.95)',
+                        fontFamily: 'Inter, sans-serif',
+                        borderBottom: '1px solid rgba(255,255,255,0.2)',
+                        paddingBottom: '4px',
+                      }}
+                      autoFocus
+                    />
+                  ) : (
+                    <h2 
+                      className="text-[20px] font-semibold leading-tight mb-2"
+                      style={{ 
+                        color: 'rgba(255,255,255,0.95)',
+                        fontFamily: 'Inter, sans-serif',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {event.title || 'Neuer Termin'}
+                    </h2>
+                  )}
+                  
+                  {/* Type Badge / Type Selector */}
+                  {isEditing ? (
+                    <select
+                      value={eventType}
+                      onChange={(e) => setEventType(e.target.value)}
+                      className="text-[11px] px-3 py-1.5 rounded-full outline-none cursor-pointer"
+                      style={{
+                        background: 'rgba(254,145,0,0.15)',
+                        color: '#FE9100',
+                        border: '1px solid rgba(254,145,0,0.3)',
+                      }}
+                    >
+                      <option value="INTERN">Intern</option>
+                      <option value="TEAM_MEETING">Team Meeting</option>
+                      <option value="VERWALTUNGSRAT">Verwaltungsrat</option>
+                      <option value="AUFSICHTSRAT">Aufsichtsrat</option>
+                      <option value="DEADLINE">Deadline</option>
+                      <option value="EXTERNAL">Extern</option>
+                    </select>
+                  ) : (
+                    <span
+                      className="inline-flex items-center text-[10px] tracking-[0.22em] px-3"
+                      style={{
+                        height: '26px',
+                        borderRadius: '999px',
+                        background: `${color}18`,
+                        color: color,
+                        fontFamily: 'Orbitron, sans-serif',
+                      }}
+                    >
+                      {label}
+                    </span>
+                  )}
                 </div>
                 
                 {/* Close Button */}
@@ -773,31 +857,79 @@ function EventDetailDrawer({ event, isOpen, onClose }: EventDetailDrawerProps) {
                     borderRadius: '14px',
                   }}
                 >
-                  <p 
-                    className="text-[15px] font-medium mb-1"
-                    style={{ color: 'rgba(255,255,255,0.9)' }}
-                  >
-                    {format(event.date, 'EEEE, d. MMMM yyyy', { locale: de })}
-                  </p>
-                  {event.startTime && (
-                    <p 
-                      className="text-[13px] mb-2"
-                      style={{ color: 'rgba(255,255,255,0.6)' }}
-                    >
-                      {event.startTime}{event.endTime ? ` – ${event.endTime}` : ''}
-                    </p>
-                  )}
-                  {event.recurring && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <RefreshCw className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.4)' }} />
-                      <span className="text-[12px]" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                        {event.recurring === 'weekly' && 'Wöchentlich'}
-                        {event.recurring === 'biweekly' && 'Alle 2 Wochen'}
-                        {event.recurring === 'monthly' && 'Monatlich (jeder 3. Montag)'}
-                        {event.recurring === 'quarterly' && 'Quartalsweise'}
-                        {event.recurring === 'yearly' && 'Jährlich'}
-                      </span>
+                  {isEditing ? (
+                    <div className="space-y-3">
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg bg-transparent outline-none"
+                        style={{
+                          border: '1px solid rgba(255,255,255,0.15)',
+                          color: 'rgba(255,255,255,0.9)',
+                          fontSize: '14px',
+                        }}
+                      />
+                      <div className="flex gap-3">
+                        <div className="flex-1">
+                          <label className="block text-[10px] mb-1" style={{ color: 'rgba(255,255,255,0.5)' }}>Von</label>
+                          <input
+                            type="time"
+                            value={startTime}
+                            onChange={(e) => setStartTime(e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg bg-transparent outline-none"
+                            style={{
+                              border: '1px solid rgba(255,255,255,0.15)',
+                              color: 'rgba(255,255,255,0.9)',
+                              fontSize: '14px',
+                            }}
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <label className="block text-[10px] mb-1" style={{ color: 'rgba(255,255,255,0.5)' }}>Bis</label>
+                          <input
+                            type="time"
+                            value={endTime}
+                            onChange={(e) => setEndTime(e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg bg-transparent outline-none"
+                            style={{
+                              border: '1px solid rgba(255,255,255,0.15)',
+                              color: 'rgba(255,255,255,0.9)',
+                              fontSize: '14px',
+                            }}
+                          />
+                        </div>
+                      </div>
                     </div>
+                  ) : (
+                    <>
+                      <p 
+                        className="text-[15px] font-medium mb-1"
+                        style={{ color: 'rgba(255,255,255,0.9)' }}
+                      >
+                        {format(event.date, 'EEEE, d. MMMM yyyy', { locale: de })}
+                      </p>
+                      {event.startTime && (
+                        <p 
+                          className="text-[13px] mb-2"
+                          style={{ color: 'rgba(255,255,255,0.6)' }}
+                        >
+                          {event.startTime}{event.endTime ? ` – ${event.endTime}` : ''}
+                        </p>
+                      )}
+                      {event.recurring && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <RefreshCw className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.4)' }} />
+                          <span className="text-[12px]" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                            {event.recurring === 'weekly' && 'Wöchentlich'}
+                            {event.recurring === 'biweekly' && 'Alle 2 Wochen'}
+                            {event.recurring === 'monthly' && 'Monatlich (jeder 3. Montag)'}
+                            {event.recurring === 'quarterly' && 'Quartalsweise'}
+                            {event.recurring === 'yearly' && 'Jährlich'}
+                          </span>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -829,9 +961,9 @@ function EventDetailDrawer({ event, isOpen, onClose }: EventDetailDrawerProps) {
                 </div>
                 <textarea
                   value={description}
-                  onChange={(e) => handleDescriptionChange(e.target.value)}
+                  onChange={(e) => setDescription(e.target.value)}
                   placeholder="Beschreibung hinzufügen…"
-                  disabled={event.isReadOnly}
+                  disabled={event.isReadOnly && !isEditing}
                   className="w-full resize-none outline-none transition-colors"
                   style={{
                     minHeight: '120px',
@@ -842,18 +974,9 @@ function EventDetailDrawer({ event, isOpen, onClose }: EventDetailDrawerProps) {
                     color: 'rgba(255,255,255,0.85)',
                     fontSize: '13px',
                     lineHeight: '1.6',
-                    opacity: event.isReadOnly ? 0.6 : 1,
+                    opacity: (event.isReadOnly && !isEditing) ? 0.6 : 1,
                   }}
                 />
-                <p 
-                  className="text-[11px] mt-2 transition-opacity"
-                  style={{ 
-                    color: 'rgba(255,255,255,0.45)',
-                    opacity: showSaveIndicator ? 1 : 0,
-                  }}
-                >
-                  ✓ Änderungen werden automatisch gespeichert.
-                </p>
               </div>
               
               {/* Section 3 - Beteiligte */}
@@ -986,7 +1109,7 @@ function EventDetailDrawer({ event, isOpen, onClose }: EventDetailDrawerProps) {
                   </label>
                   <textarea
                     value={internalNotes}
-                    onChange={(e) => handleNotesChange(e.target.value)}
+                    onChange={(e) => setInternalNotes(e.target.value)}
                     placeholder="Private Notizen hinzufügen…"
                     className="w-full resize-none outline-none"
                     style={{
@@ -1009,10 +1132,12 @@ function EventDetailDrawer({ event, isOpen, onClose }: EventDetailDrawerProps) {
               className="flex-shrink-0 p-6 pt-4 flex items-center justify-between gap-4"
               style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
             >
-              {/* Left - Delete (only for internal events) */}
+              {/* Left - Delete (only for editable events) */}
               <div>
-                {event.type === 'intern' && !event.isReadOnly && (
+                {!isCreate && !event.isReadOnly && (
                   <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    disabled={isDeleting}
                     className="flex items-center gap-2 px-4 transition-colors"
                     style={{
                       height: '42px',
@@ -1021,9 +1146,14 @@ function EventDetailDrawer({ event, isOpen, onClose }: EventDetailDrawerProps) {
                       border: '1px solid rgba(239,68,68,0.15)',
                       color: 'rgba(239,68,68,0.7)',
                       fontSize: '13px',
+                      opacity: isDeleting ? 0.6 : 1,
                     }}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    {isDeleting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
                     Löschen
                   </button>
                 )}
@@ -1043,23 +1173,31 @@ function EventDetailDrawer({ event, isOpen, onClose }: EventDetailDrawerProps) {
                     fontSize: '13px',
                   }}
                 >
-                  Schließen
+                  {isEditing ? 'Abbrechen' : 'Schließen'}
                 </button>
-                {!event.isReadOnly && (
+                {(isEditing || !event.isReadOnly) && (
                   <button
-                    onClick={onClose}
+                    onClick={handleSave}
+                    disabled={isSaving || !title.trim()}
                     className="flex items-center gap-2 px-5 transition-colors"
                     style={{
                       height: '42px',
                       borderRadius: '14px',
-                      background: 'linear-gradient(135deg, #FE9100, #e67e00)',
+                      background: (isSaving || !title.trim()) 
+                        ? 'rgba(254,145,0,0.3)' 
+                        : 'linear-gradient(135deg, #FE9100, #e67e00)',
                       color: 'white',
                       fontSize: '13px',
                       fontWeight: 500,
+                      opacity: (isSaving || !title.trim()) ? 0.6 : 1,
                     }}
                   >
-                    <Save className="w-4 h-4" />
-                    Speichern
+                    {isSaving ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
+                    {isCreate ? 'Erstellen' : 'Speichern'}
                   </button>
                 )}
               </div>
@@ -1072,7 +1210,51 @@ function EventDetailDrawer({ event, isOpen, onClose }: EventDetailDrawerProps) {
   
   // Portal render
   if (typeof document !== 'undefined') {
-    return createPortal(drawerContent, document.body);
+    return (
+      <>
+        {createPortal(drawerContent, document.body)}
+        
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+          <AlertDialogContent
+            style={{
+              background: 'rgba(0,0,0,0.95)',
+              border: '1px solid rgba(239,68,68,0.3)',
+              borderRadius: '16px',
+            }}
+          >
+            <AlertDialogHeader>
+              <AlertDialogTitle style={{ color: 'rgba(255,255,255,0.95)' }}>
+                Termin löschen?
+              </AlertDialogTitle>
+              <AlertDialogDescription style={{ color: 'rgba(255,255,255,0.6)' }}>
+                Dieser Termin wird unwiderruflich gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                style={{
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: 'rgba(255,255,255,0.7)',
+                }}
+              >
+                Abbrechen
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDelete}
+                style={{
+                  background: 'rgba(239,68,68,0.8)',
+                  color: 'white',
+                }}
+              >
+                Löschen
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
+    );
   }
   return null;
 }
@@ -1501,7 +1683,20 @@ export function TeamCalendar({ className = '', onEventClick }: TeamCalendarProps
       <EventDetailDrawer
         event={drawerEvent}
         isOpen={isDrawerOpen}
+        mode={drawerMode}
         onClose={closeDrawer}
+        onSave={(data) => {
+          if (drawerMode === 'create') {
+            createMutation.mutate(data);
+          } else if (data.id) {
+            const numericId = typeof data.id === 'string' ? parseInt(data.id as string) : (data.id as number);
+            const { id: _, ...rest } = data;
+            updateMutation.mutate({ id: numericId, ...rest });
+          }
+        }}
+        onDelete={(id) => deleteMutation.mutate(id)}
+        isSaving={createMutation.isPending || updateMutation.isPending}
+        isDeleting={deleteMutation.isPending}
       />
     </div>
   );
