@@ -889,6 +889,277 @@ function generateMockEvents(): CalendarEvent[] {
     contextTags: ['hr', 'tech'],
     internalNotes: 'HR + Engineering Lead.',
   });
+
+  // ========== J) ADDITIONAL 90+ EVENTS FOR COMPREHENSIVE CALENDAR ==========
+  
+  // Weekly Marketing Sync (Wednesdays 11:00-11:45)
+  for (let month = 1; month <= 7; month++) {
+    for (let week = 0; week < 5; week++) {
+      const wednesday = new Date(2026, month, 1);
+      wednesday.setDate(wednesday.getDate() + ((3 - wednesday.getDay() + 7) % 7) + (week * 7));
+      if (wednesday.getMonth() === month && wednesday <= endDate) {
+        events.push({
+          id: `marketing-sync-${month}-${week}`,
+          title: 'Marketing Weekly Sync',
+          description: 'Wöchentliche Marketing-Abstimmung. Kampagnen, Content, und Performance Review.',
+          date: wednesday,
+          startTime: '11:00',
+          endTime: '11:45',
+          type: 'INTERN',
+          contextTags: ['organisation'],
+          internalNotes: 'Marketing Team. Remote.',
+        });
+      }
+    }
+  }
+  
+  // Design Reviews (Mondays 15:00-16:00)
+  for (let month = 1; month <= 7; month++) {
+    for (let week = 0; week < 5; week++) {
+      const monday = new Date(2026, month, 1);
+      monday.setDate(monday.getDate() + ((1 - monday.getDay() + 7) % 7) + (week * 7));
+      if (monday.getMonth() === month && monday <= endDate) {
+        events.push({
+          id: `design-review-${month}-${week}`,
+          title: 'Design Review',
+          description: 'Wöchentlicher Design Review. UI/UX Feedback, Prototypen, und Design System Updates.',
+          date: monday,
+          startTime: '15:00',
+          endTime: '16:00',
+          type: 'INTERN',
+          contextTags: ['tech'],
+          internalNotes: 'Design + Product. Figma Links vorbereiten.',
+        });
+      }
+    }
+  }
+  
+  // Customer Success Sync (Thursdays 10:00-10:30)
+  for (let month = 1; month <= 7; month++) {
+    for (let week = 0; week < 5; week++) {
+      const thursday = new Date(2026, month, 1);
+      thursday.setDate(thursday.getDate() + ((4 - thursday.getDay() + 7) % 7) + (week * 7));
+      if (thursday.getMonth() === month && thursday <= endDate) {
+        events.push({
+          id: `cs-sync-${month}-${week}`,
+          title: 'Customer Success Sync',
+          description: 'Wöchentliches CS Meeting. Kundenfeedback, NPS, und Churn-Analyse.',
+          date: thursday,
+          startTime: '10:00',
+          endTime: '10:30',
+          type: 'INTERN',
+          contextTags: ['organisation'],
+          internalNotes: 'CS Team + Product.',
+        });
+      }
+    }
+  }
+  
+  // Additional Deadlines & Milestones
+  const deadlines = [
+    { date: new Date(2026, 1, 15), title: 'Q1 OKR Finalisierung', desc: 'Deadline für Q1 OKR Definition' },
+    { date: new Date(2026, 1, 28), title: 'Pitch Deck Update', desc: 'Aktualisiertes Pitch Deck für Investoren' },
+    { date: new Date(2026, 2, 1), title: 'DSGVO Audit Vorbereitung', desc: 'Alle Dokumente für DSGVO Audit' },
+    { date: new Date(2026, 2, 15), title: 'Steuererklärung Deadline', desc: 'Abgabe Steuererklärung 2025' },
+    { date: new Date(2026, 2, 31), title: 'Q1 Abschluss', desc: 'Finaler Q1 Abschluss' },
+    { date: new Date(2026, 3, 15), title: 'ISO Zertifizierung Audit', desc: 'Vorbereitung ISO 27001' },
+    { date: new Date(2026, 3, 30), title: 'Website Launch', desc: 'Go-Live neue Website' },
+    { date: new Date(2026, 4, 15), title: 'Feature Release v2.0', desc: 'Major Release ARAS AI v2.0' },
+    { date: new Date(2026, 4, 31), title: 'Halbjahres-Budget Review', desc: 'Budget Review H1' },
+    { date: new Date(2026, 5, 15), title: 'Summer Party Planung', desc: 'Deadline Planung Sommerfest' },
+    { date: new Date(2026, 5, 30), title: 'Q2 Abschluss', desc: 'Finaler Q2 Abschluss' },
+    { date: new Date(2026, 6, 15), title: 'Partner Verträge Renewal', desc: 'Deadline Partner Renewals' },
+    { date: new Date(2026, 6, 31), title: 'Mid-Year Review', desc: 'Halbjahres Performance Review' },
+    { date: new Date(2026, 7, 15), title: 'Q3 Planung Kickoff', desc: 'Start Q3 Planning' },
+    { date: new Date(2026, 7, 31), title: 'August Urlaubs-Planung', desc: 'Finale Urlaubsabstimmung' },
+  ];
+  
+  deadlines.forEach((d, i) => {
+    events.push({
+      id: `deadline-${i}`,
+      title: `📌 ${d.title}`,
+      description: d.desc,
+      date: d.date,
+      startTime: '18:00',
+      endTime: '18:30',
+      type: 'DEADLINE',
+      contextTags: ['organisation'],
+      internalNotes: 'Wichtige Deadline. Nicht verschieben.',
+      isReadOnly: true,
+    });
+  });
+  
+  // Training Sessions
+  const trainings = [
+    { date: new Date(2026, 1, 20), title: 'Security Awareness Training', time: '14:00' },
+    { date: new Date(2026, 2, 10), title: 'DSGVO Schulung', time: '10:00' },
+    { date: new Date(2026, 3, 8), title: 'Leadership Workshop', time: '09:00' },
+    { date: new Date(2026, 4, 12), title: 'AI Tools Training', time: '14:00' },
+    { date: new Date(2026, 5, 9), title: 'Kommunikations-Workshop', time: '10:00' },
+    { date: new Date(2026, 6, 14), title: 'Agile Methoden Refresher', time: '14:00' },
+    { date: new Date(2026, 7, 11), title: 'Stress Management', time: '15:00' },
+  ];
+  
+  trainings.forEach((t, i) => {
+    events.push({
+      id: `training-${i}`,
+      title: `📚 ${t.title}`,
+      description: `Pflichtschulung: ${t.title}. Alle relevanten Mitarbeiter sind eingeladen.`,
+      date: t.date,
+      startTime: t.time,
+      endTime: `${parseInt(t.time.split(':')[0]) + 2}:00`,
+      type: 'INTERN',
+      contextTags: ['hr', 'organisation'],
+      internalNotes: 'HR organisiert. Teilnahme wird dokumentiert.',
+    });
+  });
+  
+  // Client Meetings / Demos
+  const clientMeetings = [
+    { date: new Date(2026, 1, 18), title: 'Demo: Allianz Gruppe', client: 'Allianz' },
+    { date: new Date(2026, 1, 25), title: 'Onboarding Call: BMW', client: 'BMW' },
+    { date: new Date(2026, 2, 4), title: 'QBR: Deutsche Bank', client: 'Deutsche Bank' },
+    { date: new Date(2026, 2, 18), title: 'Demo: Siemens Energy', client: 'Siemens' },
+    { date: new Date(2026, 3, 2), title: 'Pilot Kickoff: SAP', client: 'SAP' },
+    { date: new Date(2026, 3, 16), title: 'Executive Briefing: Bosch', client: 'Bosch' },
+    { date: new Date(2026, 4, 7), title: 'Renewal Gespräch: Daimler', client: 'Daimler' },
+    { date: new Date(2026, 4, 21), title: 'Upsell Meeting: BASF', client: 'BASF' },
+    { date: new Date(2026, 5, 4), title: 'Success Review: Lufthansa', client: 'Lufthansa' },
+    { date: new Date(2026, 5, 18), title: 'New Logo: Deutsche Telekom', client: 'Telekom' },
+    { date: new Date(2026, 6, 2), title: 'Enterprise Demo: VW', client: 'Volkswagen' },
+    { date: new Date(2026, 6, 16), title: 'POC Review: Adidas', client: 'Adidas' },
+    { date: new Date(2026, 7, 6), title: 'Contract Signing: Henkel', client: 'Henkel' },
+    { date: new Date(2026, 7, 20), title: 'Integration Workshop: Bayer', client: 'Bayer' },
+  ];
+  
+  clientMeetings.forEach((c, i) => {
+    events.push({
+      id: `client-meeting-${i}`,
+      title: c.title,
+      description: `Kundentermin mit ${c.client}. Vorbereitung und Follow-up durch Account Team.`,
+      date: c.date,
+      startTime: '10:00',
+      endTime: '11:30',
+      type: 'EXTERNAL',
+      contextTags: ['organisation', 'strategie'],
+      internalNotes: `Client: ${c.client}. Sales + Product. Meeting Link im CRM.`,
+    });
+  });
+  
+  // Company Events & Social
+  const companyEvents = [
+    { date: new Date(2026, 1, 14), title: 'Valentinstag Team Lunch', type: 'social' },
+    { date: new Date(2026, 2, 17), title: 'St. Patricks Day Feier', type: 'social' },
+    { date: new Date(2026, 3, 17), title: 'Oster-Brunch', type: 'social' },
+    { date: new Date(2026, 4, 8), title: 'Muttertag Appreciation', type: 'social' },
+    { date: new Date(2026, 5, 21), title: 'Sommerfest 2026', type: 'party' },
+    { date: new Date(2026, 6, 4), title: 'BBQ am Dach', type: 'social' },
+    { date: new Date(2026, 7, 7), title: 'Friday Drinks', type: 'social' },
+  ];
+  
+  companyEvents.forEach((e, i) => {
+    events.push({
+      id: `company-event-${i}`,
+      title: `🎉 ${e.title}`,
+      description: `Team Event: ${e.title}. Alle sind herzlich eingeladen!`,
+      date: e.date,
+      startTime: e.type === 'party' ? '16:00' : '12:00',
+      endTime: e.type === 'party' ? '22:00' : '14:00',
+      type: 'TEAM_MEETING',
+      contextTags: ['hr', 'intern'],
+      internalNotes: 'Office Management organisiert.',
+    });
+  });
+  
+  // More Detailed Events for Current Week (Feb 2026)
+  const currentWeekEvents = [
+    { date: new Date(2026, 1, 2), title: 'Wochenplanung', start: '08:30', end: '09:00' },
+    { date: new Date(2026, 1, 2), title: 'Code Review: Auth Module', start: '14:00', end: '15:00' },
+    { date: new Date(2026, 1, 3), title: 'UX Testing Session', start: '10:00', end: '11:30' },
+    { date: new Date(2026, 1, 3), title: 'API Integration Call', start: '15:00', end: '16:00' },
+    { date: new Date(2026, 1, 4), title: 'Budget Meeting Q1', start: '09:00', end: '10:30' },
+    { date: new Date(2026, 1, 4), title: 'PR Review', start: '14:00', end: '14:30' },
+    { date: new Date(2026, 1, 5), title: 'Retro Sprint 23', start: '11:00', end: '12:00' },
+    { date: new Date(2026, 1, 5), title: 'All-Hands Meeting', start: '16:00', end: '17:00' },
+    { date: new Date(2026, 1, 6), title: 'Planning Poker', start: '10:00', end: '11:00' },
+    { date: new Date(2026, 1, 6), title: 'Friday Wrap-Up', start: '17:00', end: '17:30' },
+  ];
+  
+  currentWeekEvents.forEach((e, i) => {
+    events.push({
+      id: `current-week-${i}`,
+      title: e.title,
+      description: `Termin: ${e.title}`,
+      date: e.date,
+      startTime: e.start,
+      endTime: e.end,
+      type: 'INTERN',
+      contextTags: ['organisation'],
+      internalNotes: 'Team Termin.',
+    });
+  });
+  
+  // Industry Events & Conferences
+  const conferences = [
+    { date: new Date(2026, 2, 23), title: 'Web Summit Dublin (Remote)', days: 3 },
+    { date: new Date(2026, 4, 18), title: 'AI Conference Berlin', days: 2 },
+    { date: new Date(2026, 5, 15), title: 'SaaS Connect München', days: 1 },
+    { date: new Date(2026, 6, 20), title: 'Tech Open Air Berlin', days: 2 },
+  ];
+  
+  conferences.forEach((c, i) => {
+    events.push({
+      id: `conference-${i}`,
+      title: `🌐 ${c.title}`,
+      description: `Konferenz: ${c.title}. Dauer: ${c.days} Tag(e). Networking und Learning.`,
+      date: c.date,
+      startTime: '09:00',
+      endTime: '18:00',
+      type: 'EXTERNAL',
+      contextTags: ['strategie', 'organisation'],
+      internalNotes: `${c.days}-tägig. Reisekosten im Budget.`,
+    });
+  });
+  
+  // Performance Reviews
+  for (let month = 2; month <= 7; month += 3) {
+    events.push({
+      id: `perf-review-${month}`,
+      title: 'Quartals Performance Reviews',
+      description: 'Quartalsmäßige Performance Gespräche mit allen Mitarbeitern.',
+      date: new Date(2026, month, 20),
+      startTime: '09:00',
+      endTime: '17:00',
+      type: 'INTERN',
+      contextTags: ['hr'],
+      internalNotes: 'HR koordiniert. Kalender-Slots werden individuell gebucht.',
+    });
+  }
+  
+  // Board & Strategy
+  events.push({
+    id: 'strategy-day-h1',
+    title: 'Strategy Day H1',
+    description: 'Halbtägiger Strategy Workshop. Vision, Ziele, und Roadmap für H2.',
+    date: new Date(2026, 5, 26),
+    startTime: '09:00',
+    endTime: '15:00',
+    type: 'INTERN',
+    contextTags: ['strategie', 'board'],
+    internalNotes: 'Leadership Team. Offsite Location.',
+  });
+  
+  events.push({
+    id: 'board-dinner',
+    title: 'Board Dinner',
+    description: 'Informelles Board Dinner nach der Verwaltungsratssitzung.',
+    date: new Date(2026, 3, 24),
+    startTime: '19:00',
+    endTime: '22:00',
+    type: 'VERWALTUNGSRAT',
+    contextTags: ['board'],
+    internalNotes: 'Restaurant TBD. Budget: €200/Person.',
+  });
   
   return events;
 }
@@ -2429,11 +2700,11 @@ function EventDetailDrawer({
                 </div>
               )}
               
-              {/* Section 6 - Mitarbeiter einladen (only in edit/create mode) */}
+              {/* Section 6 - Mitarbeiter einladen (INLINE EXPANDER - no overlay!) */}
               {isEditing && (
-                <div>
+                <div className="flex flex-col gap-3">
                   <label 
-                    className="block text-[10px] tracking-[0.18em] mb-3"
+                    className="block text-[10px] tracking-[0.18em]"
                     style={{ 
                       fontFamily: 'Orbitron, sans-serif',
                       color: 'rgba(255,255,255,0.55)',
@@ -2442,43 +2713,50 @@ function EventDetailDrawer({
                     MITARBEITER EINLADEN
                   </label>
                   
-                  {/* Invited members chips */}
-                  {invitedMemberDetails.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {invitedMemberDetails.map((member) => (
+                  {/* Input Row: Chips + Search (all in one box) */}
+                  <div
+                    className="flex flex-wrap items-center gap-2"
+                    style={{
+                      minHeight: '52px',
+                      padding: '10px 12px',
+                      background: 'rgba(255,255,255,0.02)',
+                      border: showMemberDropdown ? '1px solid rgba(254,145,0,0.25)' : '1px solid rgba(233,215,196,0.12)',
+                      borderRadius: '18px',
+                      transition: 'border-color 0.2s ease',
+                    }}
+                  >
+                    {/* Selected member chips */}
+                    {invitedMemberDetails.map((member) => (
+                      <div
+                        key={member.id}
+                        className="flex items-center gap-2 h-[30px] px-2.5 rounded-full"
+                        style={{
+                          background: 'rgba(254,145,0,0.10)',
+                          border: '1px solid rgba(254,145,0,0.22)',
+                        }}
+                      >
                         <div
-                          key={member.id}
-                          className="flex items-center gap-2 px-3 py-1.5 rounded-full"
+                          className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold"
                           style={{
-                            background: 'rgba(254,145,0,0.12)',
-                            border: '1px solid rgba(254,145,0,0.25)',
+                            background: 'linear-gradient(135deg, #FE9100, #a34e00)',
+                            color: 'white',
                           }}
                         >
-                          <div
-                            className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold"
-                            style={{
-                              background: 'linear-gradient(135deg, #FE9100, #a34e00)',
-                              color: 'white',
-                            }}
-                          >
-                            {member.username.substring(0, 2).toUpperCase()}
-                          </div>
-                          <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.85)' }}>
-                            {member.username}
-                          </span>
-                          <button
-                            onClick={() => toggleInvitedMember(member.id)}
-                            className="w-4 h-4 flex items-center justify-center rounded-full hover:bg-white/10"
-                          >
-                            <X className="w-3 h-3" style={{ color: 'rgba(255,255,255,0.5)' }} />
-                          </button>
+                          {member.username.substring(0, 2).toUpperCase()}
                         </div>
-                      ))}
-                    </div>
-                  )}
-                  
-                  {/* Search input */}
-                  <div className="relative">
+                        <span className="text-[11px]" style={{ color: 'rgba(233,215,196,0.92)' }}>
+                          {member.username}
+                        </span>
+                        <button
+                          onClick={() => toggleInvitedMember(member.id)}
+                          className="w-4 h-4 flex items-center justify-center rounded-full transition-opacity opacity-70 hover:opacity-100"
+                        >
+                          <X className="w-3 h-3" style={{ color: 'rgba(255,255,255,0.6)' }} />
+                        </button>
+                      </div>
+                    ))}
+                    
+                    {/* Search input */}
                     <input
                       type="text"
                       value={memberSearch}
@@ -2487,55 +2765,97 @@ function EventDetailDrawer({
                         setShowMemberDropdown(true);
                       }}
                       onFocus={() => setShowMemberDropdown(true)}
-                      placeholder="Name oder Rolle suchen…"
-                      className="w-full px-4 py-2.5 rounded-lg outline-none"
+                      onBlur={() => setTimeout(() => setShowMemberDropdown(false), 150)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') setShowMemberDropdown(false);
+                        if (e.key === 'Backspace' && !memberSearch && invitedMembers.length > 0) {
+                          toggleInvitedMember(invitedMembers[invitedMembers.length - 1]);
+                        }
+                      }}
+                      placeholder={invitedMemberDetails.length > 0 ? "Weitere hinzufügen…" : "Name oder Rolle suchen…"}
+                      className="flex-1 min-w-[140px] bg-transparent border-none outline-none"
                       style={{
-                        background: 'rgba(255,255,255,0.04)',
-                        border: '1px solid rgba(255,255,255,0.12)',
                         color: 'rgba(255,255,255,0.9)',
-                        fontSize: '13px',
+                        fontSize: '14px',
                       }}
                     />
-                    <Users className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'rgba(255,255,255,0.3)' }} />
-                    
-                    {/* Dropdown */}
-                    {showMemberDropdown && filteredMembers.length > 0 && (
-                      <div
-                        className="absolute top-full left-0 right-0 mt-1 max-h-[180px] overflow-y-auto rounded-lg z-50"
-                        style={{
-                          background: 'rgba(15,15,18,0.98)',
-                          border: '1px solid rgba(255,255,255,0.12)',
-                          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-                        }}
-                      >
-                        {filteredMembers.slice(0, 6).map((member) => (
-                          <button
-                            key={member.id}
-                            onClick={() => toggleInvitedMember(member.id)}
-                            className="w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-white/5"
-                          >
-                            <div
-                              className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold"
-                              style={{
-                                background: 'linear-gradient(135deg, #FE9100, #a34e00)',
-                                color: 'white',
-                              }}
-                            >
-                              {member.username.substring(0, 2).toUpperCase()}
-                            </div>
-                            <div>
-                              <p className="text-[12px]" style={{ color: 'rgba(255,255,255,0.9)' }}>
-                                {member.username}
-                              </p>
-                              <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                                {member.userRole}
-                              </p>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    <Users className="w-4 h-4 flex-shrink-0" style={{ color: 'rgba(255,255,255,0.3)' }} />
                   </div>
+                  
+                  {/* INLINE Expandable List (NOT absolute - takes up space in flow!) */}
+                  {showMemberDropdown && (
+                    <div
+                      className="overflow-y-auto"
+                      style={{
+                        maxHeight: '220px',
+                        padding: '6px',
+                        background: 'rgba(10,10,12,0.82)',
+                        backdropFilter: 'blur(16px)',
+                        border: '1px solid rgba(233,215,196,0.10)',
+                        borderRadius: '18px',
+                      }}
+                    >
+                      {filteredMembers.length > 0 ? (
+                        filteredMembers.slice(0, 8).map((member) => {
+                          const isSelected = invitedMembers.includes(member.id);
+                          return (
+                            <button
+                              key={member.id}
+                              onClick={() => toggleInvitedMember(member.id)}
+                              className="w-full flex items-center gap-3 text-left transition-colors rounded-[14px]"
+                              style={{
+                                height: '56px',
+                                padding: '10px 12px',
+                                background: isSelected ? 'rgba(254,145,0,0.08)' : 'transparent',
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = isSelected ? 'rgba(254,145,0,0.12)' : 'rgba(254,145,0,0.06)'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = isSelected ? 'rgba(254,145,0,0.08)' : 'transparent'}
+                            >
+                              <div
+                                className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-semibold flex-shrink-0"
+                                style={{
+                                  background: 'linear-gradient(135deg, #FE9100, #a34e00)',
+                                  color: 'white',
+                                }}
+                              >
+                                {member.username.substring(0, 2).toUpperCase()}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[14.6px] font-semibold truncate" style={{ color: 'rgba(255,255,255,0.9)' }}>
+                                  {member.username}
+                                </p>
+                                <p className="text-[12px] truncate" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                                  {member.userRole}
+                                </p>
+                              </div>
+                              {isSelected && (
+                                <div 
+                                  className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+                                  style={{ background: 'rgba(254,145,0,0.2)' }}
+                                >
+                                  <span style={{ color: '#FE9100', fontSize: '14px' }}>✓</span>
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div className="py-6 text-center">
+                          <p className="text-[13px]" style={{ color: 'rgba(255,255,255,0.6)' }}>Keine Treffer</p>
+                          <p className="text-[11px] mt-1" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                            Versuche: "admin", "staff", "justin" …
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Helper text */}
+                  {!showMemberDropdown && invitedMemberDetails.length === 0 && (
+                    <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                      Tippe um Teammitglieder zu suchen. Backspace entfernt den letzten.
+                    </p>
+                  )}
                 </div>
               )}
               
@@ -2544,6 +2864,9 @@ function EventDetailDrawer({
                 <div
                   className="p-4 rounded-xl"
                   style={{
+                    marginTop: '18px',
+                    paddingTop: '14px',
+                    borderTop: '1px solid rgba(233,215,196,0.10)',
                     background: postToFeed ? 'rgba(254,145,0,0.08)' : 'rgba(255,255,255,0.02)',
                     border: postToFeed ? '1px solid rgba(254,145,0,0.2)' : '1px solid rgba(255,255,255,0.06)',
                     transition: 'all 0.2s ease',
@@ -2754,7 +3077,7 @@ interface TeamCalendarProps {
 }
 
 export function TeamCalendar({ className = '', onEventClick }: TeamCalendarProps) {
-  // View state with localStorage persistence
+  // View state with localStorage persistence - DEFAULT: 'week'
   const [calendarView, setCalendarView] = useState<CalendarView>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('aras.teamCalendar.view');
@@ -2762,7 +3085,7 @@ export function TeamCalendar({ className = '', onEventClick }: TeamCalendarProps
         return saved;
       }
     }
-    return 'day';
+    return 'week'; // WEEK VIEW IS DEFAULT
   });
   
   const [selectedDate, setSelectedDate] = useState<Date>(startOfDay(new Date()));
