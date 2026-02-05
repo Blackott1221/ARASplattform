@@ -24,6 +24,8 @@ export function SpaceSilentTile({
   const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
   const [isHovered, setIsHovered] = useState(false);
   const [sheenTriggered, setSheenTriggered] = useState(false);
+  const [clickConfirm, setClickConfirm] = useState(false);
+  const [orbFlash, setOrbFlash] = useState(false);
   const rafRef = useRef<number | null>(null);
 
   const handlePointerMove = useCallback(
@@ -57,12 +59,24 @@ export function SpaceSilentTile({
     }
   }, [prefersReducedMotion]);
 
+  const handleClick = useCallback(() => {
+    if (!prefersReducedMotion) {
+      setClickConfirm(true);
+      setOrbFlash(true);
+      setTimeout(() => setClickConfirm(false), 70);
+      setTimeout(() => setOrbFlash(false), 180);
+      setTimeout(() => onOpen(), 90);
+    } else {
+      onOpen();
+    }
+  }, [prefersReducedMotion, onOpen]);
+
   const isLive = status === "LIVE";
 
   return (
     <motion.button
       ref={tileRef}
-      onClick={onOpen}
+      onClick={handleClick}
       onPointerMove={handlePointerMove}
       onPointerEnter={handlePointerEnter}
       onPointerLeave={handlePointerLeave}
@@ -76,7 +90,7 @@ export function SpaceSilentTile({
       style={{
         minHeight: "68px",
         borderRadius: "20px",
-        border: isHovered && !prefersReducedMotion
+        border: (isHovered || clickConfirm) && !prefersReducedMotion
           ? "1px solid rgba(254,145,0,0.18)"
           : "1px solid rgba(233,215,196,0.10)",
         background: isHovered && !prefersReducedMotion
@@ -90,10 +104,14 @@ export function SpaceSilentTile({
         boxShadow: isHovered && !prefersReducedMotion
           ? "0 18px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(254,145,0,0.10)"
           : "none",
-        transform: isHovered && !prefersReducedMotion ? "translateY(-1px)" : "translateY(0)",
+        transform: clickConfirm && !prefersReducedMotion
+          ? "scale(0.99)"
+          : isHovered && !prefersReducedMotion
+          ? "translateY(-1px)"
+          : "translateY(0)",
         transition: prefersReducedMotion
           ? "border-color 120ms, background 120ms"
-          : "all 160ms cubic-bezier(0.2,0.8,0.2,1)",
+          : "all 70ms cubic-bezier(0.2,0.8,0.2,1)",
       }}
     >
       {/* Cursor Spotlight */}
@@ -143,8 +161,13 @@ export function SpaceSilentTile({
             radial-gradient(22px 22px at 60% 70%, rgba(254,145,0,0.22), rgba(0,0,0,0) 70%),
             rgba(255,255,255,0.02)
           `,
-          border: "1px solid rgba(254,145,0,0.20)",
-          boxShadow: "0 0 18px rgba(254,145,0,0.14)",
+          border: orbFlash && !prefersReducedMotion
+            ? "1px solid rgba(254,145,0,0.55)"
+            : "1px solid rgba(254,145,0,0.20)",
+          boxShadow: orbFlash && !prefersReducedMotion
+            ? "0 0 28px rgba(254,145,0,0.45)"
+            : "0 0 18px rgba(254,145,0,0.14)",
+          transition: "border-color 80ms, box-shadow 80ms",
         }}
       >
         {/* Status Core Dot */}
