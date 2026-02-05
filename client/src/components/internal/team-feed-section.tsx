@@ -11,7 +11,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { Send, Paperclip, Image, X, MessageSquare } from 'lucide-react';
+import { Send, Paperclip, Image, X, MessageSquare, ArrowDown } from 'lucide-react';
 import { formatDistanceToNow, format, isToday, isSameDay } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { isDemoModeActive, getDemoFeedItems, type DemoFeedItem } from '@/lib/internal/team-feed-demo-seed';
@@ -342,6 +342,7 @@ export function TeamFeedSection({
 }: TeamFeedSectionProps) {
   const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -351,6 +352,29 @@ export function TeamFeedSection({
   const [isTyping, setIsTyping] = useState(false);
   const [typingUser, setTypingUser] = useState<string | undefined>();
   const [showOwnTyping, setShowOwnTyping] = useState(false);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const [hasNewMessages, setHasNewMessages] = useState(false);
+
+  // Scroll to bottom function
+  const scrollToBottom = useCallback(() => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+      setHasNewMessages(false);
+    }
+  }, []);
+
+  // Track scroll position
+  const handleScroll = useCallback(() => {
+    if (messagesContainerRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+      const atBottom = scrollHeight - scrollTop - clientHeight < 50;
+      setIsAtBottom(atBottom);
+      if (atBottom) setHasNewMessages(false);
+    }
+  }, []);
 
   // Fetch feed items
   const { data: feedData, isLoading } = useQuery({
@@ -514,6 +538,48 @@ export function TeamFeedSection({
             </p>
           </div>
           <div className="flex items-center gap-3">
+            {/* Letzte Nachricht Button */}
+            <button
+              onClick={scrollToBottom}
+              className="h-[34px] px-3 flex items-center gap-2 transition-all duration-150 relative"
+              style={{
+                borderRadius: '12px',
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                color: 'rgba(255,255,255,0.85)',
+                fontSize: '12px',
+                fontWeight: 500,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.07)';
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+              }}
+              onMouseDown={(e) => {
+                e.currentTarget.style.transform = 'translateY(1px)';
+                e.currentTarget.style.background = 'rgba(255,255,255,0.09)';
+              }}
+              onMouseUp={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              <ArrowDown className="w-4 h-4" style={{ opacity: 0.8 }} />
+              <span>Letzte Nachricht</span>
+              {/* Unread Dot */}
+              {hasNewMessages && !isAtBottom && (
+                <div
+                  className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full"
+                  style={{
+                    background: '#ff6a00',
+                    boxShadow: '0 0 8px rgba(255,106,0,0.6)',
+                  }}
+                />
+              )}
+            </button>
+            
             {/* Demo Badge */}
             {isDemo && (
               <div
@@ -535,6 +601,8 @@ export function TeamFeedSection({
 
         {/* Message List */}
         <div
+          ref={messagesContainerRef}
+          onScroll={handleScroll}
           className="flex-1 space-y-3 overflow-y-auto pr-2 mb-4"
           style={{
             maxHeight: '400px',

@@ -470,26 +470,23 @@ export default function InternalDashboard() {
           <MyTasksBoard />
         </motion.div>
 
-        {/* GRID - Calendar takes more weight, then 2 columns for others */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-          
-          {/* TEAM CALENDAR - Executive Time Command Center (7 cols = ~58%) */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="lg:col-span-7"
-            style={{ minHeight: '560px' }}
-          >
-            <TeamCalendar className="h-full" />
-          </motion.div>
+        {/* TEAM CALENDAR - Full Width Executive Time Command Center */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          style={{ minHeight: '480px' }}
+        >
+          <TeamCalendar className="h-full" />
+        </motion.div>
 
-          {/* RIGHT COLUMN - Members + Todos stacked (5 cols) */}
+        {/* GRID - Members + Todos side by side under calendar */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {/* Team Members */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="lg:col-span-5 flex flex-col gap-5"
           >
             <GlassCard className="h-full">
               <WidgetHeader icon={Users} title="Team Members" count={activeUsers.length} />
@@ -532,9 +529,15 @@ export default function InternalDashboard() {
                 )}
               </div>
             </GlassCard>
+          </motion.div>
 
-            {/* TODOS - stacked below members */}
-            <GlassCard className="flex-1">
+          {/* Team Todos */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.18 }}
+          >
+            <GlassCard className="h-full">
               <WidgetHeader 
                 icon={CheckSquare} 
                 title="Team Todos" 

@@ -1276,6 +1276,15 @@ export function TeamCalendar({ className = '', onEventClick }: TeamCalendarProps
   const [drawerMode, setDrawerMode] = useState<DrawerMode>('view');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [useMockData, setUseMockData] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  
+  // Live clock update every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
   
   const queryClient = useQueryClient();
   const { showToast } = useToast();
@@ -1599,32 +1608,47 @@ export function TeamCalendar({ className = '', onEventClick }: TeamCalendarProps
       </div>
       
       {/* Day Focus Header */}
-      <div className="flex items-baseline gap-3 mb-4">
-        <span 
-          className="text-[22px] font-bold"
-          style={{ 
-            fontFamily: 'Orbitron, sans-serif',
-            color: '#e9d7c4',
-          }}
-        >
-          {format(selectedDate, 'EEE', { locale: de }).toUpperCase()} · {format(selectedDate, 'dd')}
-        </span>
-        <span 
-          className="text-[12px]"
-          style={{ color: 'rgba(255,255,255,0.45)' }}
-        >
-          {format(selectedDate, 'MMMM yyyy', { locale: de })}
-        </span>
-        {isToday(selectedDate) && (
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-baseline gap-3">
           <span 
-            className="text-[10px] px-2 py-0.5 rounded-full"
+            className="text-[22px] font-bold"
             style={{ 
-              background: 'rgba(255,106,0,0.15)',
-              color: '#ff6a00',
+              fontFamily: 'Orbitron, sans-serif',
+              color: '#e9d7c4',
             }}
           >
-            HEUTE
+            {format(selectedDate, 'EEE', { locale: de }).toUpperCase()} · {format(selectedDate, 'dd')}
           </span>
+          <span 
+            className="text-[12px]"
+            style={{ color: 'rgba(255,255,255,0.45)' }}
+          >
+            {format(selectedDate, 'MMMM yyyy', { locale: de })}
+          </span>
+          {isToday(selectedDate) && (
+            <span 
+              className="text-[10px] px-2 py-0.5 rounded-full"
+              style={{ 
+                background: 'rgba(255,106,0,0.15)',
+                color: '#ff6a00',
+              }}
+            >
+              HEUTE
+            </span>
+          )}
+        </div>
+        
+        {/* Live Clock */}
+        {isToday(selectedDate) && (
+          <div className="flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.45)' }} />
+            <span 
+              className="text-[12px] font-medium"
+              style={{ color: 'rgba(255,255,255,0.65)' }}
+            >
+              {format(currentTime, 'HH:mm')}
+            </span>
+          </div>
         )}
       </div>
       

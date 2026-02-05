@@ -57,7 +57,7 @@ interface InternalTask {
   updatedAt: string;
 }
 
-type ColumnId = 'inbox' | 'today' | 'week' | 'done';
+type ColumnId = 'inbox' | 'open' | 'done';
 
 interface Column {
   id: ColumnId;
@@ -67,9 +67,8 @@ interface Column {
 }
 
 const COLUMNS: Column[] = [
-  { id: 'inbox', title: 'EINGANG', icon: Inbox, description: 'Neue Aufgaben ohne Termin oder mit Fälligkeit in mehr als 7 Tagen. Ihr Posteingang für alles, was noch keinen festen Platz hat.' },
-  { id: 'today', title: 'HEUTE', icon: Clock, description: 'Aufgaben mit heutiger Priorität oder Fälligkeit. Halten Sie diese Liste bewusst klein.' },
-  { id: 'week', title: 'DIESE WOCHE', icon: Calendar, description: 'Aufgaben für die nächsten 7 Tage. Planen Sie voraus, aber überfordern Sie sich nicht.' },
+  { id: 'inbox', title: 'EINGANG', icon: Inbox, description: 'Neue Aufgaben ohne Termin. Ihr Posteingang für alles, was noch keinen festen Platz hat.' },
+  { id: 'open', title: 'OFFEN', icon: Clock, description: 'Aktive Aufgaben mit Termin. Hier sind alle Aufgaben, die bearbeitet werden müssen.' },
   { id: 'done', title: 'ERLEDIGT', icon: CheckCircle2, description: 'Abgeschlossene Aufgaben. Ihre Erfolge auf einen Blick.' },
 ];
 
@@ -82,23 +81,13 @@ function getTaskColumn(task: InternalTask): ColumnId {
     return 'done';
   }
   
+  // Tasks without due date go to inbox
   if (!task.dueDate) {
     return 'inbox';
   }
   
-  const dueDate = new Date(task.dueDate);
-  const now = new Date();
-  const weekFromNow = addDays(startOfDay(now), 7);
-  
-  if (isToday(dueDate) || isBefore(dueDate, startOfDay(now))) {
-    return 'today';
-  }
-  
-  if (isBefore(dueDate, weekFromNow)) {
-    return 'week';
-  }
-  
-  return 'inbox';
+  // Tasks with due date go to open
+  return 'open';
 }
 
 // ============================================================================
@@ -1259,16 +1248,10 @@ export function MyTasksBoard({ className = '' }: MyTasksBoardProps) {
       case 'inbox':
         newData = { status: 'OPEN', dueDate: null };
         break;
-      case 'today':
+      case 'open':
         newData = { 
           status: 'OPEN',
-          dueDate: endOfDay(new Date()).toISOString(),
-        };
-        break;
-      case 'week':
-        newData = { 
-          status: 'OPEN',
-          dueDate: addDays(endOfDay(new Date()), 3).toISOString(),
+          dueDate: task.dueDate || endOfDay(new Date()).toISOString(),
         };
         break;
       case 'done':
@@ -1295,8 +1278,7 @@ export function MyTasksBoard({ className = '' }: MyTasksBoardProps) {
   const columnTasks = useMemo(() => {
     const organized: Record<ColumnId, InternalTask[]> = {
       inbox: [],
-      today: [],
-      week: [],
+      open: [],
       done: [],
     };
     
@@ -1323,23 +1305,23 @@ export function MyTasksBoard({ className = '' }: MyTasksBoardProps) {
 
   return (
     <div 
-      className={`max-w-[1200px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-5 ${className}`}
+      className={`max-w-[1200px] mx-auto ${className}`}
     >
-      {/* Main Board - 8 columns */}
-      <div className="lg:col-span-8">
-        <div 
-          style={{
-            borderRadius: '20px',
-            padding: '20px',
-            background: 'rgba(0,0,0,0.42)',
-            backdropFilter: 'blur(18px)',
-            WebkitBackdropFilter: 'blur(18px)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
-          }}
-        >
-          {/* Board Header - Executive ruhig */}
-          <div className="flex items-center justify-between mb-5">
+      {/* Main Board - Full Width */}
+      <div 
+        style={{
+          borderRadius: '20px',
+          padding: '20px',
+          background: 'rgba(0,0,0,0.42)',
+          backdropFilter: 'blur(18px)',
+          WebkitBackdropFilter: 'blur(18px)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
+        }}
+      >
+        {/* Board Header - Executive ruhig */}
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-3">
             <div>
               <h2 
                 className="text-[13px]"
@@ -1359,51 +1341,107 @@ export function MyTasksBoard({ className = '' }: MyTasksBoardProps) {
                 Status ändern über Menü · Klick öffnet Details
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              {/* Filter Ghost Button */}
-              <button
-                className="h-9 px-3.5 flex items-center gap-2 text-[12px] transition-all duration-150"
-                style={{ 
-                  borderRadius: '10px',
-                  background: 'transparent',
-                  color: 'rgba(255,255,255,0.55)',
-                  border: '1px solid rgba(255,255,255,0.10)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                  e.currentTarget.style.color = 'rgba(255,255,255,0.75)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = 'rgba(255,255,255,0.55)';
-                }}
-              >
-                <Filter className="w-3.5 h-3.5" />
-                Filter
-              </button>
-              
-              {/* + Aufgabe Primary Button */}
-              <button
-                onClick={() => setIsAddModalOpen(true)}
-                className="h-9 px-4 flex items-center gap-2 text-[12px] font-medium transition-all duration-150"
-                style={{ 
-                  borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #ff6a00 0%, #b55400 100%)',
-                  color: 'white',
-                  boxShadow: '0 4px 16px rgba(255,106,0,0.25)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(255,106,0,0.35)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(255,106,0,0.25)';
-                }}
-                onMouseDown={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
+            
+            {/* Info Button with Tooltip */}
+            <HoverCard openDelay={200}>
+              <HoverCardTrigger asChild>
+                <button
+                  className="w-7 h-7 flex items-center justify-center transition-all duration-150"
+                  style={{
+                    borderRadius: '999px',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                  }}
+                >
+                  <Info className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.5)' }} />
+                </button>
+              </HoverCardTrigger>
+              <HoverCardContent
+                side="bottom"
+                align="start"
+                sideOffset={8}
+                className="w-[360px] p-4 border-0 z-[9999]"
+                style={{
+                  background: 'rgba(0,0,0,0.92)',
+                  backdropFilter: 'blur(16px)',
+                  WebkitBackdropFilter: 'blur(16px)',
+                  border: '1px solid rgba(255,106,0,0.18)',
+                  borderRadius: '16px',
+                  boxShadow: '0 18px 60px rgba(0,0,0,0.72)',
                 }}
               >
+                <h4 
+                  className="text-[11px] mb-2"
+                  style={{ 
+                    fontFamily: 'Orbitron, sans-serif', 
+                    letterSpacing: '0.18em',
+                    color: '#e9d7c4', 
+                    opacity: 0.85 
+                  }}
+                >
+                  KURZANLEITUNG
+                </h4>
+                <p 
+                  className="text-[12.5px] leading-relaxed" 
+                  style={{ color: 'rgba(255,255,255,0.78)' }}
+                >
+                  Öffnen Sie Aufgaben per Klick. Den Status ändern Sie über das Menü (⋯) oben rechts. Neue Aufgaben erstellen Sie mit dem + Button.
+                </p>
+              </HoverCardContent>
+            </HoverCard>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {/* Filter Ghost Button */}
+            <button
+              className="h-9 px-3.5 flex items-center gap-2 text-[12px] transition-all duration-150"
+              style={{ 
+                borderRadius: '10px',
+                background: 'transparent',
+                color: 'rgba(255,255,255,0.55)',
+                border: '1px solid rgba(255,255,255,0.10)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                e.currentTarget.style.color = 'rgba(255,255,255,0.75)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = 'rgba(255,255,255,0.55)';
+              }}
+            >
+              <Filter className="w-3.5 h-3.5" />
+              Filter
+            </button>
+            
+            {/* + Aufgabe Primary Button */}
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="h-9 px-4 flex items-center gap-2 text-[12px] font-medium transition-all duration-150"
+              style={{ 
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #ff6a00 0%, #b55400 100%)',
+                color: 'white',
+                boxShadow: '0 4px 16px rgba(255,106,0,0.25)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(255,106,0,0.35)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 16px rgba(255,106,0,0.25)';
+              }}
+              onMouseDown={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
                 <Plus className="w-4 h-4" />
                 Aufgabe
               </button>
@@ -1458,17 +1496,6 @@ export function MyTasksBoard({ className = '' }: MyTasksBoardProps) {
             </div>
           )}
         </div>
-      </div>
-      
-      {/* Sidebar - 4 columns */}
-      <div className="lg:col-span-4">
-        <MyTasksSidebar
-          tasks={tasks}
-          onAddTask={() => setIsAddModalOpen(true)}
-          showCompleted={showCompleted}
-          onToggleCompleted={() => setShowCompleted(!showCompleted)}
-        />
-      </div>
       
       {/* Task Details Drawer */}
       <TaskDetailsDrawer
