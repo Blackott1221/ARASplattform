@@ -1,10 +1,30 @@
-import { Router } from 'express';
-import { storage } from '../storage';
+import { Router, Request, Response } from 'express';
+import { DatabaseStorage } from '../storage';
 import { logger } from '../logger';
 import { requireAdmin } from '../middleware/admin';
 import { requireStaffOrAdmin } from '../middleware/staff';
 
 const router = Router();
+
+// ============================================================================
+// EXPLICIT STORAGE INSTANCE - Fix for "upsertInboundMail is not a function"
+// ============================================================================
+// Using explicit DatabaseStorage instance instead of shared `storage` export
+// to ensure methods are available at runtime in production builds
+const dbStorage = new DatabaseStorage();
+
+// One-time debug log on first request (runtime verification)
+let hasLoggedDebug = false;
+function logStorageDebug() {
+  if (hasLoggedDebug) return;
+  hasLoggedDebug = true;
+  try {
+    const protoMethods = Object.getOwnPropertyNames(Object.getPrototypeOf(dbStorage)).slice(0, 40);
+    logger.info(`[MAIL-INBOUND] Storage debug: constructor=${dbStorage.constructor.name}, upsertInboundMail=${typeof (dbStorage as any).upsertInboundMail}, methods=${protoMethods.join(',')}`);
+  } catch (e) {
+    logger.warn('[MAIL-INBOUND] Storage debug failed');
+  }
+}
 
 // ============================================================================
 // SIZE LIMITS for payload fields (truncate if exceeded)
@@ -22,14 +42,14 @@ function truncate(str: string | undefined | null, limit: number): string {
 }
 
 // ============================================================================
-// WEBHOOK: POST /api/n8n/webhook/gmail-inbound
+// SHARED HANDLER: Gmail Inbound Webhook
 // ============================================================================
-// Receives incoming Gmail messages from n8n workflow
-// Protected by x-aras-webhook-secret header
-// ============================================================================
-
-router.post('/webhook/gmail-inbound', async (req, res) => {
+// Used by both /webhook/gmail-inbound and /n8n/webhook/gmail-inbound
+async function handleGmailInbound(req: Request, res: Response) {
   try {
+    // Debug log (once per process)
+    logStorageDebug();
+
     // 1. Secret check
     const webhookSecret = process.env.N8N_WEBHOOK_SECRET;
     const providedSecret = req.headers['x-aras-webhook-secret'];
@@ -61,18 +81,14 @@ router.post('/webhook/gmail-inbound', async (req, res) => {
       logger.warn('[MAIL-INBOUND-WEBHOOK] Missing required field: from.email');
       return res.status(400).json({ ok: false, error: 'Missing required field: from.email' });
     }
-    if (!receivedAtRaw) {
-      logger.warn('[MAIL-INBOUND-WEBHOOK] Missing required field: receivedAt');
-      return res.status(400).json({ ok: false, error: 'Missing required field: receivedAt' });
-    }
 
-    // Parse receivedAt (support Unix ms, ISO string, or Date)
+    // Parse receivedAt (support Unix ms, ISO string, or Date) - fallback to now if missing/invalid
     let receivedAt: Date;
-    if (typeof receivedAtRaw === 'number') {
-      // Unix timestamp in milliseconds
+    if (!receivedAtRaw) {
+      receivedAt = new Date();
+    } else if (typeof receivedAtRaw === 'number') {
       receivedAt = new Date(receivedAtRaw);
     } else if (typeof receivedAtRaw === 'string') {
-      // Try parsing as number first (string of ms), then as ISO
       const parsed = parseInt(receivedAtRaw, 10);
       receivedAt = !isNaN(parsed) && parsed > 1000000000000 
         ? new Date(parsed) 
@@ -81,10 +97,10 @@ router.post('/webhook/gmail-inbound', async (req, res) => {
       receivedAt = new Date();
     }
 
-    // Validate receivedAt is a valid date
+    // Validate receivedAt is a valid date - fallback to now if invalid
     if (isNaN(receivedAt.getTime())) {
-      logger.warn('[MAIL-INBOUND-WEBHOOK] Invalid receivedAt format');
-      return res.status(400).json({ ok: false, error: 'Invalid receivedAt format' });
+      logger.warn('[MAIL-INBOUND-WEBHOOK] Invalid receivedAt format, using current time');
+      receivedAt = new Date();
     }
 
     // 3. Build payload with truncation
@@ -115,8 +131,8 @@ router.post('/webhook/gmail-inbound', async (req, res) => {
       },
     };
 
-    // 4. Persist (idempotent upsert)
-    const result = await storage.upsertInboundMail(payload);
+    // 4. Persist (idempotent upsert) - using explicit dbStorage instance
+    const result = await dbStorage.upsertInboundMail(payload);
 
     logger.info(`[MAIL-INBOUND-WEBHOOK] Processed mail: id=${result.id}, isNew=${result.isNew}, from=${payload.fromEmail}`);
 
@@ -136,7 +152,17 @@ router.post('/webhook/gmail-inbound', async (req, res) => {
       message: error.message,
     });
   }
-});
+}
+
+// ============================================================================
+// WEBHOOK ROUTES (both paths supported for compatibility)
+// ============================================================================
+// Primary: POST /api/webhook/gmail-inbound
+// Alias:   POST /api/n8n/webhook/gmail-inbound
+// ============================================================================
+
+router.post('/webhook/gmail-inbound', handleGmailInbound);
+router.post('/n8n/webhook/gmail-inbound', handleGmailInbound);
 
 // ============================================================================
 // READ: GET /api/internal/mail/inbound
@@ -152,7 +178,7 @@ router.get('/internal/mail/inbound', requireStaffOrAdmin, async (req, res) => {
     const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
     const cursor = req.query.cursor ? parseInt(req.query.cursor as string, 10) : undefined;
 
-    const mails = await storage.listInboundMail({ status, q, limit, cursor });
+    const mails = await dbStorage.listInboundMail({ status, q, limit, cursor });
 
     // Calculate next cursor for pagination
     const nextCursor = mails.length === limit && mails.length > 0
@@ -194,7 +220,7 @@ router.get('/internal/mail/inbound/:id', requireStaffOrAdmin, async (req, res) =
       return res.status(400).json({ ok: false, error: 'Invalid mail ID' });
     }
 
-    const mail = await storage.getInboundMailById(id);
+    const mail = await dbStorage.getInboundMailById(id);
 
     if (!mail) {
       return res.status(404).json({ ok: false, error: 'Mail not found' });
