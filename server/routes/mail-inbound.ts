@@ -1,5 +1,7 @@
 import { Router, Request, Response } from 'express';
-import { storage } from '../storage';
+import { db } from '../db';
+import { mailInbound } from '@shared/schema';
+import { eq, desc, and, sql, ilike, or, lt } from 'drizzle-orm';
 import { logger } from '../logger';
 import { requireAdmin } from '../middleware/admin';
 import { requireStaffOrAdmin } from '../middleware/staff';
@@ -7,7 +9,7 @@ import { requireStaffOrAdmin } from '../middleware/staff';
 const router = Router();
 
 // Startup log (once)
-logger.info('[MAIL-INBOUND] Routes initialized');
+logger.info('[MAIL-INBOUND] Routes initialized (direct db mode)');
 
 // ============================================================================
 // SIZE LIMITS for payload fields (truncate if exceeded)
@@ -112,17 +114,71 @@ async function handleGmailInbound(req: Request, res: Response) {
       },
     };
 
-    // 4. Persist (idempotent upsert)
-    const result = await storage.upsertInboundMail(payload);
+    // 4. Persist (idempotent upsert) - DIRECT DB WRITE
+    let resultId: number;
+    let resultStatus: string;
+    let isNew: boolean;
 
-    logger.info(`[MAIL-INBOUND-WEBHOOK] Processed mail: id=${result.id}, isNew=${result.isNew}, from=${payload.fromEmail}`);
+    // Try insert first, if conflict (message_id exists) then select existing
+    try {
+      const [inserted] = await db
+        .insert(mailInbound)
+        .values({
+          source: payload.source,
+          messageId: payload.messageId,
+          threadId: payload.threadId,
+          mailbox: payload.mailbox,
+          fromEmail: payload.fromEmail,
+          fromName: payload.fromName,
+          toEmails: payload.toEmails,
+          ccEmails: payload.ccEmails,
+          subject: payload.subject,
+          snippet: payload.snippet,
+          bodyText: payload.bodyText,
+          bodyHtml: payload.bodyHtml,
+          receivedAt: payload.receivedAt,
+          labels: payload.labels,
+          status: 'NEW',
+          meta: payload.meta,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .onConflictDoNothing()
+        .returning({ id: mailInbound.id, status: mailInbound.status });
+
+      if (inserted) {
+        resultId = inserted.id;
+        resultStatus = inserted.status;
+        isNew = true;
+      } else {
+        // Conflict - record exists, fetch it
+        const [existing] = await db
+          .select({ id: mailInbound.id, status: mailInbound.status })
+          .from(mailInbound)
+          .where(eq(mailInbound.messageId, payload.messageId))
+          .limit(1);
+        
+        if (existing) {
+          resultId = existing.id;
+          resultStatus = existing.status;
+          isNew = false;
+        } else {
+          throw new Error('Insert failed and no existing record found');
+        }
+      }
+    } catch (dbError: any) {
+      logger.error('[MAIL-INBOUND-WEBHOOK] DB error:', dbError.message);
+      throw dbError;
+    }
+
+    logger.info(`[MAIL-INBOUND-WEBHOOK] Processed mail: id=${resultId}, isNew=${isNew}, from=${payload.fromEmail}`);
 
     // 5. Response
     return res.json({
       ok: true,
-      id: result.id,
-      status: result.status,
-      isNew: result.isNew,
+      id: resultId,
+      status: resultStatus,
+      isNew,
     });
 
   } catch (error: any) {
@@ -154,15 +210,53 @@ router.post('/n8n/webhook/gmail-inbound', handleGmailInbound);
 
 router.get('/internal/mail/inbound', requireStaffOrAdmin, async (req, res) => {
   try {
-    const status = req.query.status as string | undefined;
+    const statusFilter = req.query.status as string | undefined;
     const q = req.query.q as string | undefined;
-    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
+    const mailboxFilter = req.query.mailbox as string | undefined;
+    const limitParam = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
+    const limitCapped = Math.min(limitParam, 100);
     const cursor = req.query.cursor ? parseInt(req.query.cursor as string, 10) : undefined;
 
-    const mails = await storage.listInboundMail({ status, q, limit, cursor });
+    // Build conditions array
+    const conditions: any[] = [];
+    
+    if (statusFilter) {
+      conditions.push(eq(mailInbound.status, statusFilter));
+    }
+    if (mailboxFilter) {
+      conditions.push(eq(mailInbound.mailbox, mailboxFilter));
+    }
+    if (cursor) {
+      conditions.push(lt(mailInbound.id, cursor));
+    }
+    if (q) {
+      const searchTerm = `%${q}%`;
+      conditions.push(or(
+        ilike(mailInbound.subject, searchTerm),
+        ilike(mailInbound.fromEmail, searchTerm),
+        ilike(mailInbound.fromName, searchTerm)
+      ));
+    }
+
+    // Execute query
+    let mails;
+    if (conditions.length > 0) {
+      mails = await db
+        .select()
+        .from(mailInbound)
+        .where(and(...conditions))
+        .orderBy(desc(mailInbound.receivedAt))
+        .limit(limitCapped);
+    } else {
+      mails = await db
+        .select()
+        .from(mailInbound)
+        .orderBy(desc(mailInbound.receivedAt))
+        .limit(limitCapped);
+    }
 
     // Calculate next cursor for pagination
-    const nextCursor = mails.length === limit && mails.length > 0
+    const nextCursor = mails.length === limitCapped && mails.length > 0
       ? mails[mails.length - 1].id
       : null;
 
@@ -171,7 +265,7 @@ router.get('/internal/mail/inbound', requireStaffOrAdmin, async (req, res) => {
       data: mails,
       pagination: {
         count: mails.length,
-        limit,
+        limit: limitCapped,
         nextCursor,
       },
     });
@@ -201,7 +295,12 @@ router.get('/internal/mail/inbound/:id', requireStaffOrAdmin, async (req, res) =
       return res.status(400).json({ ok: false, error: 'Invalid mail ID' });
     }
 
-    const mail = await storage.getInboundMailById(id);
+    // Direct db query
+    const [mail] = await db
+      .select()
+      .from(mailInbound)
+      .where(eq(mailInbound.id, id))
+      .limit(1);
 
     if (!mail) {
       return res.status(404).json({ ok: false, error: 'Mail not found' });
