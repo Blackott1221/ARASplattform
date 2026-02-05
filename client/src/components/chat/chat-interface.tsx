@@ -20,6 +20,7 @@ import arasAiImage from "@assets/ChatGPT Image 9. Apr. 2025_ 21_38_23_1754515368
 import arasLogo from "@/assets/aras_logo_1755067745303.png";
 import { SpaceConversionTips } from "@/components/space/SpaceConversionTips";
 import { SpaceMatrixIntel } from "@/components/space/SpaceMatrixIntel";
+import { SpaceCognitiveFlow } from "@/components/space/SpaceCognitiveFlow";
 
 const ANIMATED_TEXTS = [
   "Outbound Calls",
@@ -1203,6 +1204,9 @@ Antworte NUR mit dem Prompt selbst, ohne Einleitung oder Erklärung.`,
 
             {/* MATRIX COMMAND DECK - ARAS Background Operations */}
             <SpaceMatrixIntel />
+
+            {/* COGNITIVE FLOW - How ARAS Thinks */}
+            <SpaceCognitiveFlow />
           </div>
         ) : (
           <div className="max-w-4xl mx-auto">
