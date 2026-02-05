@@ -253,7 +253,7 @@ export function SpaceMatrixIntel() {
                   onFocus={(e) => (e.currentTarget.style.textDecoration = "underline")}
                   onBlur={(e) => (e.currentTarget.style.textDecoration = "none")}
                 >
-                  Open Campaign Studio →
+                  Kampagnen starten →
                 </a>
               </Link>
 
@@ -272,7 +272,7 @@ export function SpaceMatrixIntel() {
                   onFocus={(e) => (e.currentTarget.style.textDecoration = "underline")}
                   onBlur={(e) => (e.currentTarget.style.textDecoration = "none")}
                 >
-                  Open Power Calls →
+                  Power Calls öffnen →
                 </a>
               </Link>
             </div>

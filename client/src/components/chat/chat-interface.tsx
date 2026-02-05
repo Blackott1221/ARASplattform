@@ -1208,11 +1208,11 @@ Antworte NUR mit dem Prompt selbst, ohne Einleitung oder Erklärung.`,
             {/* CONVERSION TIPS - Ersetzt Input-Feld */}
             <SpaceConversionTips />
 
-            {/* MATRIX COMMAND DECK - ARAS Background Operations */}
-            <SpaceMatrixIntel />
-
             {/* HOW ARAS THINKS - Transparent Glass Operator Deck */}
             <HowArasThinksDeck />
+
+            {/* MATRIX COMMAND DECK - ARAS Background Operations */}
+            <SpaceMatrixIntel />
           </div>
         ) : (
           <div className="max-w-4xl mx-auto">
