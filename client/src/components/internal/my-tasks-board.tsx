@@ -34,10 +34,10 @@ import {
   DropdownMenuCheckboxItem,
 } from '@/components/ui/dropdown-menu';
 import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from '@/components/ui/hover-card';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { createPortal } from 'react-dom';
 
 // ============================================================================
@@ -271,7 +271,7 @@ function TaskCard({ task, currentColumn, onComplete, onReopen, onMove, onClick }
 }
 
 // ============================================================================
-// COLUMN COMPONENT (No Drag & Drop - HoverCard for Info)
+// COLUMN COMPONENT (No Drag & Drop - Popover for Info)
 // ============================================================================
 
 interface ColumnProps {
@@ -319,9 +319,9 @@ function KanbanColumn({ column, tasks, onTaskComplete, onTaskReopen, onTaskMove,
           </span>
         </div>
         
-        {/* Info HoverCard */}
-        <HoverCard openDelay={200} closeDelay={100}>
-          <HoverCardTrigger asChild>
+        {/* Info Popover */}
+        <Popover>
+          <PopoverTrigger asChild>
             <button
               className="p-1 rounded-md transition-colors outline-none"
               style={{ color: 'rgba(255,255,255,0.4)' }}
@@ -330,16 +330,18 @@ function KanbanColumn({ column, tasks, onTaskComplete, onTaskReopen, onTaskMove,
             >
               <Info className="w-3.5 h-3.5" />
             </button>
-          </HoverCardTrigger>
-          <HoverCardContent 
+          </PopoverTrigger>
+          <PopoverContent 
             side="top" 
             align="end"
             sideOffset={8}
             collisionPadding={12}
-            className="w-[280px] p-3 rounded-[14px] border-0"
+            avoidCollisions={true}
+            className="w-[280px] p-3 border-0 z-[100]"
             style={{
               background: 'rgba(0,0,0,0.92)',
               backdropFilter: 'blur(14px)',
+              borderRadius: '14px',
               border: '1px solid rgba(255,106,0,0.22)',
               boxShadow: '0 18px 60px rgba(0,0,0,0.75)',
             }}
@@ -347,8 +349,8 @@ function KanbanColumn({ column, tasks, onTaskComplete, onTaskReopen, onTaskMove,
             <p className="text-[12px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.8)' }}>
               {column.description}
             </p>
-          </HoverCardContent>
-        </HoverCard>
+          </PopoverContent>
+        </Popover>
       </div>
       
       {/* Tasks */}
@@ -1165,59 +1167,148 @@ export function MyTasksBoard({ className = '' }: MyTasksBoardProps) {
               </p>
             </div>
             
-            {/* Info Button with Tooltip */}
-            <HoverCard openDelay={200}>
-              <HoverCardTrigger asChild>
+            {/* ARAS HINWEIS Button with Portal Popover */}
+            <Popover>
+              <PopoverTrigger asChild>
                 <button
-                  className="w-7 h-7 flex items-center justify-center transition-all duration-150"
+                  className="group relative h-[30px] px-3 flex items-center gap-2 overflow-hidden transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
                   style={{
+                    minWidth: '118px',
                     borderRadius: '999px',
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                  }}
+                    background: 'rgba(0,0,0,0.6)',
+                    border: '2px solid transparent',
+                    borderImage: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00) 1',
+                    boxShadow: '0 0 12px rgba(254,145,0,0.45), 0 4px 12px rgba(0,0,0,0.3)',
+                    // @ts-ignore
+                    '--tw-ring-color': 'rgba(254,145,0,0.55)',
+                    '--tw-ring-offset-color': 'transparent',
+                  } as React.CSSProperties}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                    e.currentTarget.style.boxShadow = '0 0 18px rgba(254,145,0,0.65), 0 6px 16px rgba(0,0,0,0.4)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                    e.currentTarget.style.boxShadow = '0 0 12px rgba(254,145,0,0.45), 0 4px 12px rgba(0,0,0,0.3)';
+                  }}
+                  onMouseDown={(e) => {
+                    e.currentTarget.style.transform = 'translateY(1px)';
+                    e.currentTarget.style.boxShadow = '0 0 10px rgba(254,145,0,0.35), 0 2px 8px rgba(0,0,0,0.3)';
+                  }}
+                  onMouseUp={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
                   }}
                 >
-                  <Info className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.5)' }} />
+                  {/* Pulse Dot */}
+                  <span 
+                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                    style={{
+                      background: '#FE9100',
+                      boxShadow: '0 0 8px rgba(254,145,0,0.6)',
+                      animation: 'hinweisPulse 1.5s ease-in-out infinite',
+                    }}
+                  />
+                  {/* Gradient Text */}
+                  <span
+                    className="text-[12px] font-semibold tracking-[0.18em]"
+                    style={{
+                      fontFamily: 'Orbitron, sans-serif',
+                      background: 'linear-gradient(90deg, #e9d7c4 0%, #FE9100 50%, #a34e00 100%)',
+                      backgroundSize: '200% 100%',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
+                      animation: 'hinweisGradient 6s linear infinite',
+                    }}
+                  >
+                    HINWEIS
+                  </span>
+                  {/* Info Icon */}
+                  <Info className="w-3 h-3 flex-shrink-0" style={{ color: 'rgba(255,255,255,0.5)' }} />
+                  {/* Shine Sweep Overlay */}
+                  <span
+                    className="absolute inset-0 pointer-events-none overflow-hidden"
+                    style={{ borderRadius: '999px' }}
+                  >
+                    <span
+                      className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                      style={{
+                        background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%)',
+                        transform: 'skewX(-25deg) translateX(-150%)',
+                        animation: 'hinweisShine 0.8s ease-out forwards',
+                        animationPlayState: 'paused',
+                      }}
+                    />
+                  </span>
+                  {/* CSS Keyframes injected via style tag */}
+                  <style>{`
+                    @keyframes hinweisPulse {
+                      0%, 100% { transform: scale(1); opacity: 1; }
+                      50% { transform: scale(1.35); opacity: 0.6; }
+                    }
+                    @keyframes hinweisGradient {
+                      0% { background-position: 0% 50%; }
+                      50% { background-position: 100% 50%; }
+                      100% { background-position: 0% 50%; }
+                    }
+                    @keyframes hinweisShine {
+                      0% { transform: skewX(-25deg) translateX(-150%); }
+                      100% { transform: skewX(-25deg) translateX(250%); }
+                    }
+                    .group:hover span[style*="hinweisShine"] {
+                      animation-play-state: running !important;
+                    }
+                    @media (prefers-reduced-motion: reduce) {
+                      @keyframes hinweisPulse { 0%, 100% { transform: scale(1); opacity: 1; } }
+                      @keyframes hinweisGradient { 0%, 100% { background-position: 0% 50%; } }
+                      @keyframes hinweisShine { 0%, 100% { transform: skewX(-25deg) translateX(-150%); } }
+                    }
+                  `}</style>
                 </button>
-              </HoverCardTrigger>
-              <HoverCardContent
+              </PopoverTrigger>
+              <PopoverContent
                 side="bottom"
                 align="start"
-                sideOffset={8}
-                className="w-[360px] p-4 border-0 z-[9999]"
+                sideOffset={10}
+                collisionPadding={12}
+                avoidCollisions={true}
+                className="w-[380px] max-w-[calc(100vw-24px)] p-0 border-0 z-[100]"
                 style={{
                   background: 'rgba(0,0,0,0.92)',
                   backdropFilter: 'blur(16px)',
                   WebkitBackdropFilter: 'blur(16px)',
-                  border: '1px solid rgba(255,106,0,0.18)',
-                  borderRadius: '16px',
-                  boxShadow: '0 18px 60px rgba(0,0,0,0.72)',
+                  border: '1px solid rgba(254,145,0,0.22)',
+                  borderRadius: '18px',
+                  boxShadow: '0 22px 80px rgba(0,0,0,0.72), inset 0 1px 0 rgba(255,255,255,0.05)',
                 }}
               >
-                <h4 
-                  className="text-[11px] mb-2"
-                  style={{ 
-                    fontFamily: 'Orbitron, sans-serif', 
-                    letterSpacing: '0.18em',
-                    color: '#e9d7c4', 
-                    opacity: 0.85 
-                  }}
-                >
-                  KURZANLEITUNG
-                </h4>
-                <p 
-                  className="text-[12.5px] leading-relaxed" 
-                  style={{ color: 'rgba(255,255,255,0.78)' }}
-                >
-                  Öffnen Sie Aufgaben per Klick. Den Status ändern Sie über das Menü (⋯) oben rechts. Neue Aufgaben erstellen Sie mit dem + Button.
-                </p>
-              </HoverCardContent>
-            </HoverCard>
+                <div className="p-[14px] pb-[12px]">
+                  {/* Header */}
+                  <h4 
+                    className="text-[11px] mb-2.5"
+                    style={{ 
+                      fontFamily: 'Orbitron, sans-serif', 
+                      letterSpacing: '0.22em',
+                      background: 'linear-gradient(90deg, #e9d7c4 0%, #FE9100 50%, #a34e00 100%)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
+                      opacity: 0.90,
+                    }}
+                  >
+                    KURZANLEITUNG
+                  </h4>
+                  {/* Body */}
+                  <p 
+                    className="text-[13px] leading-[1.55]" 
+                    style={{ 
+                      fontFamily: 'Inter, sans-serif',
+                      color: 'rgba(255,255,255,0.80)',
+                    }}
+                  >
+                    Öffnen Sie Aufgaben per Klick. Den Status ändern Sie über das Menü (⋯) oben rechts. Neue Aufgaben erstellen Sie mit dem + Button.
+                  </p>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
           
           <div className="flex items-center gap-3">
