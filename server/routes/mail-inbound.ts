@@ -1,30 +1,13 @@
 import { Router, Request, Response } from 'express';
-import { DatabaseStorage } from '../storage';
+import { storage } from '../storage';
 import { logger } from '../logger';
 import { requireAdmin } from '../middleware/admin';
 import { requireStaffOrAdmin } from '../middleware/staff';
 
 const router = Router();
 
-// ============================================================================
-// EXPLICIT STORAGE INSTANCE - Fix for "upsertInboundMail is not a function"
-// ============================================================================
-// Using explicit DatabaseStorage instance instead of shared `storage` export
-// to ensure methods are available at runtime in production builds
-const dbStorage = new DatabaseStorage();
-
-// One-time debug log on first request (runtime verification)
-let hasLoggedDebug = false;
-function logStorageDebug() {
-  if (hasLoggedDebug) return;
-  hasLoggedDebug = true;
-  try {
-    const protoMethods = Object.getOwnPropertyNames(Object.getPrototypeOf(dbStorage)).slice(0, 40);
-    logger.info(`[MAIL-INBOUND] Storage debug: constructor=${dbStorage.constructor.name}, upsertInboundMail=${typeof (dbStorage as any).upsertInboundMail}, methods=${protoMethods.join(',')}`);
-  } catch (e) {
-    logger.warn('[MAIL-INBOUND] Storage debug failed');
-  }
-}
+// Startup log (once)
+logger.info('[MAIL-INBOUND] Routes initialized');
 
 // ============================================================================
 // SIZE LIMITS for payload fields (truncate if exceeded)
@@ -47,8 +30,6 @@ function truncate(str: string | undefined | null, limit: number): string {
 // Used by both /webhook/gmail-inbound and /n8n/webhook/gmail-inbound
 async function handleGmailInbound(req: Request, res: Response) {
   try {
-    // Debug log (once per process)
-    logStorageDebug();
 
     // 1. Secret check
     const webhookSecret = process.env.N8N_WEBHOOK_SECRET;
@@ -131,8 +112,8 @@ async function handleGmailInbound(req: Request, res: Response) {
       },
     };
 
-    // 4. Persist (idempotent upsert) - using explicit dbStorage instance
-    const result = await dbStorage.upsertInboundMail(payload);
+    // 4. Persist (idempotent upsert)
+    const result = await storage.upsertInboundMail(payload);
 
     logger.info(`[MAIL-INBOUND-WEBHOOK] Processed mail: id=${result.id}, isNew=${result.isNew}, from=${payload.fromEmail}`);
 
@@ -178,7 +159,7 @@ router.get('/internal/mail/inbound', requireStaffOrAdmin, async (req, res) => {
     const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
     const cursor = req.query.cursor ? parseInt(req.query.cursor as string, 10) : undefined;
 
-    const mails = await dbStorage.listInboundMail({ status, q, limit, cursor });
+    const mails = await storage.listInboundMail({ status, q, limit, cursor });
 
     // Calculate next cursor for pagination
     const nextCursor = mails.length === limit && mails.length > 0
@@ -220,7 +201,7 @@ router.get('/internal/mail/inbound/:id', requireStaffOrAdmin, async (req, res) =
       return res.status(400).json({ ok: false, error: 'Invalid mail ID' });
     }
 
-    const mail = await dbStorage.getInboundMailById(id);
+    const mail = await storage.getInboundMailById(id);
 
     if (!mail) {
       return res.status(404).json({ ok: false, error: 'Mail not found' });

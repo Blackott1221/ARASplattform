@@ -188,6 +188,32 @@ export interface IStorage {
   snoozeTask(userId: string, taskId: string, snoozedUntil: Date | null): Promise<UserTask | null>;
   createManualTask(userId: string, title: string, dueAt?: Date, priority?: 'low' | 'medium' | 'high'): Promise<UserTask>;
   getTaskByFingerprint(userId: string, fingerprint: string): Promise<UserTask | null>;
+  
+  // Mail Inbound (Gmail Intake)
+  upsertInboundMail(payload: {
+    source?: string;
+    messageId: string;
+    threadId?: string | null;
+    mailbox?: string | null;
+    fromEmail: string;
+    fromName?: string | null;
+    toEmails?: string[];
+    ccEmails?: string[];
+    subject?: string;
+    snippet?: string;
+    bodyText?: string;
+    bodyHtml?: string;
+    receivedAt: Date;
+    labels?: string[];
+    meta?: Record<string, any>;
+  }): Promise<{ id: number; status: string; isNew: boolean }>;
+  listInboundMail(options?: {
+    status?: string;
+    q?: string;
+    limit?: number;
+    cursor?: number;
+  }): Promise<MailInbound[]>;
+  getInboundMailById(id: number): Promise<MailInbound | null>;
 }
 
 export class DatabaseStorage implements IStorage {
