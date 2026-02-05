@@ -19,6 +19,7 @@ const safeJson = async (res: Response): Promise<any> => {
 import arasAiImage from "@assets/ChatGPT Image 9. Apr. 2025_ 21_38_23_1754515368187.png";
 import arasLogo from "@/assets/aras_logo_1755067745303.png";
 import { SpaceConversionTips } from "@/components/space/SpaceConversionTips";
+import { SpaceSilentIntelligence } from "@/components/space/SpaceSilentIntelligence";
 
 const ANIMATED_TEXTS = [
   "Outbound Calls",
@@ -1199,6 +1200,9 @@ Antworte NUR mit dem Prompt selbst, ohne Einleitung oder Erklärung.`,
 
             {/* CONVERSION TIPS - Ersetzt Input-Feld */}
             <SpaceConversionTips />
+
+            {/* SILENT INTELLIGENCE - System Status */}
+            <SpaceSilentIntelligence />
           </div>
         ) : (
           <div className="max-w-4xl mx-auto">
