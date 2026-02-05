@@ -26,6 +26,17 @@ function truncate(str: string | undefined | null, limit: number): string {
   return str.length > limit ? str.slice(0, limit) : str;
 }
 
+// Helper: Extract email from various formats like "Name <email@example.com>" or plain email
+function extractEmail(input: string | undefined | null): string {
+  if (!input) return '';
+  const match = String(input).match(/<([^>]+)>/);
+  if (match) return match[1].trim();
+  return String(input).replace(/[<>]/g, '').trim();
+}
+
+// Debug mode toggle
+const DEBUG_RESPONSE = process.env.DEBUG_MAIL_INBOUND_RESPONSE === 'true';
+
 // ============================================================================
 // SHARED HANDLER: Gmail Inbound Webhook
 // ============================================================================
@@ -47,13 +58,71 @@ async function handleGmailInbound(req: Request, res: Response) {
       return res.status(401).json({ ok: false, error: 'Unauthorized' });
     }
 
-    // 2. Parse payload (tolerant extraction)
-    const body = req.body || {};
+    // 2. Parse payload with ROBUST MAPPING (all variants)
+    const raw = req.body || {};
+    const rawKeys = Object.keys(raw);
     
-    // Extract required fields
-    const messageId = body.messageId || body.message_id || body.id;
-    const fromEmail = body.from?.email || body.fromEmail || body.from_email;
-    const receivedAtRaw = body.receivedAt || body.received_at || body.date || body.internalDate;
+    // --- ROBUST FIELD EXTRACTION ---
+    // messageId: multiple fallbacks
+    const messageId = raw.messageId || raw.message_id || raw.id || '';
+    
+    // from.email: multiple fallbacks with <email> parsing
+    const fromEmailRaw = raw.from?.email 
+      || raw.fromEmail 
+      || raw.from_email 
+      || raw.From 
+      || raw.headers?.from 
+      || raw.headers?.From 
+      || (typeof raw.from === 'string' ? raw.from : '');
+    const fromEmail = extractEmail(fromEmailRaw);
+    
+    // from.name: multiple fallbacks
+    const fromName = raw.from?.name || raw.fromName || raw.from_name || null;
+    
+    // subject: multiple fallbacks (camelCase, PascalCase, headers)
+    const subjectRaw = raw.subject 
+      || raw.Subject 
+      || raw.headers?.subject 
+      || raw.headers?.Subject 
+      || '';
+    
+    // snippet: multiple fallbacks
+    const snippetRaw = raw.snippet || raw.Snippet || '';
+    
+    // bodyText: multiple fallbacks (n8n uses textPlain, also try text, body)
+    const bodyTextRaw = raw.bodyText 
+      || raw.textPlain 
+      || raw.text 
+      || raw.body_text 
+      || raw.body 
+      || raw.Body 
+      || '';
+    
+    // bodyHtml: multiple fallbacks (n8n uses textHtml)
+    const bodyHtmlRaw = raw.bodyHtml 
+      || raw.textHtml 
+      || raw.html 
+      || raw.body_html 
+      || raw.Html 
+      || '';
+    
+    // receivedAt: multiple fallbacks
+    const receivedAtRaw = raw.receivedAt || raw.received_at || raw.date || raw.internalDate;
+
+    // --- DEBUG LOGGING ---
+    const snipLen = (snippetRaw || '').length;
+    const txtLen = (bodyTextRaw || '').length;
+    const htmlLen = (bodyHtmlRaw || '').length;
+    
+    logger.info('[MAIL-INBOUND-WEBHOOK] Incoming payload debug', {
+      messageId: messageId || '(missing)',
+      subject: (subjectRaw || '').slice(0, 50),
+      fromEmail: fromEmail || '(missing)',
+      snipLen,
+      txtLen,
+      htmlLen,
+      rawKeys,
+    });
 
     // Validate required fields
     if (!messageId) {
@@ -61,7 +130,7 @@ async function handleGmailInbound(req: Request, res: Response) {
       return res.status(400).json({ ok: false, error: 'Missing required field: messageId' });
     }
     if (!fromEmail) {
-      logger.warn('[MAIL-INBOUND-WEBHOOK] Missing required field: from.email');
+      logger.warn('[MAIL-INBOUND-WEBHOOK] Missing required field: from.email', { rawKeys });
       return res.status(400).json({ ok: false, error: 'Missing required field: from.email' });
     }
 
@@ -86,33 +155,36 @@ async function handleGmailInbound(req: Request, res: Response) {
       receivedAt = new Date();
     }
 
-    // 3. Build payload with truncation
+    // 3. Build payload with truncation (using robustly mapped values)
     const payload = {
-      source: body.source || 'gmail',
+      source: raw.source || 'gmail',
       messageId: String(messageId),
-      threadId: body.threadId || body.thread_id || null,
-      mailbox: body.mailbox || body.to?.[0]?.email || null,
+      threadId: raw.threadId || raw.thread_id || null,
+      mailbox: raw.mailbox || raw.to?.[0]?.email || null,
       fromEmail: String(fromEmail),
-      fromName: body.from?.name || body.fromName || body.from_name || null,
-      toEmails: Array.isArray(body.to) 
-        ? body.to.map((t: any) => t.email || t).filter(Boolean)
-        : (body.toEmails || body.to_emails || []),
-      ccEmails: Array.isArray(body.cc)
-        ? body.cc.map((c: any) => c.email || c).filter(Boolean)
-        : (body.ccEmails || body.cc_emails || []),
-      subject: truncate(body.subject, LIMITS.subject),
-      snippet: truncate(body.snippet, LIMITS.snippet),
-      bodyText: truncate(body.text || body.bodyText || body.body_text || body.body, LIMITS.bodyText),
-      bodyHtml: truncate(body.html || body.bodyHtml || body.body_html, LIMITS.bodyHtml),
+      fromName,
+      toEmails: Array.isArray(raw.to) 
+        ? raw.to.map((t: any) => t.email || t).filter(Boolean)
+        : (raw.toEmails || raw.to_emails || []),
+      ccEmails: Array.isArray(raw.cc)
+        ? raw.cc.map((c: any) => c.email || c).filter(Boolean)
+        : (raw.ccEmails || raw.cc_emails || []),
+      subject: truncate(subjectRaw, LIMITS.subject),
+      snippet: truncate(snippetRaw, LIMITS.snippet),
+      bodyText: truncate(bodyTextRaw, LIMITS.bodyText),
+      bodyHtml: truncate(bodyHtmlRaw, LIMITS.bodyHtml),
       receivedAt,
-      labels: Array.isArray(body.labels) ? body.labels : (body.labelIds || []),
+      labels: Array.isArray(raw.labels) ? raw.labels : (raw.labelIds || []),
       meta: {
-        rawPayloadHash: body.rawPayloadHash,
-        attachmentsCount: body.attachments?.length || 0,
-        hasAttachments: (body.attachments?.length || 0) > 0,
+        rawPayloadHash: raw.rawPayloadHash,
+        attachmentsCount: raw.attachments?.length || 0,
+        hasAttachments: (raw.attachments?.length || 0) > 0,
         webhookReceivedAt: new Date().toISOString(),
       },
     };
+    
+    // Store lengths for optional debug response
+    const debugInfo = { snipLen, txtLen, htmlLen };
 
     // 4. Persist (idempotent upsert) - DIRECT DB WRITE
     let resultId: number;
@@ -171,15 +243,21 @@ async function handleGmailInbound(req: Request, res: Response) {
       throw dbError;
     }
 
-    logger.info(`[MAIL-INBOUND-WEBHOOK] Processed mail: id=${resultId}, isNew=${isNew}, from=${payload.fromEmail}`);
+    logger.info(`[MAIL-INBOUND-WEBHOOK] Processed mail: id=${resultId}, isNew=${isNew}, from=${payload.fromEmail}, snipLen=${debugInfo.snipLen}, txtLen=${debugInfo.txtLen}, htmlLen=${debugInfo.htmlLen}`);
 
-    // 5. Response
-    return res.json({
+    // 5. Response (with optional debug info)
+    const response: Record<string, any> = {
       ok: true,
       id: resultId,
       status: resultStatus,
       isNew,
-    });
+    };
+    
+    if (DEBUG_RESPONSE) {
+      response.debug = debugInfo;
+    }
+    
+    return res.json(response);
 
   } catch (error: any) {
     logger.error('[MAIL-INBOUND-WEBHOOK] Error processing webhook:', error.message);
