@@ -22,7 +22,7 @@ import {
   Info, ChevronLeft, ChevronRight, Star, X, Pencil,
   Trash2, Save, Plus, RefreshCw, Loader2, AlertCircle
 } from 'lucide-react';
-import { format, addDays, subDays, isToday, isSameDay, startOfDay } from 'date-fns';
+import { format, addDays, subDays, isToday, isSameDay, startOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addWeeks, subWeeks, addMonths, subMonths, isSameMonth, getHours, getMinutes, differenceInMinutes, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/toast-provider';
@@ -46,7 +46,8 @@ import {
 // TYPES
 // ============================================================================
 
-type EventType = 'team-meeting' | 'verwaltungsrat' | 'aufsichtsrat' | 'feiertag' | 'intern' | 'INTERN' | 'TEAM_MEETING' | 'VERWALTUNGSRAT' | 'AUFSICHTSRAT' | 'FEIERTAG' | 'DEADLINE' | 'EXTERNAL';
+type EventType = 'team-meeting' | 'verwaltungsrat' | 'aufsichtsrat' | 'feiertag' | 'intern' | 'INTERN' | 'TEAM_MEETING' | 'VERWALTUNGSRAT' | 'AUFSICHTSRAT' | 'FEIERTAG' | 'DEADLINE' | 'EXTERNAL' | 'BOARD' | 'FINANCE' | 'PRODUCT' | 'SALES' | 'OPS' | 'HR' | 'LEGAL' | 'HOLIDAY' | 'BIRTHDAY';
+type CalendarView = 'day' | 'week' | 'month';
 type DrawerMode = 'view' | 'edit' | 'create';
 type SaveState = 'idle' | 'unsaved' | 'saving' | 'saved' | 'error';
 type ContextTag = 'strategie' | 'organisation' | 'finance' | 'board' | 'intern' | 'legal' | 'hr' | 'tech';
@@ -135,19 +136,29 @@ const CONTEXT_TAG_LABELS: Record<ContextTag, string> = {
 // EVENT TYPE COLORS
 // ============================================================================
 
+// ARAS-only color palette (gold-light / orange / gold-dark + whites)
 const EVENT_COLORS: Record<string, string> = {
   'team-meeting': '#ff6a00',
   'verwaltungsrat': '#e9d7c4',
   'aufsichtsrat': '#f5f5f7',
   'feiertag': '#6b7280',
   'intern': '#9ca3af',
-  'INTERN': '#3B82F6',
-  'TEAM_MEETING': '#22C55E',
-  'VERWALTUNGSRAT': '#F59E0B',
-  'AUFSICHTSRAT': '#EF4444',
+  'INTERN': '#FE9100',
+  'TEAM_MEETING': '#ff6a00',
+  'VERWALTUNGSRAT': '#e9d7c4',
+  'AUFSICHTSRAT': '#f5f5f7',
   'FEIERTAG': '#6B7280',
-  'DEADLINE': '#8B5CF6',
-  'EXTERNAL': '#06B6D4',
+  'DEADLINE': '#FE9100',
+  'EXTERNAL': '#e9d7c4',
+  'BOARD': '#e9d7c4',
+  'FINANCE': '#a34e00',
+  'PRODUCT': '#ff6a00',
+  'SALES': '#FE9100',
+  'OPS': '#e9d7c4',
+  'HR': '#c4a882',
+  'LEGAL': '#a34e00',
+  'HOLIDAY': '#6B7280',
+  'BIRTHDAY': '#FE9100',
 };
 
 const EVENT_LABELS: Record<string, string> = {
@@ -163,7 +174,25 @@ const EVENT_LABELS: Record<string, string> = {
   'FEIERTAG': 'Feiertag',
   'DEADLINE': 'Deadline',
   'EXTERNAL': 'Extern',
+  'BOARD': 'Board',
+  'FINANCE': 'Finance',
+  'PRODUCT': 'Product',
+  'SALES': 'Sales',
+  'OPS': 'Operations',
+  'HR': 'HR',
+  'LEGAL': 'Legal',
+  'HOLIDAY': 'Feiertag',
+  'BIRTHDAY': 'Geburtstag',
 };
+
+// Get event accent classes for stripe gradient
+function getEventAccent(eventType: string): { stripe: string; badge: string } {
+  const color = EVENT_COLORS[eventType] || '#FE9100';
+  return {
+    stripe: `linear-gradient(180deg, ${color}, ${color}88)`,
+    badge: color,
+  };
+}
 
 // ============================================================================
 // MOCK EVENTS - 50+ Realistic Events (Feb 2026 - Aug 2026)
@@ -576,6 +605,290 @@ function generateMockEvents(): CalendarEvent[] {
     internalNotes: 'Externer Auditor. Alle Systeme müssen zugänglich sein.',
     isReadOnly: true,
   });
+
+  // ========== I) ADDITIONAL EVENTS TO REACH 90+ ==========
+  
+  // Daily Standups (Mon-Fri, 09:00-09:15) - for 2 months
+  for (let month = 1; month <= 2; month++) {
+    for (let day = 1; day <= 28; day++) {
+      const d = new Date(2026, month, day);
+      if (d.getDay() !== 0 && d.getDay() !== 6) { // Skip weekends
+        events.push({
+          id: `standup-${month}-${day}`,
+          title: 'Daily Standup',
+          description: 'Tägliches 15-Minuten Standup. Status-Updates, Blocker, und Tagesplanung.',
+          date: d,
+          startTime: '09:00',
+          endTime: '09:15',
+          type: 'TEAM_MEETING',
+          contextTags: ['organisation', 'tech'],
+          internalNotes: 'Remote via Slack Huddle.',
+        });
+      }
+    }
+  }
+  
+  // Weekly Sales Pipeline (Tuesdays 14:00-15:00)
+  for (let month = 1; month <= 7; month++) {
+    for (let week = 0; week < 5; week++) {
+      const tuesday = new Date(2026, month, 1);
+      tuesday.setDate(tuesday.getDate() + ((2 - tuesday.getDay() + 7) % 7) + (week * 7));
+      if (tuesday.getMonth() === month) {
+        events.push({
+          id: `sales-pipeline-${month}-${week}`,
+          title: 'Sales Pipeline Review',
+          description: 'Wöchentliche Pipeline Review. Deal-Status, Forecasts, und Win/Loss Analyse.',
+          date: tuesday,
+          startTime: '14:00',
+          endTime: '15:00',
+          type: 'INTERN',
+          contextTags: ['organisation'],
+          internalNotes: 'Sales Team + CEO. CRM Dashboard vorbereiten.',
+        });
+      }
+    }
+  }
+  
+  // Product Sync (Thursdays 16:00-17:00)
+  for (let month = 1; month <= 7; month++) {
+    for (let week = 0; week < 5; week++) {
+      const thursday = new Date(2026, month, 1);
+      thursday.setDate(thursday.getDate() + ((4 - thursday.getDay() + 7) % 7) + (week * 7));
+      if (thursday.getMonth() === month) {
+        events.push({
+          id: `product-sync-${month}-${week}`,
+          title: 'Product Sync',
+          description: 'Wöchentlicher Product Sync. Roadmap Review, Feature Priorisierung, und Stakeholder Updates.',
+          date: thursday,
+          startTime: '16:00',
+          endTime: '17:00',
+          type: 'INTERN',
+          contextTags: ['tech', 'strategie'],
+          internalNotes: 'Product + Engineering + Design.',
+        });
+      }
+    }
+  }
+  
+  // Investor Calls
+  events.push({
+    id: 'investor-call-1',
+    title: 'Investor Call: Series A Update',
+    description: 'Quartals-Update für Series A Investoren. KPIs, Runway, und strategische Entwicklung.',
+    date: new Date(2026, 2, 25),
+    startTime: '17:00',
+    endTime: '18:00',
+    type: 'EXTERNAL',
+    contextTags: ['finance', 'board'],
+    internalNotes: 'Vertraulich. Deck vorab versenden.',
+  });
+  
+  events.push({
+    id: 'investor-call-2',
+    title: 'Investor Call: Board Observer',
+    description: 'Monatlicher Austausch mit Board Observer zu operativen Themen.',
+    date: new Date(2026, 3, 8),
+    startTime: '11:00',
+    endTime: '11:45',
+    type: 'EXTERNAL',
+    contextTags: ['board'],
+    internalNotes: 'Remote. Agenda vorab abstimmen.',
+  });
+  
+  // Client Portal Review
+  events.push({
+    id: 'client-portal-review',
+    title: 'Client Portal Review (Leadely)',
+    description: 'Review der Leadely Portal Integration. UX Feedback, Bug Triage, und Feature Requests.',
+    date: new Date(2026, 2, 18),
+    startTime: '10:00',
+    endTime: '11:30',
+    type: 'EXTERNAL',
+    contextTags: ['tech', 'strategie'],
+    internalNotes: 'Product + Leadely PM.',
+  });
+  
+  // Cost Reviews
+  events.push({
+    id: 'twilio-cost-review',
+    title: 'Twilio/ElevenLabs Cost Review',
+    description: 'Monatliche Kostenanalyse der Voice AI Infrastruktur. Usage Optimization und Budget.',
+    date: new Date(2026, 2, 5),
+    startTime: '14:30',
+    endTime: '15:15',
+    type: 'INTERN',
+    contextTags: ['finance', 'tech'],
+    internalNotes: 'Finance + Engineering. Usage Reports vorbereiten.',
+  });
+  
+  events.push({
+    id: 'retell-audit',
+    title: 'Retell Prompt Audit',
+    description: 'Quartalsmäßige Überprüfung der Retell Prompts. Performance-Metriken und Optimierung.',
+    date: new Date(2026, 3, 22),
+    startTime: '13:00',
+    endTime: '14:30',
+    type: 'INTERN',
+    contextTags: ['tech'],
+    internalNotes: 'AI Team. A/B Test Ergebnisse mitbringen.',
+  });
+  
+  // Demo Days
+  events.push({
+    id: 'aras-demo-day',
+    title: 'ARAS AI Demo Day',
+    description: 'Interner Demo Day für alle neuen Features. Präsentation für Stakeholder und Team.',
+    date: new Date(2026, 4, 28),
+    startTime: '15:00',
+    endTime: '17:00',
+    type: 'TEAM_MEETING',
+    contextTags: ['tech', 'strategie'],
+    internalNotes: 'Alle Abteilungen. Demo Environment vorbereiten.',
+  });
+  
+  // Team Events
+  events.push({
+    id: 'team-offsite-planning',
+    title: 'Team Offsite Planning',
+    description: 'Planung des Q3 Team Offsites. Location, Agenda, und Budget.',
+    date: new Date(2026, 4, 6),
+    startTime: '11:00',
+    endTime: '12:00',
+    type: 'INTERN',
+    contextTags: ['hr', 'organisation'],
+    internalNotes: 'HR + Office Management.',
+  });
+  
+  events.push({
+    id: 'team-offsite',
+    title: 'Team Offsite Q3',
+    description: 'Zweitägiges Team Offsite. Strategy, Teambuilding, und Workshops.',
+    date: new Date(2026, 6, 9),
+    startTime: '09:00',
+    endTime: '18:00',
+    type: 'TEAM_MEETING',
+    contextTags: ['organisation', 'strategie'],
+    internalNotes: 'Ganzes Team. Location: TBD.',
+  });
+  
+  // Infrastructure
+  events.push({
+    id: 'db-maintenance-1',
+    title: 'Database Maintenance Window',
+    description: 'Geplante Datenbankwartung. Index Rebuilds und Performance Tuning.',
+    date: new Date(2026, 3, 12),
+    startTime: '22:00',
+    endTime: '23:30',
+    type: 'INTERN',
+    contextTags: ['tech'],
+    internalNotes: 'DevOps. Downtime: ~30 Min erwartet.',
+    isReadOnly: true,
+  });
+  
+  events.push({
+    id: 'infra-review',
+    title: 'Infrastructure Cost Review',
+    description: 'Monatliche Überprüfung der Cloud-Kosten. AWS, Vercel, und Third-Party Services.',
+    date: new Date(2026, 2, 28),
+    startTime: '10:30',
+    endTime: '11:15',
+    type: 'INTERN',
+    contextTags: ['tech', 'finance'],
+    internalNotes: 'DevOps + Finance.',
+  });
+  
+  // Additional Birthdays
+  const moreBirthdays = [
+    { date: new Date(2026, 1, 28), name: 'Sophia Lehmann', role: 'UX Designer' },
+    { date: new Date(2026, 3, 30), name: 'Felix Braun', role: 'Backend Dev' },
+    { date: new Date(2026, 5, 25), name: 'Laura Hoffmann', role: 'Account Manager' },
+  ];
+  
+  moreBirthdays.forEach((b, i) => {
+    events.push({
+      id: `birthday-extra-${i}`,
+      title: `🎂 Geburtstag: ${b.name}`,
+      description: `Heute feiert ${b.name} (${b.role}) Geburtstag. Herzlichen Glückwunsch!`,
+      date: b.date,
+      startTime: '09:00',
+      endTime: '09:15',
+      type: 'INTERN',
+      contextTags: ['hr', 'intern'],
+      internalNotes: 'Erinnerung für das Team.',
+    });
+  });
+  
+  // More Holidays
+  const moreHolidays = [
+    { date: new Date(2026, 0, 1), title: 'Neujahr' },
+    { date: new Date(2026, 0, 6), title: 'Heilige Drei Könige' },
+    { date: new Date(2026, 9, 3), title: 'Tag der Deutschen Einheit' },
+    { date: new Date(2026, 11, 25), title: 'Weihnachten' },
+    { date: new Date(2026, 11, 26), title: '2. Weihnachtstag' },
+  ];
+  
+  moreHolidays.forEach((h, i) => {
+    events.push({
+      id: `holiday-extra-${i}`,
+      title: h.title,
+      description: 'Gesetzlicher Feiertag. Büro geschlossen.',
+      date: h.date,
+      type: 'FEIERTAG',
+      isReadOnly: true,
+      contextTags: ['organisation'],
+    });
+  });
+  
+  // Content & Marketing
+  events.push({
+    id: 'content-sprint',
+    title: 'Content Sprint Kickoff',
+    description: 'Start des Q2 Content Sprints. Blog Posts, Case Studies, und Social Media Plan.',
+    date: new Date(2026, 3, 1),
+    startTime: '10:00',
+    endTime: '11:30',
+    type: 'INTERN',
+    contextTags: ['organisation'],
+    internalNotes: 'Marketing + Content Team.',
+  });
+  
+  events.push({
+    id: 'website-relaunch',
+    title: 'Website Relaunch Review',
+    description: 'Final Review vor dem Website Relaunch. Design, Copy, und technische Checks.',
+    date: new Date(2026, 4, 15),
+    startTime: '14:00',
+    endTime: '16:00',
+    type: 'INTERN',
+    contextTags: ['tech', 'organisation'],
+    internalNotes: 'Marketing + Design + Dev.',
+  });
+  
+  // Support & Incidents
+  events.push({
+    id: 'incident-review',
+    title: 'Incident Review: March',
+    description: 'Monatliche Review aller Support-Incidents. Root Cause Analysis und Action Items.',
+    date: new Date(2026, 3, 7),
+    startTime: '11:00',
+    endTime: '12:00',
+    type: 'INTERN',
+    contextTags: ['tech', 'organisation'],
+    internalNotes: 'Support + Engineering.',
+  });
+  
+  // Onboarding
+  events.push({
+    id: 'onboarding-new-hire',
+    title: 'Onboarding: New Engineer',
+    description: 'Onboarding Session für neuen Engineering Hire. Tech Stack, Processes, und Team Intro.',
+    date: new Date(2026, 3, 14),
+    startTime: '09:30',
+    endTime: '12:00',
+    type: 'INTERN',
+    contextTags: ['hr', 'tech'],
+    internalNotes: 'HR + Engineering Lead.',
+  });
   
   return events;
 }
@@ -639,6 +952,544 @@ function DayPill({ date, isSelected, hasEvents, onClick }: DayPillProps) {
         />
       )}
     </button>
+  );
+}
+
+// ============================================================================
+// VIEW SWITCHER COMPONENT (ARAS Premium Segmented Control)
+// ============================================================================
+
+interface ViewSwitcherProps {
+  currentView: CalendarView;
+  onViewChange: (view: CalendarView) => void;
+}
+
+function ViewSwitcher({ currentView, onViewChange }: ViewSwitcherProps) {
+  const views: { id: CalendarView; label: string }[] = [
+    { id: 'day', label: 'TAG' },
+    { id: 'week', label: 'WOCHE' },
+    { id: 'month', label: 'MONAT' },
+  ];
+  
+  return (
+    <div 
+      className="relative flex items-center"
+      style={{
+        height: '36px',
+        borderRadius: '999px',
+        background: 'rgba(255,255,255,0.03)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        border: '1px solid rgba(233,215,196,0.12)',
+        boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.04)',
+        padding: '3px',
+      }}
+    >
+      {views.map((view) => {
+        const isActive = currentView === view.id;
+        return (
+          <button
+            key={view.id}
+            onClick={() => onViewChange(view.id)}
+            className="relative z-10 flex items-center justify-center transition-all duration-150"
+            style={{
+              height: '30px',
+              padding: '0 14px',
+              borderRadius: '999px',
+              background: isActive 
+                ? 'linear-gradient(180deg, rgba(254,145,0,0.18), rgba(255,255,255,0.02))' 
+                : 'transparent',
+              border: isActive 
+                ? '1px solid rgba(254,145,0,0.28)' 
+                : '1px solid transparent',
+              boxShadow: isActive 
+                ? '0 0 16px rgba(254,145,0,0.22)' 
+                : 'none',
+              fontFamily: 'Orbitron, sans-serif',
+              fontSize: '11.5px',
+              fontWeight: 700,
+              letterSpacing: '0.18em',
+              color: isActive ? '#FE9100' : 'rgba(233,215,196,0.72)',
+            }}
+            onMouseEnter={(e) => {
+              if (!isActive) {
+                e.currentTarget.style.color = 'rgba(233,215,196,0.9)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isActive) {
+                e.currentTarget.style.color = 'rgba(233,215,196,0.72)';
+              }
+            }}
+          >
+            {view.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ============================================================================
+// WEEK VIEW COMPONENT (Time Grid + Side Agenda)
+// ============================================================================
+
+interface WeekViewProps {
+  selectedDate: Date;
+  events: CalendarEvent[];
+  onEventClick: (event: CalendarEvent) => void;
+  onDayClick: (date: Date) => void;
+}
+
+function WeekView({ selectedDate, events, onEventClick, onDayClick }: WeekViewProps) {
+  const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 }); // Monday
+  const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
+  const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
+  
+  // Time slots from 07:00 to 20:00
+  const timeSlots = Array.from({ length: 14 }, (_, i) => i + 7);
+  
+  // Get events for the week
+  const weekEvents = useMemo(() => {
+    return events.filter(e => {
+      const eventDate = startOfDay(e.date);
+      return eventDate >= weekStart && eventDate <= weekEnd;
+    });
+  }, [events, weekStart, weekEnd]);
+  
+  // Group events by day
+  const eventsByDay = useMemo(() => {
+    const grouped: Record<string, CalendarEvent[]> = {};
+    weekDays.forEach(day => {
+      const key = format(day, 'yyyy-MM-dd');
+      grouped[key] = weekEvents
+        .filter(e => isSameDay(e.date, day))
+        .sort((a, b) => (a.startTime || '00:00').localeCompare(b.startTime || '00:00'));
+    });
+    return grouped;
+  }, [weekEvents, weekDays]);
+  
+  // Calculate event position in grid
+  const getEventPosition = (event: CalendarEvent) => {
+    if (!event.startTime) return { top: 0, height: 30 };
+    const [startHour, startMin] = event.startTime.split(':').map(Number);
+    const [endHour, endMin] = (event.endTime || event.startTime).split(':').map(Number);
+    
+    const startOffset = (startHour - 7) * 60 + startMin;
+    const endOffset = (endHour - 7) * 60 + endMin;
+    const duration = Math.max(endOffset - startOffset, 15);
+    
+    return {
+      top: (startOffset / 60) * 40, // 40px per hour
+      height: Math.max((duration / 60) * 40, 22),
+    };
+  };
+  
+  return (
+    <div className="flex gap-4">
+      {/* Time Grid */}
+      <div className="flex-1 min-w-0">
+        <div 
+          className="overflow-x-auto"
+          style={{ 
+            background: 'rgba(255,255,255,0.02)',
+            borderRadius: '14px',
+            border: '1px solid rgba(255,255,255,0.06)',
+          }}
+        >
+          {/* Week Header */}
+          <div className="flex border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+            <div className="w-12 flex-shrink-0" /> {/* Time gutter */}
+            {weekDays.map((day) => (
+              <button
+                key={day.toISOString()}
+                onClick={() => onDayClick(day)}
+                className="flex-1 min-w-[80px] py-2 text-center transition-colors"
+                style={{
+                  borderLeft: '1px solid rgba(233,215,196,0.08)',
+                  background: isToday(day) ? 'rgba(254,145,0,0.08)' : 'transparent',
+                }}
+              >
+                <span 
+                  className="text-[10px] uppercase block"
+                  style={{ 
+                    color: isToday(day) ? '#FE9100' : 'rgba(255,255,255,0.45)',
+                    fontFamily: 'Inter, sans-serif',
+                  }}
+                >
+                  {format(day, 'EEE', { locale: de })}
+                </span>
+                <span 
+                  className="text-[14px] font-semibold"
+                  style={{ 
+                    color: isToday(day) ? '#FE9100' : 'rgba(255,255,255,0.8)',
+                    fontFamily: 'Inter, sans-serif',
+                  }}
+                >
+                  {format(day, 'd')}
+                </span>
+                {isToday(day) && (
+                  <div 
+                    className="w-1.5 h-1.5 rounded-full mx-auto mt-1"
+                    style={{ background: '#FE9100' }}
+                  />
+                )}
+              </button>
+            ))}
+          </div>
+          
+          {/* Time Grid Body */}
+          <div className="relative" style={{ height: '560px', overflow: 'hidden' }}>
+            <div className="absolute inset-0 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+              {/* Hour Lines */}
+              {timeSlots.map((hour) => (
+                <div 
+                  key={hour}
+                  className="flex"
+                  style={{ height: '40px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+                >
+                  <div 
+                    className="w-12 flex-shrink-0 text-right pr-2 pt-0.5"
+                    style={{ 
+                      fontSize: '10px',
+                      color: 'rgba(255,255,255,0.35)',
+                      fontFamily: 'Inter, sans-serif',
+                    }}
+                  >
+                    {hour.toString().padStart(2, '0')}
+                  </div>
+                  {weekDays.map((day) => (
+                    <div 
+                      key={`${hour}-${day.toISOString()}`}
+                      className="flex-1 min-w-[80px] relative"
+                      style={{ borderLeft: '1px solid rgba(233,215,196,0.08)' }}
+                    />
+                  ))}
+                </div>
+              ))}
+              
+              {/* Events Overlay */}
+              <div className="absolute inset-0 flex pointer-events-none" style={{ left: '48px' }}>
+                {weekDays.map((day, dayIndex) => {
+                  const dayKey = format(day, 'yyyy-MM-dd');
+                  const dayEvents = eventsByDay[dayKey] || [];
+                  
+                  return (
+                    <div 
+                      key={day.toISOString()}
+                      className="flex-1 min-w-[80px] relative"
+                      style={{ borderLeft: dayIndex > 0 ? '1px solid transparent' : 'none' }}
+                    >
+                      {dayEvents.map((event, idx) => {
+                        const pos = getEventPosition(event);
+                        const color = EVENT_COLORS[event.type] || '#FE9100';
+                        
+                        return (
+                          <button
+                            key={event.id}
+                            onClick={() => onEventClick(event)}
+                            className="absolute left-1 right-1 overflow-hidden text-left transition-all pointer-events-auto"
+                            style={{
+                              top: `${pos.top}px`,
+                              height: `${pos.height}px`,
+                              background: 'rgba(0,0,0,0.7)',
+                              backdropFilter: 'blur(8px)',
+                              border: '1px solid rgba(233,215,196,0.10)',
+                              borderLeft: `3px solid ${color}`,
+                              borderRadius: '8px',
+                              padding: '4px 6px',
+                              zIndex: idx + 1,
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = 'rgba(0,0,0,0.85)';
+                              e.currentTarget.style.borderColor = `${color}40`;
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'rgba(0,0,0,0.7)';
+                              e.currentTarget.style.borderColor = 'rgba(233,215,196,0.10)';
+                            }}
+                          >
+                            <p 
+                              className="text-[11px] font-medium truncate"
+                              style={{ color: 'rgba(255,255,255,0.9)' }}
+                            >
+                              {event.title}
+                            </p>
+                            {pos.height > 30 && event.startTime && (
+                              <p 
+                                className="text-[9px] truncate"
+                                style={{ color: 'rgba(255,255,255,0.5)' }}
+                              >
+                                {event.startTime}
+                              </p>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Side Agenda */}
+      <div 
+        className="w-[240px] flex-shrink-0 hidden lg:block"
+        style={{
+          background: 'rgba(255,255,255,0.02)',
+          borderRadius: '14px',
+          border: '1px solid rgba(255,255,255,0.06)',
+          padding: '12px',
+        }}
+      >
+        <h3 
+          className="text-[10px] tracking-[0.18em] mb-3"
+          style={{ 
+            fontFamily: 'Orbitron, sans-serif',
+            color: 'rgba(255,255,255,0.55)',
+          }}
+        >
+          DIESE WOCHE
+        </h3>
+        <div 
+          className="space-y-3 overflow-y-auto" 
+          style={{ maxHeight: '500px', scrollbarWidth: 'none' }}
+        >
+          {weekDays.map((day) => {
+            const dayKey = format(day, 'yyyy-MM-dd');
+            const dayEvents = eventsByDay[dayKey] || [];
+            if (dayEvents.length === 0) return null;
+            
+            return (
+              <div key={day.toISOString()}>
+                <p 
+                  className="text-[10px] font-medium mb-1.5 sticky top-0"
+                  style={{ 
+                    color: isToday(day) ? '#FE9100' : 'rgba(255,255,255,0.5)',
+                    background: 'rgba(0,0,0,0.5)',
+                    padding: '2px 0',
+                  }}
+                >
+                  {format(day, 'EEE d. MMM', { locale: de })}
+                </p>
+                <div className="space-y-1.5">
+                  {dayEvents.slice(0, 4).map((event) => {
+                    const color = EVENT_COLORS[event.type] || '#FE9100';
+                    return (
+                      <button
+                        key={event.id}
+                        onClick={() => onEventClick(event)}
+                        className="w-full text-left p-2 rounded-lg transition-colors"
+                        style={{
+                          background: 'rgba(255,255,255,0.03)',
+                          borderLeft: `2px solid ${color}`,
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                        }}
+                      >
+                        <p 
+                          className="text-[11px] font-medium truncate"
+                          style={{ color: 'rgba(255,255,255,0.85)' }}
+                        >
+                          {event.title}
+                        </p>
+                        {event.startTime && (
+                          <p 
+                            className="text-[9px]"
+                            style={{ color: 'rgba(255,255,255,0.45)' }}
+                          >
+                            {event.startTime}
+                          </p>
+                        )}
+                      </button>
+                    );
+                  })}
+                  {dayEvents.length > 4 && (
+                    <p 
+                      className="text-[9px] pl-2"
+                      style={{ color: 'rgba(255,255,255,0.4)' }}
+                    >
+                      +{dayEvents.length - 4} weitere
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// MONTH VIEW COMPONENT (Premium Overview Grid)
+// ============================================================================
+
+interface MonthViewProps {
+  selectedDate: Date;
+  events: CalendarEvent[];
+  onEventClick: (event: CalendarEvent) => void;
+  onDayClick: (date: Date) => void;
+}
+
+function MonthView({ selectedDate, events, onEventClick, onDayClick }: MonthViewProps) {
+  const monthStart = startOfMonth(selectedDate);
+  const monthEnd = endOfMonth(selectedDate);
+  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+  const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+  
+  // Group events by day
+  const eventsByDay = useMemo(() => {
+    const grouped: Record<string, CalendarEvent[]> = {};
+    calendarDays.forEach(day => {
+      const key = format(day, 'yyyy-MM-dd');
+      grouped[key] = events
+        .filter(e => isSameDay(e.date, day))
+        .sort((a, b) => (a.startTime || '00:00').localeCompare(b.startTime || '00:00'));
+    });
+    return grouped;
+  }, [events, calendarDays]);
+  
+  const weekDayNames = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+  
+  return (
+    <div 
+      style={{
+        background: 'rgba(255,255,255,0.02)',
+        borderRadius: '14px',
+        border: '1px solid rgba(255,255,255,0.06)',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Weekday Headers */}
+      <div 
+        className="grid grid-cols-7 border-b"
+        style={{ borderColor: 'rgba(255,255,255,0.06)' }}
+      >
+        {weekDayNames.map((name) => (
+          <div 
+            key={name}
+            className="py-2 text-center"
+            style={{
+              fontSize: '10px',
+              fontFamily: 'Inter, sans-serif',
+              color: 'rgba(255,255,255,0.45)',
+              fontWeight: 500,
+            }}
+          >
+            {name}
+          </div>
+        ))}
+      </div>
+      
+      {/* Calendar Grid */}
+      <div className="grid grid-cols-7">
+        {calendarDays.map((day) => {
+          const dayKey = format(day, 'yyyy-MM-dd');
+          const dayEvents = eventsByDay[dayKey] || [];
+          const isCurrentMonth = isSameMonth(day, selectedDate);
+          const isTodayDate = isToday(day);
+          
+          return (
+            <button
+              key={day.toISOString()}
+              onClick={() => onDayClick(day)}
+              className="relative text-left transition-colors group"
+              style={{
+                minHeight: '80px',
+                padding: '6px',
+                borderRight: '1px solid rgba(255,255,255,0.04)',
+                borderBottom: '1px solid rgba(255,255,255,0.04)',
+                background: isTodayDate 
+                  ? 'rgba(254,145,0,0.06)' 
+                  : 'transparent',
+                opacity: isCurrentMonth ? 1 : 0.4,
+              }}
+              onMouseEnter={(e) => {
+                if (!isTodayDate) {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isTodayDate) {
+                  e.currentTarget.style.background = 'transparent';
+                }
+              }}
+            >
+              {/* Date Number */}
+              <span 
+                className="text-[12px] font-medium"
+                style={{ 
+                  color: isTodayDate 
+                    ? '#FE9100' 
+                    : isCurrentMonth 
+                      ? 'rgba(255,255,255,0.8)' 
+                      : 'rgba(255,255,255,0.3)',
+                }}
+              >
+                {format(day, 'd')}
+              </span>
+              
+              {/* Today Ring */}
+              {isTodayDate && (
+                <span 
+                  className="absolute top-1 left-1 w-6 h-6 rounded-full flex items-center justify-center"
+                  style={{ 
+                    border: '2px solid #FE9100',
+                    background: 'rgba(254,145,0,0.15)',
+                  }}
+                >
+                  <span style={{ color: '#FE9100', fontSize: '12px', fontWeight: 600 }}>
+                    {format(day, 'd')}
+                  </span>
+                </span>
+              )}
+              
+              {/* Event Chips (max 3) */}
+              <div className="mt-1 space-y-0.5">
+                {dayEvents.slice(0, 3).map((event) => {
+                  const color = EVENT_COLORS[event.type] || '#FE9100';
+                  return (
+                    <div
+                      key={event.id}
+                      className="truncate text-[9px] px-1.5 py-0.5 rounded"
+                      style={{
+                        background: `${color}20`,
+                        color: color,
+                        border: `1px solid ${color}30`,
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEventClick(event);
+                      }}
+                    >
+                      {event.title}
+                    </div>
+                  );
+                })}
+                {dayEvents.length > 3 && (
+                  <div 
+                    className="text-[9px] px-1.5"
+                    style={{ color: 'rgba(255,255,255,0.5)' }}
+                  >
+                    +{dayEvents.length - 3} mehr
+                  </div>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -1501,8 +2352,20 @@ interface TeamCalendarProps {
 }
 
 export function TeamCalendar({ className = '', onEventClick }: TeamCalendarProps) {
+  // View state with localStorage persistence
+  const [calendarView, setCalendarView] = useState<CalendarView>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('aras.teamCalendar.view');
+      if (saved === 'day' || saved === 'week' || saved === 'month') {
+        return saved;
+      }
+    }
+    return 'day';
+  });
+  
   const [selectedDate, setSelectedDate] = useState<Date>(startOfDay(new Date()));
   const [weekOffset, setWeekOffset] = useState(0);
+  const [monthOffset, setMonthOffset] = useState(0);
   const [drawerEvent, setDrawerEvent] = useState<CalendarEvent | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<DrawerMode>('view');
@@ -1510,11 +2373,30 @@ export function TeamCalendar({ className = '', onEventClick }: TeamCalendarProps
   const [useMockData, setUseMockData] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   
-  // Live clock update every 30 seconds
+  // Persist view to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('aras.teamCalendar.view', calendarView);
+    }
+  }, [calendarView]);
+  
+  // Handle view change
+  const handleViewChange = useCallback((view: CalendarView) => {
+    setCalendarView(view);
+  }, []);
+  
+  // Handle day click from week/month views - switch to day view
+  const handleDayClick = useCallback((date: Date) => {
+    setSelectedDate(date);
+    setCalendarView('day');
+    setWeekOffset(0);
+  }, []);
+  
+  // Live clock update every 60 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTime(new Date());
-    }, 30000);
+    }, 60000);
     return () => clearInterval(interval);
   }, []);
   
@@ -1711,7 +2593,7 @@ export function TeamCalendar({ className = '', onEventClick }: TeamCalendarProps
       }}
     >
       {/* Header - Executive ruhig */}
-      <div className="flex items-start justify-between mb-5">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-5">
         <div>
           <h2 
             className="text-[13px]"
@@ -1732,11 +2614,14 @@ export function TeamCalendar({ className = '', onEventClick }: TeamCalendarProps
           </p>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* View Switcher */}
+          <ViewSwitcher currentView={calendarView} onViewChange={handleViewChange} />
+          
           {/* Add Event Button */}
           <button
             onClick={handleCreateEvent}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all hover:scale-[1.02]"
+            className="group relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all hover:scale-[1.02] overflow-hidden"
             style={{
               background: 'linear-gradient(135deg, #FE9100, #e67e00)',
               color: 'white',
@@ -1746,10 +2631,19 @@ export function TeamCalendar({ className = '', onEventClick }: TeamCalendarProps
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Termin</span>
+            {/* Micro shine on hover */}
+            <span 
+              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+              style={{
+                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
+                transform: 'translateX(-100%)',
+                animation: 'none',
+              }}
+            />
           </button>
           
           <span 
-            className="text-[10px] tracking-wider"
+            className="text-[10px] tracking-wider hidden sm:inline"
             style={{ 
               fontFamily: 'Orbitron, sans-serif',
               color: 'rgba(255,255,255,0.45)',
@@ -1758,7 +2652,7 @@ export function TeamCalendar({ className = '', onEventClick }: TeamCalendarProps
             {currentMonthYear}
           </span>
           
-          {/* Loading/Refresh indicator */}
+          {/* Loading indicator */}
           {isLoading && (
             <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'rgba(255,255,255,0.4)' }} />
           )}
@@ -1784,7 +2678,7 @@ export function TeamCalendar({ className = '', onEventClick }: TeamCalendarProps
               }}
             >
               <p className="text-[11px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                Wählen Sie einen Tag um alle Termine zu sehen. Klicken Sie auf "Termin" um einen neuen Eintrag zu erstellen.
+                Wählen Sie einen Tag um alle Termine zu sehen. Nutzen Sie TAG/WOCHE/MONAT für verschiedene Ansichten.
               </p>
             </HoverCardContent>
           </HoverCard>
@@ -1802,137 +2696,268 @@ export function TeamCalendar({ className = '', onEventClick }: TeamCalendarProps
         />
       </div>
       
-      {/* Day Navigation - Timeline Pills */}
-      <div className="flex items-center gap-2 mb-5">
-        <button
-          onClick={() => setWeekOffset(w => w - 1)}
-          className="w-8 h-8 flex items-center justify-center rounded-full transition-colors"
-          style={{ 
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.06)',
-          }}
-        >
-          <ChevronLeft className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.5)' }} />
-        </button>
-        
-        <div className="flex-1 flex justify-between gap-2 overflow-x-auto py-1">
-          {days.map((day) => (
-            <DayPill
-              key={day.toISOString()}
-              date={day}
-              isSelected={isSameDay(day, selectedDate)}
-              hasEvents={hasEventsOnDay(day)}
-              onClick={() => setSelectedDate(day)}
-            />
-          ))}
-        </div>
-        
-        <button
-          onClick={() => setWeekOffset(w => w + 1)}
-          className="w-8 h-8 flex items-center justify-center rounded-full transition-colors"
-          style={{ 
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.06)',
-          }}
-        >
-          <ChevronRight className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.5)' }} />
-        </button>
-      </div>
-      
-      {/* Day Focus Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-baseline gap-3">
-          <span 
-            className="text-[22px] font-bold"
-            style={{ 
-              fontFamily: 'Orbitron, sans-serif',
-              color: '#e9d7c4',
-            }}
-          >
-            {format(selectedDate, 'EEE', { locale: de }).toUpperCase()} · {format(selectedDate, 'dd')}
-          </span>
-          <span 
-            className="text-[12px]"
-            style={{ color: 'rgba(255,255,255,0.45)' }}
-          >
-            {format(selectedDate, 'MMMM yyyy', { locale: de })}
-          </span>
-          {isToday(selectedDate) && (
-            <span 
-              className="text-[10px] px-2 py-0.5 rounded-full"
+      {/* ========== DAY VIEW ========== */}
+      {calendarView === 'day' && (
+        <>
+          {/* Day Navigation - Timeline Pills */}
+          <div className="flex items-center gap-2 mb-5">
+            <button
+              onClick={() => setWeekOffset(w => w - 1)}
+              className="w-8 h-8 flex items-center justify-center rounded-full transition-colors"
               style={{ 
-                background: 'rgba(255,106,0,0.15)',
-                color: '#ff6a00',
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.06)',
               }}
             >
-              HEUTE
-            </span>
-          )}
-        </div>
-        
-        {/* Live Clock */}
-        {isToday(selectedDate) && (
-          <div className="flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.45)' }} />
-            <span 
-              className="text-[12px] font-medium"
-              style={{ color: 'rgba(255,255,255,0.65)' }}
-            >
-              {format(currentTime, 'HH:mm')}
-            </span>
-          </div>
-        )}
-      </div>
-      
-      {/* Event List */}
-      <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1" style={{ scrollbarWidth: 'none' }}>
-        <AnimatePresence mode="wait">
-          {selectedDayEvents.length === 0 ? (
-            <motion.div
-              key="empty"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <CalendarEmptyState />
-            </motion.div>
-          ) : (
-            <motion.div
-              key={selectedDate.toISOString()}
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -5 }}
-              className="space-y-2.5"
-            >
-              {selectedDayEvents.map((event) => (
-                <EventCard 
-                  key={event.id} 
-                  event={event}
-                  onClick={() => handleEventClick(event)}
+              <ChevronLeft className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.5)' }} />
+            </button>
+            
+            <div className="flex-1 flex justify-between gap-2 overflow-x-auto py-1">
+              {days.map((day) => (
+                <DayPill
+                  key={day.toISOString()}
+                  date={day}
+                  isSelected={isSameDay(day, selectedDate)}
+                  hasEvents={hasEventsOnDay(day)}
+                  onClick={() => setSelectedDate(day)}
                 />
               ))}
-            </motion.div>
+            </div>
+            
+            <button
+              onClick={() => setWeekOffset(w => w + 1)}
+              className="w-8 h-8 flex items-center justify-center rounded-full transition-colors"
+              style={{ 
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.06)',
+              }}
+            >
+              <ChevronRight className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.5)' }} />
+            </button>
+          </div>
+          
+          {/* Day Focus Header */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-baseline gap-3">
+              <span 
+                className="text-[22px] font-bold"
+                style={{ 
+                  fontFamily: 'Orbitron, sans-serif',
+                  color: '#e9d7c4',
+                }}
+              >
+                {format(selectedDate, 'EEE', { locale: de }).toUpperCase()} · {format(selectedDate, 'dd')}
+              </span>
+              <span 
+                className="text-[12px]"
+                style={{ color: 'rgba(255,255,255,0.45)' }}
+              >
+                {format(selectedDate, 'MMMM yyyy', { locale: de })}
+              </span>
+              {isToday(selectedDate) && (
+                <span 
+                  className="text-[10px] px-2 py-0.5 rounded-full"
+                  style={{ 
+                    background: 'rgba(255,106,0,0.15)',
+                    color: '#ff6a00',
+                  }}
+                >
+                  HEUTE
+                </span>
+              )}
+            </div>
+            
+            {/* Live Clock */}
+            {isToday(selectedDate) && (
+              <div className="flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.45)' }} />
+                <span 
+                  className="text-[12px] font-medium"
+                  style={{ color: 'rgba(255,255,255,0.65)' }}
+                >
+                  {format(currentTime, 'HH:mm')}
+                </span>
+              </div>
+            )}
+          </div>
+          
+          {/* Event List */}
+          <div className="space-y-2.5 max-h-[320px] overflow-y-auto pr-1" style={{ scrollbarWidth: 'none' }}>
+            <AnimatePresence mode="wait">
+              {selectedDayEvents.length === 0 ? (
+                <motion.div
+                  key="empty"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <CalendarEmptyState />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key={selectedDate.toISOString()}
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -5 }}
+                  className="space-y-2.5"
+                >
+                  {selectedDayEvents.map((event) => (
+                    <EventCard 
+                      key={event.id} 
+                      event={event}
+                      onClick={() => handleEventClick(event)}
+                    />
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+          
+          {/* Today Button (if not on today) */}
+          {!isToday(selectedDate) && (
+            <button
+              onClick={() => {
+                setSelectedDate(startOfDay(new Date()));
+                setWeekOffset(0);
+              }}
+              className="w-full mt-4 py-2.5 text-[11px] font-medium tracking-wider transition-all duration-150"
+              style={{
+                borderRadius: '10px',
+                background: 'rgba(255,106,0,0.08)',
+                border: '1px solid rgba(255,106,0,0.15)',
+                color: '#FE9100',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(255,106,0,0.12)';
+                e.currentTarget.style.boxShadow = '0 0 16px rgba(254,145,0,0.15)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255,106,0,0.08)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              ZURÜCK ZU HEUTE
+            </button>
           )}
-        </AnimatePresence>
-      </div>
+        </>
+      )}
       
-      {/* Today Button (if not on today) */}
-      {!isToday(selectedDate) && (
-        <button
-          onClick={() => {
-            setSelectedDate(startOfDay(new Date()));
-            setWeekOffset(0);
-          }}
-          className="w-full mt-4 py-2.5 text-[11px] font-medium tracking-wider transition-all duration-150"
-          style={{
-            borderRadius: '10px',
-            background: 'rgba(255,106,0,0.08)',
-            border: '1px solid rgba(255,106,0,0.15)',
-            color: '#FE9100',
-          }}
-        >
-          ZURÜCK ZU HEUTE
-        </button>
+      {/* ========== WEEK VIEW ========== */}
+      {calendarView === 'week' && (
+        <>
+          {/* Week Navigation */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSelectedDate(d => subWeeks(d, 1))}
+                className="w-8 h-8 flex items-center justify-center rounded-full transition-colors"
+                style={{ 
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                }}
+              >
+                <ChevronLeft className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.5)' }} />
+              </button>
+              <span 
+                className="text-[14px] font-medium"
+                style={{ color: 'rgba(255,255,255,0.8)' }}
+              >
+                {format(startOfWeek(selectedDate, { weekStartsOn: 1 }), 'd. MMM', { locale: de })} – {format(endOfWeek(selectedDate, { weekStartsOn: 1 }), 'd. MMM yyyy', { locale: de })}
+              </span>
+              <button
+                onClick={() => setSelectedDate(d => addWeeks(d, 1))}
+                className="w-8 h-8 flex items-center justify-center rounded-full transition-colors"
+                style={{ 
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                }}
+              >
+                <ChevronRight className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.5)' }} />
+              </button>
+            </div>
+            
+            {/* Today button */}
+            <button
+              onClick={() => setSelectedDate(startOfDay(new Date()))}
+              className="text-[11px] px-3 py-1.5 rounded-lg transition-colors"
+              style={{
+                background: 'rgba(255,106,0,0.08)',
+                border: '1px solid rgba(255,106,0,0.15)',
+                color: '#FE9100',
+              }}
+            >
+              Heute
+            </button>
+          </div>
+          
+          <WeekView
+            selectedDate={selectedDate}
+            events={allEvents}
+            onEventClick={handleEventClick}
+            onDayClick={handleDayClick}
+          />
+        </>
+      )}
+      
+      {/* ========== MONTH VIEW ========== */}
+      {calendarView === 'month' && (
+        <>
+          {/* Month Navigation */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSelectedDate(d => subMonths(d, 1))}
+                className="w-8 h-8 flex items-center justify-center rounded-full transition-colors"
+                style={{ 
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                }}
+              >
+                <ChevronLeft className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.5)' }} />
+              </button>
+              <span 
+                className="text-[16px] font-semibold"
+                style={{ 
+                  color: '#e9d7c4',
+                  fontFamily: 'Orbitron, sans-serif',
+                  letterSpacing: '0.1em',
+                }}
+              >
+                {format(selectedDate, 'MMMM yyyy', { locale: de }).toUpperCase()}
+              </span>
+              <button
+                onClick={() => setSelectedDate(d => addMonths(d, 1))}
+                className="w-8 h-8 flex items-center justify-center rounded-full transition-colors"
+                style={{ 
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                }}
+              >
+                <ChevronRight className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.5)' }} />
+              </button>
+            </div>
+            
+            {/* Today button */}
+            <button
+              onClick={() => setSelectedDate(startOfDay(new Date()))}
+              className="text-[11px] px-3 py-1.5 rounded-lg transition-colors"
+              style={{
+                background: 'rgba(255,106,0,0.08)',
+                border: '1px solid rgba(255,106,0,0.15)',
+                color: '#FE9100',
+              }}
+            >
+              Heute
+            </button>
+          </div>
+          
+          <MonthView
+            selectedDate={selectedDate}
+            events={allEvents}
+            onEventClick={handleEventClick}
+            onDayClick={handleDayClick}
+          />
+        </>
       )}
       
       {/* Event Detail Drawer */}
