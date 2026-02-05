@@ -14,7 +14,7 @@
  * ============================================================================
  */
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -956,6 +956,112 @@ function DayPill({ date, isSelected, hasEvents, onClick }: DayPillProps) {
 }
 
 // ============================================================================
+// INFO TOOLTIP WITH BACKDROP (Premium z-index + scrim)
+// ============================================================================
+
+function InfoTooltipWithBackdrop() {
+  const [isOpen, setIsOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [position, setPosition] = useState({ top: 0, right: 0 });
+  
+  // Calculate position when opening
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setPosition({
+        top: rect.bottom + 8,
+        right: window.innerWidth - rect.right,
+      });
+    }
+  }, [isOpen]);
+  
+  // Close on click outside
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClick = () => setIsOpen(false);
+    const handleEsc = (e: KeyboardEvent) => e.key === 'Escape' && setIsOpen(false);
+    document.addEventListener('click', handleClick);
+    document.addEventListener('keydown', handleEsc);
+    return () => {
+      document.removeEventListener('click', handleClick);
+      document.removeEventListener('keydown', handleEsc);
+    };
+  }, [isOpen]);
+  
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
+        className="w-6 h-6 flex items-center justify-center rounded-full transition-colors"
+        style={{ 
+          background: isOpen ? 'rgba(254,145,0,0.15)' : 'rgba(255,255,255,0.04)',
+          border: isOpen ? '1px solid rgba(254,145,0,0.3)' : '1px solid transparent',
+        }}
+      >
+        <Info className="w-3 h-3" style={{ color: isOpen ? '#FE9100' : 'rgba(255,255,255,0.4)' }} />
+      </button>
+      
+      {/* Portal for backdrop + tooltip */}
+      {isOpen && createPortal(
+        <>
+          {/* Backdrop scrim */}
+          <div
+            className="fixed inset-0"
+            style={{
+              zIndex: 9998,
+              background: 'rgba(0,0,0,0.46)',
+              backdropFilter: 'blur(6px)',
+              WebkitBackdropFilter: 'blur(6px)',
+            }}
+          />
+          
+          {/* Tooltip panel */}
+          <div
+            className="fixed"
+            style={{
+              zIndex: 9999,
+              top: `${position.top}px`,
+              right: `${position.right}px`,
+              maxWidth: '360px',
+              padding: '14px',
+              borderRadius: '16px',
+              background: 'rgba(10,10,12,0.92)',
+              border: '1px solid rgba(233,215,196,0.18)',
+              boxShadow: '0 0 0 1px rgba(254,145,0,0.08), 0 18px 60px rgba(0,0,0,0.65)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p 
+              className="text-[11px] uppercase tracking-[0.22em] mb-2"
+              style={{ 
+                fontFamily: 'Orbitron, sans-serif',
+                color: 'rgba(233,215,196,0.9)',
+              }}
+            >
+              KALENDER INFO
+            </p>
+            <p 
+              className="text-[13.2px] leading-[1.55]"
+              style={{ 
+                fontFamily: 'Inter, sans-serif',
+                color: 'rgba(245,245,247,0.86)',
+              }}
+            >
+              Wählen Sie einen Tag um alle Termine zu sehen. Nutzen Sie TAG/WOCHE/MONAT für verschiedene Ansichten. Klicken Sie in eine leere Zelle um direkt einen neuen Termin zu erstellen.
+            </p>
+          </div>
+        </>,
+        document.body
+      )}
+    </>
+  );
+}
+
+// ============================================================================
 // VIEW SWITCHER COMPONENT (ARAS Premium Segmented Control)
 // ============================================================================
 
@@ -1039,9 +1145,11 @@ interface WeekViewProps {
   events: CalendarEvent[];
   onEventClick: (event: CalendarEvent) => void;
   onDayClick: (date: Date) => void;
+  onSlotClick?: (date: Date, hour: number) => void;
 }
 
-function WeekView({ selectedDate, events, onEventClick, onDayClick }: WeekViewProps) {
+function WeekView({ selectedDate, events, onEventClick, onDayClick, onSlotClick }: WeekViewProps) {
+  const [hoveredSlot, setHoveredSlot] = useState<{ day: string; hour: number } | null>(null);
   const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 }); // Monday
   const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
   const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
@@ -1090,13 +1198,25 @@ function WeekView({ selectedDate, events, onEventClick, onDayClick }: WeekViewPr
       {/* Time Grid */}
       <div className="flex-1 min-w-0">
         <div 
-          className="overflow-x-auto"
+          className="overflow-x-auto relative"
           style={{ 
             background: 'rgba(255,255,255,0.02)',
             borderRadius: '14px',
             border: '1px solid rgba(255,255,255,0.06)',
+            // Micro grid background
+            backgroundImage: `
+              repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0px, transparent 1px, transparent 20px),
+              repeating-linear-gradient(90deg, rgba(255,255,255,0.02) 0px, transparent 1px, transparent 40px)
+            `,
           }}
         >
+          {/* Top inner glow */}
+          <div 
+            className="absolute top-0 left-0 right-0 h-24 pointer-events-none"
+            style={{
+              background: 'radial-gradient(ellipse 60% 100% at 50% 0%, rgba(254,145,0,0.08), transparent)',
+            }}
+          />
           {/* Week Header */}
           <div className="flex border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
             <div className="w-12 flex-shrink-0" /> {/* Time gutter */}
@@ -1158,13 +1278,42 @@ function WeekView({ selectedDate, events, onEventClick, onDayClick }: WeekViewPr
                   >
                     {hour.toString().padStart(2, '0')}
                   </div>
-                  {weekDays.map((day) => (
-                    <div 
-                      key={`${hour}-${day.toISOString()}`}
-                      className="flex-1 min-w-[80px] relative"
-                      style={{ borderLeft: '1px solid rgba(233,215,196,0.08)' }}
-                    />
-                  ))}
+                  {weekDays.map((day) => {
+                    const dayKey = format(day, 'yyyy-MM-dd');
+                    const isHovered = hoveredSlot?.day === dayKey && hoveredSlot?.hour === hour;
+                    return (
+                      <div 
+                        key={`${hour}-${day.toISOString()}`}
+                        className="flex-1 min-w-[80px] relative cursor-pointer group"
+                        style={{ 
+                          borderLeft: '1px solid rgba(233,215,196,0.08)',
+                          background: isHovered ? 'rgba(254,145,0,0.08)' : 'transparent',
+                          transition: 'background 0.15s ease',
+                        }}
+                        onMouseEnter={() => setHoveredSlot({ day: dayKey, hour })}
+                        onMouseLeave={() => setHoveredSlot(null)}
+                        onClick={() => onSlotClick?.(day, hour)}
+                      >
+                        {/* Ghost hint on hover */}
+                        {isHovered && (
+                          <div 
+                            className="absolute inset-1 flex items-center justify-center rounded-md pointer-events-none"
+                            style={{
+                              border: '1px dashed rgba(254,145,0,0.28)',
+                              background: 'rgba(254,145,0,0.04)',
+                            }}
+                          >
+                            <span 
+                              className="text-[9px] opacity-60"
+                              style={{ color: '#FE9100', fontFamily: 'Inter, sans-serif' }}
+                            >
+                              + Termin
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               ))}
               
@@ -1338,9 +1487,11 @@ interface MonthViewProps {
   events: CalendarEvent[];
   onEventClick: (event: CalendarEvent) => void;
   onDayClick: (date: Date) => void;
+  onCellClick?: (date: Date) => void;
 }
 
-function MonthView({ selectedDate, events, onEventClick, onDayClick }: MonthViewProps) {
+function MonthView({ selectedDate, events, onEventClick, onDayClick, onCellClick }: MonthViewProps) {
+  const [hoveredDay, setHoveredDay] = useState<string | null>(null);
   const monthStart = startOfMonth(selectedDate);
   const monthEnd = endOfMonth(selectedDate);
   const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
@@ -1399,11 +1550,12 @@ function MonthView({ selectedDate, events, onEventClick, onDayClick }: MonthView
           const isCurrentMonth = isSameMonth(day, selectedDate);
           const isTodayDate = isToday(day);
           
+          const isHovered = hoveredDay === dayKey;
+          
           return (
-            <button
+            <div
               key={day.toISOString()}
-              onClick={() => onDayClick(day)}
-              className="relative text-left transition-colors group"
+              className="relative text-left transition-colors group cursor-pointer"
               style={{
                 minHeight: '80px',
                 padding: '6px',
@@ -1411,19 +1563,14 @@ function MonthView({ selectedDate, events, onEventClick, onDayClick }: MonthView
                 borderBottom: '1px solid rgba(255,255,255,0.04)',
                 background: isTodayDate 
                   ? 'rgba(254,145,0,0.06)' 
-                  : 'transparent',
+                  : isHovered 
+                    ? 'rgba(255,255,255,0.03)' 
+                    : 'transparent',
                 opacity: isCurrentMonth ? 1 : 0.4,
               }}
-              onMouseEnter={(e) => {
-                if (!isTodayDate) {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isTodayDate) {
-                  e.currentTarget.style.background = 'transparent';
-                }
-              }}
+              onMouseEnter={() => setHoveredDay(dayKey)}
+              onMouseLeave={() => setHoveredDay(null)}
+              onClick={() => onCellClick?.(day)}
             >
               {/* Date Number */}
               <span 
@@ -1485,7 +1632,20 @@ function MonthView({ selectedDate, events, onEventClick, onDayClick }: MonthView
                   </div>
                 )}
               </div>
-            </button>
+              
+              {/* Ghost + hint on hover (desktop only) */}
+              {isHovered && isCurrentMonth && (
+                <div 
+                  className="absolute bottom-1 right-1 w-5 h-5 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  style={{
+                    background: 'rgba(254,145,0,0.15)',
+                    border: '1px dashed rgba(254,145,0,0.4)',
+                  }}
+                >
+                  <Plus className="w-3 h-3" style={{ color: '#FE9100' }} />
+                </div>
+              )}
+            </div>
           );
         })}
       </div>
@@ -1678,12 +1838,19 @@ function CalendarEmptyState() {
 // EVENT DETAIL DRAWER - EXECUTIVE FOLDER
 // ============================================================================
 
+// Team member type for invites
+interface TeamMember {
+  id: string;
+  username: string;
+  userRole: string;
+}
+
 interface EventDetailDrawerProps {
   event: CalendarEvent | null;
   isOpen: boolean;
   mode: DrawerMode;
   onClose: () => void;
-  onSave: (data: Partial<CalendarEvent>) => void;
+  onSave: (data: Partial<CalendarEvent> & { invitedMembers?: string[]; postToFeed?: boolean }) => void;
   onDelete: (id: number) => void;
   isSaving?: boolean;
   isDeleting?: boolean;
@@ -1710,6 +1877,25 @@ function EventDetailDrawer({
   const [endTime, setEndTime] = useState('10:00');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
+  // New: Invites + Feed Post state
+  const [invitedMembers, setInvitedMembers] = useState<string[]>([]);
+  const [postToFeed, setPostToFeed] = useState(false);
+  const [memberSearch, setMemberSearch] = useState('');
+  const [showMemberDropdown, setShowMemberDropdown] = useState(false);
+  
+  // Fetch team members
+  const { data: teamMembersData } = useQuery({
+    queryKey: ['team-members'],
+    queryFn: async () => {
+      const res = await fetch('/api/internal/command-center/active-users', { credentials: 'include' });
+      if (!res.ok) return { users: [] };
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  
+  const teamMembers: TeamMember[] = teamMembersData?.users || [];
+  
   const isEditing = mode === 'edit' || mode === 'create';
   const isCreate = mode === 'create';
   
@@ -1724,8 +1910,39 @@ function EventDetailDrawer({
       setStartDate(event.date ? format(event.date, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'));
       setStartTime(event.startTime || '09:00');
       setEndTime(event.endTime || '10:00');
+      // Reset invite/feed state on new event
+      setInvitedMembers([]);
+      setPostToFeed(false);
+      setMemberSearch('');
+      setShowMemberDropdown(false);
     }
   }, [event]);
+  
+  // Filter team members based on search
+  const filteredMembers = useMemo(() => {
+    if (!memberSearch.trim()) return teamMembers.filter(m => !invitedMembers.includes(m.id));
+    const search = memberSearch.toLowerCase();
+    return teamMembers.filter(m => 
+      !invitedMembers.includes(m.id) && 
+      (m.username.toLowerCase().includes(search) || m.userRole.toLowerCase().includes(search))
+    );
+  }, [teamMembers, memberSearch, invitedMembers]);
+  
+  // Get invited member details
+  const invitedMemberDetails = useMemo(() => {
+    return invitedMembers.map(id => teamMembers.find(m => m.id === id)).filter(Boolean) as TeamMember[];
+  }, [invitedMembers, teamMembers]);
+  
+  // Add/remove invited member
+  const toggleInvitedMember = (memberId: string) => {
+    setInvitedMembers(prev => 
+      prev.includes(memberId) 
+        ? prev.filter(id => id !== memberId)
+        : [...prev, memberId]
+    );
+    setMemberSearch('');
+    setShowMemberDropdown(false);
+  };
   
   // ESC key handler
   useEffect(() => {
@@ -1754,7 +1971,7 @@ function EventDetailDrawer({
     const startsAt = new Date(`${startDate}T${startTime}:00`);
     const endsAt = new Date(`${startDate}T${endTime}:00`);
     
-    const data: Partial<CalendarEvent> = {
+    const data: Partial<CalendarEvent> & { invitedMembers?: string[]; postToFeed?: boolean } = {
       title: title.trim(),
       description: description.trim() || undefined,
       startsAt: startsAt.toISOString(),
@@ -1762,6 +1979,9 @@ function EventDetailDrawer({
       eventType,
       internalNotes: internalNotes.trim() || undefined,
       contextTags: selectedTags.length > 0 ? selectedTags : undefined,
+      // Include invites and feed post option
+      invitedMembers: invitedMembers.length > 0 ? invitedMembers : undefined,
+      postToFeed: postToFeed || undefined,
     };
     
     if (!isCreate && event?.id) {
@@ -2208,6 +2428,188 @@ function EventDetailDrawer({
                   />
                 </div>
               )}
+              
+              {/* Section 6 - Mitarbeiter einladen (only in edit/create mode) */}
+              {isEditing && (
+                <div>
+                  <label 
+                    className="block text-[10px] tracking-[0.18em] mb-3"
+                    style={{ 
+                      fontFamily: 'Orbitron, sans-serif',
+                      color: 'rgba(255,255,255,0.55)',
+                    }}
+                  >
+                    MITARBEITER EINLADEN
+                  </label>
+                  
+                  {/* Invited members chips */}
+                  {invitedMemberDetails.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {invitedMemberDetails.map((member) => (
+                        <div
+                          key={member.id}
+                          className="flex items-center gap-2 px-3 py-1.5 rounded-full"
+                          style={{
+                            background: 'rgba(254,145,0,0.12)',
+                            border: '1px solid rgba(254,145,0,0.25)',
+                          }}
+                        >
+                          <div
+                            className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold"
+                            style={{
+                              background: 'linear-gradient(135deg, #FE9100, #a34e00)',
+                              color: 'white',
+                            }}
+                          >
+                            {member.username.substring(0, 2).toUpperCase()}
+                          </div>
+                          <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                            {member.username}
+                          </span>
+                          <button
+                            onClick={() => toggleInvitedMember(member.id)}
+                            className="w-4 h-4 flex items-center justify-center rounded-full hover:bg-white/10"
+                          >
+                            <X className="w-3 h-3" style={{ color: 'rgba(255,255,255,0.5)' }} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* Search input */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={memberSearch}
+                      onChange={(e) => {
+                        setMemberSearch(e.target.value);
+                        setShowMemberDropdown(true);
+                      }}
+                      onFocus={() => setShowMemberDropdown(true)}
+                      placeholder="Name oder Rolle suchen…"
+                      className="w-full px-4 py-2.5 rounded-lg outline-none"
+                      style={{
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        color: 'rgba(255,255,255,0.9)',
+                        fontSize: '13px',
+                      }}
+                    />
+                    <Users className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'rgba(255,255,255,0.3)' }} />
+                    
+                    {/* Dropdown */}
+                    {showMemberDropdown && filteredMembers.length > 0 && (
+                      <div
+                        className="absolute top-full left-0 right-0 mt-1 max-h-[180px] overflow-y-auto rounded-lg z-50"
+                        style={{
+                          background: 'rgba(15,15,18,0.98)',
+                          border: '1px solid rgba(255,255,255,0.12)',
+                          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                        }}
+                      >
+                        {filteredMembers.slice(0, 6).map((member) => (
+                          <button
+                            key={member.id}
+                            onClick={() => toggleInvitedMember(member.id)}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-white/5"
+                          >
+                            <div
+                              className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold"
+                              style={{
+                                background: 'linear-gradient(135deg, #FE9100, #a34e00)',
+                                color: 'white',
+                              }}
+                            >
+                              {member.username.substring(0, 2).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="text-[12px]" style={{ color: 'rgba(255,255,255,0.9)' }}>
+                                {member.username}
+                              </p>
+                              <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                                {member.userRole}
+                              </p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {/* Section 7 - Im Team Feed posten (only in create mode) */}
+              {isCreate && (
+                <div
+                  className="p-4 rounded-xl"
+                  style={{
+                    background: postToFeed ? 'rgba(254,145,0,0.08)' : 'rgba(255,255,255,0.02)',
+                    border: postToFeed ? '1px solid rgba(254,145,0,0.2)' : '1px solid rgba(255,255,255,0.06)',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <p 
+                        className="text-[12px] font-medium mb-1"
+                        style={{ color: postToFeed ? '#FE9100' : 'rgba(255,255,255,0.85)' }}
+                      >
+                        Im Team Feed posten
+                      </p>
+                      <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                        Teilt das Event im Team Feed, damit alle es sehen.
+                      </p>
+                    </div>
+                    
+                    {/* Toggle */}
+                    <button
+                      onClick={() => setPostToFeed(!postToFeed)}
+                      className="relative flex-shrink-0"
+                      style={{
+                        width: '44px',
+                        height: '24px',
+                        borderRadius: '12px',
+                        background: postToFeed 
+                          ? 'linear-gradient(135deg, #FE9100, #e67e00)' 
+                          : 'rgba(255,255,255,0.1)',
+                        transition: 'background 0.2s ease',
+                      }}
+                    >
+                      <span
+                        className="absolute top-1 w-5 h-5 rounded-full transition-all"
+                        style={{
+                          left: postToFeed ? '22px' : '2px',
+                          background: 'white',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                        }}
+                      />
+                    </button>
+                  </div>
+                  
+                  {/* Preview card when active */}
+                  {postToFeed && (
+                    <div 
+                      className="mt-3 p-3 rounded-lg"
+                      style={{
+                        background: 'rgba(0,0,0,0.3)',
+                        border: '1px solid rgba(255,255,255,0.06)',
+                      }}
+                    >
+                      <p className="text-[10px] tracking-wider mb-2" style={{ color: 'rgba(255,255,255,0.4)', fontFamily: 'Orbitron, sans-serif' }}>
+                        FEED PREVIEW
+                      </p>
+                      <p className="text-[12px] font-medium" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                        Neuer Termin: {title || 'Titel eingeben…'}
+                      </p>
+                      <p className="text-[11px] mt-1" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                        {startDate ? format(new Date(startDate), 'EEE, d. MMM', { locale: de }) : 'Datum'} · {startTime}–{endTime}
+                        {invitedMemberDetails.length > 0 && ` · ${invitedMemberDetails.length} eingeladen`}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             
             {/* Zone 3 - Footer (fixed) */}
@@ -2510,13 +2912,16 @@ export function TeamCalendar({ className = '', onEventClick }: TeamCalendarProps
     onError: (err: any) => showToast(err.message || 'Fehler beim Löschen', 'error'),
   });
   
-  // Fallback to mock data if API fails or no data
+  // Fallback to mock data if API fails or returns empty
   const mockEvents = useMemo(() => generateMockEvents(), []);
   const allEvents = useMemo(() => {
-    if (useMockData || (error && !apiEvents.length)) return mockEvents;
+    // Use mock data if explicitly enabled, or if API failed, or if API returned no events
+    if (useMockData) return mockEvents;
+    if (error) return mockEvents;
+    if (apiEvents.length === 0 && !isLoading) return mockEvents;
     if (apiEvents.length > 0) return apiEvents;
     return mockEvents;
-  }, [useMockData, error, apiEvents, mockEvents]);
+  }, [useMockData, error, apiEvents, mockEvents, isLoading]);
   
   // Handle event click - open drawer
   const handleEventClick = useCallback((event: CalendarEvent) => {
@@ -2551,6 +2956,50 @@ export function TeamCalendar({ className = '', onEventClick }: TeamCalendarProps
     setIsDrawerOpen(false);
     setDrawerMode('view');
     setTimeout(() => setDrawerEvent(null), 200);
+  }, []);
+  
+  // Handle slot click in WeekView - create event with prefilled time
+  const handleSlotClick = useCallback((date: Date, hour: number) => {
+    const startTime = `${hour.toString().padStart(2, '0')}:00`;
+    const endHour = Math.min(hour + 1, 20);
+    const endTime = `${endHour.toString().padStart(2, '0')}:00`;
+    
+    const newEvent: CalendarEvent = {
+      id: 'new',
+      title: '',
+      description: '',
+      date: date,
+      startTime,
+      endTime,
+      type: 'INTERN',
+      eventType: 'INTERN',
+      contextTags: [],
+      internalNotes: '',
+      isReadOnly: false,
+    };
+    setDrawerEvent(newEvent);
+    setDrawerMode('create');
+    setIsDrawerOpen(true);
+  }, []);
+  
+  // Handle cell click in MonthView - create event with prefilled date
+  const handleCellClick = useCallback((date: Date) => {
+    const newEvent: CalendarEvent = {
+      id: 'new',
+      title: '',
+      description: '',
+      date: date,
+      startTime: '09:00',
+      endTime: '09:30',
+      type: 'INTERN',
+      eventType: 'INTERN',
+      contextTags: [],
+      internalNotes: '',
+      isReadOnly: false,
+    };
+    setDrawerEvent(newEvent);
+    setDrawerMode('create');
+    setIsDrawerOpen(true);
   }, []);
   
   // Get 7 days for navigation
@@ -2657,31 +3106,8 @@ export function TeamCalendar({ className = '', onEventClick }: TeamCalendarProps
             <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'rgba(255,255,255,0.4)' }} />
           )}
           
-          <HoverCard openDelay={300}>
-            <HoverCardTrigger asChild>
-              <button
-                className="w-6 h-6 flex items-center justify-center rounded-full transition-colors"
-                style={{ background: 'rgba(255,255,255,0.04)' }}
-              >
-                <Info className="w-3 h-3" style={{ color: 'rgba(255,255,255,0.4)' }} />
-              </button>
-            </HoverCardTrigger>
-            <HoverCardContent 
-              side="bottom" 
-              align="end"
-              className="w-[260px] p-3 border-0"
-              style={{
-                background: 'rgba(0,0,0,0.92)',
-                backdropFilter: 'blur(16px)',
-                border: '1px solid rgba(255,106,0,0.22)',
-                borderRadius: '14px',
-              }}
-            >
-              <p className="text-[11px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                Wählen Sie einen Tag um alle Termine zu sehen. Nutzen Sie TAG/WOCHE/MONAT für verschiedene Ansichten.
-              </p>
-            </HoverCardContent>
-          </HoverCard>
+          {/* Info Tooltip with Backdrop */}
+          <InfoTooltipWithBackdrop />
         </div>
       </div>
       
@@ -2895,6 +3321,7 @@ export function TeamCalendar({ className = '', onEventClick }: TeamCalendarProps
             events={allEvents}
             onEventClick={handleEventClick}
             onDayClick={handleDayClick}
+            onSlotClick={handleSlotClick}
           />
         </>
       )}
@@ -2956,6 +3383,7 @@ export function TeamCalendar({ className = '', onEventClick }: TeamCalendarProps
             events={allEvents}
             onEventClick={handleEventClick}
             onDayClick={handleDayClick}
+            onCellClick={handleCellClick}
           />
         </>
       )}

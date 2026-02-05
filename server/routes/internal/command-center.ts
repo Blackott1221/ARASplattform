@@ -705,6 +705,7 @@ router.get('/team-calendar', requireInternal, async (req: any, res) => {
 router.post('/team-calendar', requireInternal, async (req: any, res) => {
   try {
     const userId = req.user?.id || req.session?.userId;
+    const userName = req.user?.username || req.session?.username || 'System';
     if (!userId) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
@@ -731,6 +732,9 @@ router.post('/team-calendar', requireInternal, async (req: any, res) => {
       }).optional(),
       internalNotes: z.string().optional(),
       contextTags: z.array(z.string()).optional(),
+      // New: invites + feed post
+      invitedMembers: z.array(z.string()).optional(),
+      postToFeed: z.boolean().optional(),
     });
 
     const data = schema.parse(req.body);
@@ -753,8 +757,48 @@ router.post('/team-calendar', requireInternal, async (req: any, res) => {
         contextTags: data.contextTags,
         createdBy: userId,       // Use createdBy (actual DB column)
         createdByUserId: userId, // Also set new field
+        // Store attendees as JSON if invites provided
+        attendees: data.invitedMembers && data.invitedMembers.length > 0 
+          ? data.invitedMembers.map(id => ({ userId: id, status: 'invited' }))
+          : undefined,
       })
       .returning();
+
+    // Post to Team Feed if requested
+    if (data.postToFeed && event) {
+      try {
+        const startDate = new Date(data.startsAt);
+        const endDate = data.endsAt ? new Date(data.endsAt) : startDate;
+        const invitedCount = data.invitedMembers?.length || 0;
+        
+        await db.execute(sql`
+          INSERT INTO team_feed (
+            actor_user_id, actor_name, author_user_id, author_name,
+            action_type, entity_type, entity_id, title, body, message, type, meta, created_at
+          ) VALUES (
+            ${userId}, ${userName}, ${userId}, ${userName},
+            'calendar_event_created', 'team_calendar', ${event.id.toString()},
+            ${'Neuer Termin: ' + data.title},
+            ${`${startDate.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' })} · ${startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}–${endDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}${invitedCount > 0 ? ` · ${invitedCount} eingeladen` : ''}`},
+            ${'Neuer Termin erstellt: ' + data.title},
+            'calendar',
+            ${JSON.stringify({ 
+              eventId: event.id, 
+              startAt: data.startsAt, 
+              endAt: data.endsAt,
+              eventType: data.eventType,
+              invitedCount,
+              tags: data.contextTags || []
+            })},
+            NOW()
+          )
+        `);
+        logger.info(`[TEAM-CALENDAR] Posted event ${event.id} to team feed`);
+      } catch (feedError: any) {
+        // Don't fail the whole request if feed post fails
+        logger.warn('[TEAM-CALENDAR] Failed to post to feed:', feedError.message);
+      }
+    }
 
     // Transform response for frontend
     res.status(201).json({
