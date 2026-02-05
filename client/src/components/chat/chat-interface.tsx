@@ -20,7 +20,7 @@ import arasAiImage from "@assets/ChatGPT Image 9. Apr. 2025_ 21_38_23_1754515368
 import arasLogo from "@/assets/aras_logo_1755067745303.png";
 import { SpaceConversionTips } from "@/components/space/SpaceConversionTips";
 import { SpaceMatrixIntel } from "@/components/space/SpaceMatrixIntel";
-import { SpaceCognitiveFlow } from "@/components/space/SpaceCognitiveFlow";
+import SpaceOperatorDeck from "@/components/space/SpaceOperatorDeck";
 
 const ANIMATED_TEXTS = [
   "Outbound Calls",
@@ -248,8 +248,9 @@ export function ChatInterface() {
   });
 
   // Auto-scroll to bottom when new messages arrive
+  // FIX: Only scroll if we actually have messages (prevents scroll-jump on empty state)
   useEffect(() => {
-    if (messagesEndRef.current) {
+    if (messagesEndRef.current && messages.length > 0) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, isThinking, isStreaming]);
@@ -703,7 +704,12 @@ Das ist ALLES was du antworten sollst - keine zusätzlichen Erklärungen.`;
     }
   };
 
-  useEffect(() => { scrollToBottom(); }, [messages, optimisticMessages, streamingMessage, isThinking]);
+  // FIX: Only scroll to bottom if we have messages (prevents scroll-jump on initial load)
+  useEffect(() => {
+    if (messages.length > 0 || optimisticMessages.length > 0) {
+      scrollToBottom();
+    }
+  }, [messages, optimisticMessages, streamingMessage, isThinking]);
 
   const getFileIcon = (type: string) => {
     if (type.includes('image')) return <ImageIcon className="w-4 h-4" />;
@@ -1205,8 +1211,8 @@ Antworte NUR mit dem Prompt selbst, ohne Einleitung oder Erklärung.`,
             {/* MATRIX COMMAND DECK - ARAS Background Operations */}
             <SpaceMatrixIntel />
 
-            {/* COGNITIVE FLOW - How ARAS Thinks */}
-            <SpaceCognitiveFlow />
+            {/* OPERATOR DECK - How ARAS Thinks (Matrix Style) */}
+            <SpaceOperatorDeck />
           </div>
         ) : (
           <div className="max-w-4xl mx-auto">
@@ -1990,7 +1996,7 @@ Das ist ALLES. Keine weiteren Erklärungen.`;
                               background: 'rgba(15, 15, 15, 0.95)',
                               border: '1px solid rgba(255, 255, 255, 0.08)',
                             }}
-                            autoFocus
+                            // FIX: Removed autoFocus to prevent scroll-jump on modal open
                           />
                         </div>
 

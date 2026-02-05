@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/topbar";
 import { ChatInterface } from "@/components/chat/chat-interface";
@@ -10,6 +10,11 @@ import { X } from "lucide-react";
 import type { User, SubscriptionResponse } from "@shared/schema";
 
 export default function Space() {
+  // FIX: Route-entry scroll reset - ensures page starts at top, no bounce-back
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, []);
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
   const [showTopBar, setShowTopBar] = useState(true);
