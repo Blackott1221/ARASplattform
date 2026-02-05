@@ -645,33 +645,58 @@ router.post('/team-feed/clear-seed', requireInternal, async (req: any, res) => {
 
 router.get('/team-calendar', requireInternal, async (req: any, res) => {
   try {
-    const now = new Date();
-    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    // Parse date range from query params
+    const fromDate = req.query.from ? new Date(req.query.from as string) : new Date();
+    const toDate = req.query.to 
+      ? new Date(req.query.to as string) 
+      : new Date(fromDate.getTime() + 90 * 24 * 60 * 60 * 1000); // Default 90 days
     
     const events = await db
       .select({
         id: teamCalendar.id,
         title: teamCalendar.title,
         description: teamCalendar.description,
+        startAt: teamCalendar.startAt,
+        endAt: teamCalendar.endAt,
         startsAt: teamCalendar.startsAt,
         endsAt: teamCalendar.endsAt,
         allDay: teamCalendar.allDay,
         location: teamCalendar.location,
         color: teamCalendar.color,
+        eventType: teamCalendar.eventType,
+        isReadOnly: teamCalendar.isReadOnly,
+        visibility: teamCalendar.visibility,
+        recurrence: teamCalendar.recurrence,
+        internalNotes: teamCalendar.internalNotes,
+        contextTags: teamCalendar.contextTags,
+        createdBy: teamCalendar.createdBy,
         createdByUserId: teamCalendar.createdByUserId,
-        creatorUsername: users.username,
+        updatedByUserId: teamCalendar.updatedByUserId,
+        attendees: teamCalendar.attendees,
+        meta: teamCalendar.meta,
+        createdAt: teamCalendar.createdAt,
+        updatedAt: teamCalendar.updatedAt,
       })
       .from(teamCalendar)
-      .leftJoin(users, eq(teamCalendar.createdByUserId, users.id))
-      .where(gte(teamCalendar.startsAt, now))
-      .orderBy(teamCalendar.startsAt)
-      .limit(20);
+      .where(
+        gte(teamCalendar.startAt, fromDate)
+      )
+      .orderBy(teamCalendar.startAt)
+      .limit(200);
 
-    res.json({ events, total: events.length });
+    // Transform events to use consistent field names for frontend
+    const transformedEvents = events.map(e => ({
+      ...e,
+      // Use startAt/endAt as the primary date fields, fall back to startsAt/endsAt
+      startsAt: e.startAt || e.startsAt,
+      endsAt: e.endAt || e.endsAt,
+    }));
+
+    res.json({ events: transformedEvents, total: transformedEvents.length });
   } catch (error: any) {
     logger.error('[COMMAND-CENTER] Error fetching calendar:', error.message);
-    if (error.message?.includes('does not exist') || error.code === '42P01') {
-      return res.json({ events: [], total: 0, _warning: 'Table not yet created - run migration' });
+    if (error.message?.includes('does not exist') || error.code === '42P01' || error.code === '42703') {
+      return res.json({ events: [], total: 0, _warning: 'Schema error - check DB columns' });
     }
     res.status(500).json({ error: 'Failed to fetch calendar' });
   }
@@ -692,6 +717,20 @@ router.post('/team-calendar', requireInternal, async (req: any, res) => {
       allDay: z.boolean().optional().default(false),
       location: z.string().optional(),
       color: z.string().optional().default('#FE9100'),
+      eventType: z.enum(['INTERN', 'TEAM_MEETING', 'VERWALTUNGSRAT', 'AUFSICHTSRAT', 'FEIERTAG', 'DEADLINE', 'EXTERNAL']).optional().default('INTERN'),
+      isReadOnly: z.boolean().optional().default(false),
+      visibility: z.enum(['TEAM', 'PRIVATE']).optional().default('TEAM'),
+      recurrence: z.object({
+        freq: z.enum(['DAILY', 'WEEKLY', 'BIWEEKLY', 'MONTHLY', 'YEARLY']).optional(),
+        interval: z.number().optional(),
+        byweekday: z.array(z.string()).optional(),
+        bymonthday: z.number().optional(),
+        bysetpos: z.number().optional(),
+        until: z.string().optional(),
+        count: z.number().optional(),
+      }).optional(),
+      internalNotes: z.string().optional(),
+      contextTags: z.array(z.string()).optional(),
     });
 
     const data = schema.parse(req.body);
@@ -701,19 +740,374 @@ router.post('/team-calendar', requireInternal, async (req: any, res) => {
       .values({
         title: data.title,
         description: data.description,
-        startsAt: data.startsAt,
-        endsAt: data.endsAt,
+        startAt: data.startsAt, // Use startAt (actual DB column)
+        endAt: data.endsAt,     // Use endAt (actual DB column)
         allDay: data.allDay,
         location: data.location,
         color: data.color,
-        createdByUserId: userId,
+        eventType: data.eventType,
+        isReadOnly: data.isReadOnly,
+        visibility: data.visibility,
+        recurrence: data.recurrence,
+        internalNotes: data.internalNotes,
+        contextTags: data.contextTags,
+        createdBy: userId,       // Use createdBy (actual DB column)
+        createdByUserId: userId, // Also set new field
       })
       .returning();
 
-    res.status(201).json(event);
+    // Transform response for frontend
+    res.status(201).json({
+      ...event,
+      startsAt: event.startAt,
+      endsAt: event.endAt,
+    });
   } catch (error: any) {
     logger.error('[COMMAND-CENTER] Error creating calendar event:', error.message);
     res.status(400).json({ error: error.message });
+  }
+});
+
+router.patch('/team-calendar/:id', requireInternal, async (req: any, res) => {
+  try {
+    const userId = req.user?.id || req.session?.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const { id } = req.params;
+    const eventId = parseInt(id);
+    
+    // First check if event exists and is editable
+    const [existing] = await db
+      .select({ id: teamCalendar.id, isReadOnly: teamCalendar.isReadOnly })
+      .from(teamCalendar)
+      .where(eq(teamCalendar.id, eventId))
+      .limit(1);
+    
+    if (!existing) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    
+    if (existing.isReadOnly) {
+      return res.status(403).json({ error: 'Cannot edit read-only event' });
+    }
+
+    const schema = z.object({
+      title: z.string().min(1).max(200).optional(),
+      description: z.string().optional(),
+      startsAt: z.string().transform(s => new Date(s)).optional(),
+      endsAt: z.string().optional().transform(s => s ? new Date(s) : undefined),
+      allDay: z.boolean().optional(),
+      location: z.string().optional(),
+      color: z.string().optional(),
+      eventType: z.enum(['INTERN', 'TEAM_MEETING', 'VERWALTUNGSRAT', 'AUFSICHTSRAT', 'FEIERTAG', 'DEADLINE', 'EXTERNAL']).optional(),
+      visibility: z.enum(['TEAM', 'PRIVATE']).optional(),
+      recurrence: z.object({
+        freq: z.enum(['DAILY', 'WEEKLY', 'BIWEEKLY', 'MONTHLY', 'YEARLY']).optional(),
+        interval: z.number().optional(),
+        byweekday: z.array(z.string()).optional(),
+        bymonthday: z.number().optional(),
+        bysetpos: z.number().optional(),
+        until: z.string().optional(),
+        count: z.number().optional(),
+      }).optional().nullable(),
+      internalNotes: z.string().optional(),
+      contextTags: z.array(z.string()).optional(),
+    });
+
+    const data = schema.parse(req.body);
+    
+    const updates: any = { updatedAt: new Date(), updatedByUserId: userId };
+    if (data.title !== undefined) updates.title = data.title;
+    if (data.description !== undefined) updates.description = data.description;
+    if (data.startsAt !== undefined) updates.startAt = data.startsAt; // Use startAt (actual DB column)
+    if (data.endsAt !== undefined) updates.endAt = data.endsAt;       // Use endAt (actual DB column)
+    if (data.allDay !== undefined) updates.allDay = data.allDay;
+    if (data.location !== undefined) updates.location = data.location;
+    if (data.color !== undefined) updates.color = data.color;
+    if (data.eventType !== undefined) updates.eventType = data.eventType;
+    if (data.visibility !== undefined) updates.visibility = data.visibility;
+    if (data.recurrence !== undefined) updates.recurrence = data.recurrence;
+    if (data.internalNotes !== undefined) updates.internalNotes = data.internalNotes;
+    if (data.contextTags !== undefined) updates.contextTags = data.contextTags;
+
+    const [event] = await db
+      .update(teamCalendar)
+      .set(updates)
+      .where(eq(teamCalendar.id, eventId))
+      .returning();
+
+    // Transform response for frontend
+    res.json({
+      ...event,
+      startsAt: event.startAt,
+      endsAt: event.endAt,
+    });
+  } catch (error: any) {
+    logger.error('[COMMAND-CENTER] Error updating calendar event:', error.message);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.delete('/team-calendar/:id', requireInternal, async (req: any, res) => {
+  try {
+    const { id } = req.params;
+    const eventId = parseInt(id);
+    
+    // First check if event exists and is deletable
+    const [existing] = await db
+      .select({ id: teamCalendar.id, isReadOnly: teamCalendar.isReadOnly })
+      .from(teamCalendar)
+      .where(eq(teamCalendar.id, eventId))
+      .limit(1);
+    
+    if (!existing) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    
+    if (existing.isReadOnly) {
+      return res.status(403).json({ error: 'Cannot delete read-only event' });
+    }
+
+    await db
+      .delete(teamCalendar)
+      .where(eq(teamCalendar.id, eventId));
+
+    res.status(204).send();
+  } catch (error: any) {
+    logger.error('[COMMAND-CENTER] Error deleting calendar event:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================================================
+// TEAM CALENDAR SEED - Populate holidays + recurring events
+// ============================================================================
+
+router.post('/team-calendar/seed', requireInternal, async (req: any, res) => {
+  try {
+    const userId = req.user?.id || req.session?.userId;
+    if (!userId) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const now = new Date();
+    const year = now.getFullYear();
+    const events: any[] = [];
+
+    // Helper: Get nth weekday of month
+    const getNthWeekday = (year: number, month: number, weekday: number, n: number): Date => {
+      const first = new Date(year, month, 1);
+      const firstWeekday = first.getDay();
+      let day = 1 + ((weekday - firstWeekday + 7) % 7) + (n - 1) * 7;
+      return new Date(year, month, day);
+    };
+
+    // Helper: Get last weekday of month
+    const getLastWeekday = (year: number, month: number, weekday: number): Date => {
+      const last = new Date(year, month + 1, 0);
+      const lastDay = last.getDate();
+      const lastWeekday = last.getDay();
+      const diff = (lastWeekday - weekday + 7) % 7;
+      return new Date(year, month, lastDay - diff);
+    };
+
+    // ========== HOLIDAYS (DACH) ==========
+    const holidays = [
+      { date: new Date(year, 0, 1), title: 'Neujahr' },
+      { date: new Date(year, 0, 6), title: 'Heilige Drei Könige' },
+      { date: new Date(year, 4, 1), title: 'Tag der Arbeit' },
+      { date: new Date(year, 7, 1), title: 'Bundesfeiertag CH' },
+      { date: new Date(year, 9, 3), title: 'Tag der Deutschen Einheit' },
+      { date: new Date(year, 9, 26), title: 'Nationalfeiertag AT' },
+      { date: new Date(year, 10, 1), title: 'Allerheiligen' },
+      { date: new Date(year, 11, 24), title: 'Heiligabend' },
+      { date: new Date(year, 11, 25), title: 'Weihnachten' },
+      { date: new Date(year, 11, 26), title: 'Stephanstag' },
+      { date: new Date(year, 11, 31), title: 'Silvester' },
+      // Next year
+      { date: new Date(year + 1, 0, 1), title: 'Neujahr' },
+      { date: new Date(year + 1, 0, 6), title: 'Heilige Drei Könige' },
+    ];
+
+    for (const h of holidays) {
+      events.push({
+        title: h.title,
+        description: 'Gesetzlicher Feiertag. Büro geschlossen.',
+        startsAt: h.date,
+        endsAt: h.date,
+        allDay: true,
+        eventType: 'FEIERTAG',
+        isReadOnly: true,
+        visibility: 'TEAM',
+        color: '#6B7280',
+        createdByUserId: userId,
+      });
+    }
+
+    // ========== RECURRING: Team Meeting (every Friday 10:00-11:00) ==========
+    for (let week = 0; week < 52; week++) {
+      const friday = new Date(year, 0, 1);
+      friday.setDate(friday.getDate() + ((5 - friday.getDay() + 7) % 7) + week * 7);
+      if (friday >= new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) && friday <= new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000)) {
+        const start = new Date(friday);
+        start.setHours(10, 0, 0, 0);
+        const end = new Date(friday);
+        end.setHours(11, 0, 0, 0);
+        events.push({
+          title: 'Team Meeting',
+          description: 'Wöchentliches Team-Alignment zu laufenden Projekten und Prioritäten.',
+          startsAt: start,
+          endsAt: end,
+          eventType: 'TEAM_MEETING',
+          isReadOnly: false,
+          visibility: 'TEAM',
+          color: '#22C55E',
+          recurrence: { freq: 'WEEKLY', byweekday: ['FR'] },
+          contextTags: ['organisation', 'intern'],
+          createdByUserId: userId,
+        });
+      }
+    }
+
+    // ========== RECURRING: Verwaltungsrat (every 2nd Friday 14:00-16:00) ==========
+    for (let bi = 0; bi < 26; bi++) {
+      const friday = new Date(year, 0, 1);
+      friday.setDate(friday.getDate() + ((5 - friday.getDay() + 7) % 7) + bi * 14);
+      if (friday >= new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) && friday <= new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000)) {
+        const start = new Date(friday);
+        start.setHours(14, 0, 0, 0);
+        const end = new Date(friday);
+        end.setHours(16, 0, 0, 0);
+        events.push({
+          title: 'Verwaltungsrat',
+          description: 'Besprechung strategischer Entscheidungen und Governance-Themen.',
+          startsAt: start,
+          endsAt: end,
+          eventType: 'VERWALTUNGSRAT',
+          isReadOnly: true,
+          visibility: 'TEAM',
+          color: '#F59E0B',
+          recurrence: { freq: 'BIWEEKLY', byweekday: ['FR'] },
+          contextTags: ['board', 'strategie'],
+          createdByUserId: userId,
+        });
+      }
+    }
+
+    // ========== RECURRING: Aufsichtsrat (every 3rd Monday 09:00-11:00) ==========
+    for (let month = 0; month < 18; month++) {
+      const m = (now.getMonth() + month) % 12;
+      const y = now.getFullYear() + Math.floor((now.getMonth() + month) / 12);
+      const thirdMonday = getNthWeekday(y, m, 1, 3);
+      if (thirdMonday >= new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) && thirdMonday <= new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000)) {
+        const start = new Date(thirdMonday);
+        start.setHours(9, 0, 0, 0);
+        const end = new Date(thirdMonday);
+        end.setHours(11, 0, 0, 0);
+        events.push({
+          title: 'Aufsichtsrat',
+          description: 'Prüfung und Überwachung der Geschäftsführung.',
+          startsAt: start,
+          endsAt: end,
+          eventType: 'AUFSICHTSRAT',
+          isReadOnly: true,
+          visibility: 'TEAM',
+          color: '#EF4444',
+          recurrence: { freq: 'MONTHLY', byweekday: ['MO'], bysetpos: 3 },
+          contextTags: ['board', 'strategie'],
+          createdByUserId: userId,
+        });
+      }
+    }
+
+    // ========== 50+ INTERNAL EVENTS ==========
+    const internalEvents = [
+      { dayOffset: 1, title: 'Strategy Workshop', time: [9, 12], desc: 'Quartalsstrategie und Roadmap-Planung', tags: ['strategie'] },
+      { dayOffset: 2, title: 'Board Preparation', time: [14, 15], desc: 'Vorbereitung der Unterlagen für Board Meeting', tags: ['board'] },
+      { dayOffset: 3, title: 'Quarterly Review', time: [10, 12], desc: 'Quartalsrückblick mit KPI-Analyse', tags: ['finance'] },
+      { dayOffset: 5, title: 'Monatsabschluss Finance', time: [9, 11], desc: 'Finanzabschluss und Reporting', tags: ['finance'] },
+      { dayOffset: 7, title: 'Investor Update Call', time: [15, 16], desc: 'Monatliches Update für Investoren', tags: ['finance', 'board'] },
+      { dayOffset: 8, title: 'Legal Review Window', time: [10, 11], desc: 'Prüfung laufender Verträge', tags: ['legal'] },
+      { dayOffset: 10, title: 'Internal Audit Check', time: [14, 16], desc: 'Interne Revision', tags: ['finance', 'legal'] },
+      { dayOffset: 12, title: 'HR Review', time: [11, 12], desc: 'Personalplanung und Entwicklung', tags: ['hr'] },
+      { dayOffset: 14, title: 'IT Maintenance Window', time: [8, 10], desc: 'Geplante Wartungsarbeiten', tags: ['tech'] },
+      { dayOffset: 15, title: 'Reporting Deadline', time: [16, 17], desc: 'Abgabefrist für Monatsberichte', tags: ['finance'] },
+      { dayOffset: 17, title: 'Client Presentation', time: [14, 15], desc: 'Präsentation für Neukunde', tags: ['strategie'] },
+      { dayOffset: 20, title: 'Team Offsite', time: [9, 17], desc: 'Teambuilding außerhalb des Büros', tags: ['organisation'] },
+      { dayOffset: 22, title: 'Daily Standup', time: [9, 9], desc: 'Kurzes tägliches Statusupdate', tags: ['intern'] },
+      { dayOffset: 24, title: 'Product Demo', time: [11, 12], desc: 'Demo neuer Features', tags: ['tech'] },
+      { dayOffset: 26, title: 'Partner Meeting', time: [14, 15], desc: 'Abstimmung mit Partnern', tags: ['strategie'] },
+      { dayOffset: 28, title: 'Budget Planning', time: [10, 12], desc: 'Budgetplanung für nächstes Quartal', tags: ['finance'] },
+      { dayOffset: 30, title: 'Security Review', time: [15, 16], desc: 'Sicherheitsüberprüfung', tags: ['tech', 'legal'] },
+      { dayOffset: 32, title: 'Marketing Sync', time: [10, 11], desc: 'Marketing-Abstimmung', tags: ['strategie'] },
+      { dayOffset: 35, title: 'Sales Pipeline Review', time: [15, 16], desc: 'Vertriebspipeline und Forecast', tags: ['finance'] },
+      { dayOffset: 37, title: 'Tech Debt Review', time: [11, 12], desc: 'Priorisierung technischer Schulden', tags: ['tech'] },
+      { dayOffset: 40, title: 'OKR Check-in', time: [10, 11], desc: 'OKR-Fortschritt und Anpassungen', tags: ['organisation'] },
+      { dayOffset: 42, title: 'Compliance Training', time: [14, 16], desc: 'Pflichtschulung Compliance', tags: ['legal', 'hr'] },
+      { dayOffset: 45, title: 'Architecture Review', time: [9, 11], desc: 'Technische Architektur-Entscheidungen', tags: ['tech'] },
+      { dayOffset: 48, title: 'Customer Success Sync', time: [15, 16], desc: 'Kundenzufriedenheit und Retention', tags: ['strategie'] },
+      { dayOffset: 50, title: 'Month End Review', time: [16, 17], desc: 'Monatsabschluss-Besprechung', tags: ['finance'] },
+      { dayOffset: 52, title: 'Hiring Sync', time: [10, 11], desc: 'Recruiting-Status', tags: ['hr'] },
+      { dayOffset: 55, title: 'Client Success Weekly', time: [14, 15], desc: 'Wöchentliches Kunden-Review', tags: ['strategie'] },
+      { dayOffset: 58, title: 'Ops Standup', time: [9, 9], desc: 'Operations-Standup', tags: ['intern'] },
+      { dayOffset: 60, title: 'Investor Deck Update', time: [11, 12], desc: 'Aktualisierung der Investorenpräsentation', tags: ['finance', 'board'] },
+      { dayOffset: 62, title: 'Legal Contract Review', time: [14, 15], desc: 'Vertragsprüfung', tags: ['legal'] },
+      { dayOffset: 65, title: 'Q2 Planning', time: [9, 12], desc: 'Quartalsplanung Q2', tags: ['strategie'] },
+      { dayOffset: 68, title: 'Engineering Sync', time: [10, 11], desc: 'Engineering-Abstimmung', tags: ['tech'] },
+      { dayOffset: 70, title: 'Brand Review', time: [14, 15], desc: 'Markenüberprüfung', tags: ['strategie'] },
+      { dayOffset: 72, title: 'Finance Close', time: [16, 17], desc: 'Finanzabschluss', tags: ['finance'] },
+      { dayOffset: 75, title: 'Data Review', time: [11, 12], desc: 'Datenanalyse-Review', tags: ['tech'] },
+      { dayOffset: 78, title: 'Customer Feedback Session', time: [14, 15], desc: 'Kundenfeedback-Sitzung', tags: ['strategie'] },
+      { dayOffset: 80, title: 'Performance Reviews', time: [9, 12], desc: 'Mitarbeitergespräche', tags: ['hr'] },
+      { dayOffset: 82, title: 'Product Roadmap', time: [10, 11], desc: 'Produkt-Roadmap-Planung', tags: ['strategie', 'tech'] },
+      { dayOffset: 85, title: 'Vendor Review', time: [14, 15], desc: 'Lieferantenbewertung', tags: ['finance'] },
+      { dayOffset: 88, title: 'IT Infrastructure', time: [9, 11], desc: 'IT-Infrastruktur-Planung', tags: ['tech'] },
+      { dayOffset: 90, title: 'Risk Assessment', time: [14, 16], desc: 'Risikobewertung', tags: ['legal', 'finance'] },
+      { dayOffset: 92, title: 'Marketing Campaign', time: [10, 11], desc: 'Kampagnenplanung', tags: ['strategie'] },
+      { dayOffset: 95, title: 'Sales Training', time: [14, 16], desc: 'Vertriebsschulung', tags: ['hr'] },
+      { dayOffset: 98, title: 'Customer Onboarding', time: [10, 11], desc: 'Kunden-Onboarding', tags: ['strategie'] },
+      { dayOffset: 100, title: 'System Upgrade', time: [8, 10], desc: 'Systemaktualisierung', tags: ['tech'] },
+      { dayOffset: 102, title: 'Quarterly Bonus Review', time: [11, 12], desc: 'Bonusprüfung', tags: ['hr', 'finance'] },
+      { dayOffset: 105, title: 'Partner Onboarding', time: [14, 15], desc: 'Partner-Onboarding', tags: ['strategie'] },
+      { dayOffset: 108, title: 'Content Planning', time: [10, 11], desc: 'Content-Planung', tags: ['strategie'] },
+      { dayOffset: 110, title: 'API Review', time: [14, 15], desc: 'API-Überprüfung', tags: ['tech'] },
+      { dayOffset: 112, title: 'Investor Relations', time: [15, 16], desc: 'Investoren-Beziehungspflege', tags: ['board', 'finance'] },
+    ];
+
+    for (const e of internalEvents) {
+      const eventDate = new Date(now.getTime() + e.dayOffset * 24 * 60 * 60 * 1000);
+      // Skip Sundays
+      if (eventDate.getDay() === 0) continue;
+      const start = new Date(eventDate);
+      start.setHours(e.time[0], 0, 0, 0);
+      const end = new Date(eventDate);
+      end.setHours(e.time[1] || e.time[0], e.time[1] === e.time[0] ? 30 : 0, 0, 0);
+      events.push({
+        title: e.title,
+        description: e.desc,
+        startsAt: start,
+        endsAt: end,
+        eventType: 'INTERN',
+        isReadOnly: false,
+        visibility: 'TEAM',
+        color: '#3B82F6',
+        contextTags: e.tags,
+        createdByUserId: userId,
+      });
+    }
+
+    // Insert all events
+    if (events.length > 0) {
+      await db.insert(teamCalendar).values(events);
+    }
+
+    logger.info(`[TEAM-CALENDAR] Seeded ${events.length} calendar events`);
+    res.json({ success: true, count: events.length });
+  } catch (error: any) {
+    logger.error('[COMMAND-CENTER] Error seeding calendar:', error.message);
+    res.status(500).json({ error: error.message });
   }
 });
 

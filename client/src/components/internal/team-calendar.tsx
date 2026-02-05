@@ -20,21 +20,35 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Calendar, Clock, Users, Building2, Briefcase, 
   Info, ChevronLeft, ChevronRight, Star, X, Pencil,
-  Trash2, Save, Plus, RefreshCw
+  Trash2, Save, Plus, RefreshCw, Loader2, AlertCircle
 } from 'lucide-react';
 import { format, addDays, subDays, isToday, isSameDay, startOfDay } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/components/ui/toast-provider';
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from '@/components/ui/hover-card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
-type EventType = 'team-meeting' | 'verwaltungsrat' | 'aufsichtsrat' | 'feiertag' | 'intern';
+type EventType = 'team-meeting' | 'verwaltungsrat' | 'aufsichtsrat' | 'feiertag' | 'intern' | 'INTERN' | 'TEAM_MEETING' | 'VERWALTUNGSRAT' | 'AUFSICHTSRAT' | 'FEIERTAG' | 'DEADLINE' | 'EXTERNAL';
+type DrawerMode = 'view' | 'edit' | 'create';
+type SaveState = 'idle' | 'unsaved' | 'saving' | 'saved' | 'error';
 type ContextTag = 'strategie' | 'organisation' | 'finance' | 'board' | 'intern' | 'legal' | 'hr' | 'tech';
 
 interface Participant {
@@ -45,18 +59,50 @@ interface Participant {
 }
 
 interface CalendarEvent {
-  id: string;
+  id: string | number;
   title: string;
   description?: string;
   date: Date;
   startTime?: string;
   endTime?: string;
+  startsAt?: Date | string;
+  endsAt?: Date | string;
   type: EventType;
+  eventType?: string;
   recurring?: 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
+  recurrence?: {
+    freq?: string;
+    byweekday?: string[];
+    bysetpos?: number;
+  };
   participants?: Participant[];
-  contextTags?: ContextTag[];
+  contextTags?: ContextTag[] | string[];
   internalNotes?: string;
   isReadOnly?: boolean;
+  visibility?: string;
+  color?: string;
+  createdByUserId?: string;
+  creatorUsername?: string;
+}
+
+// API Response type
+interface APICalendarEvent {
+  id: number;
+  title: string;
+  description?: string;
+  startsAt: string;
+  endsAt?: string;
+  allDay?: boolean;
+  location?: string;
+  color?: string;
+  eventType?: string;
+  isReadOnly?: boolean;
+  visibility?: string;
+  recurrence?: any;
+  internalNotes?: string;
+  contextTags?: string[];
+  createdByUserId?: string;
+  creatorUsername?: string;
 }
 
 // ============================================================================
@@ -89,20 +135,34 @@ const CONTEXT_TAG_LABELS: Record<ContextTag, string> = {
 // EVENT TYPE COLORS
 // ============================================================================
 
-const EVENT_COLORS: Record<EventType, string> = {
-  'team-meeting': '#ff6a00',      // Orange
-  'verwaltungsrat': '#e9d7c4',    // Gold
-  'aufsichtsrat': '#f5f5f7',      // Weiß/Beige
-  'feiertag': '#6b7280',          // Grau
-  'intern': '#9ca3af',            // Neutral
+const EVENT_COLORS: Record<string, string> = {
+  'team-meeting': '#ff6a00',
+  'verwaltungsrat': '#e9d7c4',
+  'aufsichtsrat': '#f5f5f7',
+  'feiertag': '#6b7280',
+  'intern': '#9ca3af',
+  'INTERN': '#3B82F6',
+  'TEAM_MEETING': '#22C55E',
+  'VERWALTUNGSRAT': '#F59E0B',
+  'AUFSICHTSRAT': '#EF4444',
+  'FEIERTAG': '#6B7280',
+  'DEADLINE': '#8B5CF6',
+  'EXTERNAL': '#06B6D4',
 };
 
-const EVENT_LABELS: Record<EventType, string> = {
+const EVENT_LABELS: Record<string, string> = {
   'team-meeting': 'Team Meeting',
   'verwaltungsrat': 'Verwaltungsrat',
   'aufsichtsrat': 'Aufsichtsrat',
   'feiertag': 'Feiertag',
   'intern': 'Intern',
+  'INTERN': 'Intern',
+  'TEAM_MEETING': 'Team Meeting',
+  'VERWALTUNGSRAT': 'Verwaltungsrat',
+  'AUFSICHTSRAT': 'Aufsichtsrat',
+  'FEIERTAG': 'Feiertag',
+  'DEADLINE': 'Deadline',
+  'EXTERNAL': 'Extern',
 };
 
 // ============================================================================
@@ -544,7 +604,7 @@ interface EventDetailDrawerProps {
 function EventDetailDrawer({ event, isOpen, onClose }: EventDetailDrawerProps) {
   const [description, setDescription] = useState(event?.description || '');
   const [internalNotes, setInternalNotes] = useState(event?.internalNotes || '');
-  const [selectedTags, setSelectedTags] = useState<ContextTag[]>(event?.contextTags || []);
+  const [selectedTags, setSelectedTags] = useState<string[]>((event?.contextTags as string[]) || []);
   const [showSaveIndicator, setShowSaveIndicator] = useState(false);
   
   // Update local state when event changes
@@ -552,7 +612,7 @@ function EventDetailDrawer({ event, isOpen, onClose }: EventDetailDrawerProps) {
     if (event) {
       setDescription(event.description || '');
       setInternalNotes(event.internalNotes || '');
-      setSelectedTags(event.contextTags || []);
+      setSelectedTags((event.contextTags as string[]) || []);
     }
   }, [event]);
   
@@ -1031,23 +1091,162 @@ export function TeamCalendar({ className = '', onEventClick }: TeamCalendarProps
   const [weekOffset, setWeekOffset] = useState(0);
   const [drawerEvent, setDrawerEvent] = useState<CalendarEvent | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [drawerMode, setDrawerMode] = useState<DrawerMode>('view');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [useMockData, setUseMockData] = useState(false);
+  
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  
+  // Fetch calendar events from API
+  const { data: apiData, isLoading, error, refetch } = useQuery({
+    queryKey: ['team-calendar'],
+    queryFn: async () => {
+      const fromDate = subDays(new Date(), 30).toISOString();
+      const toDate = addDays(new Date(), 180).toISOString();
+      const res = await fetch(`/api/internal/command-center/team-calendar?from=${fromDate}&to=${toDate}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to fetch calendar events');
+      return res.json();
+    },
+    staleTime: 30000,
+    retry: 1,
+  });
+  
+  // Transform API events to CalendarEvent format
+  const apiEvents: CalendarEvent[] = useMemo(() => {
+    if (!apiData?.events) return [];
+    return apiData.events.map((e: APICalendarEvent) => {
+      const startsAt = new Date(e.startsAt);
+      return {
+        id: e.id,
+        title: e.title,
+        description: e.description,
+        date: startOfDay(startsAt),
+        startTime: format(startsAt, 'HH:mm'),
+        endTime: e.endsAt ? format(new Date(e.endsAt), 'HH:mm') : undefined,
+        startsAt: e.startsAt,
+        endsAt: e.endsAt,
+        type: (e.eventType || 'INTERN') as EventType,
+        eventType: e.eventType,
+        isReadOnly: e.isReadOnly,
+        visibility: e.visibility,
+        color: e.color,
+        recurrence: e.recurrence,
+        internalNotes: e.internalNotes,
+        contextTags: e.contextTags,
+        createdByUserId: e.createdByUserId,
+        creatorUsername: e.creatorUsername,
+      };
+    });
+  }, [apiData]);
+  
+  // Create mutation
+  const createMutation = useMutation({
+    mutationFn: async (event: Partial<CalendarEvent>) => {
+      const res = await fetch('/api/internal/command-center/team-calendar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(event),
+      });
+      if (!res.ok) throw new Error('Failed to create event');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['team-calendar'] });
+      showToast('Termin erstellt', 'success');
+      closeDrawer();
+    },
+    onError: () => showToast('Fehler beim Erstellen', 'error'),
+  });
+  
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, ...data }: { id: number } & Partial<CalendarEvent>) => {
+      const res = await fetch(`/api/internal/command-center/team-calendar/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to update event');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['team-calendar'] });
+      showToast('Änderungen gespeichert', 'success');
+      setDrawerMode('view');
+    },
+    onError: (err: any) => showToast(err.message || 'Fehler beim Speichern', 'error'),
+  });
+  
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/internal/command-center/team-calendar/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to delete event');
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['team-calendar'] });
+      showToast('Termin gelöscht', 'success');
+      closeDrawer();
+    },
+    onError: (err: any) => showToast(err.message || 'Fehler beim Löschen', 'error'),
+  });
+  
+  // Fallback to mock data if API fails or no data
+  const mockEvents = useMemo(() => generateMockEvents(), []);
+  const allEvents = useMemo(() => {
+    if (useMockData || (error && !apiEvents.length)) return mockEvents;
+    if (apiEvents.length > 0) return apiEvents;
+    return mockEvents;
+  }, [useMockData, error, apiEvents, mockEvents]);
   
   // Handle event click - open drawer
   const handleEventClick = useCallback((event: CalendarEvent) => {
     setDrawerEvent(event);
+    setDrawerMode('view');
     setIsDrawerOpen(true);
     onEventClick?.(event);
   }, [onEventClick]);
   
+  // Open create mode
+  const handleCreateEvent = useCallback(() => {
+    const newEvent: CalendarEvent = {
+      id: 'new',
+      title: '',
+      description: '',
+      date: selectedDate,
+      startTime: '09:00',
+      endTime: '10:00',
+      type: 'INTERN',
+      eventType: 'INTERN',
+      contextTags: [],
+      internalNotes: '',
+      isReadOnly: false,
+    };
+    setDrawerEvent(newEvent);
+    setDrawerMode('create');
+    setIsDrawerOpen(true);
+  }, [selectedDate]);
+  
   // Close drawer
   const closeDrawer = useCallback(() => {
     setIsDrawerOpen(false);
-    // Delay clearing event to allow exit animation
+    setDrawerMode('view');
     setTimeout(() => setDrawerEvent(null), 200);
   }, []);
-  
-  // Generate mock events once
-  const allEvents = useMemo(() => generateMockEvents(), []);
   
   // Get 7 days for navigation
   const days = useMemo(() => {
@@ -1111,6 +1310,21 @@ export function TeamCalendar({ className = '', onEventClick }: TeamCalendarProps
         </div>
         
         <div className="flex items-center gap-2">
+          {/* Add Event Button */}
+          <button
+            onClick={handleCreateEvent}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all hover:scale-[1.02]"
+            style={{
+              background: 'linear-gradient(135deg, #FE9100, #e67e00)',
+              color: 'white',
+              fontSize: '11px',
+              fontWeight: 500,
+            }}
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Termin</span>
+          </button>
+          
           <span 
             className="text-[10px] tracking-wider"
             style={{ 
@@ -1120,6 +1334,12 @@ export function TeamCalendar({ className = '', onEventClick }: TeamCalendarProps
           >
             {currentMonthYear}
           </span>
+          
+          {/* Loading/Refresh indicator */}
+          {isLoading && (
+            <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'rgba(255,255,255,0.4)' }} />
+          )}
+          
           <HoverCard openDelay={300}>
             <HoverCardTrigger asChild>
               <button
@@ -1141,7 +1361,7 @@ export function TeamCalendar({ className = '', onEventClick }: TeamCalendarProps
               }}
             >
               <p className="text-[11px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                Wählen Sie einen Tag um alle Termine zu sehen. Hover über Events zeigt Details.
+                Wählen Sie einen Tag um alle Termine zu sehen. Klicken Sie auf "Termin" um einen neuen Eintrag zu erstellen.
               </p>
             </HoverCardContent>
           </HoverCard>

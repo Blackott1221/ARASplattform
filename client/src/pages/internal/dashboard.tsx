@@ -473,22 +473,23 @@ export default function InternalDashboard() {
         {/* GRID - Calendar takes more weight, then 2 columns for others */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
           
-          {/* TEAM CALENDAR - Executive Time Command Center (5 cols = ~42%) */}
+          {/* TEAM CALENDAR - Executive Time Command Center (7 cols = ~58%) */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="lg:col-span-5"
+            className="lg:col-span-7"
+            style={{ minHeight: '560px' }}
           >
-            <TeamCalendar />
+            <TeamCalendar className="h-full" />
           </motion.div>
 
-          {/* ACTIVE EMPLOYEES (3.5 cols) */}
+          {/* RIGHT COLUMN - Members + Todos stacked (5 cols) */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="lg:col-span-4"
+            className="lg:col-span-5 flex flex-col gap-5"
           >
             <GlassCard className="h-full">
               <WidgetHeader icon={Users} title="Team Members" count={activeUsers.length} />
@@ -531,16 +532,9 @@ export default function InternalDashboard() {
                 )}
               </div>
             </GlassCard>
-          </motion.div>
 
-          {/* TODOS (3 cols) */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="lg:col-span-3"
-          >
-            <GlassCard className="h-full">
+            {/* TODOS - stacked below members */}
+            <GlassCard className="flex-1">
               <WidgetHeader 
                 icon={CheckSquare} 
                 title="Team Todos" 

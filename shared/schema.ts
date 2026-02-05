@@ -882,28 +882,81 @@ export type TeamFeed = typeof teamFeed.$inferSelect;
 export type InsertTeamFeed = typeof teamFeed.$inferInsert;
 
 // ============================================================================
-// TEAM CALENDAR - Shared calendar events for team
+// TEAM CALENDAR - Shared calendar events for team (v2 - Extended)
 // ============================================================================
+
+// Event type enum values
+export const TEAM_CALENDAR_EVENT_TYPES = [
+  'INTERN',
+  'TEAM_MEETING', 
+  'VERWALTUNGSRAT',
+  'AUFSICHTSRAT',
+  'FEIERTAG',
+  'DEADLINE',
+  'EXTERNAL',
+] as const;
+export type TeamCalendarEventType = (typeof TEAM_CALENDAR_EVENT_TYPES)[number];
 
 export const teamCalendar = pgTable("team_calendar", {
   id: serial("id").primaryKey(),
-  title: varchar("title").notNull(),
+  title: text("title").notNull(),
   description: text("description"),
-  startsAt: timestamp("starts_at").notNull(),
-  endsAt: timestamp("ends_at"),
+  // Original columns (match actual DB)
+  startAt: timestamp("start_at", { withTimezone: true }).notNull(),
+  endAt: timestamp("end_at", { withTimezone: true }),
+  location: text("location"),
+  createdBy: text("created_by"), // original creator field
+  attendees: jsonb("attendees").$type<any[]>().default([]),
+  meta: jsonb("meta").$type<Record<string, any>>().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  // New columns added via migration
+  startsAt: timestamp("starts_at", { withTimezone: true }), // alias for filtering
+  endsAt: timestamp("ends_at", { withTimezone: true }),
   allDay: boolean("all_day").default(false),
-  location: varchar("location"),
-  color: varchar("color").default('#FE9100'),
-  createdByUserId: varchar("created_by_user_id").notNull().references(() => users.id),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  color: text("color").default('#FE9100'),
+  eventType: text("event_type").default('INTERN'),
+  isReadOnly: boolean("is_read_only").default(false),
+  visibility: text("visibility").default('TEAM'),
+  recurrence: jsonb("recurrence").$type<{
+    freq?: 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'YEARLY';
+    interval?: number;
+    byweekday?: string[];
+    bymonthday?: number;
+    bysetpos?: number;
+    until?: string;
+    count?: number;
+  }>(),
+  internalNotes: text("internal_notes"),
+  contextTags: jsonb("context_tags").$type<string[]>(),
+  createdByUserId: text("created_by_user_id"),
+  updatedByUserId: text("updated_by_user_id"),
 }, (table) => [
-  index("team_calendar_starts_idx").on(table.startsAt),
-  index("team_calendar_creator_idx").on(table.createdByUserId),
+  index("team_calendar_start_at_idx").on(table.startAt),
+  index("team_calendar_event_type_idx").on(table.eventType),
 ]);
 
 export type TeamCalendar = typeof teamCalendar.$inferSelect;
 export type InsertTeamCalendar = typeof teamCalendar.$inferInsert;
+
+// ============================================================================
+// TEAM CALENDAR PARTICIPANTS - Event attendees
+// ============================================================================
+
+export const teamCalendarParticipants = pgTable("team_calendar_participants", {
+  id: serial("id").primaryKey(),
+  eventId: integer("event_id").notNull().references(() => teamCalendar.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  roleLabel: varchar("role_label"), // "Board", "Staff", "Guest", etc.
+  status: varchar("status").default('pending'), // pending, accepted, declined
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("team_calendar_participants_event_idx").on(table.eventId),
+  index("team_calendar_participants_user_idx").on(table.userId),
+]);
+
+export type TeamCalendarParticipant = typeof teamCalendarParticipants.$inferSelect;
+export type InsertTeamCalendarParticipant = typeof teamCalendarParticipants.$inferInsert;
 
 // ============================================================================
 // TEAM TODOS - Shared task list for team
