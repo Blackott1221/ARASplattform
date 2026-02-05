@@ -37,6 +37,18 @@ if (IS_PRODUCTION) {
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: false }));
 
+// ============================================================================
+// HEALTH CHECK - Must be early to verify API is responding
+// ============================================================================
+app.get('/api/_health', (_req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.json({
+    ok: true,
+    service: 'aras-api',
+    time: new Date().toISOString(),
+  });
+});
+
 // Serve static files from attached_assets
 app.use('/attached_assets', express.static('attached_assets'));
 

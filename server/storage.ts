@@ -11,6 +11,7 @@ import {
   usageTracking,
   twilioSettings,
   userTasks,
+  mailInbound,
   type User,
   type UpsertUser,
   type Lead,
@@ -29,6 +30,7 @@ import {
   type InsertTwilioSettings,
   type UserTask,
   type InsertUserTask,
+  type MailInbound,
 } from "@shared/schema";
 import { db } from "./db";
 import { logger } from "./logger";
@@ -2604,6 +2606,148 @@ export class MemStorage implements IStorage {
       return task || null;
     } catch (error: any) {
       logger.error(`[STORAGE] Error getting task by fingerprint:`, error.message);
+      return null;
+    }
+  }
+
+  // ========================================
+  // MAIL INBOUND - Gmail Intake Storage
+  // ========================================
+
+  async upsertInboundMail(payload: {
+    source?: string;
+    messageId: string;
+    threadId?: string | null;
+    mailbox?: string | null;
+    fromEmail: string;
+    fromName?: string | null;
+    toEmails?: string[];
+    ccEmails?: string[];
+    subject?: string;
+    snippet?: string;
+    bodyText?: string;
+    bodyHtml?: string;
+    receivedAt: Date;
+    labels?: string[];
+    meta?: Record<string, any>;
+  }): Promise<{ id: number; status: string; isNew: boolean }> {
+    try {
+      const source = payload.source || 'gmail';
+      const mailbox = payload.mailbox || null;
+      
+      // Check if record exists (idempotency check)
+      const existing = await db
+        .select({ id: mailInbound.id, status: mailInbound.status })
+        .from(mailInbound)
+        .where(and(
+          eq(mailInbound.source, source),
+          mailbox ? eq(mailInbound.mailbox, mailbox) : sql`${mailInbound.mailbox} IS NULL`,
+          eq(mailInbound.messageId, payload.messageId)
+        ))
+        .limit(1);
+
+      if (existing.length > 0) {
+        // Record exists - only update if status is NEW (don't overwrite processed data)
+        const record = existing[0];
+        if (record.status === 'NEW') {
+          // Update labels and meta only (don't overwrite content)
+          await db
+            .update(mailInbound)
+            .set({
+              labels: payload.labels || [],
+              meta: payload.meta || {},
+              updatedAt: new Date(),
+            })
+            .where(eq(mailInbound.id, record.id));
+        }
+        logger.info(`[MAIL-INBOUND] Duplicate detected, id=${record.id}, status=${record.status}`);
+        return { id: record.id, status: record.status, isNew: false };
+      }
+
+      // Insert new record
+      const [inserted] = await db
+        .insert(mailInbound)
+        .values({
+          source,
+          messageId: payload.messageId,
+          threadId: payload.threadId || null,
+          mailbox,
+          fromEmail: payload.fromEmail,
+          fromName: payload.fromName || null,
+          toEmails: payload.toEmails || [],
+          ccEmails: payload.ccEmails || [],
+          subject: payload.subject || '',
+          snippet: payload.snippet || '',
+          bodyText: payload.bodyText || '',
+          bodyHtml: payload.bodyHtml || '',
+          receivedAt: payload.receivedAt,
+          labels: payload.labels || [],
+          status: 'NEW',
+          meta: payload.meta || {},
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning({ id: mailInbound.id, status: mailInbound.status });
+
+      logger.info(`[MAIL-INBOUND] Created new mail, id=${inserted.id}`);
+      return { id: inserted.id, status: inserted.status, isNew: true };
+    } catch (error: any) {
+      logger.error(`[MAIL-INBOUND] Error upserting mail:`, error.message);
+      throw error;
+    }
+  }
+
+  async listInboundMail(options: {
+    status?: string;
+    q?: string;
+    limit?: number;
+    cursor?: number;
+  } = {}): Promise<MailInbound[]> {
+    try {
+      const limit = Math.min(options.limit || 50, 100);
+      const conditions: any[] = [];
+
+      if (options.status) {
+        conditions.push(eq(mailInbound.status, options.status));
+      }
+      if (options.cursor) {
+        conditions.push(sql`${mailInbound.id} < ${options.cursor}`);
+      }
+      if (options.q) {
+        const searchTerm = `%${options.q}%`;
+        conditions.push(sql`(
+          ${mailInbound.subject} ILIKE ${searchTerm} OR
+          ${mailInbound.fromEmail} ILIKE ${searchTerm} OR
+          ${mailInbound.fromName} ILIKE ${searchTerm} OR
+          ${mailInbound.snippet} ILIKE ${searchTerm}
+        )`);
+      }
+
+      const query = db
+        .select()
+        .from(mailInbound)
+        .orderBy(desc(mailInbound.receivedAt))
+        .limit(limit);
+
+      if (conditions.length > 0) {
+        return await query.where(and(...conditions));
+      }
+      return await query;
+    } catch (error: any) {
+      logger.error(`[MAIL-INBOUND] Error listing mail:`, error.message);
+      return [];
+    }
+  }
+
+  async getInboundMailById(id: number): Promise<MailInbound | null> {
+    try {
+      const [mail] = await db
+        .select()
+        .from(mailInbound)
+        .where(eq(mailInbound.id, id));
+      return mail || null;
+    } catch (error: any) {
+      logger.error(`[MAIL-INBOUND] Error getting mail by id:`, error.message);
       return null;
     }
   }

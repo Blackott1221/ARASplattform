@@ -184,6 +184,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const adminEnrichRoutes = await import('./routes/admin-enrich');
   app.use('/api/admin', adminEnrichRoutes.default);
 
+  // 📧 Setup Mail Inbound Routes (Gmail intake via n8n webhook)
+  const mailInboundRoutes = await import('./routes/mail-inbound');
+  app.use('/api', mailInboundRoutes.default);
+
   // Debug route to check auth status
   app.get('/api/auth/status', (req: any, res) => {
     res.json({

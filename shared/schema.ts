@@ -1037,3 +1037,60 @@ export const teamChatChannelMembers = pgTable("team_chat_channel_members", {
 
 export type TeamChatChannelMember = typeof teamChatChannelMembers.$inferSelect;
 export type InsertTeamChatChannelMember = typeof teamChatChannelMembers.$inferInsert;
+
+// ============================================================================
+// MAIL INBOUND - Gmail Intake for Internal Dashboard
+// ============================================================================
+// Stores incoming business emails from Gmail via n8n webhook
+// Used by Internal CRM for triage, draft responses, and tracking
+// ============================================================================
+
+export const MAIL_INBOUND_STATUSES = ['NEW', 'TRIAGED', 'DRAFT_READY', 'SENT', 'ARCHIVED'] as const;
+export type MailInboundStatus = (typeof MAIL_INBOUND_STATUSES)[number];
+
+export const mailInbound = pgTable("mail_inbound", {
+  id: serial("id").primaryKey(),
+  
+  // Source identification
+  source: text("source").default("gmail").notNull(),
+  messageId: text("message_id").notNull(),
+  threadId: text("thread_id"),
+  mailbox: text("mailbox"), // e.g. "info@aras-ai.com"
+  
+  // Sender info
+  fromEmail: text("from_email").notNull(),
+  fromName: text("from_name"),
+  
+  // Recipients (JSONB arrays)
+  toEmails: jsonb("to_emails").$type<string[]>().default([]).notNull(),
+  ccEmails: jsonb("cc_emails").$type<string[]>().default([]).notNull(),
+  
+  // Email content
+  subject: text("subject").default("").notNull(),
+  snippet: text("snippet").default("").notNull(),
+  bodyText: text("body_text").default("").notNull(),
+  bodyHtml: text("body_html").default("").notNull(),
+  
+  // Timing
+  receivedAt: timestamp("received_at", { withTimezone: true }).notNull(),
+  
+  // Labels & status
+  labels: jsonb("labels").$type<string[]>().default([]).notNull(),
+  status: text("status").default("NEW").notNull(),
+  
+  // Extensible metadata (raw payload hashes, attachments meta, etc.)
+  meta: jsonb("meta").$type<Record<string, any>>().default({}).notNull(),
+  
+  // Timestamps
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  // Idempotency constraint: same source + mailbox + messageId = 1 row
+  index("mail_inbound_unique_idx").on(table.source, table.mailbox, table.messageId),
+  index("mail_inbound_received_at_idx").on(table.receivedAt),
+  index("mail_inbound_status_idx").on(table.status),
+  index("mail_inbound_from_email_idx").on(table.fromEmail),
+]);
+
+export type MailInbound = typeof mailInbound.$inferSelect;
+export type InsertMailInbound = typeof mailInbound.$inferInsert;
