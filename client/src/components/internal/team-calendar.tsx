@@ -166,183 +166,415 @@ const EVENT_LABELS: Record<string, string> = {
 };
 
 // ============================================================================
-// MOCK EVENTS - 50+ Events
+// MOCK EVENTS - 50+ Realistic Events (Feb 2026 - Aug 2026)
 // ============================================================================
 
 function generateMockEvents(): CalendarEvent[] {
   const events: CalendarEvent[] = [];
-  const today = startOfDay(new Date());
-  const year = today.getFullYear();
   
-  // ========== RECURRING MEETINGS ==========
+  // Use Feb 2026 as base for 7-month window
+  const baseDate = new Date(2026, 1, 1); // Feb 1, 2026
+  const endDate = new Date(2026, 7, 31); // Aug 31, 2026
   
-  // Every Friday - Team Meeting 10:00-11:00
-  for (let i = 0; i < 52; i++) {
-    const friday = new Date(year, 0, 1);
-    friday.setDate(friday.getDate() + ((5 - friday.getDay() + 7) % 7) + (i * 7));
-    if (friday >= subDays(today, 30) && friday <= addDays(today, 90)) {
-      events.push({
-        id: `team-meeting-${i}`,
-        title: 'Team Meeting',
-        description: 'Wöchentliches Team-Alignment zu laufenden Projekten, Prioritäten und offenen Punkten. Statusupdates aller Bereiche und Planung der kommenden Woche.',
-        date: friday,
-        startTime: '10:00',
-        endTime: '11:00',
-        type: 'team-meeting',
-        recurring: 'weekly',
-        participants: [MOCK_PARTICIPANTS['team'], MOCK_PARTICIPANTS['js'], MOCK_PARTICIPANTS['hs']],
-        contextTags: ['organisation', 'intern'],
-        internalNotes: 'Agenda wird donnerstags verschickt. Protokoll im Confluence.',
-      });
+  // Helper to get nth weekday of month
+  const getNthWeekdayOfMonth = (year: number, month: number, weekday: number, n: number): Date => {
+    const firstDay = new Date(year, month, 1);
+    const firstWeekday = firstDay.getDay();
+    const offset = (weekday - firstWeekday + 7) % 7;
+    const day = 1 + offset + (n - 1) * 7;
+    return new Date(year, month, day);
+  };
+  
+  // Helper to get last weekday of month
+  const getLastWeekdayOfMonth = (year: number, month: number): Date => {
+    let lastDay = new Date(year, month + 1, 0);
+    while (lastDay.getDay() === 0 || lastDay.getDay() === 6) {
+      lastDay = addDays(lastDay, -1);
+    }
+    return lastDay;
+  };
+
+  // ========== A) RECURRING MEETINGS ==========
+  
+  // 1) Weekly Team Meeting (every Friday) 10:00-10:45, Remote
+  for (let month = 1; month <= 7; month++) {
+    const m = month; // Feb = 1, Mar = 2, etc. (0-indexed: 1 = Feb)
+    for (let week = 0; week < 5; week++) {
+      const friday = new Date(2026, m, 1);
+      friday.setDate(friday.getDate() + ((5 - friday.getDay() + 7) % 7) + (week * 7));
+      if (friday.getMonth() === m && friday <= endDate) {
+        events.push({
+          id: `team-meeting-${m}-${week}`,
+          title: 'Wöchentliches Team Meeting',
+          description: 'Wöchentliches Team-Alignment zu laufenden Projekten, Prioritäten und offenen Punkten. Statusupdates aller Bereiche und Planung der kommenden Woche. Bitte Agenda-Punkte bis Donnerstag 18:00 einreichen.',
+          date: friday,
+          startTime: '10:00',
+          endTime: '10:45',
+          type: 'TEAM_MEETING',
+          participants: [MOCK_PARTICIPANTS['team'], MOCK_PARTICIPANTS['js'], MOCK_PARTICIPANTS['hs']],
+          contextTags: ['organisation', 'intern'],
+          internalNotes: 'Remote via Zoom. Protokoll im Confluence.',
+        });
+      }
     }
   }
   
-  // Every 2nd Friday - Verwaltungsrat 14:00-16:00
-  for (let i = 0; i < 26; i++) {
-    const friday = new Date(year, 0, 1);
-    friday.setDate(friday.getDate() + ((5 - friday.getDay() + 7) % 7) + (i * 14));
-    if (friday >= subDays(today, 30) && friday <= addDays(today, 90)) {
-      events.push({
-        id: `verwaltungsrat-${i}`,
-        title: 'Verwaltungsrat',
-        description: 'Besprechung strategischer Entscheidungen, laufender Beteiligungen und Governance-Themen. Quartalszahlen, Investitionsentscheidungen und Risikobewertungen.',
-        date: friday,
-        startTime: '14:00',
-        endTime: '16:00',
-        type: 'verwaltungsrat',
-        recurring: 'biweekly',
-        participants: [MOCK_PARTICIPANTS['vr'], MOCK_PARTICIPANTS['js'], MOCK_PARTICIPANTS['mw']],
-        contextTags: ['board', 'strategie', 'finance'],
-        internalNotes: 'Vertraulich. Unterlagen nur über sicheren Kanal.',
-      });
-    }
-  }
-  
-  // Every 3rd Monday - Aufsichtsrat 09:00-11:00
-  for (let i = 0; i < 12; i++) {
-    const monday = new Date(year, 0, 1);
-    monday.setDate(monday.getDate() + ((1 - monday.getDay() + 7) % 7) + (i * 21));
-    if (monday >= subDays(today, 30) && monday <= addDays(today, 90)) {
-      events.push({
-        id: `aufsichtsrat-${i}`,
-        title: 'Aufsichtsrat',
-        description: 'Aufsichtsratssitzung mit Prüfung und Überwachung der Geschäftsführung. Bericht des Vorstands, Jahresabschluss-Prüfung und strategische Weichenstellungen.',
-        date: monday,
-        startTime: '09:00',
-        endTime: '11:00',
-        type: 'aufsichtsrat',
-        recurring: 'monthly',
-        participants: [MOCK_PARTICIPANTS['ar'], MOCK_PARTICIPANTS['vs']],
-        contextTags: ['board', 'strategie'],
-        internalNotes: 'Streng vertraulich. Nur autorisierte Teilnehmer.',
-        isReadOnly: true,
-      });
-    }
-  }
-  
-  // ========== HOLIDAYS (DACH + CH) ==========
-  
-  const holidays: { date: Date; title: string }[] = [
-    { date: new Date(year, 0, 1), title: 'Neujahr' },
-    { date: new Date(year, 0, 6), title: 'Heilige Drei Könige' },
-    { date: new Date(year, 3, 18), title: 'Karfreitag' }, // 2026 approx
-    { date: new Date(year, 3, 21), title: 'Ostermontag' }, // 2026 approx
-    { date: new Date(year, 4, 1), title: 'Tag der Arbeit' },
-    { date: new Date(year, 4, 29), title: 'Christi Himmelfahrt' }, // 2026 approx
-    { date: new Date(year, 5, 8), title: 'Pfingstmontag' }, // 2026 approx
-    { date: new Date(year, 7, 1), title: 'Nationalfeiertag CH' },
-    { date: new Date(year, 9, 3), title: 'Tag der Deutschen Einheit' },
-    { date: new Date(year, 9, 26), title: 'Nationalfeiertag AT' },
-    { date: new Date(year, 10, 1), title: 'Allerheiligen' },
-    { date: new Date(year, 11, 25), title: 'Weihnachten' },
-    { date: new Date(year, 11, 26), title: 'Stephanstag' },
+  // 2) Verwaltungsrat (every 2nd Friday) 16:30-18:00, Zürich / Remote
+  const vrFridays = [
+    new Date(2026, 1, 13), new Date(2026, 1, 27), // Feb
+    new Date(2026, 2, 13), new Date(2026, 2, 27), // Mar
+    new Date(2026, 3, 10), new Date(2026, 3, 24), // Apr
+    new Date(2026, 4, 8), new Date(2026, 4, 22), // May
+    new Date(2026, 5, 5), new Date(2026, 5, 19), // Jun
+    new Date(2026, 6, 3), new Date(2026, 6, 17), new Date(2026, 6, 31), // Jul
+    new Date(2026, 7, 14), new Date(2026, 7, 28), // Aug
   ];
-  
-  holidays.forEach((h, i) => {
+  vrFridays.forEach((d, i) => {
     events.push({
-      id: `holiday-${i}`,
-      title: h.title,
-      description: 'Gesetzlicher Feiertag. Büro geschlossen.',
-      date: h.date,
-      type: 'feiertag',
-      recurring: 'yearly',
-      isReadOnly: true,
+      id: `verwaltungsrat-${i}`,
+      title: 'Verwaltungsrat',
+      description: 'Besprechung strategischer Entscheidungen, laufender Beteiligungen und Governance-Themen. Quartalszahlen, Investitionsentscheidungen und Risikobewertungen. Beschlussprotokoll wird innerhalb 48h versendet.',
+      date: d,
+      startTime: '16:30',
+      endTime: '18:00',
+      type: 'VERWALTUNGSRAT',
+      participants: [MOCK_PARTICIPANTS['vr'], MOCK_PARTICIPANTS['js']],
+      contextTags: ['board', 'strategie', 'finance'],
+      internalNotes: 'Zürich / Remote. Vertraulich. Unterlagen nur über sicheren Kanal.',
     });
   });
   
-  // ========== INTERNAL FIXED EVENTS ==========
+  // 3) Aufsichtsrat (every 3rd Monday of month) 18:00-19:30, Remote
+  for (let month = 1; month <= 7; month++) {
+    const thirdMonday = getNthWeekdayOfMonth(2026, month, 1, 3);
+    events.push({
+      id: `aufsichtsrat-${month}`,
+      title: 'Aufsichtsrat',
+      description: 'Aufsichtsratssitzung mit Prüfung und Überwachung der Geschäftsführung. Bericht des Vorstands, Jahresabschluss-Prüfung und strategische Weichenstellungen. Einladung erfolgt 14 Tage im Voraus.',
+      date: thirdMonday,
+      startTime: '18:00',
+      endTime: '19:30',
+      type: 'AUFSICHTSRAT',
+      participants: [MOCK_PARTICIPANTS['ar'], MOCK_PARTICIPANTS['vs']],
+      contextTags: ['board', 'strategie'],
+      internalNotes: 'Streng vertraulich. Nur autorisierte Teilnehmer. Remote.',
+      isReadOnly: true,
+    });
+  }
+
+  // ========== B) FINANCE / OPS ==========
   
-  const internalEvents: { dayOffset: number; title: string; time: string; desc: string }[] = [
-    { dayOffset: 1, title: 'Strategy Workshop', time: '09:00-12:00', desc: 'Quartalsstrategie und Roadmap-Planung' },
-    { dayOffset: 2, title: 'Board Preparation', time: '14:00-15:00', desc: 'Vorbereitung der Unterlagen für Board Meeting' },
-    { dayOffset: 3, title: 'Quarterly Review', time: '10:00-12:00', desc: 'Quartalsrückblick mit KPI-Analyse' },
-    { dayOffset: 5, title: 'Monatsabschluss Finance', time: '09:00-11:00', desc: 'Finanzabschluss und Reporting' },
-    { dayOffset: 7, title: 'Investor Update Call', time: '16:00-17:00', desc: 'Investoren-Update zur Geschäftsentwicklung' },
-    { dayOffset: 8, title: 'Legal Review Window', time: '14:00-16:00', desc: 'Rechtliche Prüfung laufender Verträge' },
-    { dayOffset: 10, title: 'Internal Audit Check', time: '09:00-12:00', desc: 'Interne Revision und Compliance-Check' },
-    { dayOffset: 12, title: 'HR Review', time: '11:00-12:00', desc: 'Personalentwicklung und Recruiting-Status' },
-    { dayOffset: 14, title: 'IT Maintenance Window', time: '18:00-22:00', desc: 'Geplante Systemwartung' },
-    { dayOffset: 15, title: 'Reporting Deadline', time: '23:59', desc: 'Abgabefrist Monatsreporting' },
-    { dayOffset: -2, title: 'Client Presentation', time: '15:00-16:30', desc: 'Kundenpräsentation Q1 Results' },
-    { dayOffset: -5, title: 'Team Offsite', time: '09:00-17:00', desc: 'Team-Event und Strategieworkshop' },
-    { dayOffset: 0, title: 'Daily Standup', time: '09:00-09:15', desc: 'Tägliches Kurz-Standup' },
-    { dayOffset: 4, title: 'Product Demo', time: '14:00-15:00', desc: 'Demo neuer Features für Stakeholder' },
-    { dayOffset: 6, title: 'Partner Meeting', time: '11:00-12:00', desc: 'Abstimmung mit externen Partnern' },
-    { dayOffset: 9, title: 'Budget Planning', time: '10:00-12:00', desc: 'Budgetplanung nächstes Quartal' },
-    { dayOffset: 11, title: 'Security Review', time: '14:00-15:30', desc: 'Sicherheitsüberprüfung und Penetration Tests' },
-    { dayOffset: 13, title: 'Marketing Sync', time: '10:00-11:00', desc: 'Marketing-Abstimmung und Kampagnenplanung' },
-    { dayOffset: 16, title: 'Sales Pipeline Review', time: '15:00-16:00', desc: 'Vertriebspipeline und Forecast' },
-    { dayOffset: 18, title: 'Tech Debt Review', time: '11:00-12:00', desc: 'Priorisierung technischer Schulden' },
-    { dayOffset: 20, title: 'OKR Check-in', time: '10:00-11:00', desc: 'OKR-Fortschritt und Anpassungen' },
-    { dayOffset: 22, title: 'Compliance Training', time: '14:00-16:00', desc: 'Pflichtschulung Compliance' },
-    { dayOffset: 25, title: 'Architecture Review', time: '09:00-11:00', desc: 'Technische Architektur-Entscheidungen' },
-    { dayOffset: 28, title: 'Customer Success Sync', time: '15:00-16:00', desc: 'Kundenzufriedenheit und Retention' },
-    { dayOffset: 30, title: 'Month End Review', time: '16:00-17:00', desc: 'Monatsabschluss-Besprechung' },
+  // Monatsabschluss (last business day each month) 18:30-19:30
+  for (let month = 1; month <= 7; month++) {
+    const lastBizDay = getLastWeekdayOfMonth(2026, month);
+    events.push({
+      id: `monatsabschluss-${month}`,
+      title: 'Monatsabschluss Finance',
+      description: 'Finaler Monatsabschluss mit Abstimmung aller Konten, Prüfung offener Posten und Erstellung des Management Reports. Alle Buchungen müssen bis 17:00 abgeschlossen sein.',
+      date: lastBizDay,
+      startTime: '18:30',
+      endTime: '19:30',
+      type: 'INTERN',
+      contextTags: ['finance'],
+      internalNotes: 'Finance Team + CFO. Keine Verschiebung möglich.',
+    });
+  }
+  
+  // Payroll Review (1x pro Monat, around 25th)
+  for (let month = 1; month <= 7; month++) {
+    events.push({
+      id: `payroll-${month}`,
+      title: 'Payroll Review',
+      description: 'Prüfung der Gehaltsabrechnungen, Sonderzahlungen und Abzüge. Abstimmung mit HR zu Neueinstellungen und Austritten.',
+      date: new Date(2026, month, 25),
+      startTime: '11:30',
+      endTime: '12:00',
+      type: 'INTERN',
+      contextTags: ['finance', 'hr'],
+      internalNotes: 'HR + Finance. Vertraulich.',
+    });
+  }
+  
+  // Cashflow / Treasury Check (2x pro Monat, ~5th and ~20th)
+  for (let month = 1; month <= 7; month++) {
+    [5, 20].forEach((day, idx) => {
+      events.push({
+        id: `cashflow-${month}-${idx}`,
+        title: 'Cashflow / Treasury Check',
+        description: 'Liquiditätsplanung, Prüfung offener Forderungen und Verbindlichkeiten. Abstimmung Investitionsbudget.',
+        date: new Date(2026, month, day),
+        startTime: '09:15',
+        endTime: '09:45',
+        type: 'INTERN',
+        contextTags: ['finance'],
+        internalNotes: 'CFO + Treasury. Remote.',
+      });
+    });
+  }
+  
+  // Investor Reporting Draft (1x pro Monat, around 10th)
+  for (let month = 1; month <= 7; month++) {
+    events.push({
+      id: `investor-report-${month}`,
+      title: 'Investor Reporting Draft',
+      description: 'Erstellung und Review des monatlichen Investor Reports. KPIs, Highlights und Ausblick. Draft-Version zur internen Freigabe.',
+      date: new Date(2026, month, 10),
+      startTime: '17:00',
+      endTime: '18:00',
+      type: 'INTERN',
+      contextTags: ['finance', 'board'],
+      internalNotes: 'IR + Finance. Entwurf wird am Folgetag an CEO weitergeleitet.',
+    });
+  }
+
+  // ========== C) LEGAL / COMPLIANCE ==========
+  
+  // Legal Review (2x pro Monat, ~8th and ~22nd)
+  for (let month = 1; month <= 7; month++) {
+    [8, 22].forEach((day, idx) => {
+      events.push({
+        id: `legal-review-${month}-${idx}`,
+        title: 'Legal Review: Vertragsprüfung',
+        description: 'Rechtliche Prüfung laufender Verträge, NDAs, Lieferantenvereinbarungen und Partnerschaftsverträge. Risikobewertung und Handlungsempfehlungen.',
+        date: new Date(2026, month, day),
+        startTime: '14:00',
+        endTime: '15:00',
+        type: 'INTERN',
+        contextTags: ['legal'],
+        internalNotes: 'Legal Team. Alle offenen Verträge vorher im Sharepoint ablegen.',
+      });
+    });
+  }
+  
+  // Compliance Sync (1x pro Monat, ~15th)
+  for (let month = 1; month <= 7; month++) {
+    events.push({
+      id: `compliance-${month}`,
+      title: 'Compliance Sync',
+      description: 'Monatliche Abstimmung zu regulatorischen Anforderungen, DSGVO-Status, Audit-Vorbereitung und internen Richtlinien.',
+      date: new Date(2026, month, 15),
+      startTime: '09:45',
+      endTime: '10:15',
+      type: 'INTERN',
+      contextTags: ['legal', 'organisation'],
+      internalNotes: 'Compliance Officer + Legal. Remote.',
+    });
+  }
+
+  // ========== D) PRODUCT / TECH ==========
+  
+  // Sprint Planning (1st Monday each month) 10:00-11:00
+  for (let month = 1; month <= 7; month++) {
+    const firstMonday = getNthWeekdayOfMonth(2026, month, 1, 1);
+    events.push({
+      id: `sprint-planning-${month}`,
+      title: 'Sprint Planning',
+      description: 'Planung des kommenden Sprints. Priorisierung des Backlogs, Kapazitätsplanung und Definition der Sprint-Ziele. Story Points werden geschätzt.',
+      date: firstMonday,
+      startTime: '10:00',
+      endTime: '11:00',
+      type: 'INTERN',
+      contextTags: ['tech', 'organisation'],
+      internalNotes: 'Product + Engineering. Jira-Board vorbereiten.',
+    });
+  }
+  
+  // Sprint Review (2nd Wednesday each month) 17:30-18:15
+  for (let month = 1; month <= 7; month++) {
+    const secondWednesday = getNthWeekdayOfMonth(2026, month, 3, 2);
+    events.push({
+      id: `sprint-review-${month}`,
+      title: 'Sprint Review',
+      description: 'Präsentation der im Sprint fertiggestellten Features. Demo für Stakeholder, Feedback-Runde und Akzeptanz der User Stories.',
+      date: secondWednesday,
+      startTime: '17:30',
+      endTime: '18:15',
+      type: 'INTERN',
+      contextTags: ['tech', 'strategie'],
+      internalNotes: 'Alle Stakeholder eingeladen. Demo-Environment vorbereiten.',
+    });
+  }
+  
+  // Incident Drill (1x in period) 20:00-20:30
+  events.push({
+    id: 'incident-drill-1',
+    title: 'Incident Response Drill',
+    description: 'Geplante Übung zur Incident Response. Simulation eines kritischen Systemausfalls zur Überprüfung der Notfallprozesse und Kommunikationswege.',
+    date: new Date(2026, 4, 14), // May 14
+    startTime: '20:00',
+    endTime: '20:30',
+    type: 'INTERN',
+    contextTags: ['tech', 'organisation'],
+    internalNotes: 'Engineering + Ops. Nach Feierabend, aber geplant.',
+  });
+
+  // ========== E) PEOPLE / HR ==========
+  
+  // 1:1 COO Check-in (2x pro Monat, ~3rd and ~18th)
+  for (let month = 1; month <= 7; month++) {
+    [3, 18].forEach((day, idx) => {
+      events.push({
+        id: `coo-checkin-${month}-${idx}`,
+        title: '1:1 COO Check-in',
+        description: 'Bilaterales Gespräch mit dem COO zu operativen Themen, Team-Performance und strategischen Initiativen.',
+        date: new Date(2026, month, day),
+        startTime: '12:30',
+        endTime: '13:00',
+        type: 'INTERN',
+        contextTags: ['organisation', 'hr'],
+        internalNotes: 'Vertraulich. Agenda vorab abstimmen.',
+      });
+    });
+  }
+  
+  // Recruiting Review (1x pro Monat, ~12th)
+  for (let month = 1; month <= 7; month++) {
+    events.push({
+      id: `recruiting-${month}`,
+      title: 'Recruiting Review',
+      description: 'Status offener Positionen, Pipeline-Review, Feedback zu Kandidaten und Abstimmung zu Hiring-Prioritäten.',
+      date: new Date(2026, month, 12),
+      startTime: '15:30',
+      endTime: '16:00',
+      type: 'INTERN',
+      contextTags: ['hr', 'organisation'],
+      internalNotes: 'HR + Hiring Manager. Remote.',
+    });
+  }
+
+  // ========== F) HOLIDAYS (DE/AT/CH) ==========
+  
+  const holidays2026 = [
+    { date: new Date(2026, 3, 3), title: 'Karfreitag' }, // Apr 3, 2026
+    { date: new Date(2026, 3, 6), title: 'Ostermontag' }, // Apr 6, 2026
+    { date: new Date(2026, 4, 1), title: 'Tag der Arbeit' }, // May 1
+    { date: new Date(2026, 4, 14), title: 'Christi Himmelfahrt' }, // May 14, 2026
+    { date: new Date(2026, 4, 25), title: 'Pfingstmontag' }, // May 25, 2026
+    { date: new Date(2026, 5, 4), title: 'Fronleichnam' }, // Jun 4, 2026
+    { date: new Date(2026, 7, 1), title: 'Nationalfeiertag CH' }, // Aug 1
   ];
   
-  // Context tags for internal events
-  const internalContextMap: Record<string, ContextTag[]> = {
-    'Strategy Workshop': ['strategie', 'board'],
-    'Board Preparation': ['board', 'organisation'],
-    'Quarterly Review': ['finance', 'strategie'],
-    'Monatsabschluss Finance': ['finance'],
-    'Investor Update Call': ['finance', 'board'],
-    'Legal Review Window': ['legal'],
-    'Internal Audit Check': ['finance', 'legal'],
-    'HR Review': ['hr', 'organisation'],
-    'IT Maintenance Window': ['tech'],
-    'Reporting Deadline': ['finance'],
-    'Client Presentation': ['strategie'],
-    'Team Offsite': ['organisation', 'intern'],
-    'Daily Standup': ['intern', 'organisation'],
-    'Product Demo': ['tech', 'strategie'],
-    'Partner Meeting': ['strategie'],
-    'Budget Planning': ['finance'],
-    'Security Review': ['tech', 'legal'],
-    'Marketing Sync': ['strategie'],
-    'Sales Pipeline Review': ['finance', 'strategie'],
-    'Tech Debt Review': ['tech'],
-    'OKR Check-in': ['organisation', 'strategie'],
-    'Compliance Training': ['legal', 'hr'],
-    'Architecture Review': ['tech'],
-    'Customer Success Sync': ['strategie'],
-    'Month End Review': ['finance', 'organisation'],
-  };
-
-  internalEvents.forEach((e, i) => {
-    const eventDate = addDays(today, e.dayOffset);
-    const [start, end] = e.time.includes('-') ? e.time.split('-') : [e.time, undefined];
+  holidays2026.forEach((h, i) => {
     events.push({
-      id: `internal-${i}`,
-      title: e.title,
-      description: e.desc,
-      date: eventDate,
-      startTime: start,
-      endTime: end,
-      type: 'intern',
-      participants: [MOCK_PARTICIPANTS['team']],
-      contextTags: internalContextMap[e.title] || ['intern'],
+      id: `holiday-2026-${i}`,
+      title: h.title,
+      description: 'Gesetzlicher Feiertag. Büro geschlossen. Keine regulären Termine.',
+      date: h.date,
+      type: 'FEIERTAG',
+      isReadOnly: true,
+      contextTags: ['organisation'],
+      internalNotes: 'Feiertag – automatisch blockiert.',
     });
+  });
+
+  // ========== G) BIRTHDAYS (Team) ==========
+  
+  const birthdays = [
+    { date: new Date(2026, 1, 14), name: 'Justin Schwarzott', role: 'CEO' },
+    { date: new Date(2026, 2, 8), name: 'Herbert Schöttl', role: 'CFO' },
+    { date: new Date(2026, 2, 22), name: 'Sarah Anderst', role: 'COO' },
+    { date: new Date(2026, 3, 5), name: 'Nina Reiter', role: 'Head of Product' },
+    { date: new Date(2026, 3, 18), name: 'Alessandro Vitale', role: 'Lead Engineer' },
+    { date: new Date(2026, 4, 11), name: 'Moritz Schwarzmann', role: 'Legal Counsel' },
+    { date: new Date(2026, 4, 28), name: 'Lisa Becker', role: 'HR Manager' },
+    { date: new Date(2026, 5, 3), name: 'Thomas Huber', role: 'Finance Controller' },
+    { date: new Date(2026, 5, 19), name: 'Elena Schmidt', role: 'Marketing Lead' },
+    { date: new Date(2026, 6, 7), name: 'Markus Weber', role: 'Sales Director' },
+    { date: new Date(2026, 6, 22), name: 'Anna Müller', role: 'Customer Success' },
+    { date: new Date(2026, 7, 15), name: 'David Fischer', role: 'Tech Ops' },
+  ];
+  
+  birthdays.forEach((b, i) => {
+    events.push({
+      id: `birthday-${i}`,
+      title: `🎂 Geburtstag: ${b.name}`,
+      description: `Heute feiert ${b.name} (${b.role}) Geburtstag. Herzlichen Glückwunsch!`,
+      date: b.date,
+      startTime: '09:00',
+      endTime: '09:15',
+      type: 'INTERN',
+      contextTags: ['hr', 'intern'],
+      internalNotes: 'Erinnerung für das Team. Glückwünsche nicht vergessen!',
+    });
+  });
+
+  // ========== H) ADDITIONAL BUSINESS EVENTS ==========
+  
+  // Quarterly Board Prep
+  events.push({
+    id: 'q1-board-prep',
+    title: 'Q1 Board Preparation',
+    description: 'Vorbereitung der Q1-Unterlagen für das Board Meeting. Konsolidierung aller Berichte, KPI-Dashboard und Management Summary.',
+    date: new Date(2026, 2, 20),
+    startTime: '14:00',
+    endTime: '16:00',
+    type: 'INTERN',
+    contextTags: ['board', 'finance'],
+    internalNotes: 'Management Team. Deadline für Input: 18.03.',
+  });
+  
+  events.push({
+    id: 'q2-board-prep',
+    title: 'Q2 Board Preparation',
+    description: 'Vorbereitung der Q2-Unterlagen für das Board Meeting. Halbjahresreview und Ausblick H2.',
+    date: new Date(2026, 5, 19),
+    startTime: '14:00',
+    endTime: '16:00',
+    type: 'INTERN',
+    contextTags: ['board', 'finance'],
+    internalNotes: 'Management Team. Wichtig: Forecast H2.',
+  });
+  
+  // Partner Sync Sessions
+  events.push({
+    id: 'partner-sync-1',
+    title: 'Partner Sync: TechVentures',
+    description: 'Quartalsabstimmung mit TechVentures zu laufenden Kooperationen, Pipeline und gemeinsamen Projekten.',
+    date: new Date(2026, 2, 12),
+    startTime: '11:00',
+    endTime: '12:00',
+    type: 'EXTERNAL',
+    contextTags: ['strategie'],
+    internalNotes: 'External Partner. NDA aktiv.',
+  });
+  
+  events.push({
+    id: 'partner-sync-2',
+    title: 'Partner Sync: FinanceHub',
+    description: 'Halbjährliche Abstimmung mit FinanceHub zu Reporting-Standards und Integrationen.',
+    date: new Date(2026, 5, 10),
+    startTime: '15:00',
+    endTime: '16:00',
+    type: 'EXTERNAL',
+    contextTags: ['finance', 'strategie'],
+    internalNotes: 'External Partner. Vor Ort in München.',
+  });
+  
+  // Annual Planning
+  events.push({
+    id: 'annual-planning',
+    title: 'Annual Planning Kickoff',
+    description: 'Kickoff für die Jahresplanung 2027. Strategische Ziele, Budget-Rahmen und Meilensteine.',
+    date: new Date(2026, 6, 15),
+    startTime: '09:00',
+    endTime: '12:00',
+    type: 'INTERN',
+    contextTags: ['strategie', 'finance', 'board'],
+    internalNotes: 'Management Team + Board. Ganztägiger Workshop.',
+  });
+  
+  // Security Audit
+  events.push({
+    id: 'security-audit',
+    title: 'External Security Audit',
+    description: 'Jährlicher externer Security Audit durch zertifizierte Prüfer. Penetration Testing und Compliance-Check.',
+    date: new Date(2026, 4, 20),
+    startTime: '09:00',
+    endTime: '17:00',
+    type: 'EXTERNAL',
+    contextTags: ['tech', 'legal'],
+    internalNotes: 'Externer Auditor. Alle Systeme müssen zugänglich sein.',
+    isReadOnly: true,
   });
   
   return events;

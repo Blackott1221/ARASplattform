@@ -541,15 +541,18 @@ export function TeamFeedSection({
             {/* Letzte Nachricht Button */}
             <button
               onClick={scrollToBottom}
-              className="h-[34px] px-3 flex items-center gap-2 transition-all duration-150 relative"
+              className="h-[34px] px-3 flex items-center gap-2 transition-all duration-150 relative focus:outline-none focus:ring-2 focus:ring-offset-2"
               style={{
                 borderRadius: '12px',
                 background: 'rgba(255,255,255,0.04)',
                 border: '1px solid rgba(255,255,255,0.08)',
-                color: 'rgba(255,255,255,0.85)',
+                color: 'rgba(255,255,255,0.88)',
                 fontSize: '12px',
-                fontWeight: 500,
-              }}
+                fontWeight: 600,
+                // @ts-ignore - CSS custom properties for focus ring
+                '--tw-ring-color': 'rgba(255,106,0,0.45)',
+                '--tw-ring-offset-color': 'transparent',
+              } as React.CSSProperties}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = 'rgba(255,255,255,0.07)';
                 e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)';
@@ -567,14 +570,18 @@ export function TeamFeedSection({
               }}
             >
               <ArrowDown className="w-4 h-4" style={{ opacity: 0.8 }} />
-              <span>Letzte Nachricht</span>
-              {/* Unread Dot */}
+              <span style={{ fontFamily: 'Inter, sans-serif' }}>Letzte Nachricht</span>
+              {/* Unread Dot - positioned top right */}
               {hasNewMessages && !isAtBottom && (
                 <div
-                  className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full"
+                  className="absolute rounded-full"
                   style={{
-                    background: '#ff6a00',
-                    boxShadow: '0 0 8px rgba(255,106,0,0.6)',
+                    top: '8px',
+                    right: '8px',
+                    width: '4px',
+                    height: '4px',
+                    background: 'rgba(255,106,0,0.95)',
+                    boxShadow: '0 0 12px rgba(255,106,0,0.45)',
                   }}
                 />
               )}
