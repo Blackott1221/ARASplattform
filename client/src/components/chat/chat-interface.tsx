@@ -18,6 +18,7 @@ const safeJson = async (res: Response): Promise<any> => {
 };
 import arasAiImage from "@assets/ChatGPT Image 9. Apr. 2025_ 21_38_23_1754515368187.png";
 import arasLogo from "@/assets/aras_logo_1755067745303.png";
+import { SpaceConversionTips } from "@/components/space/SpaceConversionTips";
 
 const ANIMATED_TEXTS = [
   "Outbound Calls",
@@ -1196,125 +1197,8 @@ Antworte NUR mit dem Prompt selbst, ohne Einleitung oder Erklärung.`,
               </motion.div>
             </motion.div>
 
-            {/* EINGABEFELD - ORIGINAL BEIBEHALTEN */}
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9 }} className="w-full max-w-3xl px-3 sm:px-0">
-              {uploadedFiles.length > 0 && (
-                <div className="mb-3 space-y-2">
-                  {uploadedFiles.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between bg-white/5 rounded-lg p-2 border border-white/10">
-                      <div className="flex items-center space-x-2 text-sm text-white">
-                        {getFileIcon(file.type)}
-                        <span className="truncate">{file.name}</span>
-                      </div>
-                      <Button size="sm" variant="ghost" onClick={() => removeFile(index)} className="h-6 w-6 p-0">
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="relative flex items-end space-x-3">
-                <div className="flex-1 relative">
-                  <div className="absolute -inset-[2px] rounded-3xl">
-                    <motion.div
-                      className="w-full h-full rounded-3xl"
-                      animate={{
-                        backgroundImage: [
-                          'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
-                          'linear-gradient(90deg, #FE9100 0%, #a34e00 25%, #e9d7c4 50%, #a34e00 75%, #FE9100 100%)',
-                          'linear-gradient(90deg, #a34e00 0%, #e9d7c4 25%, #FE9100 50%, #e9d7c4 75%, #a34e00 100%)',
-                          'linear-gradient(90deg, #e9d7c4 0%, #FE9100 25%, #a34e00 50%, #FE9100 75%, #e9d7c4 100%)',
-                        ],
-                      }}
-                      transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
-                      style={{
-                        padding: '2px',
-                        WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                        WebkitMaskComposite: 'xor',
-                        maskComposite: 'exclude',
-                      }}
-                    />
-                  </div>
-
-                  <textarea
-                    ref={textareaRef}
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    onKeyDown={handleKeyPress}
-                    placeholder="Message ARAS AI"
-                    className="relative w-full min-h-[56px] max-h-[200px] bg-black/40 text-white placeholder:text-gray-600 placeholder:opacity-50 border-0 rounded-3xl px-6 py-4 pr-14 focus:outline-none resize-none"
-                    disabled={sendMessage.isPending}
-                    rows={1}
-                  />
-
-                  <Button
-                    onClick={isRecording ? stopRecording : startRecording}
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-3 top-3 w-10 h-10 rounded-full p-0 hover:bg-white/10"
-                    disabled={sendMessage.isPending}
-                  >
-                    {isRecording ? (
-                      <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity }}>
-                        <MicOff className="w-5 h-5 text-red-400" />
-                      </motion.div>
-                    ) : (
-                      <Mic className="w-5 h-5 text-gray-500" />
-                    )}
-                  </Button>
-                </div>
-
-                {/* 🔥 ULTRA-MODERNER CALL BUTTON MIT GLASSMORPHISM & GLOW */}
-                <motion.div className="relative">
-                  {/* Permanent animierter Border */}
-                  <motion.div
-                    className="absolute -inset-[2px] rounded-2xl"
-                    style={{
-                      background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #FE9100, #e9d7c4)',
-                      backgroundSize: '300% 100%',
-                      boxShadow: '0 0 25px rgba(254, 145, 0, 0.4)',
-                    }}
-                    animate={{
-                      backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
-                    }}
-                    transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                  />
-                  
-                  <motion.button
-                    whileHover={{ 
-                      scale: 1.1,
-                      rotate: 5,
-                      boxShadow: '0 15px 50px rgba(254, 145, 0, 0.6)',
-                    }}
-                    whileTap={{ scale: 0.95, rotate: 0 }}
-                    onClick={() => setShowCallModal(true)}
-                    className="relative h-14 w-14 rounded-2xl flex items-center justify-center"
-                    style={{
-                      background: 'rgba(10, 10, 10, 0.7)',
-                      backdropFilter: 'blur(30px)',
-                      WebkitBackdropFilter: 'blur(30px)',
-                    }}
-                  >
-                    <Phone className="w-5 h-5 text-[#FE9100]" />
-                  </motion.button>
-                </motion.div>
-
-                <Button
-                  onClick={() => handleSendMessage()}
-                  size="sm"
-                  disabled={!message.trim() || sendMessage.isPending}
-                  className="h-14 px-6 bg-white/10 hover:bg-white/15 text-white rounded-2xl disabled:opacity-30"
-                >
-                  <Send className="w-5 h-5" />
-                </Button>
-              </div>
-
-              <div className="mt-3 flex items-center justify-center gap-2 text-xs text-gray-700">
-                <AlertCircle className="w-3 h-3" />
-                <p>ARAS AI ® kann Fehler machen. Bitte verlasse Dich nicht auf jede Ausgabe und überprüfe wichtige Informationen</p>
-              </div>
-            </motion.div>
+            {/* CONVERSION TIPS - Ersetzt Input-Feld */}
+            <SpaceConversionTips />
           </div>
         ) : (
           <div className="max-w-4xl mx-auto">
