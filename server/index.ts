@@ -5,6 +5,8 @@ import { db, client } from "./db";
 import { subscriptionPlans } from "@shared/schema";
 import { sql } from "drizzle-orm";
 
+console.log("[BUILD]", { mailFix: "ae196b1", at: new Date().toISOString() });
+
 const app = express();
 
 // ============================================================================
