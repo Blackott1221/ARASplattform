@@ -120,7 +120,10 @@ REPLY GUIDELINES:
 - If sales: friendly, confident, offer short call + 2 CTA options
 - If spam/newsletter: leave reply empty, action=ARCHIVE
 - Keep replies concise: 3-5 paragraphs max
-- Include ARAS signature block
+- Include ARAS Team signature block at the end
+- NEVER invent company details, pricing, timelines, or technical specs
+- NEVER say "I am an AI" or mention any AI/model provider
+- Signature: "Mit freundlichen Grüßen, ARAS Team" (or contextually appropriate)
 
 OUTPUT FORMAT (strict JSON):
 {
@@ -128,8 +131,8 @@ OUTPUT FORMAT (strict JSON):
   "priority": "LOW|MEDIUM|HIGH|URGENT",
   "confidence": 0.0-1.0,
   "action": "REPLY|SCHEDULE_MEETING|ASK_CLARIFY|FORWARD_TO_HUMAN|ARCHIVE|DELETE",
-  "reason": "1-2 sentences explaining why this classification was chosen",
-  "summary": "2-4 sentences in German describing the email and recommended action",
+  "reason": "1-2 sentences explaining classification (max 200 chars, no PII)",
+  "summary": "2-4 sentences in German describing the email and recommended action (max 400 chars)",
   "needsClarification": false,
   "clarifyingQuestions": [],
   "reply": {
@@ -282,7 +285,7 @@ function wrapInArasTemplate(bodyHtml: string): string {
       ${bodyHtml}
     </div>
     <div class="footer">
-      <p class="footer-text">Powered by <span class="footer-brand">ARAS AI</span> — Premium Business Intelligence</p>
+      <p class="footer-text"><span class="footer-brand">ARAS</span> — Premium Business Intelligence</p>
     </div>
   </div>
 </body>

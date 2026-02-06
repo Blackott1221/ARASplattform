@@ -7,7 +7,7 @@
  * ============================================================================
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -56,6 +56,20 @@ interface MailItem {
   messageId?: string;
   errorCode?: string | null;
   errorMessage?: string | null;
+  contactId?: string | null;
+  archivedAt?: string | null;
+  threadId?: string | null;
+  lastActionAt?: string | null;
+  meta?: Record<string, any> | null;
+}
+
+interface ThreadHistoryItem {
+  id: number;
+  subject: string;
+  fromEmail: string;
+  status: MailStatus;
+  receivedAt: string;
+  snippet: string;
 }
 
 // ============================================================================
@@ -228,21 +242,25 @@ function DetailPanel({
   onTriage,
   onApprove,
   onSend,
+  onArchive,
   onRegenerateDraft,
   onClose,
   isTriaging,
   isSending,
   isRegenerating,
+  threadHistory,
 }: { 
   mail: MailItem | null;
   onTriage: () => void;
   onApprove: () => void;
   onSend: () => void;
+  onArchive: () => void;
   onRegenerateDraft: (notes: string) => void;
   onClose: () => void;
   isTriaging: boolean;
   isSending: boolean;
   isRegenerating: boolean;
+  threadHistory: ThreadHistoryItem[];
 }) {
   const [activeTab, setActiveTab] = useState<'mail' | 'ai' | 'draft'>('mail');
   const [operatorNotes, setOperatorNotes] = useState('');
@@ -303,18 +321,18 @@ function DetailPanel({
           <StatusBadge status={mail.status} />
         </div>
 
-        {/* Actions */}
+        {/* Actions — status-gated */}
         <div className="flex flex-wrap gap-2">
-          {mail.status === 'NEW' && (
+          {['NEW', 'OPEN'].includes(mail.status) && (
             <ActionButton 
               icon={Sparkles} 
-              label={isTriaging ? 'Triaging...' : 'Triage / Draft erstellen'} 
+              label={isTriaging ? 'Triaging...' : 'ARAS Engine Triage'} 
               onClick={onTriage}
               variant="primary"
               disabled={isTriaging}
             />
           )}
-          {isTriaged && hasDraft && mail.status !== 'SENT' && mail.status !== 'APPROVED' && (
+          {mail.status === 'TRIAGED' && hasDraft && (
             <ActionButton 
               icon={CheckCircle} 
               label="Approve" 
@@ -322,18 +340,47 @@ function DetailPanel({
               variant="success"
             />
           )}
-          {(mail.status === 'APPROVED' || (isTriaged && hasDraft && mail.status !== 'SENT')) && (
+          {mail.status === 'APPROVED' && (
             <ActionButton 
               icon={Send} 
-              label={isSending ? 'Sending...' : 'Approve & Send'} 
+              label={isSending ? 'Sende...' : 'Senden'} 
               onClick={onSend}
               variant="primary"
               disabled={isSending}
             />
           )}
-          <ActionButton icon={Copy} label="Copy Summary" onClick={handleCopySummary} />
-          <ActionButton icon={Archive} label="Archive" onClick={() => toast({ title: '🗄️ Coming soon' })} />
+          {mail.status === 'ERROR' && (
+            <ActionButton 
+              icon={RefreshCw} 
+              label={isSending ? 'Retry...' : 'Erneut senden'} 
+              onClick={onSend}
+              variant="primary"
+              disabled={isSending}
+            />
+          )}
+          <ActionButton icon={Copy} label="Zusammenfassung" onClick={handleCopySummary} />
+          {mail.status !== 'ARCHIVED' && (
+            <ActionButton icon={Archive} label="Archivieren" onClick={onArchive} />
+          )}
         </div>
+
+        {/* Error State */}
+        {mail.status === 'ERROR' && mail.errorMessage && (
+          <div 
+            className="mt-3 p-3 rounded-lg flex items-start gap-2"
+            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}
+          >
+            <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#EF4444' }} />
+            <div>
+              <p className="text-xs font-medium" style={{ color: '#EF4444' }}>
+                {mail.errorCode || 'ERROR'}
+              </p>
+              <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                {mail.errorMessage}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
@@ -376,6 +423,25 @@ function DetailPanel({
                 <InfoCard label="Recommended Action" value={mail.aiAction || '—'} />
                 <InfoCard label="Confidence" value={mail.aiConfidence ? `${Math.round(mail.aiConfidence * 100)}%` : '—'} />
               </div>
+
+              {/* Confidence Bar */}
+              {mail.aiConfidence != null && mail.aiConfidence > 0 && (
+                <div className="p-3 rounded-lg" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(233,215,196,0.06)' }}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] uppercase" style={{ color: 'rgba(255,255,255,0.4)' }}>Sicherheit</span>
+                    <span className="text-xs font-medium" style={{ color: '#FE9100' }}>{Math.round(mail.aiConfidence * 100)}%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                    <div 
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{ 
+                        width: `${Math.round(mail.aiConfidence * 100)}%`,
+                        background: `linear-gradient(90deg, #FE9100, ${mail.aiConfidence > 0.7 ? '#10B981' : mail.aiConfidence > 0.4 ? '#F59E0B' : '#EF4444'})`,
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Reason */}
               {mail.aiReason && (
@@ -511,6 +577,39 @@ function DetailPanel({
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Thread History / Verlauf */}
+        {threadHistory.length > 0 && (
+          <div className="mt-6 pt-4" style={{ borderTop: '1px solid rgba(233,215,196,0.06)' }}>
+            <h4 className="text-xs font-semibold uppercase mb-3 flex items-center gap-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
+              <Clock className="w-3.5 h-3.5" />
+              Verlauf ({threadHistory.length})
+            </h4>
+            <div className="space-y-2">
+              {threadHistory.map((item) => (
+                <div 
+                  key={item.id}
+                  className="flex items-start gap-3 p-2.5 rounded-lg transition-colors hover:bg-white/[0.03] cursor-default"
+                  style={{ border: '1px solid rgba(233,215,196,0.04)' }}
+                >
+                  <div 
+                    className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
+                    style={{ background: STATUS_CONFIG[item.status]?.color || 'rgba(255,255,255,0.2)' }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium truncate" style={{ color: 'rgba(255,255,255,0.7)' }}>
+                      {item.subject || '(Kein Betreff)'}
+                    </p>
+                    <p className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                      {item.fromEmail} · {(() => { try { return formatDistanceToNow(new Date(item.receivedAt), { addSuffix: true, locale: de }); } catch { return ''; } })()}
+                    </p>
+                  </div>
+                  <StatusBadge status={item.status} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -632,18 +731,20 @@ export default function MailsPage() {
     refetchInterval: 30000,
   });
 
-  // Fetch selected mail detail
-  const { data: selectedMail } = useQuery({
+  // Fetch selected mail detail (includes threadHistory)
+  const { data: selectedMailResponse } = useQuery({
     queryKey: ['mail-detail', selectedMailId],
     queryFn: async () => {
       if (!selectedMailId) return null;
       const res = await fetch(`/api/internal/mail/inbound/${selectedMailId}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch');
       const json = await res.json();
-      return json.data as MailItem;
+      return { data: json.data as MailItem, threadHistory: (json.threadHistory || []) as ThreadHistoryItem[] };
     },
     enabled: !!selectedMailId,
   });
+  const selectedMail = selectedMailResponse?.data || null;
+  const selectedThreadHistory = selectedMailResponse?.threadHistory || [];
 
   // Triage mutation
   const triageMutation = useMutation({
@@ -707,6 +808,24 @@ export default function MailsPage() {
     },
   });
 
+  // Archive mutation
+  const archiveMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/internal/mail/inbound/${id}/archive`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Archive failed');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mails-list'] });
+      queryClient.invalidateQueries({ queryKey: ['mail-detail', selectedMailId] });
+      queryClient.invalidateQueries({ queryKey: ['mails-counts'] });
+      toast({ title: '✓ Archiviert' });
+    },
+  });
+
   // Draft regenerate mutation
   const regenerateDraftMutation = useMutation({
     mutationFn: async ({ id, operatorNotes }: { id: number; operatorNotes: string }) => {
@@ -731,6 +850,41 @@ export default function MailsPage() {
       toast({ title: 'Draft-Generierung fehlgeschlagen', description: err.message, variant: 'destructive' });
     },
   });
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Ignore if typing in input/textarea
+      if ((e.target as HTMLElement)?.tagName === 'INPUT' || (e.target as HTMLElement)?.tagName === 'TEXTAREA') return;
+      if (!selectedMailId || !selectedMail) return;
+
+      switch (e.key.toLowerCase()) {
+        case 'r': // Triage
+          if (['NEW', 'OPEN'].includes(selectedMail.status)) triageMutation.mutate(selectedMailId);
+          break;
+        case 'a': // Approve
+          if (selectedMail.status === 'TRIAGED') approveMutation.mutate(selectedMailId);
+          break;
+        case 's': // Send
+          if (selectedMail.status === 'APPROVED' || selectedMail.status === 'ERROR') sendMutation.mutate(selectedMailId);
+          break;
+        case 'escape':
+          setSelectedMailId(null);
+          break;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [selectedMailId, selectedMail]);
+
+  // Debounced search
+  const [searchInput, setSearchInput] = useState('');
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchInput(value);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => setSearchQuery(value), 250);
+  }, []);
 
   const mails: MailItem[] = listData?.data || [];
   const mailCounts = counts?.counts || {};
@@ -801,14 +955,14 @@ export default function MailsPage() {
                 <Search className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.3)' }} />
                 <input
                   type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Suchen..."
+                  value={searchInput}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  placeholder="Suchen: Absender, Betreff, Text…"
                   className="bg-transparent outline-none text-sm flex-1"
                   style={{ color: 'rgba(255,255,255,0.8)' }}
                 />
-                {searchQuery && (
-                  <button onClick={() => setSearchQuery('')}>
+                {searchInput && (
+                  <button onClick={() => { setSearchInput(''); setSearchQuery(''); }}>
                     <X className="w-3.5 h-3.5" style={{ color: 'rgba(255,255,255,0.4)' }} />
                   </button>
                 )}
@@ -874,11 +1028,13 @@ export default function MailsPage() {
             onTriage={() => selectedMailId && triageMutation.mutate(selectedMailId)}
             onApprove={() => selectedMailId && approveMutation.mutate(selectedMailId)}
             onSend={() => selectedMailId && sendMutation.mutate(selectedMailId)}
+            onArchive={() => selectedMailId && archiveMutation.mutate(selectedMailId)}
             onRegenerateDraft={(notes) => selectedMailId && regenerateDraftMutation.mutate({ id: selectedMailId, operatorNotes: notes })}
             onClose={() => setSelectedMailId(null)}
             isTriaging={triageMutation.isPending}
             isSending={sendMutation.isPending}
             isRegenerating={regenerateDraftMutation.isPending}
+            threadHistory={selectedThreadHistory}
           />
         </motion.div>
       </div>

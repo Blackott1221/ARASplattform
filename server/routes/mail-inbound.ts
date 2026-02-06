@@ -2,12 +2,14 @@ import { Router, Request, Response } from 'express';
 import { db } from '../db';
 import { 
   mailInbound, 
+  internalContacts,
   MAIL_INBOUND_STATUSES, 
   MAIL_STATUS_TRANSITIONS,
   MAIL_CATEGORIES, 
   MAIL_PRIORITIES,
   MailInboundStatus 
 } from '@shared/schema';
+import { randomUUID } from 'crypto';
 import { eq, desc, and, sql, ilike, or, lt } from 'drizzle-orm';
 import { logger } from '../logger';
 import { requireAdmin } from '../middleware/admin';
@@ -110,6 +112,65 @@ const toIso = (v: unknown): string | null => {
 };
 
 const nowIso = (): string => new Date().toISOString();
+
+// ============================================================================
+// CONTACT AUTO-CREATE: upsert internal_contacts by email, return contact_id
+// ============================================================================
+// Non-blocking: failures are logged but never prevent mail storage
+async function upsertContactByEmail(
+  email: string,
+  name: string | null
+): Promise<string | null> {
+  try {
+    // Check if contact exists by email
+    const [existing] = await db
+      .select({ id: internalContacts.id, firstName: internalContacts.firstName })
+      .from(internalContacts)
+      .where(eq(internalContacts.email, email))
+      .limit(1);
+
+    if (existing) {
+      // Update last seen (updatedAt) + fill name if empty
+      const updates: Record<string, any> = { updatedAt: new Date() };
+      if (name && !existing.firstName) {
+        const parts = name.split(' ');
+        updates.firstName = parts[0] || name;
+        updates.lastName = parts.slice(1).join(' ') || '';
+      }
+      await db
+        .update(internalContacts)
+        .set(updates)
+        .where(eq(internalContacts.id, existing.id));
+      return existing.id;
+    }
+
+    // Create new contact
+    const contactId = randomUUID();
+    const nameParts = (name || email.split('@')[0]).split(' ');
+    const domain = email.split('@')[1] || '';
+
+    await db
+      .insert(internalContacts)
+      .values({
+        id: contactId,
+        firstName: nameParts[0] || email.split('@')[0],
+        lastName: nameParts.slice(1).join(' ') || '',
+        email,
+        source: 'Inbound Mail',
+        status: 'NEW',
+        notes: domain ? `Auto-created from inbound mail. Domain: ${domain}` : 'Auto-created from inbound mail.',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+    logger.info(`[CONTACT-AUTOCREATE] Created contact id=${contactId} for ${email}`);
+    return contactId;
+  } catch (err: any) {
+    // Non-critical - log and return null
+    logger.warn(`[CONTACT-AUTOCREATE] Failed for ${email}: ${err.message}`);
+    return null;
+  }
+}
 
 // ============================================================================
 // SHARED HANDLER: Gmail Inbound Webhook
@@ -270,6 +331,7 @@ async function handleGmailInbound(req: Request, res: Response) {
           labels: payload.labels,
           status: 'NEW',
           meta: payload.meta,
+          lastActionAt: new Date(),
           createdAt: new Date(),
           updatedAt: new Date(),
         })
@@ -360,6 +422,21 @@ async function handleGmailInbound(req: Request, res: Response) {
       }
     }
 
+    // 4b. Contact auto-create + link (non-blocking, only for new mails)
+    if (isNew && payload.fromEmail) {
+      const contactId = await upsertContactByEmail(payload.fromEmail, payload.fromName);
+      if (contactId) {
+        try {
+          await db
+            .update(mailInbound)
+            .set({ contactId })
+            .where(eq(mailInbound.id, resultId));
+        } catch (linkErr: any) {
+          logger.warn(`[MAIL-INBOUND-WEBHOOK] Failed to link contact: ${linkErr.message}`);
+        }
+      }
+    }
+
     logger.info(`[MAIL-INBOUND-WEBHOOK] Processed mail: id=${resultId}, isNew=${isNew}, from=${payload.fromEmail}, snipLen=${debugInfo.snipLen}, txtLen=${debugInfo.txtLen}, htmlLen=${debugInfo.htmlLen}`);
 
     // 5. Response (with optional debug info)
@@ -380,11 +457,14 @@ async function handleGmailInbound(req: Request, res: Response) {
     return res.json(response);
 
   } catch (error: any) {
-    logger.error('[MAIL-INBOUND-WEBHOOK] Error processing webhook:', error.message);
-    return res.status(500).json({
-      ok: false,
-      error: 'Internal server error',
-      message: error.message,
+    // ALWAYS-200 policy: n8n must never get 500 (prevents retry loops)
+    logger.error('[MAIL-INBOUND-WEBHOOK] ERROR (returning 200 to prevent n8n retry):', error.message);
+    return res.status(200).json({
+      ok: true,
+      accepted: true,
+      stored: false,
+      error: 'processing_error',
+      severity: 'error',
     });
   }
 }
@@ -432,7 +512,8 @@ router.get('/internal/mail/inbound', requireStaffOrAdmin, async (req, res) => {
       conditions.push(or(
         ilike(mailInbound.subject, searchTerm),
         ilike(mailInbound.fromEmail, searchTerm),
-        ilike(mailInbound.fromName, searchTerm)
+        ilike(mailInbound.fromName, searchTerm),
+        ilike(mailInbound.snippet, searchTerm)
       ));
     }
 
@@ -504,9 +585,51 @@ router.get('/internal/mail/inbound/:id', requireStaffOrAdmin, async (req, res) =
       return res.status(404).json({ ok: false, error: 'Mail not found' });
     }
 
+    // Auto-OPEN: when a NEW mail is viewed, mark it as OPEN
+    if (mail.status === 'NEW') {
+      const now = new Date();
+      await db
+        .update(mailInbound)
+        .set({ status: 'OPEN', lastActionAt: now, updatedAt: now })
+        .where(eq(mailInbound.id, id));
+      mail.status = 'OPEN';
+      mail.lastActionAt = now;
+      mail.updatedAt = now;
+    }
+
+    // Thread history: last 20 mails with same thread_id or from_email
+    let threadHistory: any[] = [];
+    try {
+      const threadConditions = [];
+      if (mail.threadId) {
+        threadConditions.push(eq(mailInbound.threadId, mail.threadId));
+      }
+      threadConditions.push(eq(mailInbound.fromEmail, mail.fromEmail));
+      
+      threadHistory = await db
+        .select({
+          id: mailInbound.id,
+          subject: mailInbound.subject,
+          fromEmail: mailInbound.fromEmail,
+          status: mailInbound.status,
+          receivedAt: mailInbound.receivedAt,
+          snippet: mailInbound.snippet,
+        })
+        .from(mailInbound)
+        .where(and(
+          or(...threadConditions),
+          sql`${mailInbound.id} != ${id}`
+        ))
+        .orderBy(desc(mailInbound.receivedAt))
+        .limit(20);
+    } catch (e) {
+      // Non-critical - don't fail detail view for thread history
+    }
+
     return res.json({
       ok: true,
       data: mail,
+      threadHistory,
     });
 
   } catch (error: any) {
@@ -1038,6 +1161,65 @@ router.get('/internal/mail/inbound/count', requireStaffOrAdmin, async (req, res)
       ok: false,
       error: 'Failed to count inbound mails',
       message: error.message,
+    });
+  }
+});
+
+// ============================================================================
+// ARCHIVE: POST /api/internal/mail/inbound/:id/archive
+// ============================================================================
+// Archive mail from any non-terminal state
+// ============================================================================
+
+router.post('/internal/mail/inbound/:id/archive', requireStaffOrAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ ok: false, error: 'Invalid mail ID' });
+    }
+
+    const actorId = getActorId(req);
+
+    const [mail] = await db
+      .select({ id: mailInbound.id, status: mailInbound.status })
+      .from(mailInbound)
+      .where(eq(mailInbound.id, id))
+      .limit(1);
+
+    if (!mail) {
+      return res.status(404).json({ ok: false, error: 'Mail not found' });
+    }
+
+    if (mail.status === 'ARCHIVED') {
+      return res.json({ ok: true, id: mail.id, status: 'ARCHIVED', alreadyArchived: true });
+    }
+
+    const now = new Date();
+    const [updated] = await db
+      .update(mailInbound)
+      .set({
+        status: 'ARCHIVED',
+        archivedAt: now,
+        archivedBy: actorId,
+        lastActionAt: now,
+        updatedAt: now,
+      })
+      .where(eq(mailInbound.id, id))
+      .returning({ id: mailInbound.id, status: mailInbound.status });
+
+    logger.info(`[MAIL-ARCHIVE] Mail id=${id} archived by ${actorId}`);
+
+    return res.json({
+      ok: true,
+      id: updated.id,
+      status: updated.status,
+    });
+
+  } catch (error: any) {
+    logger.error('[MAIL-ARCHIVE] Error:', error.message);
+    return res.status(500).json({
+      ok: false,
+      error: 'Failed to archive mail',
     });
   }
 });
