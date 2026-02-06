@@ -89,6 +89,189 @@ interface Action {
 }
 
 // ============================================================================
+// MOCK TEAM MEMBERS (82 Mitarbeiter – Schwarzott Capital Partners AG)
+// ============================================================================
+
+const MOCK_TEAM_MEMBERS: TeamUser[] = [
+  // ── Vorstand / Executive Board ──
+  { id: 'tm-1', username: 'Justin Schwarzott', userRole: 'admin' },
+  { id: 'tm-2', username: 'Herbert Schöttl', userRole: 'admin' },
+  { id: 'tm-3', username: 'Sarah Anderst', userRole: 'admin' },
+  { id: 'tm-4', username: 'Dr. Marcus Lehner', userRole: 'admin' },
+  { id: 'tm-5', username: 'Sophie Kramer', userRole: 'admin' },
+  // ── Investment Management ──
+  { id: 'tm-6', username: 'Alexander Brandt', userRole: 'staff' },
+  { id: 'tm-7', username: 'Dr. Katharina Voss', userRole: 'staff' },
+  { id: 'tm-8', username: 'Maximilian Richter', userRole: 'staff' },
+  { id: 'tm-9', username: 'Helena Berger', userRole: 'staff' },
+  { id: 'tm-10', username: 'Tobias Engel', userRole: 'staff' },
+  { id: 'tm-11', username: 'Lena Hoffmann', userRole: 'staff' },
+  { id: 'tm-12', username: 'Felix Zimmermann', userRole: 'staff' },
+  { id: 'tm-13', username: 'Marie-Louise Weber', userRole: 'staff' },
+  { id: 'tm-14', username: 'Jan-Philipp Hartmann', userRole: 'staff' },
+  { id: 'tm-15', username: 'Carla Neumann', userRole: 'staff' },
+  { id: 'tm-16', username: 'David Schreiber', userRole: 'staff' },
+  { id: 'tm-17', username: 'Nora Friedl', userRole: 'staff' },
+  { id: 'tm-18', username: 'Simon Keller', userRole: 'staff' },
+  { id: 'tm-19', username: 'Amelie Roth', userRole: 'staff' },
+  { id: 'tm-20', username: 'Christian Maier', userRole: 'staff' },
+  // ── Portfolio Management ──
+  { id: 'tm-21', username: 'Dr. Stefan Gruber', userRole: 'staff' },
+  { id: 'tm-22', username: 'Johanna Winkler', userRole: 'staff' },
+  { id: 'tm-23', username: 'Patrick Lang', userRole: 'staff' },
+  { id: 'tm-24', username: 'Vanessa Bauer', userRole: 'staff' },
+  { id: 'tm-25', username: 'Moritz Schwarz', userRole: 'staff' },
+  { id: 'tm-26', username: 'Theresa Huber', userRole: 'staff' },
+  { id: 'tm-27', username: 'Niklas Pfeifer', userRole: 'staff' },
+  { id: 'tm-28', username: 'Isabella König', userRole: 'staff' },
+  { id: 'tm-29', username: 'Robert Falk', userRole: 'staff' },
+  { id: 'tm-30', username: 'Clara Dietrich', userRole: 'staff' },
+  // ── Finance & Controlling ──
+  { id: 'tm-31', username: 'Thomas Reiter', userRole: 'staff' },
+  { id: 'tm-32', username: 'Martina Stadler', userRole: 'staff' },
+  { id: 'tm-33', username: 'Lukas Eder', userRole: 'staff' },
+  { id: 'tm-34', username: 'Andrea Wimmer', userRole: 'staff' },
+  { id: 'tm-35', username: 'Florian Haas', userRole: 'staff' },
+  { id: 'tm-36', username: 'Birgit Moser', userRole: 'staff' },
+  { id: 'tm-37', username: 'Michael Aigner', userRole: 'staff' },
+  { id: 'tm-38', username: 'Sabine Koller', userRole: 'staff' },
+  // ── Legal & Compliance ──
+  { id: 'tm-39', username: 'Dr. Eva Steinbach', userRole: 'staff' },
+  { id: 'tm-40', username: 'Christoph Hofer', userRole: 'staff' },
+  { id: 'tm-41', username: 'Lisa-Marie Fuchs', userRole: 'staff' },
+  { id: 'tm-42', username: 'Bernhard Lechner', userRole: 'staff' },
+  { id: 'tm-43', username: 'Stefanie Pichler', userRole: 'staff' },
+  { id: 'tm-44', username: 'Wolfgang Steiner', userRole: 'staff' },
+  { id: 'tm-45', username: 'Katharina Brandl', userRole: 'staff' },
+  { id: 'tm-46', username: 'Georg Strasser', userRole: 'staff' },
+  // ── Risk Management ──
+  { id: 'tm-47', username: 'Dr. Peter Wallner', userRole: 'staff' },
+  { id: 'tm-48', username: 'Claudia Ebner', userRole: 'staff' },
+  { id: 'tm-49', username: 'Markus Leitner', userRole: 'staff' },
+  { id: 'tm-50', username: 'Anja Brunner', userRole: 'staff' },
+  // ── Technology / Digital ──
+  { id: 'tm-51', username: 'Daniel Kern', userRole: 'staff' },
+  { id: 'tm-52', username: 'Julia Seidl', userRole: 'staff' },
+  { id: 'tm-53', username: 'Andreas Holzer', userRole: 'staff' },
+  { id: 'tm-54', username: 'Nina Pöschl', userRole: 'staff' },
+  { id: 'tm-55', username: 'Kevin Binder', userRole: 'staff' },
+  { id: 'tm-56', username: 'Laura Auer', userRole: 'staff' },
+  { id: 'tm-57', username: 'Raphael Grünwald', userRole: 'staff' },
+  { id: 'tm-58', username: 'Christina Mayer', userRole: 'staff' },
+  // ── HR & People ──
+  { id: 'tm-59', username: 'Petra Wiesinger', userRole: 'staff' },
+  { id: 'tm-60', username: 'Manuel Ortner', userRole: 'staff' },
+  { id: 'tm-61', username: 'Barbara Schuster', userRole: 'staff' },
+  { id: 'tm-62', username: 'René Hackl', userRole: 'staff' },
+  { id: 'tm-63', username: 'Nadine Pirker', userRole: 'staff' },
+  // ── Investor Relations & Marketing ──
+  { id: 'tm-64', username: 'Philipp Riedl', userRole: 'staff' },
+  { id: 'tm-65', username: 'Anna-Lena Berger', userRole: 'staff' },
+  { id: 'tm-66', username: 'Sebastian Mayr', userRole: 'staff' },
+  { id: 'tm-67', username: 'Elisabeth Thaler', userRole: 'staff' },
+  { id: 'tm-68', username: 'Dominik Pauer', userRole: 'staff' },
+  { id: 'tm-69', username: 'Maria Traxler', userRole: 'staff' },
+  // ── Operations & Facility ──
+  { id: 'tm-70', username: 'Harald Gasser', userRole: 'staff' },
+  { id: 'tm-71', username: 'Iris Plank', userRole: 'staff' },
+  { id: 'tm-72', username: 'Josef Wimmer', userRole: 'staff' },
+  { id: 'tm-73', username: 'Sandra Hinterberger', userRole: 'staff' },
+  { id: 'tm-74', username: 'Walter Lindner', userRole: 'staff' },
+  { id: 'tm-75', username: 'Michaela Ertl', userRole: 'staff' },
+  { id: 'tm-76', username: 'Ernst Grabner', userRole: 'staff' },
+  { id: 'tm-77', username: 'Ulrike Fasching', userRole: 'staff' },
+  // ── Office Management / Assistenz ──
+  { id: 'tm-78', username: 'Tanja Pointner', userRole: 'staff' },
+  { id: 'tm-79', username: 'Verena Strobl', userRole: 'staff' },
+  { id: 'tm-80', username: 'Marco Obermüller', userRole: 'staff' },
+  { id: 'tm-81', username: 'Jasmin Danzer', userRole: 'staff' },
+  { id: 'tm-82', username: 'Stefan Reisinger', userRole: 'staff' },
+];
+
+// ============================================================================
+// MOCK TEAM TODOS (55+ Tasks – Schwarzott Capital Partners AG)
+// ============================================================================
+
+const MOCK_TEAM_TODOS: Todo[] = [
+  // ── Active / In Progress ──
+  { id: 9001, title: 'Due Diligence Report – MedTech AG finalisieren', description: 'Finanzmodell und Market-Sizing abschließen, Board-Vorlage erstellen.', dueAt: '2026-02-07T17:00:00Z', priority: 'critical', status: 'in_progress', assignedUsername: 'Alexander Brandt' },
+  { id: 9002, title: 'Quartalsreporting Q4/2025 an LPs versenden', description: 'NAV-Berechnung, Performance-Attribution und Portfolio-Kommentar für alle Investoren.', dueAt: '2026-02-10T12:00:00Z', priority: 'critical', status: 'in_progress', assignedUsername: 'Thomas Reiter' },
+  { id: 9003, title: 'ESG-Assessment für GreenEnergy Solutions aktualisieren', description: 'Scope 1-3 Emissionen, Governance-Score und Social Impact Metrics einpflegen.', dueAt: '2026-02-12T16:00:00Z', priority: 'high', status: 'in_progress', assignedUsername: 'Johanna Winkler' },
+  { id: 9004, title: 'Investment Committee Deck: LogiChain GmbH', description: 'Series-B Bewertung, Marktanalyse und Empfehlung für das IC vorbereiten.', dueAt: '2026-02-09T10:00:00Z', priority: 'critical', status: 'in_progress', assignedUsername: 'Dr. Katharina Voss' },
+  { id: 9005, title: 'AIFM-Regulatorik Update – BaFin-Meldung vorbereiten', description: 'Halbjährliche Meldung nach §35 KAGB, Risikobericht und Liquiditätsreporting.', dueAt: '2026-02-14T15:00:00Z', priority: 'high', status: 'in_progress', assignedUsername: 'Dr. Eva Steinbach' },
+  { id: 9006, title: 'Tech-Stack Migration ARAS Plattform – Phase 2', description: 'Backend-Migration auf neue Architektur, API-Endpunkte testen.', dueAt: '2026-02-20T18:00:00Z', priority: 'high', status: 'in_progress', assignedUsername: 'Daniel Kern' },
+  { id: 9007, title: 'Board Meeting Vorbereitung – NovaPharma Holding', description: 'Agenda, Finanz-Update und Strategie-Paper für Aufsichtsratssitzung.', dueAt: '2026-02-11T09:00:00Z', priority: 'high', status: 'in_progress', assignedUsername: 'Sarah Anderst' },
+  { id: 9008, title: 'Cashflow-Forecast 2026 für alle Portfolio-Gesellschaften', description: 'Konsolidierte Cashflow-Planung inkl. Ausschüttungen und Cap Calls.', dueAt: '2026-02-13T14:00:00Z', priority: 'high', status: 'in_progress', assignedUsername: 'Martina Stadler' },
+
+  // ── Pending – Investment ──
+  { id: 9009, title: 'Term Sheet Review – FinBridge Technologies', description: 'Konditionen prüfen: Liquidation Preference, Anti-Dilution, Board Seats.', dueAt: '2026-02-15T11:00:00Z', priority: 'high', status: 'pending', assignedUsername: 'Maximilian Richter' },
+  { id: 9010, title: 'Marktstudie Cybersecurity-Sektor beauftragen', description: 'TAM/SAM/SOM-Analyse für potentielles Investment in SecureNet AG.', dueAt: '2026-02-18T10:00:00Z', priority: 'medium', status: 'pending', assignedUsername: 'Helena Berger' },
+  { id: 9011, title: 'Co-Investment Proposal an Syndikatspartner senden', description: 'Beteiligungsstruktur und LP-Allocation für DataVault-Deal abstimmen.', dueAt: '2026-02-17T16:00:00Z', priority: 'high', status: 'pending', assignedUsername: 'Tobias Engel' },
+  { id: 9012, title: 'Exit-Strategie SolarPeak AG – Optionenanalyse', description: 'IPO vs. Trade Sale vs. Secondary Buyout evaluieren, Advisor mandatieren.', dueAt: '2026-02-22T10:00:00Z', priority: 'medium', status: 'pending', assignedUsername: 'Lena Hoffmann' },
+  { id: 9013, title: 'Pipeline-Review: 14 neue Dealflow-Opportunities screenen', description: 'Erstbewertung der eingegangenen Pitch Decks, Top-5 für Deep Dive auswählen.', dueAt: '2026-02-16T14:00:00Z', priority: 'medium', status: 'pending', assignedUsername: 'Felix Zimmermann' },
+  { id: 9014, title: 'Management-Präsentation CloudScale GmbH reviewen', description: 'Wachstumskennzahlen, Unit Economics und Expansion-Plan gegenlesen.', dueAt: '2026-02-19T09:00:00Z', priority: 'medium', status: 'pending', assignedUsername: 'Marie-Louise Weber' },
+
+  // ── Pending – Portfolio ──
+  { id: 9015, title: 'Monatliche KPI-Reports aller 22 Portfolio-Firmen einsammeln', description: 'Revenue, EBITDA, Burn Rate, Headcount – Deadline für Reporting.', dueAt: '2026-02-08T18:00:00Z', priority: 'high', status: 'pending', assignedUsername: 'Patrick Lang' },
+  { id: 9016, title: 'Portfolio Company Review – AlpinTech Industries', description: 'Operative Performance, Budgetabweichung und Management Alignment prüfen.', dueAt: '2026-02-21T10:00:00Z', priority: 'medium', status: 'pending', assignedUsername: 'Vanessa Bauer' },
+  { id: 9017, title: 'Nachfolgeplanung CEO BioGenesis GmbH begleiten', description: 'Kandidatenliste sichten, Headhunter-Briefing und Interview-Prozess aufsetzen.', dueAt: '2026-02-25T11:00:00Z', priority: 'high', status: 'pending', assignedUsername: 'Moritz Schwarz' },
+  { id: 9018, title: 'Add-on Akquisition für SmartFactory evaluieren', description: 'Synergieanalyse mit bestehendem Portfolio-Unternehmen IndustrieHub.', dueAt: '2026-02-28T15:00:00Z', priority: 'medium', status: 'pending', assignedUsername: 'Theresa Huber' },
+  { id: 9019, title: 'Valuation Update – Halbjährliche NAV-Berechnung', description: 'DCF-Modelle und Comparable Transactions für alle Holdings aktualisieren.', dueAt: '2026-03-01T12:00:00Z', priority: 'high', status: 'pending', assignedUsername: 'Dr. Stefan Gruber' },
+  { id: 9020, title: 'Gesellschafterversammlung UrbanMobility AG vorbereiten', description: 'Einladung, Protokollentwurf und Beschlussvorlagen erstellen.', dueAt: '2026-02-24T09:00:00Z', priority: 'medium', status: 'pending', assignedUsername: 'Isabella König' },
+
+  // ── Pending – Legal / Compliance ──
+  { id: 9021, title: 'SPA (Share Purchase Agreement) – TechVenture Deal finalisieren', description: 'Letzte Runde mit Kanzlei abstimmen, Signing-Termin koordinieren.', dueAt: '2026-02-14T11:00:00Z', priority: 'critical', status: 'pending', assignedUsername: 'Christoph Hofer' },
+  { id: 9022, title: 'AML / KYC-Prüfung neuer LP-Investor aus Singapur', description: 'PEP-Screening, Herkunftsnachweis und Compliance-Freigabe.', dueAt: '2026-02-12T10:00:00Z', priority: 'high', status: 'pending', assignedUsername: 'Lisa-Marie Fuchs' },
+  { id: 9023, title: 'DSGVO-Audit Portfoliounternehmen – Stichprobe Q1', description: '3 zufällige Portfolio-Firmen auf Datenschutz-Konformität prüfen.', dueAt: '2026-02-26T14:00:00Z', priority: 'medium', status: 'pending', assignedUsername: 'Bernhard Lechner' },
+  { id: 9024, title: 'Gesellschaftsvertrag NovaBau Holding anpassen', description: 'Neue Stimmenverteilung nach Kapitalerhöhung im Vertrag abbilden.', dueAt: '2026-02-20T16:00:00Z', priority: 'medium', status: 'pending', assignedUsername: 'Stefanie Pichler' },
+  { id: 9025, title: 'Handelsregister-Eintragung GreenFields Beteiligungen', description: 'Notar-Termin und Einreichung beim Amtsgericht koordinieren.', dueAt: '2026-02-18T11:00:00Z', priority: 'medium', status: 'pending', assignedUsername: 'Wolfgang Steiner' },
+
+  // ── Pending – Finance ──
+  { id: 9026, title: 'Capital Call Letter an LPs – Fund III', description: 'Abrufbetrag EUR 12M, Zahlungsfrist 10 Bankarbeitstage.', dueAt: '2026-02-10T09:00:00Z', priority: 'critical', status: 'pending', assignedUsername: 'Herbert Schöttl' },
+  { id: 9027, title: 'Jahresabschluss 2025 – Wirtschaftsprüfer-Unterlagen zusammenstellen', description: 'Saldenlisten, Darlehensverträge, Beteiligungsspiegel für KPMG.', dueAt: '2026-02-28T17:00:00Z', priority: 'high', status: 'pending', assignedUsername: 'Lukas Eder' },
+  { id: 9028, title: 'Umsatzsteuer-Voranmeldung Januar 2026', description: 'Innergemeinschaftliche Leistungen und Vorsteuer-Abzug prüfen.', dueAt: '2026-02-10T15:00:00Z', priority: 'medium', status: 'pending', assignedUsername: 'Andrea Wimmer' },
+  { id: 9029, title: 'Bankgarantie für EnergiePark-Beteiligung verlängern', description: 'Verlängerungsantrag bei der Commerzbank einreichen.', dueAt: '2026-02-15T12:00:00Z', priority: 'medium', status: 'pending', assignedUsername: 'Florian Haas' },
+  { id: 9030, title: 'Transfer Pricing Documentation aktualisieren', description: 'Verrechnungspreise zwischen Holding und Tochtergesellschaften dokumentieren.', dueAt: '2026-03-05T10:00:00Z', priority: 'medium', status: 'pending', assignedUsername: 'Birgit Moser' },
+
+  // ── Pending – Risk ──
+  { id: 9031, title: 'Währungsrisiko-Hedging für USD-Positionen prüfen', description: 'FX-Forward-Kontrakte für US-Portfolio-Beteiligungen evaluieren.', dueAt: '2026-02-19T14:00:00Z', priority: 'high', status: 'pending', assignedUsername: 'Dr. Peter Wallner' },
+  { id: 9032, title: 'Stresstesting Portfolio – Rezessions-Szenario', description: 'Impact-Analyse: -20% Revenue bei 5 größten Holdings durchrechnen.', dueAt: '2026-02-25T10:00:00Z', priority: 'medium', status: 'pending', assignedUsername: 'Claudia Ebner' },
+  { id: 9033, title: 'Konzentrationsrisiko-Report für Aufsichtsrat', description: 'Sektor-, Geografie- und Single-Name-Exposure darstellen.', dueAt: '2026-02-23T15:00:00Z', priority: 'medium', status: 'pending', assignedUsername: 'Markus Leitner' },
+
+  // ── Pending – Tech ──
+  { id: 9034, title: 'Investor-Portal: Neues Dashboard für LP-Reporting live schalten', description: 'Frontend-Tests abschließen, Staging-Freigabe einholen.', dueAt: '2026-02-21T18:00:00Z', priority: 'high', status: 'pending', assignedUsername: 'Julia Seidl' },
+  { id: 9035, title: 'Backup-Strategie für Fund-Datenbank überprüfen', description: 'RPO/RTO prüfen, Disaster Recovery Test durchführen.', dueAt: '2026-02-17T10:00:00Z', priority: 'medium', status: 'pending', assignedUsername: 'Andreas Holzer' },
+  { id: 9036, title: 'CRM-Migration: Deal-Pipeline nach Salesforce übertragen', description: 'Datenqualität sichern, Mapping-Tabellen finalisieren.', dueAt: '2026-02-27T12:00:00Z', priority: 'medium', status: 'pending', assignedUsername: 'Nina Pöschl' },
+  { id: 9037, title: 'Cybersecurity Awareness Training organisieren', description: 'Phishing-Simulation und Schulung für alle Mitarbeiter planen.', dueAt: '2026-03-03T09:00:00Z', priority: 'medium', status: 'pending', assignedUsername: 'Kevin Binder' },
+
+  // ── Pending – HR ──
+  { id: 9038, title: 'Bewerbungsgespräche Junior Analyst – 8 Kandidaten', description: 'Interviews KW 7-8, Case Study vorbereiten.', dueAt: '2026-02-16T09:00:00Z', priority: 'medium', status: 'pending', assignedUsername: 'Petra Wiesinger' },
+  { id: 9039, title: 'Jahresgespräche 2025 abschließen – 12 ausstehend', description: 'Zielvereinbarungen und Bonusberechnung finalisieren.', dueAt: '2026-02-14T17:00:00Z', priority: 'high', status: 'pending', assignedUsername: 'Manuel Ortner' },
+  { id: 9040, title: 'Onboarding-Package für 3 neue Mitarbeiter (März-Start)', description: 'IT-Ausstattung, Zugänge, Willkommensmappe und Mentor-Zuweisung.', dueAt: '2026-02-25T12:00:00Z', priority: 'medium', status: 'pending', assignedUsername: 'Barbara Schuster' },
+
+  // ── Pending – IR / Marketing ──
+  { id: 9041, title: 'Investor Update Newsletter Q4 gestalten', description: 'Key Highlights, Portfolio News und Outlook 2026 für alle LPs.', dueAt: '2026-02-11T16:00:00Z', priority: 'high', status: 'pending', assignedUsername: 'Philipp Riedl' },
+  { id: 9042, title: 'ARAS-Webseite: Portfolio-Seite aktualisieren', description: 'Neue Beteiligungen NovaPharma und LogiChain mit Logo und Beschreibung.', dueAt: '2026-02-13T10:00:00Z', priority: 'medium', status: 'pending', assignedUsername: 'Anna-Lena Berger' },
+  { id: 9043, title: 'LP Annual Meeting 2026 – Venue und Catering buchen', description: 'Termin: 26. März, Grand Hyatt München, 45 Personen.', dueAt: '2026-02-20T11:00:00Z', priority: 'high', status: 'pending', assignedUsername: 'Elisabeth Thaler' },
+  { id: 9044, title: 'ESG Impact Report 2025 – Designvorlage erstellen', description: 'Infografiken, KPI-Visualisierung und Case Studies integrieren.', dueAt: '2026-03-01T14:00:00Z', priority: 'medium', status: 'pending', assignedUsername: 'Dominik Pauer' },
+
+  // ── Pending – Operations ──
+  { id: 9045, title: 'Büroumzug 4. OG – Projektplan finalisieren', description: 'Umzugsfirma beauftragen, IT-Infrastruktur im neuen Bereich vorbereiten.', dueAt: '2026-02-22T09:00:00Z', priority: 'medium', status: 'pending', assignedUsername: 'Harald Gasser' },
+  { id: 9046, title: 'Konferenzraum-Buchungssystem erneuern', description: 'Neues Tool evaluieren und Implementierung koordinieren.', dueAt: '2026-02-28T11:00:00Z', priority: 'low', status: 'pending', assignedUsername: 'Iris Plank' },
+  { id: 9047, title: 'Reisekostenabrechnung Q4 – 28 offene Belege prüfen', description: 'Compliance-Check und Freigabe aller ausstehenden Reisekosten.', dueAt: '2026-02-09T15:00:00Z', priority: 'medium', status: 'pending', assignedUsername: 'Josef Wimmer' },
+
+  // ── Done (kürzlich abgeschlossen) ──
+  { id: 9048, title: 'Investment Committee: Genehmigung DataVault Series A', description: 'EUR 8M Commitment genehmigt. Closing in KW 8.', dueAt: '2026-02-03T10:00:00Z', priority: 'critical', status: 'done', assignedUsername: 'Justin Schwarzott' },
+  { id: 9049, title: 'LP-Bericht Fund II – Versand abgeschlossen', description: 'Performance-Report an 34 LPs per SecureMail versendet.', dueAt: '2026-02-01T14:00:00Z', priority: 'high', status: 'done', assignedUsername: 'Philipp Riedl' },
+  { id: 9050, title: 'Compliance Training 2026 – alle Mitarbeiter absolviert', description: 'MiFID II, MAR und Insiderhandel-Schulung abgeschlossen.', dueAt: '2026-01-31T17:00:00Z', priority: 'high', status: 'done', assignedUsername: 'Katharina Brandl' },
+  { id: 9051, title: 'IT-Sicherheitsaudit bestanden – ISO 27001 konform', description: 'Externer Auditor bestätigt Konformität, Zertifikat erhalten.', dueAt: '2026-01-28T12:00:00Z', priority: 'high', status: 'done', assignedUsername: 'Raphael Grünwald' },
+  { id: 9052, title: 'Gesellschafterversammlung GreenFields – Protokoll erstellt', description: 'Beschlüsse zur Kapitalerhöhung und neuer Geschäftsführer protokolliert.', dueAt: '2026-01-30T16:00:00Z', priority: 'medium', status: 'done', assignedUsername: 'Georg Strasser' },
+  { id: 9053, title: 'Neuer LP – Onboarding SwissLife Pension Fund', description: 'KYC abgeschlossen, Subscription Agreement unterzeichnet.', dueAt: '2026-02-04T11:00:00Z', priority: 'high', status: 'done', assignedUsername: 'Christoph Hofer' },
+  { id: 9054, title: 'Portfolio Review Meeting – alle 22 Companies abgedeckt', description: 'Status-Updates von allen Managing Directors eingeholt und konsolidiert.', dueAt: '2026-02-02T15:00:00Z', priority: 'medium', status: 'done', assignedUsername: 'Dr. Stefan Gruber' },
+  { id: 9055, title: 'Serverumstellung auf neue Cloud-Infrastruktur', description: 'AWS-Migration abgeschlossen, Zero-Downtime Deployment.', dueAt: '2026-01-27T18:00:00Z', priority: 'medium', status: 'done', assignedUsername: 'Laura Auer' },
+];
+
+// ============================================================================
 // SKELETON COMPONENT
 // ============================================================================
 
@@ -396,10 +579,31 @@ export default function InternalDashboard() {
 
   const feedItems: FeedItem[] = feedData?.items || [];
   const calendarEvents: CalendarEvent[] = calendarData?.events || [];
-  const todos: Todo[] = todosData?.todos || [];
-  const activeUsers: TeamUser[] = activeUsersData?.users || [];
   const pendingContracts = contractsData?.contracts || [];
   const actions: Action[] = actionsData?.actions || [];
+
+  // Merge mock data with API data (always show mock, add API on top)
+  const activeUsers: TeamUser[] = useMemo(() => {
+    const merged = [...MOCK_TEAM_MEMBERS];
+    const mockNames = new Set(MOCK_TEAM_MEMBERS.map(m => m.username.toLowerCase()));
+    for (const apiUser of (activeUsersData?.users || [])) {
+      if (!mockNames.has(apiUser.username.toLowerCase())) {
+        merged.push(apiUser);
+      }
+    }
+    return merged;
+  }, [activeUsersData]);
+
+  const todos: Todo[] = useMemo(() => {
+    const merged = [...MOCK_TEAM_TODOS];
+    const mockIds = new Set(MOCK_TEAM_TODOS.map(t => t.id));
+    for (const apiTodo of (todosData?.todos || [])) {
+      if (!mockIds.has(apiTodo.id)) {
+        merged.push(apiTodo);
+      }
+    }
+    return merged;
+  }, [todosData]);
 
   // ============================================================================
   // RENDER
@@ -502,7 +706,7 @@ export default function InternalDashboard() {
             <GlassCard className="h-full">
               <WidgetHeader icon={Users} title="Team Members" count={activeUsers.length} />
               
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(254,145,0,0.3) transparent' }}>
                 {usersLoading ? (
                   Array.from({ length: 4 }).map((_, i) => (
                     <div key={i} className="flex items-center gap-3">
@@ -513,7 +717,7 @@ export default function InternalDashboard() {
                 ) : activeUsers.length === 0 ? (
                   <EmptyState icon={Users} message="No team members found" />
                 ) : (
-                  activeUsers.slice(0, 8).map((user) => (
+                  activeUsers.map((user) => (
                     <button
                       key={user.id}
                       onClick={() => openDrawer('user', user)}
@@ -584,13 +788,13 @@ export default function InternalDashboard() {
                 </div>
               )}
 
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(254,145,0,0.3) transparent' }}>
                 {todosLoading ? (
                   Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10" />)
                 ) : todos.length === 0 ? (
                   <EmptyState icon={CheckSquare} message="No pending tasks" />
                 ) : (
-                  todos.slice(0, 6).map((todo) => (
+                  todos.filter(t => t.status !== 'done').concat(todos.filter(t => t.status === 'done')).map((todo) => (
                     <div 
                       key={todo.id} 
                       className="flex items-center gap-3 p-2 rounded-lg group transition-colors hover:bg-white/[0.04]"
