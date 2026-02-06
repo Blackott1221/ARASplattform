@@ -40,8 +40,11 @@ interface MailItem {
   category?: MailCategory | null;
   priority?: MailPriority | null;
   aiConfidence?: number | null;
+  aiReason?: string;
   aiSummary?: string;
   aiAction?: string | null;
+  needsClarification?: boolean;
+  clarifyingQuestions?: string[];
   draftSubject?: string;
   draftHtml?: string;
   draftText?: string;
@@ -51,6 +54,8 @@ interface MailItem {
   approvedAt?: string | null;
   sentAt?: string | null;
   messageId?: string;
+  errorCode?: string | null;
+  errorMessage?: string | null;
 }
 
 // ============================================================================
@@ -359,13 +364,29 @@ function DetailPanel({
 
           {activeTab === 'ai' && (
             <motion.div key="ai" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
-              {/* Classification */}
+              {/* Classification Grid */}
               <div className="grid grid-cols-2 gap-3">
                 <InfoCard label="Category" value={mail.category || '—'} color={mail.category ? CATEGORY_CONFIG[mail.category]?.color : undefined} />
                 <InfoCard label="Priority" value={mail.priority || '—'} color={mail.priority ? PRIORITY_CONFIG[mail.priority]?.color : undefined} />
-                <InfoCard label="Action" value={mail.aiAction || '—'} />
+                <InfoCard label="Recommended Action" value={mail.aiAction || '—'} />
                 <InfoCard label="Confidence" value={mail.aiConfidence ? `${Math.round(mail.aiConfidence * 100)}%` : '—'} />
               </div>
+
+              {/* Reason */}
+              {mail.aiReason && (
+                <div 
+                  className="p-4 rounded-xl"
+                  style={{ background: 'rgba(254,145,0,0.05)', border: '1px solid rgba(254,145,0,0.15)' }}
+                >
+                  <h4 className="text-xs font-semibold uppercase mb-2 flex items-center gap-2" style={{ color: '#FE9100' }}>
+                    <Zap className="w-3.5 h-3.5" />
+                    ARAS Engine Einschätzung
+                  </h4>
+                  <p className="text-sm" style={{ color: 'rgba(255,255,255,0.85)', lineHeight: 1.6 }}>
+                    {mail.aiReason}
+                  </p>
+                </div>
+              )}
 
               {/* Summary */}
               <div 
@@ -373,12 +394,35 @@ function DetailPanel({
                 style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(233,215,196,0.08)' }}
               >
                 <h4 className="text-xs font-semibold uppercase mb-2" style={{ color: 'rgba(255,255,255,0.5)' }}>
-                  AI Summary
+                  Zusammenfassung
                 </h4>
                 <p className="text-sm" style={{ color: 'rgba(255,255,255,0.8)', lineHeight: 1.6 }}>
                   {mail.aiSummary || 'Noch nicht triaged'}
                 </p>
               </div>
+
+              {/* Clarification Questions */}
+              {mail.needsClarification && mail.clarifyingQuestions && mail.clarifyingQuestions.length > 0 && (
+                <div 
+                  className="p-4 rounded-xl"
+                  style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)' }}
+                >
+                  <h4 className="text-xs font-semibold uppercase mb-3 flex items-center gap-2" style={{ color: '#EF4444' }}>
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    Klärungsbedarf
+                  </h4>
+                  <ul className="space-y-2">
+                    {mail.clarifyingQuestions.map((q, i) => (
+                      <li key={i} className="text-sm flex items-start gap-2" style={{ color: 'rgba(255,255,255,0.8)' }}>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded mt-0.5" style={{ background: 'rgba(239,68,68,0.15)', color: '#EF4444' }}>
+                          {i + 1}
+                        </span>
+                        {q}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </motion.div>
           )}
 
