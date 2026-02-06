@@ -614,6 +614,99 @@ router.post('/internal/mail/inbound/:id/triage', requireStaffOrAdmin, async (req
 });
 
 // ============================================================================
+// DRAFT REGENERATE: POST /api/internal/mail/inbound/:id/draft
+// ============================================================================
+// Regenerate draft using operator notes for clarification
+// ============================================================================
+
+router.post('/internal/mail/inbound/:id/draft', requireStaffOrAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ ok: false, error: 'Invalid mail ID' });
+    }
+
+    const { operatorNotes } = req.body || {};
+    if (!operatorNotes || typeof operatorNotes !== 'string' || operatorNotes.trim().length === 0) {
+      return res.status(400).json({ ok: false, error: 'Operator notes required for draft regeneration.' });
+    }
+
+    const actorId = getActorId(req);
+
+    // Fetch the mail
+    const [mail] = await db
+      .select()
+      .from(mailInbound)
+      .where(eq(mailInbound.id, id))
+      .limit(1);
+
+    if (!mail) {
+      return res.status(404).json({ ok: false, error: 'Mail not found' });
+    }
+
+    // Allow regeneration from TRIAGED, OPEN, or NEW states
+    if (!['NEW', 'OPEN', 'TRIAGED'].includes(mail.status)) {
+      return res.status(409).json({ ok: false, error: 'Action not allowed in current state.' });
+    }
+
+    logger.info(`[MAIL-DRAFT] Regenerating draft for mail id=${id} with operator notes, actor=${actorId}`);
+
+    // Run ARAS Engine triage with operator notes appended
+    const result = await triageEmail({
+      fromEmail: mail.fromEmail,
+      fromName: mail.fromName,
+      subject: mail.subject,
+      snippet: mail.snippet,
+      bodyText: mail.bodyText + '\n\n---\nOPERATOR NOTES:\n' + operatorNotes.trim(),
+      bodyHtml: mail.bodyHtml,
+      mailbox: mail.mailbox,
+    });
+
+    // Update the mail with new draft
+    const now = new Date();
+    const [updated] = await db
+      .update(mailInbound)
+      .set({
+        category: result.category,
+        priority: result.priority,
+        aiConfidence: result.confidence,
+        aiReason: result.reason,
+        aiSummary: result.summary,
+        aiAction: result.action,
+        needsClarification: result.needsClarification,
+        clarifyingQuestions: result.clarifyingQuestions,
+        operatorNotes: operatorNotes.trim(),
+        draftSubject: result.reply.subject,
+        draftHtml: result.reply.html,
+        draftText: result.reply.text,
+        status: 'TRIAGED',
+        triagedAt: now,
+        triagedBy: actorId,
+        lastActionAt: now,
+        updatedAt: now,
+      })
+      .where(eq(mailInbound.id, id))
+      .returning();
+
+    logger.info(`[MAIL-DRAFT] Draft regenerated for mail id=${id}`);
+
+    return res.json({
+      ok: true,
+      id: updated.id,
+      status: updated.status,
+      hasDraft: result.reply.text.length > 0 || result.reply.html.length > 0,
+    });
+
+  } catch (error: any) {
+    logger.error('[MAIL-DRAFT] Error:', error.message);
+    return res.status(500).json({
+      ok: false,
+      error: 'Draft regeneration failed. Please try again.',
+    });
+  }
+});
+
+// ============================================================================
 // APPROVE: POST /api/internal/mail/inbound/:id/approve
 // ============================================================================
 // Mark mail as approved for sending

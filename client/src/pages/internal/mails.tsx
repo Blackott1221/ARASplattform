@@ -228,19 +228,24 @@ function DetailPanel({
   onTriage,
   onApprove,
   onSend,
+  onRegenerateDraft,
   onClose,
   isTriaging,
   isSending,
+  isRegenerating,
 }: { 
   mail: MailItem | null;
   onTriage: () => void;
   onApprove: () => void;
   onSend: () => void;
+  onRegenerateDraft: (notes: string) => void;
   onClose: () => void;
   isTriaging: boolean;
   isSending: boolean;
+  isRegenerating: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<'mail' | 'ai' | 'draft'>('mail');
+  const [operatorNotes, setOperatorNotes] = useState('');
   const { toast } = useToast();
 
   if (!mail) {
@@ -401,7 +406,7 @@ function DetailPanel({
                 </p>
               </div>
 
-              {/* Clarification Questions */}
+              {/* Clarification Questions + Operator Notes Input */}
               {mail.needsClarification && mail.clarifyingQuestions && mail.clarifyingQuestions.length > 0 && (
                 <div 
                   className="p-4 rounded-xl"
@@ -411,7 +416,7 @@ function DetailPanel({
                     <AlertCircle className="w-3.5 h-3.5" />
                     Klärungsbedarf
                   </h4>
-                  <ul className="space-y-2">
+                  <ul className="space-y-2 mb-4">
                     {mail.clarifyingQuestions.map((q, i) => (
                       <li key={i} className="text-sm flex items-start gap-2" style={{ color: 'rgba(255,255,255,0.8)' }}>
                         <span className="text-[10px] px-1.5 py-0.5 rounded mt-0.5" style={{ background: 'rgba(239,68,68,0.15)', color: '#EF4444' }}>
@@ -421,6 +426,44 @@ function DetailPanel({
                       </li>
                     ))}
                   </ul>
+
+                  {/* Operator Notes Input */}
+                  <div className="space-y-3 pt-3" style={{ borderTop: '1px solid rgba(239,68,68,0.15)' }}>
+                    <label className="text-xs font-semibold uppercase" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                      Deine Antworten / Notizen
+                    </label>
+                    <textarea
+                      value={operatorNotes}
+                      onChange={(e) => setOperatorNotes(e.target.value)}
+                      placeholder="Beantworte die Fragen hier, um einen neuen Draft zu generieren..."
+                      rows={4}
+                      className="w-full px-3 py-2 rounded-lg text-sm resize-none"
+                      style={{
+                        background: 'rgba(0,0,0,0.3)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        color: 'rgba(255,255,255,0.9)',
+                        outline: 'none',
+                      }}
+                    />
+                    <button
+                      onClick={() => {
+                        if (operatorNotes.trim()) {
+                          onRegenerateDraft(operatorNotes);
+                          setOperatorNotes('');
+                        }
+                      }}
+                      disabled={!operatorNotes.trim() || isRegenerating}
+                      className="w-full py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2"
+                      style={{
+                        background: operatorNotes.trim() ? 'linear-gradient(135deg, #FE9100, #a34e00)' : 'rgba(255,255,255,0.05)',
+                        color: operatorNotes.trim() ? '#fff' : 'rgba(255,255,255,0.3)',
+                        cursor: operatorNotes.trim() && !isRegenerating ? 'pointer' : 'not-allowed',
+                      }}
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      {isRegenerating ? 'Generiere...' : 'Draft neu generieren'}
+                    </button>
+                  </div>
                 </div>
               )}
             </motion.div>
@@ -664,6 +707,31 @@ export default function MailsPage() {
     },
   });
 
+  // Draft regenerate mutation
+  const regenerateDraftMutation = useMutation({
+    mutationFn: async ({ id, operatorNotes }: { id: number; operatorNotes: string }) => {
+      const res = await fetch(`/api/internal/mail/inbound/${id}/draft`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ operatorNotes }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Draft regeneration failed');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mails-list'] });
+      queryClient.invalidateQueries({ queryKey: ['mail-detail', selectedMailId] });
+      toast({ title: '✓ Draft neu generiert' });
+    },
+    onError: (err: any) => {
+      toast({ title: 'Draft-Generierung fehlgeschlagen', description: err.message, variant: 'destructive' });
+    },
+  });
+
   const mails: MailItem[] = listData?.data || [];
   const mailCounts = counts?.counts || {};
 
@@ -806,9 +874,11 @@ export default function MailsPage() {
             onTriage={() => selectedMailId && triageMutation.mutate(selectedMailId)}
             onApprove={() => selectedMailId && approveMutation.mutate(selectedMailId)}
             onSend={() => selectedMailId && sendMutation.mutate(selectedMailId)}
+            onRegenerateDraft={(notes) => selectedMailId && regenerateDraftMutation.mutate({ id: selectedMailId, operatorNotes: notes })}
             onClose={() => setSelectedMailId(null)}
             isTriaging={triageMutation.isPending}
             isSending={sendMutation.isPending}
+            isRegenerating={regenerateDraftMutation.isPending}
           />
         </motion.div>
       </div>
