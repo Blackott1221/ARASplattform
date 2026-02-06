@@ -1145,6 +1145,9 @@ export const mailInbound = pgTable("mail_inbound", {
   assignedTo: text("assigned_to"),
   notes: text("notes").default("").notNull(),
   
+  // Contact Link (Internal CRM)
+  contactId: varchar("contact_id").references(() => internalContacts.id),
+  
   // Extensible metadata (raw payload hashes, attachments meta, etc.)
   meta: jsonb("meta").$type<Record<string, any>>().default({}).notNull(),
   

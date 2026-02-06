@@ -30,10 +30,14 @@ ALTER TABLE mail_inbound ADD COLUMN IF NOT EXISTS needs_clarification BOOLEAN DE
 ALTER TABLE mail_inbound ADD COLUMN IF NOT EXISTS clarifying_questions JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE mail_inbound ADD COLUMN IF NOT EXISTS operator_notes TEXT NOT NULL DEFAULT '';
 
+-- Contact link column
+ALTER TABLE mail_inbound ADD COLUMN IF NOT EXISTS contact_id VARCHAR REFERENCES internal_contacts(id);
+
 -- Indexes for workflow queries
 CREATE INDEX IF NOT EXISTS mail_inbound_last_action_at_idx ON mail_inbound (last_action_at);
 CREATE INDEX IF NOT EXISTS mail_inbound_needs_clarification_idx ON mail_inbound (needs_clarification) WHERE needs_clarification = TRUE;
 CREATE INDEX IF NOT EXISTS mail_inbound_error_code_idx ON mail_inbound (error_code) WHERE error_code IS NOT NULL;
+CREATE INDEX IF NOT EXISTS mail_inbound_contact_id_idx ON mail_inbound (contact_id) WHERE contact_id IS NOT NULL;
 
 -- ============================================================================
 -- STATUS VALUES REFERENCE (for documentation):
