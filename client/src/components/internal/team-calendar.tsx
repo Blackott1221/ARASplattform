@@ -890,275 +890,401 @@ function generateMockEvents(): CalendarEvent[] {
     internalNotes: 'HR + Engineering Lead.',
   });
 
-  // ========== J) ADDITIONAL 90+ EVENTS FOR COMPREHENSIVE CALENDAR ==========
+  // ========== J) DENSE 200+ EVENTS — EVERY WEEK HAS EVENTS ==========
   
-  // Weekly Marketing Sync (Wednesdays 11:00-11:45)
-  for (let month = 1; month <= 7; month++) {
-    for (let week = 0; week < 5; week++) {
-      const wednesday = new Date(2026, month, 1);
-      wednesday.setDate(wednesday.getDate() + ((3 - wednesday.getDay() + 7) % 7) + (week * 7));
-      if (wednesday.getMonth() === month && wednesday <= endDate) {
-        events.push({
-          id: `marketing-sync-${month}-${week}`,
-          title: 'Marketing Weekly Sync',
-          description: 'Wöchentliche Marketing-Abstimmung. Kampagnen, Content, und Performance Review.',
-          date: wednesday,
-          startTime: '11:00',
-          endTime: '11:45',
-          type: 'INTERN',
-          contextTags: ['organisation'],
-          internalNotes: 'Marketing Team. Remote.',
-        });
+  // ---------- J1) Weekly Recurring: Marketing Sync (Wed 11:00) ----------
+  for (let m = 0; m <= 7; m++) {
+    for (let w = 0; w < 5; w++) {
+      const d = new Date(2026, m, 1);
+      d.setDate(d.getDate() + ((3 - d.getDay() + 7) % 7) + w * 7);
+      if (d.getMonth() === m && d <= endDate) {
+        events.push({ id: `mkt-sync-${m}-${w}`, title: 'Marketing Weekly Sync', description: 'Kampagnen-Review, Content-Pipeline, Performance KPIs. Alle Marketing-Leads anwesend.', date: d, startTime: '11:00', endTime: '11:45', type: 'INTERN', contextTags: ['organisation'], internalNotes: 'Marketing Team. Remote via Zoom.' });
       }
     }
   }
   
-  // Design Reviews (Mondays 15:00-16:00)
-  for (let month = 1; month <= 7; month++) {
-    for (let week = 0; week < 5; week++) {
-      const monday = new Date(2026, month, 1);
-      monday.setDate(monday.getDate() + ((1 - monday.getDay() + 7) % 7) + (week * 7));
-      if (monday.getMonth() === month && monday <= endDate) {
-        events.push({
-          id: `design-review-${month}-${week}`,
-          title: 'Design Review',
-          description: 'Wöchentlicher Design Review. UI/UX Feedback, Prototypen, und Design System Updates.',
-          date: monday,
-          startTime: '15:00',
-          endTime: '16:00',
-          type: 'INTERN',
-          contextTags: ['tech'],
-          internalNotes: 'Design + Product. Figma Links vorbereiten.',
-        });
+  // ---------- J2) Weekly Recurring: Design Review (Mon 15:00) ----------
+  for (let m = 0; m <= 7; m++) {
+    for (let w = 0; w < 5; w++) {
+      const d = new Date(2026, m, 1);
+      d.setDate(d.getDate() + ((1 - d.getDay() + 7) % 7) + w * 7);
+      if (d.getMonth() === m && d <= endDate) {
+        events.push({ id: `design-rev-${m}-${w}`, title: 'Design Review', description: 'UI/UX Feedback, Prototypen-Check, Design-System Updates. Figma Links vorab teilen.', date: d, startTime: '15:00', endTime: '16:00', type: 'INTERN', contextTags: ['tech'], internalNotes: 'Design + Product.' });
       }
     }
   }
   
-  // Customer Success Sync (Thursdays 10:00-10:30)
-  for (let month = 1; month <= 7; month++) {
-    for (let week = 0; week < 5; week++) {
-      const thursday = new Date(2026, month, 1);
-      thursday.setDate(thursday.getDate() + ((4 - thursday.getDay() + 7) % 7) + (week * 7));
-      if (thursday.getMonth() === month && thursday <= endDate) {
-        events.push({
-          id: `cs-sync-${month}-${week}`,
-          title: 'Customer Success Sync',
-          description: 'Wöchentliches CS Meeting. Kundenfeedback, NPS, und Churn-Analyse.',
-          date: thursday,
-          startTime: '10:00',
-          endTime: '10:30',
-          type: 'INTERN',
-          contextTags: ['organisation'],
-          internalNotes: 'CS Team + Product.',
-        });
+  // ---------- J3) Weekly Recurring: CS Sync (Thu 10:00) ----------
+  for (let m = 0; m <= 7; m++) {
+    for (let w = 0; w < 5; w++) {
+      const d = new Date(2026, m, 1);
+      d.setDate(d.getDate() + ((4 - d.getDay() + 7) % 7) + w * 7);
+      if (d.getMonth() === m && d <= endDate) {
+        events.push({ id: `cs-sync-${m}-${w}`, title: 'Customer Success Sync', description: 'Kundenfeedback, NPS-Analyse, Churn-Prävention. CS Team + Product Owner.', date: d, startTime: '10:00', endTime: '10:30', type: 'INTERN', contextTags: ['organisation'], internalNotes: 'CS Team + Product.' });
       }
     }
   }
   
-  // Additional Deadlines & Milestones
-  const deadlines = [
-    { date: new Date(2026, 1, 15), title: 'Q1 OKR Finalisierung', desc: 'Deadline für Q1 OKR Definition' },
-    { date: new Date(2026, 1, 28), title: 'Pitch Deck Update', desc: 'Aktualisiertes Pitch Deck für Investoren' },
-    { date: new Date(2026, 2, 1), title: 'DSGVO Audit Vorbereitung', desc: 'Alle Dokumente für DSGVO Audit' },
-    { date: new Date(2026, 2, 15), title: 'Steuererklärung Deadline', desc: 'Abgabe Steuererklärung 2025' },
-    { date: new Date(2026, 2, 31), title: 'Q1 Abschluss', desc: 'Finaler Q1 Abschluss' },
-    { date: new Date(2026, 3, 15), title: 'ISO Zertifizierung Audit', desc: 'Vorbereitung ISO 27001' },
-    { date: new Date(2026, 3, 30), title: 'Website Launch', desc: 'Go-Live neue Website' },
-    { date: new Date(2026, 4, 15), title: 'Feature Release v2.0', desc: 'Major Release ARAS AI v2.0' },
-    { date: new Date(2026, 4, 31), title: 'Halbjahres-Budget Review', desc: 'Budget Review H1' },
-    { date: new Date(2026, 5, 15), title: 'Summer Party Planung', desc: 'Deadline Planung Sommerfest' },
-    { date: new Date(2026, 5, 30), title: 'Q2 Abschluss', desc: 'Finaler Q2 Abschluss' },
-    { date: new Date(2026, 6, 15), title: 'Partner Verträge Renewal', desc: 'Deadline Partner Renewals' },
-    { date: new Date(2026, 6, 31), title: 'Mid-Year Review', desc: 'Halbjahres Performance Review' },
-    { date: new Date(2026, 7, 15), title: 'Q3 Planung Kickoff', desc: 'Start Q3 Planning' },
-    { date: new Date(2026, 7, 31), title: 'August Urlaubs-Planung', desc: 'Finale Urlaubsabstimmung' },
-  ];
-  
-  deadlines.forEach((d, i) => {
-    events.push({
-      id: `deadline-${i}`,
-      title: `📌 ${d.title}`,
-      description: d.desc,
-      date: d.date,
-      startTime: '18:00',
-      endTime: '18:30',
-      type: 'DEADLINE',
-      contextTags: ['organisation'],
-      internalNotes: 'Wichtige Deadline. Nicht verschieben.',
-      isReadOnly: true,
-    });
-  });
-  
-  // Training Sessions
-  const trainings = [
-    { date: new Date(2026, 1, 20), title: 'Security Awareness Training', time: '14:00' },
-    { date: new Date(2026, 2, 10), title: 'DSGVO Schulung', time: '10:00' },
-    { date: new Date(2026, 3, 8), title: 'Leadership Workshop', time: '09:00' },
-    { date: new Date(2026, 4, 12), title: 'AI Tools Training', time: '14:00' },
-    { date: new Date(2026, 5, 9), title: 'Kommunikations-Workshop', time: '10:00' },
-    { date: new Date(2026, 6, 14), title: 'Agile Methoden Refresher', time: '14:00' },
-    { date: new Date(2026, 7, 11), title: 'Stress Management', time: '15:00' },
-  ];
-  
-  trainings.forEach((t, i) => {
-    events.push({
-      id: `training-${i}`,
-      title: `📚 ${t.title}`,
-      description: `Pflichtschulung: ${t.title}. Alle relevanten Mitarbeiter sind eingeladen.`,
-      date: t.date,
-      startTime: t.time,
-      endTime: `${parseInt(t.time.split(':')[0]) + 2}:00`,
-      type: 'INTERN',
-      contextTags: ['hr', 'organisation'],
-      internalNotes: 'HR organisiert. Teilnahme wird dokumentiert.',
-    });
-  });
-  
-  // Client Meetings / Demos
-  const clientMeetings = [
-    { date: new Date(2026, 1, 18), title: 'Demo: Allianz Gruppe', client: 'Allianz' },
-    { date: new Date(2026, 1, 25), title: 'Onboarding Call: BMW', client: 'BMW' },
-    { date: new Date(2026, 2, 4), title: 'QBR: Deutsche Bank', client: 'Deutsche Bank' },
-    { date: new Date(2026, 2, 18), title: 'Demo: Siemens Energy', client: 'Siemens' },
-    { date: new Date(2026, 3, 2), title: 'Pilot Kickoff: SAP', client: 'SAP' },
-    { date: new Date(2026, 3, 16), title: 'Executive Briefing: Bosch', client: 'Bosch' },
-    { date: new Date(2026, 4, 7), title: 'Renewal Gespräch: Daimler', client: 'Daimler' },
-    { date: new Date(2026, 4, 21), title: 'Upsell Meeting: BASF', client: 'BASF' },
-    { date: new Date(2026, 5, 4), title: 'Success Review: Lufthansa', client: 'Lufthansa' },
-    { date: new Date(2026, 5, 18), title: 'New Logo: Deutsche Telekom', client: 'Telekom' },
-    { date: new Date(2026, 6, 2), title: 'Enterprise Demo: VW', client: 'Volkswagen' },
-    { date: new Date(2026, 6, 16), title: 'POC Review: Adidas', client: 'Adidas' },
-    { date: new Date(2026, 7, 6), title: 'Contract Signing: Henkel', client: 'Henkel' },
-    { date: new Date(2026, 7, 20), title: 'Integration Workshop: Bayer', client: 'Bayer' },
-  ];
-  
-  clientMeetings.forEach((c, i) => {
-    events.push({
-      id: `client-meeting-${i}`,
-      title: c.title,
-      description: `Kundentermin mit ${c.client}. Vorbereitung und Follow-up durch Account Team.`,
-      date: c.date,
-      startTime: '10:00',
-      endTime: '11:30',
-      type: 'EXTERNAL',
-      contextTags: ['organisation', 'strategie'],
-      internalNotes: `Client: ${c.client}. Sales + Product. Meeting Link im CRM.`,
-    });
-  });
-  
-  // Company Events & Social
-  const companyEvents = [
-    { date: new Date(2026, 1, 14), title: 'Valentinstag Team Lunch', type: 'social' },
-    { date: new Date(2026, 2, 17), title: 'St. Patricks Day Feier', type: 'social' },
-    { date: new Date(2026, 3, 17), title: 'Oster-Brunch', type: 'social' },
-    { date: new Date(2026, 4, 8), title: 'Muttertag Appreciation', type: 'social' },
-    { date: new Date(2026, 5, 21), title: 'Sommerfest 2026', type: 'party' },
-    { date: new Date(2026, 6, 4), title: 'BBQ am Dach', type: 'social' },
-    { date: new Date(2026, 7, 7), title: 'Friday Drinks', type: 'social' },
-  ];
-  
-  companyEvents.forEach((e, i) => {
-    events.push({
-      id: `company-event-${i}`,
-      title: `🎉 ${e.title}`,
-      description: `Team Event: ${e.title}. Alle sind herzlich eingeladen!`,
-      date: e.date,
-      startTime: e.type === 'party' ? '16:00' : '12:00',
-      endTime: e.type === 'party' ? '22:00' : '14:00',
-      type: 'TEAM_MEETING',
-      contextTags: ['hr', 'intern'],
-      internalNotes: 'Office Management organisiert.',
-    });
-  });
-  
-  // More Detailed Events for Current Week (Feb 2026)
-  const currentWeekEvents = [
-    { date: new Date(2026, 1, 2), title: 'Wochenplanung', start: '08:30', end: '09:00' },
-    { date: new Date(2026, 1, 2), title: 'Code Review: Auth Module', start: '14:00', end: '15:00' },
-    { date: new Date(2026, 1, 3), title: 'UX Testing Session', start: '10:00', end: '11:30' },
-    { date: new Date(2026, 1, 3), title: 'API Integration Call', start: '15:00', end: '16:00' },
-    { date: new Date(2026, 1, 4), title: 'Budget Meeting Q1', start: '09:00', end: '10:30' },
-    { date: new Date(2026, 1, 4), title: 'PR Review', start: '14:00', end: '14:30' },
-    { date: new Date(2026, 1, 5), title: 'Retro Sprint 23', start: '11:00', end: '12:00' },
-    { date: new Date(2026, 1, 5), title: 'All-Hands Meeting', start: '16:00', end: '17:00' },
-    { date: new Date(2026, 1, 6), title: 'Planning Poker', start: '10:00', end: '11:00' },
-    { date: new Date(2026, 1, 6), title: 'Friday Wrap-Up', start: '17:00', end: '17:30' },
-  ];
-  
-  currentWeekEvents.forEach((e, i) => {
-    events.push({
-      id: `current-week-${i}`,
-      title: e.title,
-      description: `Termin: ${e.title}`,
-      date: e.date,
-      startTime: e.start,
-      endTime: e.end,
-      type: 'INTERN',
-      contextTags: ['organisation'],
-      internalNotes: 'Team Termin.',
-    });
-  });
-  
-  // Industry Events & Conferences
-  const conferences = [
-    { date: new Date(2026, 2, 23), title: 'Web Summit Dublin (Remote)', days: 3 },
-    { date: new Date(2026, 4, 18), title: 'AI Conference Berlin', days: 2 },
-    { date: new Date(2026, 5, 15), title: 'SaaS Connect München', days: 1 },
-    { date: new Date(2026, 6, 20), title: 'Tech Open Air Berlin', days: 2 },
-  ];
-  
-  conferences.forEach((c, i) => {
-    events.push({
-      id: `conference-${i}`,
-      title: `🌐 ${c.title}`,
-      description: `Konferenz: ${c.title}. Dauer: ${c.days} Tag(e). Networking und Learning.`,
-      date: c.date,
-      startTime: '09:00',
-      endTime: '18:00',
-      type: 'EXTERNAL',
-      contextTags: ['strategie', 'organisation'],
-      internalNotes: `${c.days}-tägig. Reisekosten im Budget.`,
-    });
-  });
-  
-  // Performance Reviews
-  for (let month = 2; month <= 7; month += 3) {
-    events.push({
-      id: `perf-review-${month}`,
-      title: 'Quartals Performance Reviews',
-      description: 'Quartalsmäßige Performance Gespräche mit allen Mitarbeitern.',
-      date: new Date(2026, month, 20),
-      startTime: '09:00',
-      endTime: '17:00',
-      type: 'INTERN',
-      contextTags: ['hr'],
-      internalNotes: 'HR koordiniert. Kalender-Slots werden individuell gebucht.',
-    });
+  // ---------- J4) Weekly Recurring: Engineering Standup (Tue 09:15) ----------
+  for (let m = 0; m <= 7; m++) {
+    for (let w = 0; w < 5; w++) {
+      const d = new Date(2026, m, 1);
+      d.setDate(d.getDate() + ((2 - d.getDay() + 7) % 7) + w * 7);
+      if (d.getMonth() === m && d <= endDate) {
+        events.push({ id: `eng-standup-${m}-${w}`, title: 'Engineering Standup', description: 'Kurzer Tech-Standup: Blocker, PRs, Deployment-Status.', date: d, startTime: '09:15', endTime: '09:30', type: 'INTERN', contextTags: ['tech'], internalNotes: 'Engineering Team. 15min max.' });
+      }
+    }
   }
   
-  // Board & Strategy
-  events.push({
-    id: 'strategy-day-h1',
-    title: 'Strategy Day H1',
-    description: 'Halbtägiger Strategy Workshop. Vision, Ziele, und Roadmap für H2.',
-    date: new Date(2026, 5, 26),
-    startTime: '09:00',
-    endTime: '15:00',
-    type: 'INTERN',
-    contextTags: ['strategie', 'board'],
-    internalNotes: 'Leadership Team. Offsite Location.',
+  // ---------- J5) DENSE: This Week (Feb 2-8, 2026) — EXTRA EVENTS ----------
+  const thisWeekDense = [
+    { d: 2, title: 'Wochenplanung', s: '08:30', e: '09:00', t: 'INTERN' as EventType },
+    { d: 2, title: 'Sprint Planning Sprint 24', s: '10:00', e: '11:00', t: 'INTERN' as EventType },
+    { d: 2, title: 'Code Review: Auth Module', s: '14:00', e: '15:00', t: 'INTERN' as EventType },
+    { d: 2, title: '1:1 mit CTO', s: '16:00', e: '16:30', t: 'INTERN' as EventType },
+    { d: 3, title: 'UX Testing Session', s: '10:00', e: '11:30', t: 'INTERN' as EventType },
+    { d: 3, title: 'Investor Update Call', s: '13:00', e: '13:45', t: 'VERWALTUNGSRAT' as EventType },
+    { d: 3, title: 'API Integration Review', s: '15:00', e: '16:00', t: 'INTERN' as EventType },
+    { d: 3, title: 'Figma Workshop', s: '16:30', e: '17:30', t: 'INTERN' as EventType },
+    { d: 4, title: 'Budget Meeting Q1', s: '09:00', e: '10:30', t: 'INTERN' as EventType },
+    { d: 4, title: 'Marketing Brainstorm', s: '11:00', e: '12:00', t: 'INTERN' as EventType },
+    { d: 4, title: 'Kunden-Demo: Müller AG', s: '14:00', e: '15:00', t: 'EXTERNAL' as EventType },
+    { d: 4, title: 'PR & Comms Review', s: '16:00', e: '16:30', t: 'INTERN' as EventType },
+    { d: 5, title: 'Sales Pipeline Review', s: '09:00', e: '09:45', t: 'INTERN' as EventType },
+    { d: 5, title: 'Retro Sprint 23', s: '11:00', e: '12:00', t: 'INTERN' as EventType },
+    { d: 5, title: 'Lunch & Learn: AI Trends', s: '12:30', e: '13:30', t: 'INTERN' as EventType },
+    { d: 5, title: 'Kundentelefonat: Weber GmbH', s: '14:30', e: '15:15', t: 'EXTERNAL' as EventType },
+    { d: 5, title: 'All-Hands Meeting', s: '16:00', e: '17:00', t: 'TEAM_MEETING' as EventType },
+    { d: 6, title: 'Planning Poker', s: '10:00', e: '11:00', t: 'INTERN' as EventType },
+    { d: 6, title: 'Security Review', s: '11:30', e: '12:00', t: 'INTERN' as EventType },
+    { d: 6, title: 'Partner Call: TechPartner AG', s: '14:00', e: '14:45', t: 'EXTERNAL' as EventType },
+    { d: 6, title: 'Wochenrückblick & Feedback', s: '17:00', e: '17:30', t: 'INTERN' as EventType },
+    { d: 7, title: 'Weekend Hackathon (Optional)', s: '10:00', e: '16:00', t: 'INTERN' as EventType },
+  ];
+  thisWeekDense.forEach((ev, i) => {
+    events.push({ id: `tw-${i}`, title: ev.title, description: `Termin: ${ev.title}`, date: new Date(2026, 1, ev.d), startTime: ev.s, endTime: ev.e, type: ev.t, contextTags: ['organisation'], internalNotes: 'Team Termin.' });
   });
   
-  events.push({
-    id: 'board-dinner',
-    title: 'Board Dinner',
-    description: 'Informelles Board Dinner nach der Verwaltungsratssitzung.',
-    date: new Date(2026, 3, 24),
-    startTime: '19:00',
-    endTime: '22:00',
-    type: 'VERWALTUNGSRAT',
-    contextTags: ['board'],
-    internalNotes: 'Restaurant TBD. Budget: €200/Person.',
+  // ---------- J6) DENSE: Next Week (Feb 9-15) ----------
+  const nextWeekDense = [
+    { d: 9, title: 'Montagsplanung KW 7', s: '08:30', e: '09:00', t: 'INTERN' as EventType },
+    { d: 9, title: 'Architektur Review: Microservices', s: '10:30', e: '11:30', t: 'INTERN' as EventType },
+    { d: 9, title: 'HR Sync: Recruiting', s: '14:00', e: '14:30', t: 'INTERN' as EventType },
+    { d: 10, title: 'Workshop: OKR Definition Q1', s: '09:00', e: '11:00', t: 'INTERN' as EventType },
+    { d: 10, title: 'Kunden-Onboarding: Schmidt & Co', s: '14:00', e: '15:30', t: 'EXTERNAL' as EventType },
+    { d: 10, title: 'Product Roadmap Review', s: '16:00', e: '17:00', t: 'INTERN' as EventType },
+    { d: 11, title: 'Marketing Campaign Launch', s: '09:30', e: '10:30', t: 'INTERN' as EventType },
+    { d: 11, title: 'Investor Relations Prep', s: '13:00', e: '14:00', t: 'INTERN' as EventType },
+    { d: 11, title: 'Tech Debt Review', s: '15:00', e: '16:00', t: 'INTERN' as EventType },
+    { d: 12, title: 'Board Prep Meeting', s: '09:00', e: '10:00', t: 'VERWALTUNGSRAT' as EventType },
+    { d: 12, title: 'Demo: Deutsche Post', s: '11:00', e: '12:00', t: 'EXTERNAL' as EventType },
+    { d: 12, title: 'Legal: NDA Review Batch', s: '14:00', e: '15:00', t: 'INTERN' as EventType },
+    { d: 13, title: 'Sprint Review Sprint 24', s: '10:00', e: '11:00', t: 'INTERN' as EventType },
+    { d: 13, title: 'Team Lunch', s: '12:00', e: '13:00', t: 'TEAM_MEETING' as EventType },
+    { d: 13, title: 'Verwaltungsrat', s: '16:30', e: '18:00', t: 'VERWALTUNGSRAT' as EventType },
+    { d: 14, title: '🎉 Valentinstag Team Lunch', s: '12:00', e: '14:00', t: 'TEAM_MEETING' as EventType },
+    { d: 15, title: '📌 Q1 OKR Deadline', s: '18:00', e: '18:30', t: 'DEADLINE' as EventType },
+  ];
+  nextWeekDense.forEach((ev, i) => {
+    events.push({ id: `nw-${i}`, title: ev.title, description: `Termin: ${ev.title}`, date: new Date(2026, 1, ev.d), startTime: ev.s, endTime: ev.e, type: ev.t, contextTags: ['organisation'], internalNotes: 'Geplanter Termin.' });
+  });
+  
+  // ---------- J7) DENSE: Week Feb 16-22 ----------
+  const week3Events = [
+    { d: 16, title: 'Wochenplanung KW 8', s: '08:30', e: '09:00' },
+    { d: 16, title: 'Pipeline Review: Enterprise', s: '10:00', e: '11:00' },
+    { d: 17, title: 'Compliance Workshop', s: '09:00', e: '11:00' },
+    { d: 17, title: 'Partner Integration: AWS', s: '14:00', e: '15:30' },
+    { d: 18, title: 'Demo: Allianz Gruppe', s: '10:00', e: '11:30' },
+    { d: 18, title: 'Content Strategy Q1', s: '14:00', e: '15:00' },
+    { d: 19, title: 'CFO Finance Review', s: '09:00', e: '10:00' },
+    { d: 19, title: 'Talent Acquisition Sync', s: '11:00', e: '11:30' },
+    { d: 19, title: 'Release Planning v1.9', s: '14:00', e: '15:30' },
+    { d: 20, title: '📚 Security Awareness Training', s: '14:00', e: '16:00' },
+    { d: 20, title: 'Freitags-Feedback', s: '17:00', e: '17:30' },
+  ];
+  week3Events.forEach((ev, i) => {
+    events.push({ id: `w3-${i}`, title: ev.title, description: `Termin: ${ev.title}`, date: new Date(2026, 1, ev.d), startTime: ev.s, endTime: ev.e, type: 'INTERN', contextTags: ['organisation'], internalNotes: 'Geplanter Termin.' });
+  });
+  
+  // ---------- J8) DENSE: Week Feb 23-28 ----------
+  const week4Events = [
+    { d: 23, title: 'Wochenplanung KW 9', s: '08:30', e: '09:00' },
+    { d: 23, title: 'QBR Vorbereitung Q1', s: '10:00', e: '11:30' },
+    { d: 23, title: 'Infrastruktur Review', s: '15:00', e: '16:00' },
+    { d: 24, title: 'Customer Advisory Board', s: '09:00', e: '10:30' },
+    { d: 24, title: 'Competitive Analysis', s: '14:00', e: '15:00' },
+    { d: 25, title: 'Onboarding Call: BMW', s: '10:00', e: '11:30' },
+    { d: 25, title: 'Brand Refresh Kick-off', s: '14:00', e: '15:30' },
+    { d: 26, title: 'Data Strategy Workshop', s: '09:00', e: '11:00' },
+    { d: 26, title: 'Sales Enablement Training', s: '14:00', e: '15:30' },
+    { d: 27, title: 'Month-End Finance Sync', s: '09:00', e: '10:00' },
+    { d: 27, title: 'Sprint Retro Sprint 24', s: '14:00', e: '15:00' },
+    { d: 28, title: '📌 Pitch Deck Update Deadline', s: '18:00', e: '18:30' },
+  ];
+  week4Events.forEach((ev, i) => {
+    events.push({ id: `w4-${i}`, title: ev.title, description: `Termin: ${ev.title}`, date: new Date(2026, 1, ev.d), startTime: ev.s, endTime: ev.e, type: 'INTERN', contextTags: ['organisation'], internalNotes: 'Geplanter Termin.' });
+  });
+  
+  // ---------- J9) March Events ----------
+  const marchEvents = [
+    { d: 2, title: 'Sprint Planning Sprint 25', s: '10:00', e: '11:00' },
+    { d: 2, title: 'Client Kick-off: SAP', s: '14:00', e: '15:30' },
+    { d: 3, title: 'Performance Marketing Audit', s: '09:30', e: '10:30' },
+    { d: 4, title: 'QBR: Deutsche Bank', s: '10:00', e: '11:30' },
+    { d: 4, title: 'Security Penetration Test Review', s: '14:00', e: '15:00' },
+    { d: 5, title: 'Cashflow Review', s: '09:15', e: '09:45' },
+    { d: 6, title: 'Freitagsmeeting & Demo Day', s: '15:00', e: '16:30' },
+    { d: 9, title: 'Wochenplanung KW 11', s: '08:30', e: '09:00' },
+    { d: 10, title: '📚 DSGVO Schulung', s: '10:00', e: '12:00' },
+    { d: 10, title: 'Investor Reporting Draft', s: '17:00', e: '18:00' },
+    { d: 11, title: 'Product Discovery Workshop', s: '09:00', e: '12:00' },
+    { d: 12, title: 'Talent Review Board', s: '10:00', e: '11:30' },
+    { d: 13, title: 'Verwaltungsrat', s: '16:30', e: '18:00' },
+    { d: 15, title: '📌 Steuererklärung Deadline', s: '18:00', e: '18:30' },
+    { d: 16, title: 'Aufsichtsrat', s: '18:00', e: '19:30' },
+    { d: 17, title: '🎉 St. Patricks Day Feier', s: '12:00', e: '14:00' },
+    { d: 18, title: 'Demo: Siemens Energy', s: '10:00', e: '11:30' },
+    { d: 19, title: 'Sprint Review Sprint 25', s: '10:00', e: '11:00' },
+    { d: 20, title: 'QBR Präsentation Intern', s: '14:00', e: '16:00' },
+    { d: 23, title: '🌐 Web Summit Dublin (Remote)', s: '09:00', e: '18:00' },
+    { d: 24, title: 'Quarterly OKR Check', s: '10:00', e: '11:30' },
+    { d: 25, title: 'Payroll Review', s: '11:30', e: '12:00' },
+    { d: 26, title: 'IT Infrastructure Maintenance', s: '22:00', e: '23:59' },
+    { d: 27, title: 'Verwaltungsrat', s: '16:30', e: '18:00' },
+    { d: 30, title: 'Sprint Planning Sprint 26', s: '10:00', e: '11:00' },
+    { d: 31, title: '📌 Q1 Abschluss', s: '18:00', e: '18:30' },
+  ];
+  marchEvents.forEach((ev, i) => {
+    events.push({ id: `mar-${i}`, title: ev.title, description: `Termin: ${ev.title}`, date: new Date(2026, 2, ev.d), startTime: ev.s, endTime: ev.e, type: ev.title.includes('Demo:') || ev.title.includes('Client') || ev.title.includes('QBR:') ? 'EXTERNAL' : ev.title.includes('Verwaltungsrat') || ev.title.includes('Aufsichtsrat') ? 'VERWALTUNGSRAT' : ev.title.includes('📌') ? 'DEADLINE' : 'INTERN', contextTags: ['organisation'], internalNotes: 'Geplanter Termin.' });
+  });
+  
+  // ---------- J10) April Events ----------
+  const aprilEvents = [
+    { d: 1, title: '📌 DSGVO Audit Vorbereitung', s: '09:00', e: '12:00' },
+    { d: 2, title: 'Pilot Kickoff: SAP', s: '10:00', e: '11:30' },
+    { d: 3, title: 'Good Friday — Feiertag', s: '00:00', e: '23:59' },
+    { d: 6, title: 'Ostermontag — Feiertag', s: '00:00', e: '23:59' },
+    { d: 7, title: 'Post-Easter Standup', s: '09:00', e: '09:30' },
+    { d: 8, title: '📚 Leadership Workshop', s: '09:00', e: '11:00' },
+    { d: 9, title: 'Partner Sync: Microsoft', s: '14:00', e: '15:00' },
+    { d: 10, title: 'Verwaltungsrat', s: '16:30', e: '18:00' },
+    { d: 13, title: 'Sprint Planning Sprint 27', s: '10:00', e: '11:00' },
+    { d: 14, title: 'Onboarding: New Engineer', s: '09:30', e: '12:00' },
+    { d: 15, title: '📌 ISO Zertifizierung Audit', s: '09:00', e: '17:00' },
+    { d: 16, title: 'Executive Briefing: Bosch', s: '10:00', e: '11:30' },
+    { d: 17, title: '🎉 Oster-Brunch', s: '12:00', e: '14:00' },
+    { d: 20, title: 'Aufsichtsrat', s: '18:00', e: '19:30' },
+    { d: 21, title: 'Annual Planning Preview', s: '10:00', e: '12:00' },
+    { d: 22, title: 'Customer Success QBR', s: '14:00', e: '15:30' },
+    { d: 23, title: 'Legal: Vertragsprüfung Batch', s: '14:00', e: '15:00' },
+    { d: 24, title: 'Board Dinner', s: '19:00', e: '22:00' },
+    { d: 24, title: 'Verwaltungsrat', s: '16:30', e: '18:00' },
+    { d: 27, title: 'Sprint Review Sprint 27', s: '10:00', e: '11:00' },
+    { d: 28, title: 'Infrastruktur Wartung', s: '22:00', e: '23:59' },
+    { d: 30, title: '📌 Website Launch Go-Live', s: '09:00', e: '18:00' },
+  ];
+  aprilEvents.forEach((ev, i) => {
+    events.push({ id: `apr-${i}`, title: ev.title, description: `Termin: ${ev.title}`, date: new Date(2026, 3, ev.d), startTime: ev.s, endTime: ev.e, type: ev.title.includes('Feiertag') ? 'HOLIDAY' as EventType : ev.title.includes('Briefing') || ev.title.includes('Pilot') || ev.title.includes('Partner') ? 'EXTERNAL' : ev.title.includes('Verwaltungsrat') || ev.title.includes('Aufsichtsrat') || ev.title.includes('Board') ? 'VERWALTUNGSRAT' : ev.title.includes('📌') ? 'DEADLINE' : 'INTERN', contextTags: ['organisation'], internalNotes: 'Geplanter Termin.', isReadOnly: ev.title.includes('Feiertag') });
+  });
+  
+  // ---------- J11) May Events ----------
+  const mayEvents = [
+    { d: 1, title: 'Tag der Arbeit — Feiertag', s: '00:00', e: '23:59' },
+    { d: 4, title: 'Sprint Planning Sprint 28', s: '10:00', e: '11:00' },
+    { d: 5, title: 'Cashflow / Treasury Check', s: '09:15', e: '09:45' },
+    { d: 7, title: 'Renewal Gespräch: Daimler', s: '10:00', e: '11:30' },
+    { d: 8, title: 'Verwaltungsrat', s: '16:30', e: '18:00' },
+    { d: 8, title: '🎉 Muttertag Appreciation', s: '12:00', e: '14:00' },
+    { d: 11, title: 'Product Strategy Review', s: '10:00', e: '12:00' },
+    { d: 12, title: '📚 AI Tools Training', s: '14:00', e: '16:00' },
+    { d: 13, title: 'Christi Himmelfahrt — Feiertag', s: '00:00', e: '23:59' },
+    { d: 14, title: 'Brückentag (viele im Urlaub)', s: '00:00', e: '23:59' },
+    { d: 15, title: '📌 Feature Release v2.0', s: '09:00', e: '18:00' },
+    { d: 18, title: '🌐 AI Conference Berlin', s: '09:00', e: '18:00' },
+    { d: 18, title: 'Aufsichtsrat', s: '18:00', e: '19:30' },
+    { d: 19, title: '🌐 AI Conference Berlin Tag 2', s: '09:00', e: '18:00' },
+    { d: 20, title: 'Cashflow / Treasury Check', s: '09:15', e: '09:45' },
+    { d: 21, title: 'Upsell Meeting: BASF', s: '10:00', e: '11:30' },
+    { d: 22, title: 'Verwaltungsrat', s: '16:30', e: '18:00' },
+    { d: 25, title: 'Sprint Review Sprint 28', s: '10:00', e: '11:00' },
+    { d: 25, title: 'Payroll Review', s: '11:30', e: '12:00' },
+    { d: 26, title: 'Competitive Intelligence Briefing', s: '14:00', e: '15:00' },
+    { d: 27, title: 'Talent Acquisition Pipeline', s: '11:00', e: '11:30' },
+    { d: 28, title: 'Pre-Summer Offsite Planning', s: '14:00', e: '15:30' },
+    { d: 31, title: '📌 Halbjahres-Budget Review', s: '09:00', e: '17:00' },
+  ];
+  mayEvents.forEach((ev, i) => {
+    events.push({ id: `may-${i}`, title: ev.title, description: `Termin: ${ev.title}`, date: new Date(2026, 4, ev.d), startTime: ev.s, endTime: ev.e, type: ev.title.includes('Feiertag') || ev.title.includes('Brückentag') ? 'HOLIDAY' as EventType : ev.title.includes('Meeting:') || ev.title.includes('Gespräch:') || ev.title.includes('🌐') ? 'EXTERNAL' : ev.title.includes('Verwaltungsrat') || ev.title.includes('Aufsichtsrat') ? 'VERWALTUNGSRAT' : ev.title.includes('📌') ? 'DEADLINE' : 'INTERN', contextTags: ['organisation'], internalNotes: 'Geplanter Termin.', isReadOnly: ev.title.includes('Feiertag') });
+  });
+  
+  // ---------- J12) June Events ----------
+  const juneEvents = [
+    { d: 1, title: 'Pfingstmontag — Feiertag', s: '00:00', e: '23:59' },
+    { d: 2, title: 'Sprint Planning Sprint 29', s: '10:00', e: '11:00' },
+    { d: 3, title: 'Content Sprint Kick-off', s: '09:00', e: '10:00' },
+    { d: 4, title: 'Success Review: Lufthansa', s: '10:00', e: '11:30' },
+    { d: 5, title: 'Verwaltungsrat', s: '16:30', e: '18:00' },
+    { d: 8, title: 'QBR Vorbereitung Q2', s: '10:00', e: '11:30' },
+    { d: 9, title: '📚 Kommunikations-Workshop', s: '10:00', e: '12:00' },
+    { d: 10, title: 'Investor Reporting Draft', s: '17:00', e: '18:00' },
+    { d: 11, title: 'Fronleichnam — Feiertag', s: '00:00', e: '23:59' },
+    { d: 12, title: 'Brückentag', s: '00:00', e: '23:59' },
+    { d: 15, title: '📌 Summer Party Planung', s: '14:00', e: '15:00' },
+    { d: 15, title: '🌐 SaaS Connect München', s: '09:00', e: '18:00' },
+    { d: 15, title: 'Aufsichtsrat', s: '18:00', e: '19:30' },
+    { d: 16, title: 'Marketing H1 Review', s: '10:00', e: '12:00' },
+    { d: 17, title: 'Sprint Review Sprint 29', s: '10:00', e: '11:00' },
+    { d: 18, title: 'New Logo: Deutsche Telekom', s: '10:00', e: '11:30' },
+    { d: 19, title: 'Verwaltungsrat', s: '16:30', e: '18:00' },
+    { d: 21, title: '🎉 Sommerfest 2026', s: '16:00', e: '22:00' },
+    { d: 22, title: 'Legal Review: Vertragsprüfung', s: '14:00', e: '15:00' },
+    { d: 23, title: 'Engineering Offsite Day', s: '09:00', e: '17:00' },
+    { d: 25, title: 'Payroll Review', s: '11:30', e: '12:00' },
+    { d: 26, title: 'Strategy Day H1', s: '09:00', e: '15:00' },
+    { d: 29, title: 'Sprint Planning Sprint 30', s: '10:00', e: '11:00' },
+    { d: 30, title: '📌 Q2 Abschluss', s: '18:00', e: '18:30' },
+    { d: 30, title: 'Monatsabschluss Finance', s: '18:30', e: '19:30' },
+  ];
+  juneEvents.forEach((ev, i) => {
+    events.push({ id: `jun-${i}`, title: ev.title, description: `Termin: ${ev.title}`, date: new Date(2026, 5, ev.d), startTime: ev.s, endTime: ev.e, type: ev.title.includes('Feiertag') || ev.title.includes('Brückentag') ? 'HOLIDAY' as EventType : ev.title.includes('Review:') && ev.title.includes('Lufthansa') || ev.title.includes('Telekom') || ev.title.includes('🌐') ? 'EXTERNAL' : ev.title.includes('Verwaltungsrat') || ev.title.includes('Aufsichtsrat') ? 'VERWALTUNGSRAT' : ev.title.includes('📌') ? 'DEADLINE' : ev.title.includes('🎉') || ev.title.includes('Sommerfest') ? 'TEAM_MEETING' : 'INTERN', contextTags: ['organisation'], internalNotes: 'Geplanter Termin.', isReadOnly: ev.title.includes('Feiertag') });
+  });
+  
+  // ---------- J13) July Events ----------
+  const julyEvents = [
+    { d: 1, title: 'H2 Kick-off Meeting', s: '09:00', e: '11:00' },
+    { d: 2, title: 'Enterprise Demo: VW', s: '10:00', e: '11:30' },
+    { d: 3, title: 'Verwaltungsrat', s: '16:30', e: '18:00' },
+    { d: 4, title: '🎉 BBQ am Dach', s: '12:00', e: '14:00' },
+    { d: 6, title: 'Sprint Planning Sprint 31', s: '10:00', e: '11:00' },
+    { d: 7, title: 'Mid-Year Culture Survey', s: '09:00', e: '10:00' },
+    { d: 8, title: 'Compliance Sync', s: '09:45', e: '10:15' },
+    { d: 9, title: 'Sales Kick-off H2', s: '10:00', e: '12:00' },
+    { d: 10, title: 'Investor Reporting Draft', s: '17:00', e: '18:00' },
+    { d: 13, title: 'Wochenplanung KW 29', s: '08:30', e: '09:00' },
+    { d: 14, title: '📚 Agile Methoden Refresher', s: '14:00', e: '16:00' },
+    { d: 15, title: '📌 Partner Verträge Renewal', s: '18:00', e: '18:30' },
+    { d: 16, title: 'POC Review: Adidas', s: '10:00', e: '11:30' },
+    { d: 17, title: 'Verwaltungsrat', s: '16:30', e: '18:00' },
+    { d: 20, title: '🌐 Tech Open Air Berlin', s: '09:00', e: '18:00' },
+    { d: 20, title: 'Aufsichtsrat', s: '18:00', e: '19:30' },
+    { d: 21, title: '🌐 Tech Open Air Berlin Tag 2', s: '09:00', e: '18:00' },
+    { d: 22, title: 'Legal Review: Vertragsprüfung', s: '14:00', e: '15:00' },
+    { d: 23, title: 'Sprint Review Sprint 31', s: '10:00', e: '11:00' },
+    { d: 24, title: 'Quartals Performance Reviews', s: '09:00', e: '17:00' },
+    { d: 25, title: 'Payroll Review', s: '11:30', e: '12:00' },
+    { d: 27, title: 'Sprint Planning Sprint 32', s: '10:00', e: '11:00' },
+    { d: 28, title: 'Product Roadmap H2 Finalisierung', s: '10:00', e: '12:00' },
+    { d: 29, title: 'Engineering All-Hands', s: '14:00', e: '15:00' },
+    { d: 30, title: 'Monatsabschluss Finance', s: '18:30', e: '19:30' },
+    { d: 31, title: '📌 Mid-Year Review', s: '09:00', e: '17:00' },
+    { d: 31, title: 'Verwaltungsrat', s: '16:30', e: '18:00' },
+  ];
+  julyEvents.forEach((ev, i) => {
+    events.push({ id: `jul-${i}`, title: ev.title, description: `Termin: ${ev.title}`, date: new Date(2026, 6, ev.d), startTime: ev.s, endTime: ev.e, type: ev.title.includes('Demo:') || ev.title.includes('POC') || ev.title.includes('🌐') ? 'EXTERNAL' : ev.title.includes('Verwaltungsrat') || ev.title.includes('Aufsichtsrat') ? 'VERWALTUNGSRAT' : ev.title.includes('📌') ? 'DEADLINE' : ev.title.includes('🎉') ? 'TEAM_MEETING' : 'INTERN', contextTags: ['organisation'], internalNotes: 'Geplanter Termin.' });
+  });
+  
+  // ---------- J14) August Events ----------
+  const augustEvents = [
+    { d: 3, title: 'Sprint Planning Sprint 33', s: '10:00', e: '11:00' },
+    { d: 4, title: 'Summer Intern Presentations', s: '14:00', e: '16:00' },
+    { d: 5, title: 'Cashflow / Treasury Check', s: '09:15', e: '09:45' },
+    { d: 6, title: 'Contract Signing: Henkel', s: '10:00', e: '11:30' },
+    { d: 7, title: '🎉 Friday Drinks', s: '17:00', e: '19:00' },
+    { d: 10, title: 'Wochenplanung KW 33', s: '08:30', e: '09:00' },
+    { d: 11, title: '📚 Stress Management Training', s: '15:00', e: '17:00' },
+    { d: 12, title: 'Marketing H1 Learnings', s: '10:00', e: '11:00' },
+    { d: 13, title: 'Legal: Compliance Audit Prep', s: '14:00', e: '15:30' },
+    { d: 14, title: 'Verwaltungsrat', s: '16:30', e: '18:00' },
+    { d: 15, title: '📌 Q3 Planung Kickoff', s: '09:00', e: '12:00' },
+    { d: 17, title: 'Aufsichtsrat', s: '18:00', e: '19:30' },
+    { d: 18, title: 'Sales Forecast Review', s: '10:00', e: '11:00' },
+    { d: 19, title: 'Tech Debt Cleanup Sprint', s: '09:00', e: '17:00' },
+    { d: 20, title: 'Integration Workshop: Bayer', s: '10:00', e: '11:30' },
+    { d: 21, title: 'Sprint Review Sprint 33', s: '10:00', e: '11:00' },
+    { d: 24, title: 'Sprint Planning Sprint 34', s: '10:00', e: '11:00' },
+    { d: 25, title: 'Payroll Review', s: '11:30', e: '12:00' },
+    { d: 26, title: 'Back-to-School Team Sync', s: '10:00', e: '11:00' },
+    { d: 27, title: 'Content Calendar Q4 Planning', s: '14:00', e: '15:30' },
+    { d: 28, title: 'Verwaltungsrat', s: '16:30', e: '18:00' },
+    { d: 31, title: '📌 August Urlaubsplanung Final', s: '18:00', e: '18:30' },
+    { d: 31, title: 'Monatsabschluss Finance', s: '18:30', e: '19:30' },
+  ];
+  augustEvents.forEach((ev, i) => {
+    events.push({ id: `aug-${i}`, title: ev.title, description: `Termin: ${ev.title}`, date: new Date(2026, 7, ev.d), startTime: ev.s, endTime: ev.e, type: ev.title.includes('Contract') || ev.title.includes('Workshop: Bayer') ? 'EXTERNAL' : ev.title.includes('Verwaltungsrat') || ev.title.includes('Aufsichtsrat') ? 'VERWALTUNGSRAT' : ev.title.includes('📌') ? 'DEADLINE' : ev.title.includes('🎉') ? 'TEAM_MEETING' : 'INTERN', contextTags: ['organisation'], internalNotes: 'Geplanter Termin.' });
+  });
+  
+  // ---------- J15) German Holidays 2026 (read-only) ----------
+  const holidays = [
+    { d: new Date(2026, 0, 1), title: 'Neujahr' },
+    { d: new Date(2026, 0, 6), title: 'Heilige Drei Könige' },
+    { d: new Date(2026, 3, 3), title: 'Karfreitag' },
+    { d: new Date(2026, 3, 5), title: 'Ostersonntag' },
+    { d: new Date(2026, 3, 6), title: 'Ostermontag' },
+    { d: new Date(2026, 4, 1), title: 'Tag der Arbeit' },
+    { d: new Date(2026, 4, 14), title: 'Christi Himmelfahrt' },
+    { d: new Date(2026, 4, 24), title: 'Pfingstsonntag' },
+    { d: new Date(2026, 4, 25), title: 'Pfingstmontag' },
+    { d: new Date(2026, 5, 4), title: 'Fronleichnam' },
+    { d: new Date(2026, 9, 3), title: 'Tag der Deutschen Einheit' },
+    { d: new Date(2026, 10, 1), title: 'Allerheiligen' },
+    { d: new Date(2026, 11, 25), title: 'Erster Weihnachtstag' },
+    { d: new Date(2026, 11, 26), title: 'Zweiter Weihnachtstag' },
+  ];
+  holidays.forEach((h, i) => {
+    events.push({ id: `holiday-${i}`, title: `🇩🇪 ${h.title}`, description: `Gesetzlicher Feiertag: ${h.title}. Büro geschlossen.`, date: h.d, startTime: '00:00', endTime: '23:59', type: 'HOLIDAY' as EventType, contextTags: ['hr'], internalNotes: 'Gesetzlicher Feiertag.', isReadOnly: true });
+  });
+  
+  // ---------- J16) Additional Birthdays ----------
+  const additionalBirthdays = [
+    { d: new Date(2026, 0, 14), name: 'Lisa Meier' },
+    { d: new Date(2026, 0, 28), name: 'Tom Bauer' },
+    { d: new Date(2026, 1, 3), name: 'Sandra Koch' },
+    { d: new Date(2026, 1, 18), name: 'Kevin Richter' },
+    { d: new Date(2026, 2, 5), name: 'Julia Schneider' },
+    { d: new Date(2026, 2, 22), name: 'Michael Wolf' },
+    { d: new Date(2026, 3, 9), name: 'Anna Braun' },
+    { d: new Date(2026, 3, 25), name: 'Markus Lehmann' },
+    { d: new Date(2026, 4, 3), name: 'Christina Krüger' },
+    { d: new Date(2026, 4, 20), name: 'Stefan Beck' },
+    { d: new Date(2026, 5, 7), name: 'Nina Vogel' },
+    { d: new Date(2026, 5, 15), name: 'Daniel Fischer' },
+    { d: new Date(2026, 6, 2), name: 'Laura Schäfer' },
+    { d: new Date(2026, 6, 19), name: 'Tobias Müller' },
+    { d: new Date(2026, 7, 8), name: 'Marie Wagner' },
+    { d: new Date(2026, 7, 24), name: 'Florian Hartmann' },
+  ];
+  additionalBirthdays.forEach((b, i) => {
+    events.push({ id: `xbday-${i}`, title: `🎂 Geburtstag: ${b.name}`, description: `Happy Birthday ${b.name}! 🎉`, date: b.d, startTime: '09:00', endTime: '09:15', type: 'BIRTHDAY' as EventType, contextTags: ['hr'], internalNotes: 'Geschenk organisieren.', isReadOnly: true });
+  });
+  
+  // ---------- J17) January backfill (so month view Jan is not empty) ----------
+  const janEvents = [
+    { d: 5, title: 'Jahresauftakt Kick-off', s: '09:00', e: '12:00' },
+    { d: 5, title: 'OKR 2026 Workshop', s: '14:00', e: '17:00' },
+    { d: 6, title: '🇩🇪 Heilige Drei Könige', s: '00:00', e: '23:59' },
+    { d: 7, title: 'Budget Planning 2026', s: '10:00', e: '12:00' },
+    { d: 8, title: 'Team Lunch: Neujahr', s: '12:00', e: '13:30' },
+    { d: 9, title: 'Sprint Planning Sprint 22', s: '10:00', e: '11:00' },
+    { d: 12, title: 'Q4 2025 Review', s: '09:00', e: '11:00' },
+    { d: 13, title: 'Investor Update Q4', s: '14:00', e: '15:00' },
+    { d: 14, title: '🎂 Geburtstag: Lisa Meier', s: '09:00', e: '09:15' },
+    { d: 15, title: 'HR: Jahresgespräche Start', s: '09:00', e: '17:00' },
+    { d: 16, title: 'Verwaltungsrat', s: '16:30', e: '18:00' },
+    { d: 19, title: 'Aufsichtsrat', s: '18:00', e: '19:30' },
+    { d: 20, title: 'Product Roadmap 2026', s: '10:00', e: '12:00' },
+    { d: 21, title: 'Sales Strategy H1', s: '14:00', e: '16:00' },
+    { d: 22, title: 'Sprint Review Sprint 22', s: '10:00', e: '11:00' },
+    { d: 23, title: 'Legal: Annual Contract Review', s: '14:00', e: '16:00' },
+    { d: 26, title: 'Sprint Planning Sprint 23', s: '10:00', e: '11:00' },
+    { d: 27, title: 'Engineering Architecture Day', s: '09:00', e: '17:00' },
+    { d: 28, title: '🎂 Geburtstag: Tom Bauer', s: '09:00', e: '09:15' },
+    { d: 29, title: 'Marketing Strategy 2026', s: '10:00', e: '12:00' },
+    { d: 30, title: 'Verwaltungsrat', s: '16:30', e: '18:00' },
+    { d: 30, title: 'Monatsabschluss Finance', s: '18:30', e: '19:30' },
+  ];
+  janEvents.forEach((ev, i) => {
+    events.push({ id: `jan-${i}`, title: ev.title, description: `Termin: ${ev.title}`, date: new Date(2026, 0, ev.d), startTime: ev.s, endTime: ev.e, type: ev.title.includes('🇩🇪') || ev.title.includes('Feiertag') ? 'HOLIDAY' as EventType : ev.title.includes('🎂') ? 'BIRTHDAY' as EventType : ev.title.includes('Verwaltungsrat') || ev.title.includes('Aufsichtsrat') || ev.title.includes('Investor') ? 'VERWALTUNGSRAT' : 'INTERN', contextTags: ['organisation'], internalNotes: 'Geplanter Termin.', isReadOnly: ev.title.includes('🇩🇪') || ev.title.includes('🎂') });
   });
   
   return events;
@@ -3235,16 +3361,22 @@ export function TeamCalendar({ className = '', onEventClick }: TeamCalendarProps
     onError: (err: any) => showToast(err.message || 'Fehler beim Löschen', 'error'),
   });
   
-  // Fallback to mock data if API fails or returns empty
+  // ALWAYS include mock events + merge with API events
   const mockEvents = useMemo(() => generateMockEvents(), []);
   const allEvents = useMemo(() => {
-    // Use mock data if explicitly enabled, or if API failed, or if API returned no events
-    if (useMockData) return mockEvents;
-    if (error) return mockEvents;
-    if (apiEvents.length === 0 && !isLoading) return mockEvents;
-    if (apiEvents.length > 0) return apiEvents;
-    return mockEvents;
-  }, [useMockData, error, apiEvents, mockEvents, isLoading]);
+    // Always show mock events. If API also returned events, merge them in.
+    const merged = [...mockEvents];
+    if (apiEvents.length > 0) {
+      // Add API events, avoiding duplicate IDs
+      const mockIds = new Set(mockEvents.map(e => String(e.id)));
+      for (const apiEv of apiEvents) {
+        if (!mockIds.has(String(apiEv.id))) {
+          merged.push(apiEv);
+        }
+      }
+    }
+    return merged;
+  }, [apiEvents, mockEvents]);
   
   // Handle event click - open drawer
   const handleEventClick = useCallback((event: CalendarEvent) => {
