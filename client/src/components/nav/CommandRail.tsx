@@ -25,6 +25,7 @@ import {
   FileText,
   ChevronLeft,
   ChevronRight,
+  Mail,
 } from "lucide-react";
 import { NavItem } from "./NavItem";
 import { useAuth } from "@/hooks/useAuth";
@@ -41,6 +42,7 @@ interface NavItemConfig {
 const NAV_ITEMS: NavItemConfig[] = [
   // Core
   { path: "/internal/dashboard", label: "Dashboard", icon: LayoutDashboard, enabled: true, section: 'core' },
+  { path: "/internal/mails", label: "Mails", icon: Mail, enabled: true, section: 'core' },
   
   // CRM
   { path: "/internal/contacts", label: "Contacts", icon: Users, enabled: true, section: 'crm' },

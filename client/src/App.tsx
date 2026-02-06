@@ -44,6 +44,7 @@ import InvestorSchwabPage from "@/pages/app/investor/schwab";
 
 // 🎯 INTERNAL CRM SYSTEM - Command Center (admin/staff only)
 import InternalDashboard from "@/pages/internal/dashboard";
+import InternalMails from "@/pages/internal/mails";
 import InternalContacts from "@/pages/internal/contacts";
 import InternalCompanies from "@/pages/internal/companies";
 import InternalDeals from "@/pages/internal/deals";
@@ -216,6 +217,7 @@ function Router() {
           
           {/* 🎯 INTERNAL CRM ROUTES - Only for admin/staff */}
           <Route path="/internal/dashboard" component={InternalDashboard} />
+          <Route path="/internal/mails" component={InternalMails} />
           <Route path="/internal/contacts" component={InternalContacts} />
           <Route path="/internal/companies" component={InternalCompanies} />
           <Route path="/internal/deals" component={InternalDeals} />

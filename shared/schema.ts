@@ -8,6 +8,7 @@ import {
   integer,
   boolean,
   serial,
+  real,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -1045,8 +1046,17 @@ export type InsertTeamChatChannelMember = typeof teamChatChannelMembers.$inferIn
 // Used by Internal CRM for triage, draft responses, and tracking
 // ============================================================================
 
-export const MAIL_INBOUND_STATUSES = ['NEW', 'TRIAGED', 'DRAFT_READY', 'SENT', 'ARCHIVED'] as const;
+export const MAIL_INBOUND_STATUSES = ['NEW', 'TRIAGED', 'DRAFT_READY', 'APPROVED', 'SENT', 'SEND_ERROR', 'CLOSED', 'ARCHIVED'] as const;
 export type MailInboundStatus = (typeof MAIL_INBOUND_STATUSES)[number];
+
+export const MAIL_CATEGORIES = ['SALES', 'SUPPORT', 'MEETING', 'BILLING', 'SPAM', 'OTHER'] as const;
+export type MailCategory = (typeof MAIL_CATEGORIES)[number];
+
+export const MAIL_PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const;
+export type MailPriority = (typeof MAIL_PRIORITIES)[number];
+
+export const MAIL_ACTIONS = ['REPLY', 'MEETING', 'SUPPORT', 'ARCHIVE', 'IGNORE'] as const;
+export type MailAction = (typeof MAIL_ACTIONS)[number];
 
 export const mailInbound = pgTable("mail_inbound", {
   id: serial("id").primaryKey(),
@@ -1078,6 +1088,28 @@ export const mailInbound = pgTable("mail_inbound", {
   labels: jsonb("labels").$type<string[]>().default([]).notNull(),
   status: text("status").default("NEW").notNull(),
   
+  // AI Classification
+  category: text("category").$type<MailCategory>(),
+  priority: text("priority").$type<MailPriority>(),
+  aiConfidence: real("ai_confidence"),
+  aiSummary: text("ai_summary").default("").notNull(),
+  aiAction: text("ai_action").$type<MailAction>(),
+  
+  // Draft Response
+  draftSubject: text("draft_subject").default("").notNull(),
+  draftHtml: text("draft_html").default("").notNull(),
+  draftText: text("draft_text").default("").notNull(),
+  
+  // Workflow
+  triagedAt: timestamp("triaged_at", { withTimezone: true }),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  approvedBy: text("approved_by"),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  
+  // Assignment & Notes
+  assignedTo: text("assigned_to"),
+  notes: text("notes").default("").notNull(),
+  
   // Extensible metadata (raw payload hashes, attachments meta, etc.)
   meta: jsonb("meta").$type<Record<string, any>>().default({}).notNull(),
   
@@ -1090,6 +1122,8 @@ export const mailInbound = pgTable("mail_inbound", {
   index("mail_inbound_received_at_idx").on(table.receivedAt),
   index("mail_inbound_status_idx").on(table.status),
   index("mail_inbound_from_email_idx").on(table.fromEmail),
+  index("mail_inbound_category_idx").on(table.category),
+  index("mail_inbound_priority_idx").on(table.priority),
 ]);
 
 export type MailInbound = typeof mailInbound.$inferSelect;

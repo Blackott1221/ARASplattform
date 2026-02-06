@@ -1,10 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { mailInbound } from '@shared/schema';
+import { mailInbound, MAIL_INBOUND_STATUSES, MAIL_CATEGORIES, MAIL_PRIORITIES } from '@shared/schema';
 import { eq, desc, and, sql, ilike, or, lt } from 'drizzle-orm';
 import { logger } from '../logger';
 import { requireAdmin } from '../middleware/admin';
 import { requireStaffOrAdmin } from '../middleware/staff';
+import { triageEmail } from '../services/mail-ai';
 
 const router = Router();
 
@@ -402,11 +403,9 @@ router.get('/internal/mail/inbound/:id', requireStaffOrAdmin, async (req, res) =
 // ============================================================================
 // UPDATE: PATCH /api/internal/mail/inbound/:id
 // ============================================================================
-// Update mail status (NEW → OPEN → DONE / ARCHIVED)
+// Update mail fields: status, assigned_to, notes, draft fields
 // Protected by admin/staff auth
 // ============================================================================
-
-const VALID_STATUSES = ['NEW', 'OPEN', 'DONE', 'ARCHIVED'];
 
 router.patch('/internal/mail/inbound/:id', requireStaffOrAdmin, async (req, res) => {
   try {
@@ -416,13 +415,13 @@ router.patch('/internal/mail/inbound/:id', requireStaffOrAdmin, async (req, res)
       return res.status(400).json({ ok: false, error: 'Invalid mail ID' });
     }
 
-    const { status, meta } = req.body;
+    const { status, assignedTo, notes, draftSubject, draftHtml, draftText, meta } = req.body;
 
     // Validate status if provided
-    if (status && !VALID_STATUSES.includes(status)) {
+    if (status && !MAIL_INBOUND_STATUSES.includes(status)) {
       return res.status(400).json({ 
         ok: false, 
-        error: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}` 
+        error: `Invalid status. Must be one of: ${MAIL_INBOUND_STATUSES.join(', ')}` 
       });
     }
 
@@ -431,12 +430,14 @@ router.patch('/internal/mail/inbound/:id', requireStaffOrAdmin, async (req, res)
       updatedAt: new Date(),
     };
 
-    if (status) {
-      updateData.status = status;
-    }
+    if (status) updateData.status = status;
+    if (assignedTo !== undefined) updateData.assignedTo = assignedTo;
+    if (notes !== undefined) updateData.notes = notes;
+    if (draftSubject !== undefined) updateData.draftSubject = draftSubject;
+    if (draftHtml !== undefined) updateData.draftHtml = draftHtml;
+    if (draftText !== undefined) updateData.draftText = draftText;
 
     if (meta && typeof meta === 'object') {
-      // Merge with existing meta
       const [existing] = await db
         .select({ meta: mailInbound.meta })
         .from(mailInbound)
@@ -446,7 +447,6 @@ router.patch('/internal/mail/inbound/:id', requireStaffOrAdmin, async (req, res)
       updateData.meta = { ...(existing?.meta || {}), ...meta };
     }
 
-    // Update the record
     const [updated] = await db
       .update(mailInbound)
       .set(updateData)
@@ -476,6 +476,254 @@ router.patch('/internal/mail/inbound/:id', requireStaffOrAdmin, async (req, res)
 });
 
 // ============================================================================
+// TRIAGE: POST /api/internal/mail/inbound/:id/triage
+// ============================================================================
+// Run Gemini AI triage + draft generation
+// ============================================================================
+
+router.post('/internal/mail/inbound/:id/triage', requireStaffOrAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ ok: false, error: 'Invalid mail ID' });
+    }
+
+    // Fetch the mail
+    const [mail] = await db
+      .select()
+      .from(mailInbound)
+      .where(eq(mailInbound.id, id))
+      .limit(1);
+
+    if (!mail) {
+      return res.status(404).json({ ok: false, error: 'Mail not found' });
+    }
+
+    logger.info(`[MAIL-TRIAGE] Starting triage for mail id=${id}`);
+
+    // Run AI triage
+    const result = await triageEmail({
+      fromEmail: mail.fromEmail,
+      fromName: mail.fromName,
+      subject: mail.subject,
+      snippet: mail.snippet,
+      bodyText: mail.bodyText,
+      bodyHtml: mail.bodyHtml,
+      mailbox: mail.mailbox,
+    });
+
+    // Update the mail with triage results
+    const [updated] = await db
+      .update(mailInbound)
+      .set({
+        category: result.category,
+        priority: result.priority,
+        aiConfidence: result.confidence,
+        aiSummary: result.summary,
+        aiAction: result.action,
+        draftSubject: result.reply.subject,
+        draftHtml: result.reply.html,
+        draftText: result.reply.text,
+        status: result.action === 'ARCHIVE' || result.action === 'IGNORE' ? 'ARCHIVED' : 'TRIAGED',
+        triagedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(mailInbound.id, id))
+      .returning();
+
+    logger.info(`[MAIL-TRIAGE] Completed for mail id=${id}: category=${result.category}, action=${result.action}`);
+
+    return res.json({
+      ok: true,
+      id: updated.id,
+      triage: {
+        category: result.category,
+        priority: result.priority,
+        confidence: result.confidence,
+        action: result.action,
+        summary: result.summary,
+        hasDraft: result.reply.text.length > 0,
+      },
+    });
+
+  } catch (error: any) {
+    logger.error('[MAIL-TRIAGE] Error:', error.message);
+    return res.status(500).json({
+      ok: false,
+      error: 'Failed to triage mail',
+      message: error.message,
+    });
+  }
+});
+
+// ============================================================================
+// APPROVE: POST /api/internal/mail/inbound/:id/approve
+// ============================================================================
+// Mark mail as approved for sending
+// ============================================================================
+
+router.post('/internal/mail/inbound/:id/approve', requireStaffOrAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ ok: false, error: 'Invalid mail ID' });
+    }
+
+    const user = (req as any).user;
+    const approvedBy = user?.username || user?.email || 'unknown';
+
+    const [updated] = await db
+      .update(mailInbound)
+      .set({
+        status: 'APPROVED',
+        approvedAt: new Date(),
+        approvedBy: approvedBy,
+        updatedAt: new Date(),
+      })
+      .where(eq(mailInbound.id, id))
+      .returning({ id: mailInbound.id, status: mailInbound.status, approvedBy: mailInbound.approvedBy });
+
+    if (!updated) {
+      return res.status(404).json({ ok: false, error: 'Mail not found' });
+    }
+
+    logger.info(`[MAIL-APPROVE] Mail id=${id} approved by ${approvedBy}`);
+
+    return res.json({
+      ok: true,
+      id: updated.id,
+      status: updated.status,
+      approvedBy: updated.approvedBy,
+    });
+
+  } catch (error: any) {
+    logger.error('[MAIL-APPROVE] Error:', error.message);
+    return res.status(500).json({
+      ok: false,
+      error: 'Failed to approve mail',
+      message: error.message,
+    });
+  }
+});
+
+// ============================================================================
+// SEND: POST /api/internal/mail/inbound/:id/send
+// ============================================================================
+// Trigger n8n webhook to send reply via Gmail
+// ============================================================================
+
+const N8N_SEND_WEBHOOK_URL = process.env.N8N_SEND_MAIL_WEBHOOK_URL || '';
+
+router.post('/internal/mail/inbound/:id/send', requireStaffOrAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ ok: false, error: 'Invalid mail ID' });
+    }
+
+    // Fetch the mail with draft
+    const [mail] = await db
+      .select()
+      .from(mailInbound)
+      .where(eq(mailInbound.id, id))
+      .limit(1);
+
+    if (!mail) {
+      return res.status(404).json({ ok: false, error: 'Mail not found' });
+    }
+
+    // Validate draft exists
+    if (!mail.draftText && !mail.draftHtml) {
+      return res.status(400).json({ ok: false, error: 'No draft to send. Run triage first.' });
+    }
+
+    // Check n8n webhook URL
+    if (!N8N_SEND_WEBHOOK_URL) {
+      logger.error('[MAIL-SEND] N8N_SEND_MAIL_WEBHOOK_URL not configured');
+      return res.status(500).json({ ok: false, error: 'Send webhook not configured' });
+    }
+
+    const user = (req as any).user;
+    const sentBy = user?.username || user?.email || 'unknown';
+
+    // Prepare payload for n8n
+    const payload = {
+      inboundId: mail.id,
+      gmailMessageId: mail.messageId,
+      threadId: mail.threadId,
+      mailbox: mail.mailbox || 'info@aras-ai.com',
+      to: mail.fromEmail,
+      subject: mail.draftSubject || `Re: ${mail.subject}`,
+      html: mail.draftHtml,
+      text: mail.draftText,
+      sentBy: sentBy,
+    };
+
+    logger.info(`[MAIL-SEND] Triggering n8n webhook for mail id=${id} to ${mail.fromEmail}`);
+
+    // Call n8n webhook
+    const webhookResponse = await fetch(N8N_SEND_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-aras-webhook-secret': process.env.N8N_WEBHOOK_SECRET || '',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!webhookResponse.ok) {
+      const errorText = await webhookResponse.text();
+      logger.error(`[MAIL-SEND] n8n webhook failed: ${webhookResponse.status} - ${errorText}`);
+      
+      // Update status to SEND_ERROR
+      await db
+        .update(mailInbound)
+        .set({
+          status: 'SEND_ERROR',
+          meta: { ...(mail.meta || {}), sendError: errorText, sendAttemptAt: new Date().toISOString() },
+          updatedAt: new Date(),
+        })
+        .where(eq(mailInbound.id, id));
+
+      return res.status(500).json({
+        ok: false,
+        error: 'Failed to send via n8n',
+        details: errorText,
+      });
+    }
+
+    // Success - update status
+    const [updated] = await db
+      .update(mailInbound)
+      .set({
+        status: 'SENT',
+        sentAt: new Date(),
+        meta: { ...(mail.meta || {}), sentBy, sentVia: 'n8n' },
+        updatedAt: new Date(),
+      })
+      .where(eq(mailInbound.id, id))
+      .returning({ id: mailInbound.id, status: mailInbound.status, sentAt: mailInbound.sentAt });
+
+    logger.info(`[MAIL-SEND] Successfully sent mail id=${id}`);
+
+    return res.json({
+      ok: true,
+      id: updated.id,
+      status: updated.status,
+      sentAt: updated.sentAt,
+    });
+
+  } catch (error: any) {
+    logger.error('[MAIL-SEND] Error:', error.message);
+    return res.status(500).json({
+      ok: false,
+      error: 'Failed to send mail',
+      message: error.message,
+    });
+  }
+});
+
+// ============================================================================
 // COUNT: GET /api/internal/mail/inbound/count
 // ============================================================================
 // Get count of mails by status
@@ -493,8 +741,12 @@ router.get('/internal/mail/inbound/count', requireStaffOrAdmin, async (req, res)
 
     const result: Record<string, number> = {
       NEW: 0,
-      OPEN: 0,
-      DONE: 0,
+      TRIAGED: 0,
+      DRAFT_READY: 0,
+      APPROVED: 0,
+      SENT: 0,
+      SEND_ERROR: 0,
+      CLOSED: 0,
       ARCHIVED: 0,
       total: 0,
     };

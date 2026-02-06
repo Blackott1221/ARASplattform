@@ -24,6 +24,7 @@ export default function InternalLayout({ children }: InternalLayoutProps) {
 
   // Get current page title for mobile header
   const getPageTitle = () => {
+    if (location.includes('/mails')) return 'Mails';
     if (location.includes('/dashboard')) return 'Dashboard';
     if (location.includes('/contacts')) return 'Contacts';
     if (location.includes('/companies')) return 'Companies';
