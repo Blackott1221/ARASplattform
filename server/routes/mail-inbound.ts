@@ -572,6 +572,7 @@ router.post('/internal/mail/inbound/:id/triage', requireStaffOrAdmin, async (req
         category: result.category,
         priority: result.priority,
         aiConfidence: result.confidence,
+        aiReason: result.reason,
         aiSummary: result.summary,
         aiAction: result.action,
         needsClarification: result.needsClarification,

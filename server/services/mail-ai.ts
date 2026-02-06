@@ -29,6 +29,7 @@ export interface MailTriageResult {
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   confidence: number;
   action: 'REPLY' | 'SCHEDULE_MEETING' | 'ASK_CLARIFY' | 'FORWARD_TO_HUMAN' | 'ARCHIVE' | 'DELETE';
+  reason: string;  // 1-2 sentences explaining the classification
   summary: string;
   needsClarification: boolean;
   clarifyingQuestions: string[];
@@ -82,12 +83,14 @@ Analyze incoming business emails and generate:
 2. A professional German reply draft
 
 CLASSIFICATION RULES:
-- SALES: Inquiries about pricing, demos, capabilities, partnerships
-- SUPPORT: Technical issues, bugs, how-to questions
-- MEETING: Explicit meeting requests, scheduling
-- BILLING: Invoice, payment, subscription questions
-- SPAM: Newsletters, cold outreach, irrelevant marketing
-- OTHER: Everything else
+- SALES: Inquiries about pricing, demos, capabilities, new customer acquisition
+- SUPPORT: Technical issues, bugs, how-to questions, feature requests
+- MEETING: Explicit meeting requests, scheduling, calendar invites
+- BILLING: Invoice, payment, subscription, refund questions
+- PARTNERSHIP: Partner proposals, reseller requests, integration inquiries, affiliate programs
+- LEGAL: Contracts, NDA requests, compliance, GDPR, terms questions
+- SPAM: Newsletters, cold outreach, irrelevant marketing, automated messages
+- OTHER: Everything that doesn't fit above categories
 
 PRIORITY RULES:
 - URGENT: Existing customer with critical issue, time-sensitive deal
@@ -125,6 +128,7 @@ OUTPUT FORMAT (strict JSON):
   "priority": "LOW|MEDIUM|HIGH|URGENT",
   "confidence": 0.0-1.0,
   "action": "REPLY|SCHEDULE_MEETING|ASK_CLARIFY|FORWARD_TO_HUMAN|ARCHIVE|DELETE",
+  "reason": "1-2 sentences explaining why this classification was chosen",
   "summary": "2-4 sentences in German describing the email and recommended action",
   "needsClarification": false,
   "clarifyingQuestions": [],
@@ -214,6 +218,7 @@ Respond with valid JSON only. No markdown, no code blocks, just the JSON object.
     }
 
     // Ensure defaults for optional fields
+    parsed.reason = parsed.reason ?? '';
     parsed.needsClarification = parsed.needsClarification ?? false;
     parsed.clarifyingQuestions = parsed.clarifyingQuestions ?? [];
     parsed.reply = parsed.reply ?? { subject: '', text: '', html: '' };
@@ -238,6 +243,7 @@ Respond with valid JSON only. No markdown, no code blocks, just the JSON object.
       priority: 'MEDIUM',
       confidence: 0,
       action: 'FORWARD_TO_HUMAN',
+      reason: 'Automatische Klassifizierung fehlgeschlagen.',
       summary: `ARAS Engine konnte diese E-Mail nicht automatisch verarbeiten. Bitte manuell prüfen.`,
       needsClarification: true,
       clarifyingQuestions: ['Bitte manuell klassifizieren und Antwort erstellen.'],

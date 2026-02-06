@@ -37,6 +37,7 @@ export interface InboundMailDetail extends InboundMailListItem {
   ccEmails?: string[];
   // AI Fields
   aiConfidence?: number | null;
+  aiReason?: string;
   aiSummary?: string;
   needsClarification?: boolean;
   clarifyingQuestions?: string[];

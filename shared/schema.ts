@@ -1112,6 +1112,7 @@ export const mailInbound = pgTable("mail_inbound", {
   category: text("category").$type<MailCategory>(),
   priority: text("priority").$type<MailPriority>(),
   aiConfidence: real("ai_confidence"),
+  aiReason: text("ai_reason").default("").notNull(),
   aiSummary: text("ai_summary").default("").notNull(),
   aiAction: text("ai_action").$type<MailAction>(),
   
