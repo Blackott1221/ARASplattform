@@ -13,7 +13,13 @@ const connectionString = process.env.DATABASE_URL;
 
 export const client = postgres(connectionString, {
   max: 1,
-  ssl: 'require'
+  ssl: 'require',
+  transform: {
+    // Global Date→ISO serialization: prevents postgres-js from crashing
+    // with "Received an instance of Date" in Buffer.byteLength calls.
+    // Function form handles both incoming & outgoing values (see postgres-js docs).
+    value: (v: any) => v instanceof Date ? v.toISOString() : v,
+  },
 });
 
 // Export pool for session store (connect-pg-simple requires pg Pool)
