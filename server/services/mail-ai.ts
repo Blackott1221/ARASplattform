@@ -25,11 +25,13 @@ export interface MailTriageInput {
 }
 
 export interface MailTriageResult {
-  category: 'SALES' | 'SUPPORT' | 'MEETING' | 'BILLING' | 'SPAM' | 'OTHER';
+  category: 'SALES' | 'SUPPORT' | 'MEETING' | 'BILLING' | 'PARTNERSHIP' | 'LEGAL' | 'SPAM' | 'OTHER';
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   confidence: number;
-  action: 'REPLY' | 'MEETING' | 'SUPPORT' | 'ARCHIVE' | 'IGNORE';
+  action: 'REPLY' | 'SCHEDULE_MEETING' | 'ASK_CLARIFY' | 'FORWARD_TO_HUMAN' | 'ARCHIVE' | 'DELETE';
   summary: string;
+  needsClarification: boolean;
+  clarifyingQuestions: string[];
   reply: {
     subject: string;
     text: string;
@@ -94,11 +96,17 @@ PRIORITY RULES:
 - LOW: General questions, non-urgent, newsletters
 
 ACTION RULES:
-- REPLY: Needs a thoughtful response
-- MEETING: Schedule a meeting/call
-- SUPPORT: Route to support process
+- REPLY: Needs a thoughtful response, draft ready
+- SCHEDULE_MEETING: Schedule a meeting/call, draft includes time proposals
+- ASK_CLARIFY: Missing key information, set needsClarification=true with questions
+- FORWARD_TO_HUMAN: Complex case requiring human judgment
 - ARCHIVE: File away, no response needed (newsletters, spam)
-- IGNORE: Clear spam, phishing
+- DELETE: Clear spam, phishing, malicious
+
+CLARIFICATION RULES:
+- If the email asks for pricing/timeline/account details you don't have: set needsClarification=true
+- Provide 1-5 specific clarifying questions in clarifyingQuestions array
+- You may still provide a partial draft as a starting point
 
 REPLY GUIDELINES:
 - Write in German (unless email clearly in English)
@@ -113,11 +121,13 @@ REPLY GUIDELINES:
 
 OUTPUT FORMAT (strict JSON):
 {
-  "category": "SALES|SUPPORT|MEETING|BILLING|SPAM|OTHER",
+  "category": "SALES|SUPPORT|MEETING|BILLING|PARTNERSHIP|LEGAL|SPAM|OTHER",
   "priority": "LOW|MEDIUM|HIGH|URGENT",
   "confidence": 0.0-1.0,
-  "action": "REPLY|MEETING|SUPPORT|ARCHIVE|IGNORE",
+  "action": "REPLY|SCHEDULE_MEETING|ASK_CLARIFY|FORWARD_TO_HUMAN|ARCHIVE|DELETE",
   "summary": "2-4 sentences in German describing the email and recommended action",
+  "needsClarification": false,
+  "clarifyingQuestions": [],
   "reply": {
     "subject": "Re: [original subject or new subject]",
     "text": "Plain text version of the reply",
@@ -125,7 +135,7 @@ OUTPUT FORMAT (strict JSON):
   }
 }
 
-For spam/archive, reply should have empty strings for all fields.`;
+For spam/archive/delete, reply should have empty strings and needsClarification=false.`;
 
 // ============================================================================
 // GEMINI CLIENT
@@ -203,6 +213,11 @@ Respond with valid JSON only. No markdown, no code blocks, just the JSON object.
       throw new Error('Missing required fields in AI response');
     }
 
+    // Ensure defaults for optional fields
+    parsed.needsClarification = parsed.needsClarification ?? false;
+    parsed.clarifyingQuestions = parsed.clarifyingQuestions ?? [];
+    parsed.reply = parsed.reply ?? { subject: '', text: '', html: '' };
+
     // Wrap HTML in ARAS template if reply exists
     if (parsed.reply?.html && parsed.reply.html.length > 0) {
       parsed.reply.html = wrapInArasTemplate(parsed.reply.html);
@@ -211,7 +226,7 @@ Respond with valid JSON only. No markdown, no code blocks, just the JSON object.
     const duration = Date.now() - startTime;
     logger.info(`[MAIL-AI] Triage complete in ${duration}ms: category=${parsed.category}, priority=${parsed.priority}, action=${parsed.action}`);
 
-    return parsed;
+    return parsed as MailTriageResult;
 
   } catch (error: any) {
     const duration = Date.now() - startTime;
@@ -222,8 +237,10 @@ Respond with valid JSON only. No markdown, no code blocks, just the JSON object.
       category: 'OTHER',
       priority: 'MEDIUM',
       confidence: 0,
-      action: 'REPLY',
-      summary: `AI-Triage fehlgeschlagen: ${error.message}. Bitte manuell prüfen.`,
+      action: 'FORWARD_TO_HUMAN',
+      summary: `ARAS Engine konnte diese E-Mail nicht automatisch verarbeiten. Bitte manuell prüfen.`,
+      needsClarification: true,
+      clarifyingQuestions: ['Bitte manuell klassifizieren und Antwort erstellen.'],
       reply: {
         subject: '',
         text: '',

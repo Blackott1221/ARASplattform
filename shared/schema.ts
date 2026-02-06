@@ -1046,16 +1046,36 @@ export type InsertTeamChatChannelMember = typeof teamChatChannelMembers.$inferIn
 // Used by Internal CRM for triage, draft responses, and tracking
 // ============================================================================
 
-export const MAIL_INBOUND_STATUSES = ['NEW', 'TRIAGED', 'DRAFT_READY', 'APPROVED', 'SENT', 'SEND_ERROR', 'CLOSED', 'ARCHIVED'] as const;
+// ============================================================================
+// MAIL INBOUND STATUS MACHINE (Single Source of Truth)
+// ============================================================================
+// Allowed transitions:
+//   NEW → OPEN → TRIAGED → APPROVED → SENDING → SENT
+//                                   ↘ ERROR (retry → SENDING)
+//   Any → ARCHIVED
+// ============================================================================
+export const MAIL_INBOUND_STATUSES = ['NEW', 'OPEN', 'TRIAGED', 'APPROVED', 'SENDING', 'SENT', 'ARCHIVED', 'ERROR'] as const;
 export type MailInboundStatus = (typeof MAIL_INBOUND_STATUSES)[number];
 
-export const MAIL_CATEGORIES = ['SALES', 'SUPPORT', 'MEETING', 'BILLING', 'SPAM', 'OTHER'] as const;
+// Valid status transitions (from → allowed destinations)
+export const MAIL_STATUS_TRANSITIONS: Record<MailInboundStatus, readonly MailInboundStatus[]> = {
+  NEW: ['OPEN', 'TRIAGED', 'ARCHIVED'],
+  OPEN: ['TRIAGED', 'ARCHIVED'],
+  TRIAGED: ['APPROVED', 'ARCHIVED'],
+  APPROVED: ['SENDING', 'ARCHIVED'],
+  SENDING: ['SENT', 'ERROR'],
+  SENT: ['ARCHIVED'],
+  ERROR: ['SENDING', 'ARCHIVED'],  // retry allowed
+  ARCHIVED: [],  // terminal state
+} as const;
+
+export const MAIL_CATEGORIES = ['SALES', 'SUPPORT', 'MEETING', 'BILLING', 'PARTNERSHIP', 'LEGAL', 'SPAM', 'OTHER'] as const;
 export type MailCategory = (typeof MAIL_CATEGORIES)[number];
 
 export const MAIL_PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const;
 export type MailPriority = (typeof MAIL_PRIORITIES)[number];
 
-export const MAIL_ACTIONS = ['REPLY', 'MEETING', 'SUPPORT', 'ARCHIVE', 'IGNORE'] as const;
+export const MAIL_ACTIONS = ['REPLY', 'SCHEDULE_MEETING', 'ASK_CLARIFY', 'FORWARD_TO_HUMAN', 'ARCHIVE', 'DELETE'] as const;
 export type MailAction = (typeof MAIL_ACTIONS)[number];
 
 export const mailInbound = pgTable("mail_inbound", {
@@ -1100,11 +1120,25 @@ export const mailInbound = pgTable("mail_inbound", {
   draftHtml: text("draft_html").default("").notNull(),
   draftText: text("draft_text").default("").notNull(),
   
-  // Workflow
+  // Workflow timestamps & actors
   triagedAt: timestamp("triaged_at", { withTimezone: true }),
+  triagedBy: text("triaged_by"),
   approvedAt: timestamp("approved_at", { withTimezone: true }),
   approvedBy: text("approved_by"),
   sentAt: timestamp("sent_at", { withTimezone: true }),
+  sentBy: text("sent_by"),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  archivedBy: text("archived_by"),
+  lastActionAt: timestamp("last_action_at", { withTimezone: true }),
+  
+  // Error handling
+  errorCode: text("error_code"),
+  errorMessage: text("error_message"),
+  
+  // Clarification workflow
+  needsClarification: boolean("needs_clarification").default(false),
+  clarifyingQuestions: jsonb("clarifying_questions").$type<string[]>().default([]),
+  operatorNotes: text("operator_notes").default("").notNull(),
   
   // Assignment & Notes
   assignedTo: text("assigned_to"),

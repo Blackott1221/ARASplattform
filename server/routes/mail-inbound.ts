@@ -1,6 +1,13 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { mailInbound, MAIL_INBOUND_STATUSES, MAIL_CATEGORIES, MAIL_PRIORITIES } from '@shared/schema';
+import { 
+  mailInbound, 
+  MAIL_INBOUND_STATUSES, 
+  MAIL_STATUS_TRANSITIONS,
+  MAIL_CATEGORIES, 
+  MAIL_PRIORITIES,
+  MailInboundStatus 
+} from '@shared/schema';
 import { eq, desc, and, sql, ilike, or, lt } from 'drizzle-orm';
 import { logger } from '../logger';
 import { requireAdmin } from '../middleware/admin';
@@ -11,6 +18,39 @@ const router = Router();
 
 // Startup log (once)
 logger.info('[MAIL-INBOUND] Routes initialized (direct db mode)');
+
+// ============================================================================
+// STATUS TRANSITION GUARD
+// ============================================================================
+// Validates that a status transition is allowed per the state machine
+// Returns null if valid, or error message if invalid
+
+function validateStatusTransition(
+  currentStatus: string,
+  targetStatus: MailInboundStatus
+): string | null {
+  // ARCHIVED is always allowed from any state (except itself)
+  if (targetStatus === 'ARCHIVED' && currentStatus !== 'ARCHIVED') {
+    return null;
+  }
+  
+  const allowed = MAIL_STATUS_TRANSITIONS[currentStatus as MailInboundStatus];
+  if (!allowed) {
+    return `Unknown current status: ${currentStatus}`;
+  }
+  
+  if (!allowed.includes(targetStatus)) {
+    return `Action not allowed in current state.`;  // UI-safe, no tech details
+  }
+  
+  return null;
+}
+
+// Helper to get current user identifier (for audit trail)
+function getActorId(req: Request): string {
+  const user = (req as any).user;
+  return user?.username || user?.email || 'unknown';
+}
 
 // ============================================================================
 // SIZE LIMITS for payload fields (truncate if exceeded)
@@ -488,6 +528,8 @@ router.post('/internal/mail/inbound/:id/triage', requireStaffOrAdmin, async (req
       return res.status(400).json({ ok: false, error: 'Invalid mail ID' });
     }
 
+    const actorId = getActorId(req);
+
     // Fetch the mail
     const [mail] = await db
       .select()
@@ -499,9 +541,15 @@ router.post('/internal/mail/inbound/:id/triage', requireStaffOrAdmin, async (req
       return res.status(404).json({ ok: false, error: 'Mail not found' });
     }
 
-    logger.info(`[MAIL-TRIAGE] Starting triage for mail id=${id}`);
+    // Transition guard: only NEW or OPEN can be triaged
+    const transitionError = validateStatusTransition(mail.status, 'TRIAGED');
+    if (transitionError) {
+      return res.status(409).json({ ok: false, error: transitionError });
+    }
 
-    // Run AI triage
+    logger.info(`[MAIL-TRIAGE] Starting triage for mail id=${id}, actor=${actorId}`);
+
+    // Run ARAS Engine triage
     const result = await triageEmail({
       fromEmail: mail.fromEmail,
       fromName: mail.fromName,
@@ -512,7 +560,12 @@ router.post('/internal/mail/inbound/:id/triage', requireStaffOrAdmin, async (req
       mailbox: mail.mailbox,
     });
 
+    // Determine target status based on AI action
+    const targetStatus: MailInboundStatus = 
+      result.action === 'ARCHIVE' || result.action === 'DELETE' ? 'ARCHIVED' : 'TRIAGED';
+
     // Update the mail with triage results
+    const now = new Date();
     const [updated] = await db
       .update(mailInbound)
       .set({
@@ -521,12 +574,16 @@ router.post('/internal/mail/inbound/:id/triage', requireStaffOrAdmin, async (req
         aiConfidence: result.confidence,
         aiSummary: result.summary,
         aiAction: result.action,
+        needsClarification: result.needsClarification,
+        clarifyingQuestions: result.clarifyingQuestions,
         draftSubject: result.reply.subject,
         draftHtml: result.reply.html,
         draftText: result.reply.text,
-        status: result.action === 'ARCHIVE' || result.action === 'IGNORE' ? 'ARCHIVED' : 'TRIAGED',
-        triagedAt: new Date(),
-        updatedAt: new Date(),
+        status: targetStatus,
+        triagedAt: now,
+        triagedBy: actorId,
+        lastActionAt: now,
+        updatedAt: now,
       })
       .where(eq(mailInbound.id, id))
       .returning();
@@ -550,8 +607,7 @@ router.post('/internal/mail/inbound/:id/triage', requireStaffOrAdmin, async (req
     logger.error('[MAIL-TRIAGE] Error:', error.message);
     return res.status(500).json({
       ok: false,
-      error: 'Failed to triage mail',
-      message: error.message,
+      error: 'Triage request failed. Please try again.',
     });
   }
 });
@@ -569,25 +625,44 @@ router.post('/internal/mail/inbound/:id/approve', requireStaffOrAdmin, async (re
       return res.status(400).json({ ok: false, error: 'Invalid mail ID' });
     }
 
-    const user = (req as any).user;
-    const approvedBy = user?.username || user?.email || 'unknown';
+    const actorId = getActorId(req);
 
+    // Fetch current mail to check status and draft
+    const [mail] = await db
+      .select()
+      .from(mailInbound)
+      .where(eq(mailInbound.id, id))
+      .limit(1);
+
+    if (!mail) {
+      return res.status(404).json({ ok: false, error: 'Mail not found' });
+    }
+
+    // Transition guard: only TRIAGED can be approved
+    const transitionError = validateStatusTransition(mail.status, 'APPROVED');
+    if (transitionError) {
+      return res.status(409).json({ ok: false, error: transitionError });
+    }
+
+    // Require draft before approval
+    if (!mail.draftText && !mail.draftHtml) {
+      return res.status(409).json({ ok: false, error: 'No draft available. Run triage first.' });
+    }
+
+    const now = new Date();
     const [updated] = await db
       .update(mailInbound)
       .set({
         status: 'APPROVED',
-        approvedAt: new Date(),
-        approvedBy: approvedBy,
-        updatedAt: new Date(),
+        approvedAt: now,
+        approvedBy: actorId,
+        lastActionAt: now,
+        updatedAt: now,
       })
       .where(eq(mailInbound.id, id))
       .returning({ id: mailInbound.id, status: mailInbound.status, approvedBy: mailInbound.approvedBy });
 
-    if (!updated) {
-      return res.status(404).json({ ok: false, error: 'Mail not found' });
-    }
-
-    logger.info(`[MAIL-APPROVE] Mail id=${id} approved by ${approvedBy}`);
+    logger.info(`[MAIL-APPROVE] Mail id=${id} approved by ${actorId}`);
 
     return res.json({
       ok: true,
@@ -621,6 +696,8 @@ router.post('/internal/mail/inbound/:id/send', requireStaffOrAdmin, async (req, 
       return res.status(400).json({ ok: false, error: 'Invalid mail ID' });
     }
 
+    const actorId = getActorId(req);
+
     // Fetch the mail with draft
     const [mail] = await db
       .select()
@@ -632,19 +709,33 @@ router.post('/internal/mail/inbound/:id/send', requireStaffOrAdmin, async (req, 
       return res.status(404).json({ ok: false, error: 'Mail not found' });
     }
 
+    // Transition guard: only APPROVED or ERROR (retry) can be sent
+    const transitionError = validateStatusTransition(mail.status, 'SENDING');
+    if (transitionError) {
+      return res.status(409).json({ ok: false, error: transitionError });
+    }
+
     // Validate draft exists
     if (!mail.draftText && !mail.draftHtml) {
-      return res.status(400).json({ ok: false, error: 'No draft to send. Run triage first.' });
+      return res.status(409).json({ ok: false, error: 'No draft to send. Run triage first.' });
     }
 
     // Check n8n webhook URL
     if (!N8N_SEND_WEBHOOK_URL) {
       logger.error('[MAIL-SEND] N8N_SEND_MAIL_WEBHOOK_URL not configured');
-      return res.status(500).json({ ok: false, error: 'Send webhook not configured' });
+      return res.status(500).json({ ok: false, error: 'Send service not configured.' });
     }
 
-    const user = (req as any).user;
-    const sentBy = user?.username || user?.email || 'unknown';
+    // Set status to SENDING before attempting
+    const now = new Date();
+    await db
+      .update(mailInbound)
+      .set({
+        status: 'SENDING',
+        lastActionAt: now,
+        updatedAt: now,
+      })
+      .where(eq(mailInbound.id, id));
 
     // Prepare payload for n8n
     const payload = {
@@ -656,7 +747,7 @@ router.post('/internal/mail/inbound/:id/send', requireStaffOrAdmin, async (req, 
       subject: mail.draftSubject || `Re: ${mail.subject}`,
       html: mail.draftHtml,
       text: mail.draftText,
-      sentBy: sentBy,
+      sentBy: actorId,
     };
 
     logger.info(`[MAIL-SEND] Triggering n8n webhook for mail id=${id} to ${mail.fromEmail}`);
@@ -675,13 +766,16 @@ router.post('/internal/mail/inbound/:id/send', requireStaffOrAdmin, async (req, 
       const errorText = await webhookResponse.text();
       logger.error(`[MAIL-SEND] n8n webhook failed: ${webhookResponse.status} - ${errorText}`);
       
-      // Update status to SEND_ERROR
+      // Update status to ERROR
+      const errorNow = new Date();
       await db
         .update(mailInbound)
         .set({
-          status: 'SEND_ERROR',
-          meta: { ...(mail.meta || {}), sendError: errorText, sendAttemptAt: new Date().toISOString() },
-          updatedAt: new Date(),
+          status: 'ERROR',
+          errorCode: `HTTP_${webhookResponse.status}`,
+          errorMessage: 'Send failed. Retry available.',
+          lastActionAt: errorNow,
+          updatedAt: errorNow,
         })
         .where(eq(mailInbound.id, id));
 
@@ -693,18 +787,22 @@ router.post('/internal/mail/inbound/:id/send', requireStaffOrAdmin, async (req, 
     }
 
     // Success - update status
+    const successNow = new Date();
     const [updated] = await db
       .update(mailInbound)
       .set({
         status: 'SENT',
-        sentAt: new Date(),
-        meta: { ...(mail.meta || {}), sentBy, sentVia: 'n8n' },
-        updatedAt: new Date(),
+        sentAt: successNow,
+        sentBy: actorId,
+        errorCode: null,
+        errorMessage: null,
+        lastActionAt: successNow,
+        updatedAt: successNow,
       })
       .where(eq(mailInbound.id, id))
       .returning({ id: mailInbound.id, status: mailInbound.status, sentAt: mailInbound.sentAt });
 
-    logger.info(`[MAIL-SEND] Successfully sent mail id=${id}`);
+    logger.info(`[MAIL-SEND] Successfully sent mail id=${id} by ${actorId}`);
 
     return res.json({
       ok: true,
@@ -741,13 +839,13 @@ router.get('/internal/mail/inbound/count', requireStaffOrAdmin, async (req, res)
 
     const result: Record<string, number> = {
       NEW: 0,
+      OPEN: 0,
       TRIAGED: 0,
-      DRAFT_READY: 0,
       APPROVED: 0,
+      SENDING: 0,
       SENT: 0,
-      SEND_ERROR: 0,
-      CLOSED: 0,
       ARCHIVED: 0,
+      ERROR: 0,
       total: 0,
     };
 

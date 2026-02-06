@@ -24,8 +24,8 @@ import { useToast } from '@/hooks/use-toast';
 // TYPES
 // ============================================================================
 
-type MailStatus = 'NEW' | 'TRIAGED' | 'DRAFT_READY' | 'APPROVED' | 'SENT' | 'SEND_ERROR' | 'CLOSED' | 'ARCHIVED';
-type MailCategory = 'SALES' | 'SUPPORT' | 'MEETING' | 'BILLING' | 'SPAM' | 'OTHER';
+type MailStatus = 'NEW' | 'OPEN' | 'TRIAGED' | 'APPROVED' | 'SENDING' | 'SENT' | 'ARCHIVED' | 'ERROR';
+type MailCategory = 'SALES' | 'SUPPORT' | 'MEETING' | 'BILLING' | 'PARTNERSHIP' | 'LEGAL' | 'SPAM' | 'OTHER';
 type MailPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 
 interface MailItem {
@@ -59,13 +59,13 @@ interface MailItem {
 
 const STATUS_CONFIG: Record<MailStatus, { label: string; color: string; bg: string }> = {
   NEW: { label: 'Neu', color: '#FE9100', bg: 'rgba(254,145,0,0.15)' },
+  OPEN: { label: 'Open', color: '#F59E0B', bg: 'rgba(245,158,11,0.15)' },
   TRIAGED: { label: 'Triaged', color: '#3B82F6', bg: 'rgba(59,130,246,0.15)' },
-  DRAFT_READY: { label: 'Draft', color: '#8B5CF6', bg: 'rgba(139,92,246,0.15)' },
   APPROVED: { label: 'Approved', color: '#10B981', bg: 'rgba(16,185,129,0.15)' },
+  SENDING: { label: 'Sending...', color: '#8B5CF6', bg: 'rgba(139,92,246,0.15)' },
   SENT: { label: 'Sent', color: '#10B981', bg: 'rgba(16,185,129,0.15)' },
-  SEND_ERROR: { label: 'Error', color: '#EF4444', bg: 'rgba(239,68,68,0.15)' },
-  CLOSED: { label: 'Closed', color: '#6B7280', bg: 'rgba(107,114,128,0.15)' },
   ARCHIVED: { label: 'Archived', color: '#6B7280', bg: 'rgba(107,114,128,0.15)' },
+  ERROR: { label: 'Error', color: '#EF4444', bg: 'rgba(239,68,68,0.15)' },
 };
 
 const CATEGORY_CONFIG: Record<MailCategory, { label: string; color: string }> = {
@@ -73,6 +73,8 @@ const CATEGORY_CONFIG: Record<MailCategory, { label: string; color: string }> = 
   SUPPORT: { label: 'Support', color: '#3B82F6' },
   MEETING: { label: 'Meeting', color: '#8B5CF6' },
   BILLING: { label: 'Billing', color: '#10B981' },
+  PARTNERSHIP: { label: 'Partner', color: '#EC4899' },
+  LEGAL: { label: 'Legal', color: '#6366F1' },
   SPAM: { label: 'Spam', color: '#EF4444' },
   OTHER: { label: 'Other', color: '#6B7280' },
 };
@@ -84,7 +86,7 @@ const PRIORITY_CONFIG: Record<MailPriority, { label: string; color: string }> = 
   LOW: { label: 'Low', color: '#6B7280' },
 };
 
-const STATUS_FILTERS: MailStatus[] = ['NEW', 'TRIAGED', 'APPROVED', 'SENT', 'ARCHIVED'];
+const STATUS_FILTERS: MailStatus[] = ['NEW', 'OPEN', 'TRIAGED', 'APPROVED', 'SENT', 'ERROR', 'ARCHIVED'];
 
 // ============================================================================
 // SKELETON COMPONENT
@@ -174,7 +176,7 @@ function MailListItem({
           className="w-2 h-2 rounded-full mt-2 flex-shrink-0"
           style={{ 
             background: mail.status === 'NEW' ? '#FE9100' : 
-                        mail.status === 'SEND_ERROR' ? '#EF4444' : 
+                        mail.status === 'ERROR' ? '#EF4444' : 
                         'rgba(255,255,255,0.2)',
             boxShadow: mail.status === 'NEW' ? '0 0 8px rgba(254,145,0,0.5)' : 'none',
           }}
