@@ -79,6 +79,21 @@ function extractEmail(input: string | undefined | null): string {
 const DEBUG_RESPONSE = process.env.DEBUG_MAIL_INBOUND_RESPONSE === 'true';
 
 // ============================================================================
+// SAFE STRING HELPERS (prevent Buffer.byteLength / .length crashes on Date/Object)
+// ============================================================================
+const toSafeString = (v: unknown): string => {
+  if (v == null) return '';
+  if (typeof v === 'string') return v;
+  if (v instanceof Date) return v.toISOString();
+  if (typeof v === 'number' || typeof v === 'boolean' || typeof v === 'bigint') return String(v);
+  try { return JSON.stringify(v); } catch { return String(v); }
+};
+
+const safeLen = (v: unknown): number => {
+  return toSafeString(v).length;
+};
+
+// ============================================================================
 // SHARED HANDLER: Gmail Inbound Webhook
 // ============================================================================
 // Used by both /webhook/gmail-inbound and /n8n/webhook/gmail-inbound
@@ -151,9 +166,9 @@ async function handleGmailInbound(req: Request, res: Response) {
     const receivedAtRaw = raw.receivedAt || raw.received_at || raw.date || raw.internalDate;
 
     // --- DEBUG LOGGING ---
-    const snipLen = (snippetRaw || '').length;
-    const txtLen = (bodyTextRaw || '').length;
-    const htmlLen = (bodyHtmlRaw || '').length;
+    const snipLen = safeLen(snippetRaw);
+    const txtLen = safeLen(bodyTextRaw);
+    const htmlLen = safeLen(bodyHtmlRaw);
     
     logger.info('[MAIL-INBOUND-WEBHOOK] Incoming payload debug', {
       messageId: messageId || '(missing)',
