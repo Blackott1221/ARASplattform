@@ -461,12 +461,12 @@ export default function InternalDashboard() {
           />
         </motion.div>
 
-        {/* INBOUND MAIL - Compact Dashboard Card */}
+        {/* INBOUND MAIL — Premium Mega-Card (full width) */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.08 }}
-          className="mt-8 max-w-sm"
+          className="mt-8"
         >
           <InboundMailCard />
         </motion.div>

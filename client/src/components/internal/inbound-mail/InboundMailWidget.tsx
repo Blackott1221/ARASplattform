@@ -363,8 +363,8 @@ function DetailPanel({
           {(mail.status === 'NEW' || mail.status === 'OPEN') && (
             <ActionButton 
               icon={CheckCircle} 
-              label="Mark Done" 
-              onClick={() => onStatusChange(mail.id, 'DONE')} 
+              label="Mark Sent" 
+              onClick={() => onStatusChange(mail.id, 'SENT')} 
               variant="success"
             />
           )}
