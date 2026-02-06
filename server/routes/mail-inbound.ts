@@ -231,6 +231,7 @@ async function handleGmailInbound(req: Request, res: Response) {
     let resultId: number;
     let resultStatus: string;
     let isNew: boolean;
+    let migrationWarning: string | null = null;
 
     // Try insert first, if conflict (message_id exists) then select existing
     try {
@@ -280,8 +281,67 @@ async function handleGmailInbound(req: Request, res: Response) {
         }
       }
     } catch (dbError: any) {
-      logger.error('[MAIL-INBOUND-WEBHOOK] DB error:', dbError.message);
-      throw dbError;
+      // Check for missing column error - schema drift scenario
+      const errorMsg = dbError.message || '';
+      const colMatch = errorMsg.match(/column "([^"]+)" of relation "mail_inbound" does not exist/);
+      
+      if (colMatch) {
+        const missingColumn = colMatch[1];
+        logger.warn(`[MAIL-INBOUND-WEBHOOK] MIGRATION_REQUIRED missingColumn=${missingColumn}`);
+        migrationWarning = 'migration_required';
+        
+        // Fallback: Insert with ONLY baseline columns (no new workflow columns)
+        try {
+          const fallbackResult = await db.execute<{ id: number; status: string }>(sql`
+            INSERT INTO mail_inbound (
+              source, mailbox, message_id, thread_id, 
+              from_email, from_name, to_emails, cc_emails, 
+              subject, snippet, body_text, body_html, 
+              received_at, labels, status, meta, 
+              created_at, updated_at
+            ) VALUES (
+              ${payload.source}, ${payload.mailbox}, ${payload.messageId}, ${payload.threadId},
+              ${payload.fromEmail}, ${payload.fromName}, ${JSON.stringify(payload.toEmails)}::jsonb, ${JSON.stringify(payload.ccEmails)}::jsonb,
+              ${payload.subject}, ${payload.snippet}, ${payload.bodyText}, ${payload.bodyHtml},
+              ${payload.receivedAt}, ${JSON.stringify(payload.labels)}::jsonb, 'NEW', ${JSON.stringify(payload.meta)}::jsonb,
+              NOW(), NOW()
+            )
+            ON CONFLICT (message_id) DO NOTHING
+            RETURNING id, status
+          `);
+          
+          const rows = fallbackResult as unknown as Array<{ id: number; status: string }>;
+          if (rows && rows.length > 0) {
+            resultId = rows[0].id;
+            resultStatus = rows[0].status;
+            isNew = true;
+            logger.info(`[MAIL-INBOUND-WEBHOOK] Fallback insert succeeded: id=${resultId}`);
+          } else {
+            // Conflict in fallback - fetch existing
+            const [existing] = await db
+              .select({ id: mailInbound.id, status: mailInbound.status })
+              .from(mailInbound)
+              .where(eq(mailInbound.messageId, payload.messageId))
+              .limit(1);
+            
+            if (existing) {
+              resultId = existing.id;
+              resultStatus = existing.status;
+              isNew = false;
+              logger.info(`[MAIL-INBOUND-WEBHOOK] Fallback found existing: id=${resultId}`);
+            } else {
+              throw new Error('Fallback insert failed and no existing record found');
+            }
+          }
+        } catch (fallbackError: any) {
+          logger.error('[MAIL-INBOUND-WEBHOOK] Fallback DB error:', fallbackError.message);
+          throw fallbackError;
+        }
+      } else {
+        // Not a missing column error - re-throw
+        logger.error('[MAIL-INBOUND-WEBHOOK] DB error:', dbError.message);
+        throw dbError;
+      }
     }
 
     logger.info(`[MAIL-INBOUND-WEBHOOK] Processed mail: id=${resultId}, isNew=${isNew}, from=${payload.fromEmail}, snipLen=${debugInfo.snipLen}, txtLen=${debugInfo.txtLen}, htmlLen=${debugInfo.htmlLen}`);
@@ -296,6 +356,9 @@ async function handleGmailInbound(req: Request, res: Response) {
     
     if (DEBUG_RESPONSE) {
       response.debug = debugInfo;
+      if (migrationWarning) {
+        response.warning = migrationWarning;
+      }
     }
     
     return res.json(response);
