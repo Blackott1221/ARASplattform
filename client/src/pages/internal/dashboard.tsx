@@ -28,6 +28,7 @@ import {
 import { TeamFeedSection } from "@/components/internal/team-feed-section";
 import { MyTasksBoard } from "@/components/internal/my-tasks-board";
 import { TeamCalendar } from "@/components/internal/team-calendar";
+import { InboundMailWidget } from "@/components/internal/inbound-mail";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
@@ -460,12 +461,22 @@ export default function InternalDashboard() {
           />
         </motion.div>
 
-        {/* MY TASKS BOARD - Kanban Style */}
+        {/* INBOUND MAIL - Premium Email Inbox */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.08 }}
-          className="mt-16"
+          className="mt-8"
+        >
+          <InboundMailWidget />
+        </motion.div>
+
+        {/* MY TASKS BOARD - Kanban Style */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mt-8"
         >
           <MyTasksBoard />
         </motion.div>

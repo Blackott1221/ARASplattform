@@ -399,4 +399,124 @@ router.get('/internal/mail/inbound/:id', requireStaffOrAdmin, async (req, res) =
   }
 });
 
+// ============================================================================
+// UPDATE: PATCH /api/internal/mail/inbound/:id
+// ============================================================================
+// Update mail status (NEW → OPEN → DONE / ARCHIVED)
+// Protected by admin/staff auth
+// ============================================================================
+
+const VALID_STATUSES = ['NEW', 'OPEN', 'DONE', 'ARCHIVED'];
+
+router.patch('/internal/mail/inbound/:id', requireStaffOrAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+
+    if (isNaN(id)) {
+      return res.status(400).json({ ok: false, error: 'Invalid mail ID' });
+    }
+
+    const { status, meta } = req.body;
+
+    // Validate status if provided
+    if (status && !VALID_STATUSES.includes(status)) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}` 
+      });
+    }
+
+    // Build update object
+    const updateData: Record<string, any> = {
+      updatedAt: new Date(),
+    };
+
+    if (status) {
+      updateData.status = status;
+    }
+
+    if (meta && typeof meta === 'object') {
+      // Merge with existing meta
+      const [existing] = await db
+        .select({ meta: mailInbound.meta })
+        .from(mailInbound)
+        .where(eq(mailInbound.id, id))
+        .limit(1);
+      
+      updateData.meta = { ...(existing?.meta || {}), ...meta };
+    }
+
+    // Update the record
+    const [updated] = await db
+      .update(mailInbound)
+      .set(updateData)
+      .where(eq(mailInbound.id, id))
+      .returning({ id: mailInbound.id, status: mailInbound.status });
+
+    if (!updated) {
+      return res.status(404).json({ ok: false, error: 'Mail not found' });
+    }
+
+    logger.info(`[MAIL-INBOUND-UPDATE] Updated mail id=${id}, status=${updated.status}`);
+
+    return res.json({
+      ok: true,
+      id: updated.id,
+      status: updated.status,
+    });
+
+  } catch (error: any) {
+    logger.error('[MAIL-INBOUND-UPDATE] Error updating mail:', error.message);
+    return res.status(500).json({
+      ok: false,
+      error: 'Failed to update inbound mail',
+      message: error.message,
+    });
+  }
+});
+
+// ============================================================================
+// COUNT: GET /api/internal/mail/inbound/count
+// ============================================================================
+// Get count of mails by status
+// ============================================================================
+
+router.get('/internal/mail/inbound/count', requireStaffOrAdmin, async (req, res) => {
+  try {
+    const counts = await db
+      .select({
+        status: mailInbound.status,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(mailInbound)
+      .groupBy(mailInbound.status);
+
+    const result: Record<string, number> = {
+      NEW: 0,
+      OPEN: 0,
+      DONE: 0,
+      ARCHIVED: 0,
+      total: 0,
+    };
+
+    for (const row of counts) {
+      result[row.status] = row.count;
+      result.total += row.count;
+    }
+
+    return res.json({
+      ok: true,
+      counts: result,
+    });
+
+  } catch (error: any) {
+    logger.error('[MAIL-INBOUND-COUNT] Error counting mails:', error.message);
+    return res.status(500).json({
+      ok: false,
+      error: 'Failed to count inbound mails',
+      message: error.message,
+    });
+  }
+});
+
 export default router;
