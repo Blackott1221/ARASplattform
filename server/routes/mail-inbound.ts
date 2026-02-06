@@ -93,6 +93,24 @@ const safeLen = (v: unknown): number => {
   return toSafeString(v).length;
 };
 
+// Convert any timestamp value to ISO string for postgres-js driver
+const toIso = (v: unknown): string | null => {
+  if (v == null) return null;
+  if (typeof v === 'string') return v; // ISO string already ok
+  if (v instanceof Date) return v.toISOString();
+  // numbers: unix ms / seconds
+  if (typeof v === 'number') {
+    const ms = v < 1e12 ? v * 1000 : v;
+    const d = new Date(ms);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  // anything else
+  const d = new Date(String(v));
+  return isNaN(d.getTime()) ? null : d.toISOString();
+};
+
+const nowIso = (): string => new Date().toISOString();
+
 // ============================================================================
 // SHARED HANDLER: Gmail Inbound Webhook
 // ============================================================================
@@ -190,26 +208,9 @@ async function handleGmailInbound(req: Request, res: Response) {
       return res.status(400).json({ ok: false, error: 'Missing required field: from.email' });
     }
 
-    // Parse receivedAt (support Unix ms, ISO string, or Date) - fallback to now if missing/invalid
-    let receivedAt: Date;
-    if (!receivedAtRaw) {
-      receivedAt = new Date();
-    } else if (typeof receivedAtRaw === 'number') {
-      receivedAt = new Date(receivedAtRaw);
-    } else if (typeof receivedAtRaw === 'string') {
-      const parsed = parseInt(receivedAtRaw, 10);
-      receivedAt = !isNaN(parsed) && parsed > 1000000000000 
-        ? new Date(parsed) 
-        : new Date(receivedAtRaw);
-    } else {
-      receivedAt = new Date();
-    }
-
-    // Validate receivedAt is a valid date - fallback to now if invalid
-    if (isNaN(receivedAt.getTime())) {
-      logger.warn('[MAIL-INBOUND-WEBHOOK] Invalid receivedAt format, using current time');
-      receivedAt = new Date();
-    }
+    // Parse receivedAt - Drizzle ORM handles Date to string conversion
+    const receivedAtIso = toIso(receivedAtRaw) ?? nowIso();
+    const receivedAtDate = new Date(receivedAtIso);
 
     // 3. Build payload with truncation (using robustly mapped values)
     const payload = {
@@ -229,7 +230,7 @@ async function handleGmailInbound(req: Request, res: Response) {
       snippet: truncate(snippetRaw, LIMITS.snippet),
       bodyText: truncate(bodyTextRaw, LIMITS.bodyText),
       bodyHtml: truncate(bodyHtmlRaw, LIMITS.bodyHtml),
-      receivedAt,
+      receivedAt: receivedAtDate,
       labels: Array.isArray(raw.labels) ? raw.labels : (raw.labelIds || []),
       meta: {
         rawPayloadHash: raw.rawPayloadHash,
@@ -318,7 +319,7 @@ async function handleGmailInbound(req: Request, res: Response) {
               ${payload.source}, ${payload.mailbox}, ${payload.messageId}, ${payload.threadId},
               ${payload.fromEmail}, ${payload.fromName}, ${JSON.stringify(payload.toEmails)}::jsonb, ${JSON.stringify(payload.ccEmails)}::jsonb,
               ${payload.subject}, ${payload.snippet}, ${payload.bodyText}, ${payload.bodyHtml},
-              ${payload.receivedAt}, ${JSON.stringify(payload.labels)}::jsonb, 'NEW', ${JSON.stringify(payload.meta)}::jsonb,
+              ${receivedAtIso}, ${JSON.stringify(payload.labels)}::jsonb, 'NEW', ${JSON.stringify(payload.meta)}::jsonb,
               NOW(), NOW()
             )
             ON CONFLICT (message_id) DO NOTHING
@@ -643,7 +644,7 @@ router.post('/internal/mail/inbound/:id/triage', requireStaffOrAdmin, async (req
       result.action === 'ARCHIVE' || result.action === 'DELETE' ? 'ARCHIVED' : 'TRIAGED';
 
     // Update the mail with triage results
-    const now = new Date();
+    const nowStr = nowIso();
     const [updated] = await db
       .update(mailInbound)
       .set({
@@ -659,10 +660,10 @@ router.post('/internal/mail/inbound/:id/triage', requireStaffOrAdmin, async (req
         draftHtml: result.reply.html,
         draftText: result.reply.text,
         status: targetStatus,
-        triagedAt: now,
+        triagedAt: new Date(nowStr),
         triagedBy: actorId,
-        lastActionAt: now,
-        updatedAt: now,
+        lastActionAt: new Date(nowStr),
+        updatedAt: new Date(nowStr),
       })
       .where(eq(mailInbound.id, id))
       .returning();
