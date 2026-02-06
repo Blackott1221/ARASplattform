@@ -114,8 +114,12 @@ const STATUS_FILTERS: MailStatus[] = ['NEW', 'OPEN', 'TRIAGED', 'APPROVED', 'SEN
 function Skeleton({ className = '' }: { className?: string }) {
   return (
     <div 
-      className={`animate-pulse rounded-lg ${className}`}
-      style={{ background: 'linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 100%)' }}
+      className={`rounded-lg ${className}`}
+      style={{ 
+        background: 'linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.03) 100%)',
+        backgroundSize: '200% 100%',
+        animation: 'shimmer 1.8s ease-in-out infinite',
+      }}
     />
   );
 }
@@ -129,7 +133,12 @@ function StatusBadge({ status }: { status: MailStatus }) {
   return (
     <span 
       className="text-[10px] uppercase px-2 py-0.5 rounded font-medium"
-      style={{ background: config.bg, color: config.color }}
+      style={{ 
+        background: config.bg, 
+        color: config.color,
+        boxShadow: status === 'NEW' ? `0 0 8px ${config.color}40` : 
+                   status === 'ERROR' ? `0 0 6px ${config.color}30` : 'none',
+      }}
     >
       {config.label}
     </span>
@@ -182,24 +191,31 @@ function MailListItem({
   return (
     <motion.button
       onClick={onClick}
-      className="w-full text-left p-3 rounded-xl transition-all duration-200"
+      className="w-full text-left p-3 rounded-xl transition-all duration-200 group"
       style={{
-        background: isSelected ? 'rgba(254,145,0,0.08)' : 'rgba(255,255,255,0.02)',
-        border: isSelected ? '1px solid rgba(254,145,0,0.3)' : '1px solid transparent',
+        background: isSelected ? 'rgba(254,145,0,0.08)' : 'rgba(255,255,255,0.015)',
+        border: isSelected ? '1px solid rgba(254,145,0,0.3)' : '1px solid rgba(233,215,196,0.04)',
       }}
-      whileHover={{ scale: 1.002, borderColor: 'rgba(254,145,0,0.15)' }}
+      whileHover={{ 
+        scale: 1.008,
+        y: -1,
+        transition: { duration: 0.15 },
+      }}
     >
       <div className="flex items-start gap-3">
-        {/* Status Dot */}
+        {/* Avatar */}
         <div 
-          className="w-2 h-2 rounded-full mt-2 flex-shrink-0"
+          className="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
           style={{ 
-            background: mail.status === 'NEW' ? '#FE9100' : 
-                        mail.status === 'ERROR' ? '#EF4444' : 
-                        'rgba(255,255,255,0.2)',
-            boxShadow: mail.status === 'NEW' ? '0 0 8px rgba(254,145,0,0.5)' : 'none',
+            background: mail.status === 'NEW' 
+              ? 'linear-gradient(135deg, #FE9100, #a34e00)' 
+              : 'rgba(255,255,255,0.06)',
+            color: mail.status === 'NEW' ? '#fff' : 'rgba(255,255,255,0.5)',
+            boxShadow: mail.status === 'NEW' ? '0 2px 8px rgba(254,145,0,0.25)' : 'none',
           }}
-        />
+        >
+          {(mail.fromName || mail.fromEmail)?.[0]?.toUpperCase() || '?'}
+        </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
@@ -921,10 +937,10 @@ export default function MailsPage() {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: '#10B981' }} />
-                <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: '#10B981' }} />
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-60" style={{ backgroundColor: '#FE9100' }} />
+                <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: '#FE9100' }} />
               </span>
-              <span className="text-[10px] uppercase" style={{ color: 'rgba(255,255,255,0.4)' }}>Live</span>
+              <span className="text-[10px] font-medium tracking-wider uppercase" style={{ color: 'rgba(254,145,0,0.6)' }}>Live</span>
             </div>
             <button
               onClick={() => refetch()}
@@ -936,17 +952,25 @@ export default function MailsPage() {
           </div>
         </motion.div>
 
-        {/* Main Content */}
+        {/* Main Content — Glass Panel */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex-1 rounded-2xl overflow-hidden flex"
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          className="flex-1 rounded-2xl overflow-hidden flex relative"
           style={{
-            background: 'rgba(255,255,255,0.02)',
-            border: '1px solid rgba(233,215,196,0.1)',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
+            background: 'rgba(12,12,14,0.6)',
+            border: '1px solid rgba(233,215,196,0.10)',
+            boxShadow: '0 12px 48px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
           }}
         >
+          {/* Top gradient accent line */}
+          <div 
+            className="absolute top-0 left-8 right-8 h-[1px] z-10"
+            style={{ background: 'linear-gradient(90deg, transparent, rgba(254,145,0,0.3), transparent)' }}
+          />
           {/* Left: List Panel */}
           <div className="w-[400px] flex-shrink-0 flex flex-col" style={{ borderRight: '1px solid rgba(233,215,196,0.06)' }}>
             {/* Search + Filters */}
@@ -1069,6 +1093,13 @@ export default function MailsPage() {
           />
         </motion.div>
       </div>
+      {/* Shimmer keyframe for skeleton loading */}
+      <style>{`
+        @keyframes shimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+      `}</style>
     </InternalLayout>
   );
 }
