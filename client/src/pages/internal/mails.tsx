@@ -705,7 +705,7 @@ export default function MailsPage() {
   const queryClient = useQueryClient();
 
   // Fetch mail list
-  const { data: listData, isLoading: listLoading, refetch } = useQuery({
+  const { data: listData, isLoading: listLoading, isError: listError, refetch } = useQuery({
     queryKey: ['mails-list', activeStatus, searchQuery],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -714,10 +714,14 @@ export default function MailsPage() {
       params.set('limit', '50');
       
       const res = await fetch(`/api/internal/mail/inbound?${params}`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error || `HTTP ${res.status}`);
+      }
       return res.json();
     },
     refetchInterval: 15000,
+    retry: 1,
   });
 
   // Fetch counts
@@ -994,7 +998,25 @@ export default function MailsPage() {
 
             {/* Mail List */}
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
-              {listLoading ? (
+              {listError ? (
+                <div className="flex flex-col items-center justify-center h-full py-12">
+                  <AlertCircle className="w-10 h-10 mb-3" style={{ color: '#EF4444' }} />
+                  <p className="text-sm font-medium mb-1" style={{ color: 'rgba(255,255,255,0.7)' }}>
+                    Fehler beim Laden
+                  </p>
+                  <p className="text-xs mb-4" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                    API nicht erreichbar oder Sitzung abgelaufen
+                  </p>
+                  <button
+                    onClick={() => refetch()}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-all"
+                    style={{ background: 'rgba(254,145,0,0.1)', color: '#FE9100', border: '1px solid rgba(254,145,0,0.2)' }}
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Erneut versuchen
+                  </button>
+                </div>
+              ) : listLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <div key={i} className="p-3 space-y-2">
                     <Skeleton className="h-4 w-3/4" />
@@ -1008,6 +1030,15 @@ export default function MailsPage() {
                   <p className="text-sm" style={{ color: 'rgba(255,255,255,0.4)' }}>
                     Keine {STATUS_CONFIG[activeStatus].label} E-Mails
                   </p>
+                  {searchQuery && (
+                    <button
+                      onClick={() => { setSearchInput(''); setSearchQuery(''); }}
+                      className="mt-2 text-xs underline"
+                      style={{ color: 'rgba(254,145,0,0.7)' }}
+                    >
+                      Suche zurücksetzen
+                    </button>
+                  )}
                 </div>
               ) : (
                 mails.map((mail) => (

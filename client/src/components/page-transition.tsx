@@ -19,30 +19,14 @@ const prefersReducedMotion = typeof window !== 'undefined'
  */
 export function PageTransition({ children }: PageTransitionProps) {
   const [location] = useLocation();
-  
-  // Animation variants - respects reduced motion
-  const variants = useMemo(() => ({
-    initial: prefersReducedMotion 
-      ? { opacity: 0 } 
-      : { opacity: 0, y: 8 },
-    animate: { opacity: 1, y: 0, x: 0 },
-    exit: prefersReducedMotion 
-      ? { opacity: 0 } 
-      : { opacity: 0, y: -8 }
-  }), []);
 
   return (
     <AnimatePresence mode="wait" initial={false}>
       <motion.div
         key={location}
-        variants={variants}
-        initial="initial"
-        animate="animate"
-        exit="exit"
-        transition={{
-          duration: prefersReducedMotion ? 0.15 : 0.2,
-          ease: [0.4, 0, 0.2, 1]
-        }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, transition: { duration: prefersReducedMotion ? 0.08 : 0.15, ease: 'easeOut' } }}
+        exit={{ opacity: 0, transition: { duration: 0.05 } }}
         className="h-full w-full"
       >
         {children}

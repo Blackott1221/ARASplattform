@@ -227,10 +227,7 @@ function Router() {
           <Route path="/internal/settings" component={InternalSettings} />
           <Route path="/internal/contracts/:id" component={InternalContracts} />
           <Route path="/internal/contracts" component={InternalContracts} />
-          <Route path="/internal" component={() => {
-            window.location.href = '/internal/dashboard';
-            return null;
-          }} />
+          <Route path="/internal" component={InternalDashboard} />
           
           {/* Staff Invitation Accept Page */}
           <Route path="/admin/accept-invite" component={AcceptInvite} />

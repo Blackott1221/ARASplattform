@@ -486,19 +486,37 @@ router.post('/n8n/webhook/gmail-inbound', handleGmailInbound);
 // Protected by admin/staff auth
 // ============================================================================
 
+// Status label → enum map (UI may send label or lowercase variant)
+const STATUS_NORMALIZE: Record<string, string> = {
+  'neu': 'NEW', 'new': 'NEW',
+  'open': 'OPEN', 'offen': 'OPEN',
+  'triaged': 'TRIAGED',
+  'approved': 'APPROVED',
+  'sending': 'SENDING',
+  'sent': 'SENT', 'gesendet': 'SENT',
+  'error': 'ERROR', 'fehler': 'ERROR',
+  'archived': 'ARCHIVED', 'archiviert': 'ARCHIVED',
+  'done': 'SENT', // widget compat: map DONE→SENT
+};
+
 router.get('/internal/mail/inbound', requireStaffOrAdmin, async (req, res) => {
   try {
-    const statusFilter = req.query.status as string | undefined;
-    const q = req.query.q as string | undefined;
+    const rawStatus = (req.query.status as string | undefined)?.trim();
+    const q = (req.query.q as string | undefined)?.trim();
     const mailboxFilter = req.query.mailbox as string | undefined;
     const limitParam = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
     const limitCapped = Math.min(limitParam, 100);
     const cursor = req.query.cursor ? parseInt(req.query.cursor as string, 10) : undefined;
 
+    // Normalize status: accept lowercase, labels, or exact enum
+    const statusFilter = rawStatus
+      ? (MAIL_INBOUND_STATUSES.includes(rawStatus) ? rawStatus : STATUS_NORMALIZE[rawStatus.toLowerCase()] || rawStatus.toUpperCase())
+      : undefined;
+
     // Build conditions array
     const conditions: any[] = [];
     
-    if (statusFilter) {
+    if (statusFilter && MAIL_INBOUND_STATUSES.includes(statusFilter)) {
       conditions.push(eq(mailInbound.status, statusFilter));
     }
     if (mailboxFilter) {
@@ -507,7 +525,7 @@ router.get('/internal/mail/inbound', requireStaffOrAdmin, async (req, res) => {
     if (cursor) {
       conditions.push(lt(mailInbound.id, cursor));
     }
-    if (q) {
+    if (q && q.length > 0) {
       const searchTerm = `%${q}%`;
       conditions.push(or(
         ilike(mailInbound.subject, searchTerm),
@@ -517,20 +535,21 @@ router.get('/internal/mail/inbound', requireStaffOrAdmin, async (req, res) => {
       ));
     }
 
-    // Execute query
+    // Execute query — NULLS LAST so null received_at don't sort first
+    const orderExpr = sql`${mailInbound.receivedAt} DESC NULLS LAST`;
     let mails;
     if (conditions.length > 0) {
       mails = await db
         .select()
         .from(mailInbound)
         .where(and(...conditions))
-        .orderBy(desc(mailInbound.receivedAt))
+        .orderBy(orderExpr)
         .limit(limitCapped);
     } else {
       mails = await db
         .select()
         .from(mailInbound)
-        .orderBy(desc(mailInbound.receivedAt))
+        .orderBy(orderExpr)
         .limit(limitCapped);
     }
 

@@ -32,8 +32,9 @@ import type { InboundMailStatus, InboundMailListItem } from './types';
 
 const STATUS_TABS: { key: InboundMailStatus; label: string; color: string }[] = [
   { key: 'NEW', label: 'New', color: '#FE9100' },
-  { key: 'OPEN', label: 'Open', color: '#3B82F6' },
-  { key: 'DONE', label: 'Done', color: '#10B981' },
+  { key: 'OPEN', label: 'Open', color: '#F59E0B' },
+  { key: 'TRIAGED', label: 'Triaged', color: '#3B82F6' },
+  { key: 'SENT', label: 'Sent', color: '#10B981' },
   { key: 'ARCHIVED', label: 'Archived', color: '#6B7280' },
 ];
 
