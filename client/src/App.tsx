@@ -40,6 +40,7 @@ import Blog from "@/pages/blog";
 import BlogPost from "@/pages/blog-post";
 import FoundingMemberPass from "@/pages/founding-member-pass";
 import FoundingMemberSuccess from "@/pages/founding-member-success";
+import AdminFoundingClaims from "@/pages/admin-founding-claims";
 
 // Investor Pages (hidden, not in menu)
 import InvestorSchwabPage from "@/pages/app/investor/schwab";
@@ -204,6 +205,7 @@ function Router() {
           <Route path="/app/leads" component={AppPage} />
           <Route path="/admin" component={AdminDashboard} />
           <Route path="/admin-dashboard" component={AdminDashboard} />
+          <Route path="/admin/founding-claims" component={AdminFoundingClaims} />
           <Route path="/app/admin" component={AdminDashboard} />
           <Route path="/app/admin-dashboard" component={AdminDashboard} />
           <Route path="/campaigns" component={Campaigns} />

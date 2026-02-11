@@ -184,6 +184,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const adminEnrichRoutes = await import('./routes/admin-enrich');
   app.use('/api/admin', adminEnrichRoutes.default);
 
+  // 🏆 Founding Member Pass — Public Routes (no auth)
+  const { publicRouter: foundingPublicRoutes } = await import('./routes/founding');
+  app.use('/api/public/founding', foundingPublicRoutes);
+
   // 📧 Setup Mail Inbound Routes (Gmail intake via n8n webhook)
   const mailInboundRoutes = await import('./routes/mail-inbound');
   app.use('/api', mailInboundRoutes.default);

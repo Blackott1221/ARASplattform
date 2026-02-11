@@ -1166,3 +1166,26 @@ export const mailInbound = pgTable("mail_inbound", {
 
 export type MailInbound = typeof mailInbound.$inferSelect;
 export type InsertMailInbound = typeof mailInbound.$inferInsert;
+
+// ============================================================================
+// 🏆 FOUNDING MEMBER PASS — Claim Queue (Phase 2)
+// ============================================================================
+export const foundingMemberClaims = pgTable("founding_member_claims", {
+  id: serial("id").primaryKey(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  status: text("status").default("pending").notNull(), // pending | activated | rejected
+  arasLogin: text("aras_login").notNull(),
+  stripeEmail: text("stripe_email"),
+  notes: text("notes"),
+  ipHash: text("ip_hash"),
+  userAgent: text("user_agent"),
+  activatedAt: timestamp("activated_at"),
+  activatedByUserId: text("activated_by_user_id"),
+  adminNote: text("admin_note"),
+}, (table) => [
+  index("founding_claims_status_idx").on(table.status),
+  index("founding_claims_aras_login_idx").on(table.arasLogin),
+]);
+
+export type FoundingMemberClaim = typeof foundingMemberClaims.$inferSelect;
+export type InsertFoundingMemberClaim = typeof foundingMemberClaims.$inferInsert;

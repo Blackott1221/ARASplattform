@@ -16,6 +16,7 @@ import aiRoutes from "./ai";
 import searchRoutes from "./search";
 import contractsRoutes from "./contracts";
 import commandCenterRoutes from "./command-center";
+import { adminRouter as foundingAdminRoutes } from "../founding";
 
 const router = Router();
 
@@ -23,6 +24,11 @@ const router = Router();
 // ALLE INTERNAL ROUTES BENÖTIGEN AUTHENTIFIZIERUNG & ROLE
 // ============================================================================
 router.use(requireInternal);
+
+// ============================================================================
+// FOUNDING MEMBER PASS (Admin Claims Queue)
+// ============================================================================
+router.use("/founding", foundingAdminRoutes);
 
 // ============================================================================
 // AI ROUTES

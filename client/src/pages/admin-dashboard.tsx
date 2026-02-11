@@ -409,6 +409,19 @@ export default function AdminDashboard() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {/* Founding Claims Button */}
+          <button 
+            onClick={() => navigate('/admin/founding-claims')}
+            className="flex items-center gap-2 px-3 py-2 rounded-full text-xs font-medium transition-all duration-300"
+            style={{
+              background: 'rgba(233,215,196,0.08)',
+              border: '1px solid rgba(233,215,196,0.2)',
+              color: '#e9d7c4',
+            }}
+          >
+            <Crown className="w-3.5 h-3.5" />
+            <span>Founding Claims</span>
+          </button>
           {/* Command Center Button - Premium Pill */}
           <button 
             onClick={() => navigate('/internal/dashboard')}

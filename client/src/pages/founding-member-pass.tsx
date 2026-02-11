@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   Accordion,
@@ -128,6 +129,13 @@ export default function FoundingMemberPass() {
   const [alphaChecked, setAlphaChecked] = useState(false);
   const [showError, setShowError] = useState(false);
 
+  // Live stats from API
+  const { data: stats } = useQuery<{ cap: number; pending: number; activated: number; total: number }>({
+    queryKey: ["/api/public/founding/stats"],
+    refetchInterval: 30000,
+    staleTime: 15000,
+  });
+
   const handleCTA = useCallback(() => {
     if (!alphaChecked) {
       setShowError(true);
@@ -232,12 +240,47 @@ export default function FoundingMemberPass() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
-              className="text-sm md:text-base mb-10"
+              className="text-sm md:text-base mb-6"
               style={{ color: "var(--aras-muted)" }}
             >
               Nur für unsere Alpha-Community (500+ Unternehmen). Limitiert auf{" "}
               {TOTAL_PASSES} Pässe.
             </motion.p>
+
+            {/* Live Stats Progress Bar */}
+            {stats && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.35 }}
+                className="max-w-sm mx-auto mb-10"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[12.5px] font-inter" style={{ color: "var(--aras-muted)" }}>
+                    Vergeben
+                  </span>
+                  <span className="text-[12.5px] font-inter font-semibold" style={{ color: "var(--aras-gold-light)" }}>
+                    {stats.total} / {stats.cap}
+                  </span>
+                </div>
+                <div
+                  className="w-full rounded-[999px] h-[8px] md:h-[10px] overflow-hidden"
+                  style={{ background: "rgba(255,255,255,0.06)" }}
+                >
+                  <div
+                    className="h-full rounded-[999px] transition-all duration-700 ease-out"
+                    style={{
+                      width: `${Math.min((stats.total / stats.cap) * 100, 100)}%`,
+                      background: "linear-gradient(90deg, var(--aras-gold-light), var(--aras-orange), var(--aras-gold-dark))",
+                      boxShadow: "0 0 18px rgba(254,145,0,0.18)",
+                    }}
+                  />
+                </div>
+                <p className="text-[12px] mt-2 text-center" style={{ color: "var(--aras-soft)" }}>
+                  Nur für Alpha-User. Aktivierung erfolgt manuell nach Zahlung.
+                </p>
+              </motion.div>
+            )}
 
             {/* Alpha Gate Checkbox */}
             <motion.div
@@ -318,6 +361,22 @@ export default function FoundingMemberPass() {
             >
               Aktivierung manuell nach Zahlung — wir schalten PRO für deinen
               ARAS-Account frei.
+            </motion.p>
+
+            {/* Secondary CTA: Already paid */}
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.55 }}
+              className="mt-4"
+            >
+              <a
+                href="/founding/success"
+                className="text-[13px] font-inter underline-offset-4 hover:underline transition-opacity opacity-[0.7] hover:opacity-100"
+                style={{ color: "var(--aras-gold-light)" }}
+              >
+                Schon bezahlt? Aktivierung anstoßen →
+              </a>
             </motion.p>
           </div>
         </section>
