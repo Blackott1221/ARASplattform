@@ -2630,7 +2630,7 @@ export default function AuthPage() {
             </motion.div>
 
             {/* MAIN GRID */}
-            <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div className="grid lg:grid-cols-2 gap-16 items-start">
           
             {/* LEFT SIDE - Hero Content */}
             <motion.div
@@ -2858,22 +2858,6 @@ export default function AuthPage() {
               <p>Gebaut in der Schweiz. Betrieben von einem eigenen Sprachmodell.</p>
               <p className="text-[#e9d7c4] font-semibold opacity-60">Präzision. Eleganz. Kraft.</p>
             </motion.div>
-
-              {/* Smartphone Mockup Image */}
-              <motion.div
-                initial={{ opacity: 0, y: 40, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 1, delay: 1.8, ease: 'easeOut' }}
-                className="flex justify-center pt-4"
-              >
-                <motion.img 
-                  src={PlattformBild} 
-                  alt="ARAS AI Smartphone Mockup" 
-                  className="w-[340px] max-w-full drop-shadow-2xl"
-                  animate={{ y: [0, -8, 0] }}
-                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-                />
-              </motion.div>
           </motion.div>
 
           {/* RIGHT SIDE - Auth Form */}
@@ -2882,7 +2866,7 @@ export default function AuthPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
             className="w-full max-w-md mx-auto"
-            style={{ marginTop: '-72px' }}
+            style={{ marginTop: '0px' }}
           >
             {/* Card Container */}
             <div className="relative">
@@ -6207,6 +6191,22 @@ export function ArasHeroSection() {
               </motion.div>
             </div>
           </div>
+
+            {/* Smartphone Mockup Image */}
+            <motion.div
+              initial={{ opacity: 0, y: 40, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 1, delay: 1.8, ease: 'easeOut' }}
+              className="flex justify-center pt-8"
+            >
+              <motion.img 
+                src={PlattformBild} 
+                alt="ARAS AI Smartphone Mockup" 
+                className="w-[340px] max-w-full drop-shadow-2xl"
+                animate={{ y: [0, -8, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+              />
+            </motion.div>
         </motion.div>
       </div>
 
