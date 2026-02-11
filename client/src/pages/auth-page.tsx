@@ -10,6 +10,7 @@ import { useLocation } from "wouter";
 import { trackLogin, trackSignup, captureUTMParameters } from "@/lib/analytics";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { T } from "@/lib/auto-translate";
+import PlattformBild from "@/assets/Plattform_bild.png";
 
 // 🔥 HOTFIX: ErrorBoundary to prevent black screen crashes
 interface ErrorBoundaryState {
@@ -2593,6 +2594,17 @@ export default function AuthPage() {
       
       {/* Simple Dark Background with Subtle Glow */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        {/* Plattform Background Image */}
+        <div 
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `url(${PlattformBild})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+          }}
+        />
+
         {/* Film Grain Texture for Premium Look */}
         <div 
           className="absolute inset-0 opacity-[0.015] mix-blend-overlay"
@@ -2601,8 +2613,8 @@ export default function AuthPage() {
           }}
         />
 
-        {/* Premium Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/80 to-black/70" />
+        {/* Premium Gradient Overlay - darkened to keep text readable */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/75 to-black/60" />
         
         {/* Subtle Radial Glow */}
         <div 
