@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
@@ -15,11 +15,12 @@ import {
   Lock,
   Shield,
   Sparkles,
+  Info,
 } from "lucide-react";
 
 /* ─── Constants ────────────────────────────────────────────────────────── */
 const STRIPE_LINK = "https://buy.stripe.com/cNi3cpbUL4Tu6aO6x67Zu01";
-const TOTAL_PASSES = 500;
+const TOTAL_CAP = 500;
 const PRODUCT_NAME = "Founding\u2011Zugang";
 
 /* ─── Smooth animated number (rAF easeOutCubic 580ms) ─────────────────── */
@@ -31,13 +32,13 @@ function useAnimatedNumber(target: number, duration = 580) {
     const from = prev.current;
     const delta = target - from;
     if (delta === 0) return;
-    const pr = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (pr) { setDisplay(target); prev.current = target; return; }
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setDisplay(target); prev.current = target; return;
+    }
     const start = performance.now();
     const step = (now: number) => {
       const t = Math.min((now - start) / duration, 1);
-      const ease = 1 - Math.pow(1 - t, 3);
-      setDisplay(Math.round(from + delta * ease));
+      setDisplay(Math.round(from + (1 - Math.pow(1 - t, 3)) * delta));
       if (t < 1) raf.current = requestAnimationFrame(step);
       else prev.current = target;
     };
@@ -47,22 +48,36 @@ function useAnimatedNumber(target: number, duration = 580) {
   return display;
 }
 
-/* ─── Magnetic CTA hook (desktop pointer only, max 6px) ────────────────── */
+/* ─── Magnetic CTA (fine pointer only, reduced-motion guard) ───────────── */
 function useMagnetic(strength = 6) {
   const ref = useRef<HTMLButtonElement>(null);
-  const reduced = useRef(false);
-  useEffect(() => { reduced.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches; }, []);
   const onMove = useCallback((e: React.MouseEvent) => {
-    if (reduced.current || "ontouchstart" in window) return;
+    if (!window.matchMedia("(pointer:fine)").matches || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const el = ref.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
-    const x = ((e.clientX - r.left) / r.width - 0.5) * strength;
-    const y = ((e.clientY - r.top) / r.height - 0.5) * strength;
-    el.style.transform = `translate(${x}px, ${y}px)`;
+    el.style.transform = `translate(${((e.clientX - r.left) / r.width - 0.5) * strength}px, ${((e.clientY - r.top) / r.height - 0.5) * strength}px)`;
   }, [strength]);
   const onLeave = useCallback(() => { if (ref.current) ref.current.style.transform = ""; }, []);
   return { ref, onMouseMove: onMove, onMouseLeave: onLeave };
+}
+
+/* ─── 3D Tilt (fine pointer, reduced-motion guard, CSS vars) ───────────── */
+function useTilt(maxDeg = 8) {
+  const ref = useRef<HTMLDivElement>(null);
+  const onMove = useCallback((e: React.PointerEvent) => {
+    if (!window.matchMedia("(pointer:fine)").matches || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    el.style.setProperty("--rx", `${((e.clientY - r.top) / r.height - 0.5) * -maxDeg}deg`);
+    el.style.setProperty("--ry", `${((e.clientX - r.left) / r.width - 0.5) * maxDeg}deg`);
+  }, [maxDeg]);
+  const onLeave = useCallback(() => {
+    const el = ref.current;
+    if (el) { el.style.setProperty("--rx", "0deg"); el.style.setProperty("--ry", "0deg"); }
+  }, []);
+  return { ref, onPointerMove: onMove, onPointerLeave: onLeave };
 }
 
 /* ─── Intersection-Observer reveal ─────────────────────────────────────── */
@@ -70,8 +85,7 @@ function useReveal(threshold = 0.15) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [visible, setVisible] = useState(false);
   useEffect(() => {
-    const pr = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (pr) { setVisible(true); return; }
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setVisible(true); return; }
     const el = ref.current;
     if (!el) return;
     const obs = new IntersectionObserver(
@@ -88,12 +102,7 @@ function useReveal(threshold = 0.15) {
 function RevealSection({ children, className = "", id }: { children: React.ReactNode; className?: string; id?: string }) {
   const { ref, visible } = useReveal();
   return (
-    <section
-      ref={ref}
-      id={id}
-      className={`transition-all ease-[cubic-bezier(.16,1,.3,1)] ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"} ${className}`}
-      style={{ transitionDuration: "380ms" }}
-    >
+    <section ref={ref} id={id} className={`transition-all ease-[cubic-bezier(.16,1,.3,1)] ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"} ${className}`} style={{ transitionDuration: "380ms" }}>
       {children}
     </section>
   );
@@ -108,15 +117,26 @@ function GlassCard({ children, className = "" }: { children: React.ReactNode; cl
   );
 }
 
-/* ─── Animated Gold Gradient Text ──────────────────────────────────────── */
+/* ─── Gold Gradient Text ───────────────────────────────────────────────── */
 function GoldGradientText({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <span
-      className={`inline-block bg-clip-text text-transparent founding-gold-gradient ${className}`}
-      style={{ backgroundSize: "200% 100%", animation: "foundingGoldWave 6s ease-in-out infinite" }}
-    >
+    <span className={`inline-block bg-clip-text text-transparent founding-gold-gradient ${className}`} style={{ backgroundSize: "200% 100%", animation: "foundingGoldWave 6s ease-in-out infinite" }}>
       {children}
     </span>
+  );
+}
+
+/* ─── Telemetry Loading Skeleton ───────────────────────────────────────── */
+function TelemetrySkeleton() {
+  return (
+    <div className="rounded-[28px] p-5 md:p-6 space-y-4" style={{ background: "rgba(255,255,255,.02)", border: "1px solid rgba(233,215,196,.10)" }}>
+      <div className="h-3 w-20 rounded bg-[rgba(233,215,196,.08)] animate-pulse" />
+      <div className="h-12 w-28 rounded bg-[rgba(233,215,196,.06)] animate-pulse" />
+      <div className="h-3 w-full rounded-full bg-[rgba(233,215,196,.06)] animate-pulse" />
+      <div className="grid grid-cols-3 gap-3">
+        {[0, 1, 2].map((i) => <div key={i} className="h-10 rounded bg-[rgba(233,215,196,.05)] animate-pulse" />)}
+      </div>
+    </div>
   );
 }
 
@@ -125,8 +145,9 @@ function GoldGradientText({ children, className = "" }: { children: React.ReactN
    ═══════════════════════════════════════════════════════════════════════════ */
 export default function FoundingMemberPass() {
   const [lastUpdate, setLastUpdate] = useState(0);
+  const reduceMotion = useMemo(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches, []);
 
-  const { data: stats, dataUpdatedAt, refetch, isError } = useQuery<{ cap: number; pending: number; activated: number; total: number }>({
+  const { data: stats, dataUpdatedAt, refetch, isError, isLoading } = useQuery<{ cap: number; pending: number; activated: number; total: number }>({
     queryKey: ["/api/public/founding/stats"],
     refetchInterval: 15000,
     staleTime: 8000,
@@ -158,17 +179,27 @@ export default function FoundingMemberPass() {
 
   const [heroOffset, setHeroOffset] = useState(0);
   useEffect(() => {
-    const pr = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (pr) return;
+    if (reduceMotion) return;
     const onScroll = () => setHeroOffset(Math.min(window.scrollY * 0.12, 30));
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [reduceMotion]);
 
   const handleCTA = useCallback(() => { window.location.href = STRIPE_LINK; }, []);
+  const scrollTo = useCallback((id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth" });
+  }, [reduceMotion]);
+
   const mag = useMagnetic(6);
+  const tiltTelemetry = useTilt(8);
+  const tiltSystem = useTilt(7);
 
   const sd = (i: number) => ({ duration: 0.32, delay: 0.04 + i * 0.06, ease: [0.16, 1, 0.3, 1] });
+
+  const pillStyle = (s: string) =>
+    s === "LIVE" ? { background: "rgba(254,145,0,.12)", color: "var(--f-orange)" }
+    : s === "READY" ? { background: "rgba(233,215,196,.08)", color: "var(--f-gold)" }
+    : { background: "rgba(233,215,196,.05)", color: "var(--f-soft)" };
 
   return (
     <>
@@ -183,11 +214,13 @@ export default function FoundingMemberPass() {
         .founding2026 .f-tabnum { font-variant-numeric: tabular-nums; }
         .founding2026 .f-cta-shimmer { position:relative; overflow:hidden; }
         .founding2026 .f-cta-shimmer::after { content:''; position:absolute; top:0; left:-100%; width:60%; height:100%; background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent); animation:foundingShimmer 3s ease-in-out infinite; pointer-events:none; }
+        .founding2026 .f-tilt { --rx:0deg; --ry:0deg; transform:perspective(600px) rotateX(var(--rx)) rotateY(var(--ry)); transition:transform .18s ease-out; }
         @media (prefers-reduced-motion: reduce) {
           .founding-gold-gradient, .founding2026 .f-cta-shimmer::after { animation:none !important; }
           .founding2026 .founding-pulse { animation:none !important; }
           .founding2026 .founding-noise-inner { animation:none !important; }
           .founding2026 .f-scanline { animation:none !important; display:none; }
+          .founding2026 .f-tilt { transform:none !important; transition:none !important; }
         }
       `}</style>
 
@@ -212,7 +245,7 @@ export default function FoundingMemberPass() {
             {/* LEFT COLUMN */}
             <div className="text-left">
               <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 0.85, y: 0 }} transition={sd(0)} className="font-orbitron uppercase text-[11px] tracking-[.24em] mb-5" style={{ color: "var(--f-gold)" }}>
-                FOUNDING MEMBER PASS
+                FOUNDING-ZUGANG · LIMITIERT
               </motion.p>
 
               <motion.h1 initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={sd(1)} className="font-orbitron font-bold leading-[1.04] mb-5" style={{ fontSize: "clamp(2.4rem, 6vw, 4.8rem)" }}>
@@ -221,9 +254,9 @@ export default function FoundingMemberPass() {
               </motion.h1>
 
               <motion.p initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={sd(2)} className="font-inter text-base md:text-lg max-w-[520px] mb-8 leading-relaxed" style={{ color: "var(--f-text)", opacity: 0.78 }}>
-                Als Dank an die ersten, die ARAS ernsthaft nutzen.
+                Für die, die ARAS nicht nur testen — sondern damit arbeiten wollen.
                 <br className="hidden sm:block" />
-                Limitiert auf {TOTAL_PASSES}. Danach schließen wir diese Runde.
+                {TOTAL_CAP} Plätze, einmaliger Preis, kein Abo.
               </motion.p>
 
               {/* TL;DR Bento 2x2 */}
@@ -232,7 +265,7 @@ export default function FoundingMemberPass() {
                   { label: "Einmalig 499 CHF", sub: "Kein Abo" },
                   { label: "PRO dauerhaft", sub: "Solange ARAS existiert" },
                   { label: "500 Calls / Monat", sub: "Inklusive" },
-                  { label: `Limitiert auf ${TOTAL_PASSES}`, sub: "Founding Runde" },
+                  { label: `Limitiert auf ${TOTAL_CAP}`, sub: "Founding Runde" },
                 ].map(({ label, sub }) => (
                   <div key={label} className="rounded-[16px] px-4 py-3 transition-all duration-200 hover:-translate-y-[1px]" style={{ background: "rgba(255,255,255,.02)", border: "1px solid rgba(233,215,196,.10)" }}>
                     <p className="font-inter font-semibold text-[13px] mb-0.5" style={{ color: "var(--f-text)" }}>{label}</p>
@@ -249,10 +282,17 @@ export default function FoundingMemberPass() {
                   onMouseLeave={mag.onMouseLeave}
                   onClick={handleCTA}
                   className="aras-btn--primary f-cta-shimmer h-[54px] px-8 rounded-full font-inter font-semibold text-[15px] cursor-pointer transition-all duration-300 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--f-orange)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--f-bg)]"
-                  aria-label={`${PRODUCT_NAME} kaufen für 499 CHF — weiter zu Stripe Checkout`}
+                  aria-label={`${PRODUCT_NAME} sichern für 499 CHF — weiter zu Stripe`}
                 >
-                  {PRODUCT_NAME} kaufen (499 CHF)
+                  {PRODUCT_NAME} sichern (499 CHF)
                   <ChevronRight className="inline-block w-4 h-4 ml-1.5 -mt-0.5" />
+                </button>
+                <button
+                  onClick={() => scrollTo("features")}
+                  className="aras-btn--secondary h-[44px] px-6 rounded-full font-inter font-medium text-[13px] cursor-pointer transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--f-orange)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--f-bg)]"
+                  aria-label="Details ansehen"
+                >
+                  Details ansehen
                 </button>
               </motion.div>
 
@@ -268,9 +308,17 @@ export default function FoundingMemberPass() {
             {/* RIGHT COLUMN — Telemetry + System Panel */}
             <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.22, ease: [0.16, 1, 0.3, 1] }} className="flex flex-col gap-5">
 
-              {/* Telemetry Scarcity Module */}
-              {stats ? (
-                <div className="relative rounded-[28px] overflow-hidden" style={{ background: "rgba(255,255,255,.02)", border: "1px solid rgba(233,215,196,.14)", boxShadow: "0 30px 100px rgba(0,0,0,.6)" }}>
+              {/* Telemetry Panel */}
+              {isLoading && !stats ? (
+                <TelemetrySkeleton />
+              ) : stats ? (
+                <div
+                  ref={tiltTelemetry.ref}
+                  onPointerMove={tiltTelemetry.onPointerMove}
+                  onPointerLeave={tiltTelemetry.onPointerLeave}
+                  className="relative rounded-[28px] overflow-hidden f-tilt"
+                  style={{ background: "rgba(255,255,255,.02)", border: "1px solid rgba(233,215,196,.14)", boxShadow: "0 30px 100px rgba(0,0,0,.6)" }}
+                >
                   <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at 15% 0%, rgba(254,145,0,.10) 0%, transparent 55%)" }} />
                   <div className="relative p-5 md:p-6">
                     <div className="flex items-center gap-2 mb-5">
@@ -290,13 +338,16 @@ export default function FoundingMemberPass() {
 
                     <div className="grid grid-cols-3 gap-3 mb-3">
                       {[
-                        { label: "Vergeben", val: reserved },
-                        { label: "Aktiviert", val: animActivated },
-                        { label: "In Bearbeitung", val: animPending },
-                      ].map(({ label, val }) => (
+                        { label: "Vergeben", val: reserved, tip: "Gesamtzahl vergebener Zugänge" },
+                        { label: "Aktiviert", val: animActivated, tip: "Bereits freigeschaltete Accounts" },
+                        { label: "In Bearbeitung", val: animPending, tip: "Zuordnung wird geprüft" },
+                      ].map(({ label, val, tip }) => (
                         <div key={label} className="text-center">
                           <p className="font-orbitron font-bold text-[18px] f-tabnum" style={{ color: "var(--f-gold)", minWidth: "2ch" }}>{val}</p>
-                          <p className="text-[10px] font-inter" style={{ color: "var(--f-soft)" }}>{label}</p>
+                          <p className="text-[10px] font-inter inline-flex items-center gap-0.5" style={{ color: "var(--f-soft)" }}>
+                            {label}
+                            <Info className="w-[10px] h-[10px] opacity-40 cursor-help" title={tip} />
+                          </p>
                         </div>
                       ))}
                     </div>
@@ -314,8 +365,14 @@ export default function FoundingMemberPass() {
                 </div>
               ) : null}
 
-              {/* System Panel Preview */}
-              <div className="relative rounded-[20px] overflow-hidden" style={{ background: "rgba(255,255,255,.015)", border: "1px solid rgba(233,215,196,.08)", boxShadow: "0 12px 60px rgba(0,0,0,.4)" }}>
+              {/* System Preview Panel */}
+              <div
+                ref={tiltSystem.ref}
+                onPointerMove={tiltSystem.onPointerMove}
+                onPointerLeave={tiltSystem.onPointerLeave}
+                className="relative rounded-[20px] overflow-hidden f-tilt"
+                style={{ background: "rgba(255,255,255,.015)", border: "1px solid rgba(233,215,196,.08)", boxShadow: "0 12px 60px rgba(0,0,0,.4)" }}
+              >
                 <div className="absolute inset-0 pointer-events-none overflow-hidden">
                   <div className="f-scanline absolute left-0 w-full h-[60px]" style={{ background: "linear-gradient(180deg, transparent, rgba(233,215,196,.03), transparent)", animation: "foundingScanline 4s linear infinite" }} />
                 </div>
@@ -327,14 +384,15 @@ export default function FoundingMemberPass() {
                 </div>
                 <div className="px-4 py-3.5 space-y-2.5">
                   {[
-                    { tag: "VOICE", label: "Outbound Engine", status: "aktiv" },
-                    { tag: "AI", label: "Call-Analyse", status: "aktiv" },
-                    { tag: "CRM", label: "Pipeline Sync", status: "bereit" },
+                    { tag: "VOICE", label: "Outbound Engine", status: "LIVE" },
+                    { tag: "LLM", label: "Routing Layer", status: "READY" },
+                    { tag: "CRM", label: "Pipeline Sync", status: "SYNCED" },
+                    { tag: "MODE", label: "Kampagnen-Modus", status: "LIVE" },
                   ].map(({ tag, label, status }) => (
                     <div key={tag} className="flex items-center gap-3">
                       <span className="text-[9px] font-inter font-bold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ background: "rgba(254,145,0,.08)", color: "var(--f-orange)", letterSpacing: ".08em" }}>{tag}</span>
                       <span className="text-[12px] font-inter flex-1" style={{ color: "var(--f-muted)" }}>{label}</span>
-                      <span className="text-[10px] font-inter" style={{ color: "var(--f-soft)" }}>{status}</span>
+                      <span className="text-[9px] font-inter font-bold uppercase tracking-wide px-2 py-0.5 rounded-full" style={pillStyle(status)}>{status}</span>
                     </div>
                   ))}
                 </div>
@@ -345,18 +403,18 @@ export default function FoundingMemberPass() {
         </section>
 
         {/* ═══ WAS DU BEKOMMST ═══ */}
-        <RevealSection className="px-5 md:px-8 py-16 md:py-24">
+        <RevealSection id="features" className="px-5 md:px-8 py-16 md:py-24">
           <div className="max-w-[1180px] mx-auto">
             <h2 className="font-orbitron font-bold text-[24px] md:text-[34px] leading-[1.1] mb-10 text-center" style={{ color: "var(--f-text)" }}>
               Was du bekommst
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
               {[
-                { icon: Crown, title: "PRO dauerhaft", text: "Kein monatliches Abo. Dein PRO-Zugang bleibt — solange ARAS existiert." },
-                { icon: Phone, title: "500 Calls pro Monat", text: "Jeden Monat 500 Anrufe inklusive. Zusätzliches Volumen jederzeit möglich." },
-                { icon: Sparkles, title: "Founding Status", text: "Early Access auf neue Features. Direkter Einfluss auf die Roadmap." },
-                { icon: Lock, title: "Planbarkeit", text: "Ein Preis, einmal. Keine Überraschungen. Keine Preiserhöhungen für dich." },
-                { icon: Shield, title: "Sichere Abwicklung", text: "Zahlung komplett über Stripe. Verschlüsselt, PCI-konform, vertrauenswürdig." },
+                { icon: Crown, title: "PRO dauerhaft", text: "Dein Account bleibt auf PRO — ohne monatliche Abbuchung, ohne Erneuerung." },
+                { icon: Phone, title: "500 Calls pro Monat", text: "Jeden Monat 500 ausgehende Anrufe, automatisch verfügbar. Zusätzliches Volumen jederzeit buchbar." },
+                { icon: Sparkles, title: "Founding Status", text: "Frühzugang zu neuen Modulen. Du beeinflusst, was wir als Nächstes bauen." },
+                { icon: Lock, title: "Planbarkeit", text: "499 CHF, einmalig. Dein Preis ändert sich nicht — auch wenn wir Enterprise-Tarife einführen." },
+                { icon: Shield, title: "Sichere Abwicklung", text: "Die Zahlung läuft vollständig über Stripe — verschlüsselt und PCI-konform." },
               ].map(({ icon: Icon, title, text }, i) => (
                 <motion.div key={title} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-30px" }} transition={{ duration: 0.28, delay: i * 0.06, ease: [0.16, 1, 0.3, 1] }}>
                   <GlassCard className="p-5 md:p-6 h-full">
@@ -380,9 +438,9 @@ export default function FoundingMemberPass() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-3xl mx-auto">
               {[
-                { step: "1", title: "Kaufen", text: "Sichere Zahlung über Stripe." },
-                { step: "2", title: "Account zuordnen", text: "Nach Zahlung ordnest du den Pass deinem ARAS-Account zu." },
-                { step: "3", title: "Freischaltung", text: "Wir aktivieren PRO manuell. In der Regel innerhalb von 24h." },
+                { step: "1", title: "Kaufen", text: "Über Stripe — sicher, sofort, ohne Vorab-Registrierung nötig." },
+                { step: "2", title: "Account zuordnen", text: "Nach der Zahlung verknüpfst du den Zugang mit deinem ARAS-Konto." },
+                { step: "3", title: "Freischaltung", text: "Wir schalten PRO manuell frei — in der Regel innerhalb von 24 Stunden." },
               ].map(({ step, title, text }, i) => (
                 <motion.div key={step} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-30px" }} transition={{ duration: 0.28, delay: i * 0.07, ease: [0.16, 1, 0.3, 1] }}>
                   <GlassCard className="p-6 text-center">
@@ -404,9 +462,9 @@ export default function FoundingMemberPass() {
             </h2>
             <ul className="space-y-4 mb-8">
               {[
-                "Founding Preis — später Richtung Enterprise.",
-                "500 Calls/Monat inklusive: ideal für echte Outbound-Tests.",
-                "Limitierte Runde: wenn 500 vergeben sind, schließen wir.",
+                "Der aktuelle Preis gilt nur in dieser Runde. Danach passen wir die Konditionen an die Enterprise-Struktur an.",
+                "500 Calls monatlich inklusive — genug für echte Outbound-Kampagnen, nicht nur Tests.",
+                "Wir begrenzen bewusst auf 500 Zugänge, um Qualität und Kapazität sicherzustellen.",
               ].map((item) => (
                 <li key={item} className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-[rgba(254,145,0,0.10)] border border-[rgba(254,145,0,0.22)] flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -431,11 +489,13 @@ export default function FoundingMemberPass() {
             <div className="max-w-2xl mx-auto">
               <Accordion type="single" collapsible className="space-y-2">
                 {[
-                  { q: "Wer kann kaufen?", a: "Jeder. Du brauchst lediglich einen ARAS-Account." },
-                  { q: "Wie wird aktiviert?", a: "Manuell nach Stripe-Zahlung. Wir ordnen den Pass anhand deiner E-Mail / Login deinem Account zu." },
-                  { q: "Was bedeutet 500 Calls/Monat?", a: "Jeden Monat 500 Anrufe inklusive. Mehrvolumen kannst du direkt im Account hinzubuchen." },
-                  { q: "Gilt PRO wirklich dauerhaft?", a: "Ja. Solange ARAS als Produkt betrieben wird, bleibt dein PRO-Zugang bestehen." },
-                  { q: "Ist der Pass übertragbar?", a: "Nein. Der Pass ist an deinen ARAS-Account gebunden." },
+                  { q: "Was passiert nach dem Kauf?", a: "Du erhältst eine Bestätigung von Stripe. Danach kannst du den Zugang deinem ARAS-Account zuordnen. PRO wird innerhalb von 24 Stunden freigeschaltet." },
+                  { q: "Wer kann den Founding-Zugang kaufen?", a: "Jeder — ob bestehendes Team oder Neukunde. Du brauchst nur einen ARAS-Account." },
+                  { q: "Wie schnell bin ich startklar?", a: "Nach Freischaltung sofort. Du kannst direkt deine erste Kampagne starten oder bestehende Workflows nutzen." },
+                  { q: "Was bedeutet 500 Calls pro Monat?", a: "Jeden Monat stehen dir 500 ausgehende Anrufe zur Verfügung. Zusätzliches Volumen kannst du jederzeit im Account hinzubuchen." },
+                  { q: "Gilt PRO wirklich dauerhaft?", a: "Ja — solange ARAS als Plattform betrieben wird." },
+                  { q: "Kann ich später upgraden?", a: "Ja. Zusätzliche Module oder höheres Volumen lassen sich jederzeit ergänzen. Dein Founding-Preis bleibt bestehen." },
+                  { q: "Ist der Zugang übertragbar?", a: "Nein. Er ist fest an deinen ARAS-Account gebunden." },
                 ].map(({ q, a }, i) => (
                   <AccordionItem key={i} value={`faq-${i}`} className="border-b border-[rgba(233,215,196,0.08)]">
                     <AccordionTrigger className="text-left text-sm md:text-base font-inter font-medium py-5 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--f-orange)]" style={{ color: "var(--f-text)" }}>{q}</AccordionTrigger>
@@ -457,15 +517,15 @@ export default function FoundingMemberPass() {
             </h2>
             {stats && (
               <p className="text-[13px] font-inter mb-6" style={{ color: "var(--f-muted)" }}>
-                Noch <span className="font-semibold" style={{ color: "var(--f-gold)" }}>{stats.cap - stats.total}</span> von {stats.cap} verfügbar.
+                Noch <span className="font-semibold f-tabnum" style={{ color: "var(--f-gold)" }}>{stats.cap - stats.total}</span> von {stats.cap} verfügbar.
               </p>
             )}
             <button
               onClick={handleCTA}
               className="aras-btn--primary f-cta-shimmer h-[54px] px-8 rounded-full font-inter font-semibold text-[15px] cursor-pointer transition-all duration-300 hover:-translate-y-[2px] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--f-orange)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--f-bg)]"
-              aria-label={`${PRODUCT_NAME} kaufen für 499 CHF`}
+              aria-label={`${PRODUCT_NAME} sichern für 499 CHF`}
             >
-              {PRODUCT_NAME} kaufen (499 CHF)
+              {PRODUCT_NAME} sichern (499 CHF)
               <ChevronRight className="inline-block w-4 h-4 ml-1.5 -mt-0.5" />
             </button>
             <p className="text-[12px] mt-3 font-inter" style={{ color: "var(--f-soft)" }}>Sichere Zahlung via Stripe.</p>
@@ -495,8 +555,8 @@ export default function FoundingMemberPass() {
           ) : (
             <span />
           )}
-          <button onClick={handleCTA} className="aras-btn--primary h-[42px] rounded-full px-5 font-inter font-semibold text-[13px] cursor-pointer" aria-label={PRODUCT_NAME}>
-            {PRODUCT_NAME} kaufen
+          <button onClick={handleCTA} className="aras-btn--primary h-[44px] rounded-full px-5 font-inter font-semibold text-[13px] cursor-pointer min-w-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--f-orange)]" aria-label={`${PRODUCT_NAME} sichern`}>
+            Zugang sichern
           </button>
         </div>
         <div className="h-[68px] sm:hidden" aria-hidden="true" />
