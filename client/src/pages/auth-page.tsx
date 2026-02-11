@@ -1937,9 +1937,9 @@ export default function AuthPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Countdown to 01.03.2026
+  // Countdown to 01.01.2026
   useEffect(() => {
-    const targetDate = new Date('2026-03-01T00:00:00').getTime();
+    const targetDate = new Date('2026-01-01T00:00:00').getTime();
     const interval = setInterval(() => {
       const now = new Date().getTime();
       const distance = targetDate - now;
@@ -2594,6 +2594,17 @@ export default function AuthPage() {
       
       {/* Simple Dark Background with Subtle Glow */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        {/* Plattform Background Image */}
+        <div 
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `url(${PlattformBild})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+          }}
+        />
+
         {/* Film Grain Texture for Premium Look */}
         <div 
           className="absolute inset-0 opacity-[0.015] mix-blend-overlay"
@@ -2602,8 +2613,8 @@ export default function AuthPage() {
           }}
         />
 
-        {/* Premium Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/80 to-black/70" />
+        {/* Premium Gradient Overlay - darkened to keep text readable */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/75 to-black/60" />
         
         {/* Subtle Radial Glow */}
         <div 
@@ -2630,14 +2641,14 @@ export default function AuthPage() {
             </motion.div>
 
             {/* MAIN GRID */}
-            <div className="grid lg:grid-cols-2 gap-16 items-start">
+            <div className="grid lg:grid-cols-2 gap-16 items-center">
           
             {/* LEFT SIDE - Hero Content */}
             <motion.div
               initial={{ opacity: 0, x: -50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.3 }}
-              className="space-y-10 relative"
+              className="space-y-10"
             >
               {/* Pre-Launch Badge */}
             <motion.div
@@ -2834,7 +2845,7 @@ export default function AuthPage() {
                       className="text-xl font-bold text-[#FE9100]"
                       style={{ fontFamily: 'Orbitron, sans-serif' }}
                     >
-                      01.03.2026
+                      01.01.26
                     </span>
                   </div>
                   
@@ -2866,7 +2877,7 @@ export default function AuthPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
             className="w-full max-w-md mx-auto"
-            style={{ marginTop: '0px' }}
+            style={{ marginTop: '-72px' }}
           >
             {/* Card Container */}
             <div className="relative">
@@ -6191,22 +6202,6 @@ export function ArasHeroSection() {
               </motion.div>
             </div>
           </div>
-
-            {/* Smartphone Mockup Image */}
-            <motion.div
-              initial={{ opacity: 0, y: 40, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 1, delay: 1.8, ease: 'easeOut' }}
-              className="flex justify-center pt-8"
-            >
-              <motion.img 
-                src={PlattformBild} 
-                alt="ARAS AI Smartphone Mockup" 
-                className="w-[340px] max-w-full drop-shadow-2xl"
-                animate={{ y: [0, -8, 0] }}
-                transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-              />
-            </motion.div>
         </motion.div>
       </div>
 
