@@ -2639,19 +2639,6 @@ export default function AuthPage() {
               transition={{ duration: 0.8, delay: 0.3 }}
               className="space-y-10 relative"
             >
-              {/* Smartphone Mockup Image */}
-              <motion.div
-                initial={{ opacity: 0, y: -30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-                className="flex justify-center"
-              >
-                <img 
-                  src={PlattformBild} 
-                  alt="ARAS AI Smartphone Mockup" 
-                  className="w-[320px] max-w-full"
-                />
-              </motion.div>
               {/* Pre-Launch Badge */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
@@ -2871,6 +2858,22 @@ export default function AuthPage() {
               <p>Gebaut in der Schweiz. Betrieben von einem eigenen Sprachmodell.</p>
               <p className="text-[#e9d7c4] font-semibold opacity-60">Präzision. Eleganz. Kraft.</p>
             </motion.div>
+
+              {/* Smartphone Mockup Image */}
+              <motion.div
+                initial={{ opacity: 0, y: 40, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 1, delay: 1.8, ease: 'easeOut' }}
+                className="flex justify-center pt-4"
+              >
+                <motion.img 
+                  src={PlattformBild} 
+                  alt="ARAS AI Smartphone Mockup" 
+                  className="w-[340px] max-w-full drop-shadow-2xl"
+                  animate={{ y: [0, -8, 0] }}
+                  transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+                />
+              </motion.div>
           </motion.div>
 
           {/* RIGHT SIDE - Auth Form */}
