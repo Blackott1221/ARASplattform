@@ -9,7 +9,6 @@ import type { User } from "@shared/schema";
 import { sanitizeUser, type EnrichmentStatus, type EnrichmentErrorCode } from "@shared/schema";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { sendWelcomeEmail } from "./email";
 import { triggerEnrichmentAsync, type EnrichmentInput } from "./services/enrichment.service";
 

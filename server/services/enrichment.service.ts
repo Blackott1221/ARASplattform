@@ -181,6 +181,39 @@ export interface EnrichmentResult {
 // 🔥 MODEL ALLOWLIST - OpenAI Feb 2026 (ORG VERIFIED ✅)
 const ALLOWED_ENRICH_MODELS = ['o3-deep-research', 'o4-mini-deep-research', 'gpt-5.2', 'gpt-5.2-pro'] as const;
 const DEFAULT_ENRICH_MODEL = 'o3-deep-research'; // 🔥 BEST deep research model!
+const RESPONSES_ONLY_MODELS = new Set<string>(['o3-deep-research', 'o4-mini-deep-research']);
+
+function isResponsesOnlyModel(model: string): boolean {
+  return RESPONSES_ONLY_MODELS.has(model);
+}
+
+// Defensive extraction: SDK may provide output_text OR structured output array
+function getResponsesOutputText(result: any): string | null {
+  const direct = result?.output_text;
+  if (typeof direct === 'string' && direct.trim()) return direct;
+
+  const out = result?.output;
+  if (!Array.isArray(out)) return null;
+
+  const chunks: string[] = [];
+  for (const item of out) {
+    const content = item?.content;
+    if (!Array.isArray(content)) continue;
+    for (const c of content) {
+      const t1 = c?.text;
+      if ((c?.type === 'output_text' || c?.type === 'text') && typeof t1 === 'string' && t1.trim()) {
+        chunks.push(t1);
+      }
+      const t2 = c?.text?.value;
+      if ((c?.type === 'output_text' || c?.type === 'text') && typeof t2 === 'string' && t2.trim()) {
+        chunks.push(t2);
+      }
+    }
+  }
+
+  if (chunks.length) return chunks.join('\n').trim();
+  return null;
+}
 
 // 🔥 RETRY CONFIG
 const MAX_ATTEMPTS = 3;
@@ -336,6 +369,8 @@ export async function runEnrichment(input: EnrichmentInput, attemptNumber: numbe
   
   // 🔥 MODEL VALIDATION - OpenAI GPT-4o
   const ENRICH_MODEL = process.env.OPENAI_ENRICH_MODEL ?? DEFAULT_ENRICH_MODEL;
+  const ENRICH_API: 'responses' | 'chat.completions' = isResponsesOnlyModel(ENRICH_MODEL) ? 'responses' : 'chat.completions';
+  console.log('[enrich.openai.route]', JSON.stringify({ userId: input.userId, model: ENRICH_MODEL, api: ENRICH_API, timeoutMs: ENRICH_API === 'responses' ? 300_000 : 90_000 }));
   
   if (!ALLOWED_ENRICH_MODELS.includes(ENRICH_MODEL as any)) {
     console.error(`[enrich.job.fail] Model not allowed: ${ENRICH_MODEL}`);
@@ -467,17 +502,20 @@ STRENGE REGELN:
 7. Bei Unbekanntem: leerer String "" oder leeres Array []
 `;
 
-    // 🔥 RETRY LOGIC WITH DETAILED LOGGING - OpenAI GPT-4o
+    // 🔥 RETRY LOGIC WITH DETAILED LOGGING
     let response: string | null = null;
     let lastError: any = null;
-    const TIMEOUT_MS = 90000; // 90s timeout for GPT-4o (thorough analysis)
+    let lastErrorCode: string = 'unknown';
+    const MAX_RETRIES = 3;
+    const TIMEOUT_MS = isResponsesOnlyModel(ENRICH_MODEL) ? 300_000 : 90_000;
     
-    for (let retry = 1; retry <= 3; retry++) {
+    for (let retry = 1; retry <= MAX_RETRIES; retry++) {
       try {
         console.log('[enrich.openai.attempt]', JSON.stringify({ 
           userId: input.userId, 
           retry, 
           model: ENRICH_MODEL,
+          api: ENRICH_API,
           timeoutMs: TIMEOUT_MS 
         }));
         
@@ -486,26 +524,52 @@ STRENGE REGELN:
         const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
         
         try {
-          const completion = await openai.chat.completions.create({
-            model: ENRICH_MODEL,
-            messages: [
-              {
-                role: 'system',
-                content: 'Du bist ein Elite-Business-Intelligence-Agent. Antworte AUSSCHLIESSLICH mit validem JSON. Keine Markdown-Codeblöcke, kein Text davor oder danach. Die Antwort MUSS mit { beginnen und mit } enden.'
-              },
-              {
-                role: 'user',
-                content: companyDeepDive
-              }
-            ],
-            temperature: 0.7,
-            max_completion_tokens: 8192,  // 🔥 GPT-5.x uses max_completion_tokens instead of max_tokens
-            response_format: { type: 'json_object' }  // 🔥 Force JSON output
-          }, { signal: controller.signal });
+          let tempResponse: string | null = null;
+          let logMeta: Record<string, any> = { api: ENRICH_API, model: ENRICH_MODEL };
           
-          clearTimeout(timeoutId);
+          if (ENRICH_API === 'responses') {
+            // 🔥 Responses API for deep-research models (v1/responses)
+            const result = await openai.responses.create({
+              model: ENRICH_MODEL,
+              instructions: 'Du bist ein Elite-Business-Intelligence-Agent. Antworte AUSSCHLIESSLICH mit validem JSON. Keine Markdown-Codeblöcke, kein Text davor oder danach. Die Antwort MUSS mit { beginnen und mit } enden.',
+              input: companyDeepDive,
+            }, { signal: controller.signal });
+            
+            clearTimeout(timeoutId);
+            tempResponse = getResponsesOutputText(result);
+            logMeta = {
+              ...logMeta,
+              status: result?.status ?? null,
+              tokensUsed: (result?.usage as any)?.total_tokens ?? null
+            };
+          } else {
+            // 🔥 Chat Completions API for standard models (v1/chat/completions)
+            const completion = await openai.chat.completions.create({
+              model: ENRICH_MODEL,
+              messages: [
+                {
+                  role: 'system',
+                  content: 'Du bist ein Elite-Business-Intelligence-Agent. Antworte AUSSCHLIESSLICH mit validem JSON. Keine Markdown-Codeblöcke, kein Text davor oder danach. Die Antwort MUSS mit { beginnen und mit } enden.'
+                },
+                {
+                  role: 'user',
+                  content: companyDeepDive
+                }
+              ],
+              temperature: 0.7,
+              max_completion_tokens: 8192,
+              response_format: { type: 'json_object' }
+            }, { signal: controller.signal });
+            
+            clearTimeout(timeoutId);
+            tempResponse = completion?.choices?.[0]?.message?.content ?? null;
+            logMeta = {
+              ...logMeta,
+              finishReason: completion?.choices?.[0]?.finish_reason ?? null,
+              tokensUsed: completion?.usage?.total_tokens ?? null
+            };
+          }
           
-          const tempResponse = completion.choices[0]?.message?.content;
           const responseLength = tempResponse?.length || 0;
           
           console.log('[enrich.openai.response]', JSON.stringify({ 
@@ -513,8 +577,7 @@ STRENGE REGELN:
             retry,
             hasResponse: !!tempResponse,
             responseLength,
-            finishReason: completion.choices[0]?.finish_reason,
-            tokensUsed: completion.usage?.total_tokens
+            ...logMeta
           }));
           
           if (tempResponse && responseLength > 200) {
@@ -523,43 +586,84 @@ STRENGE REGELN:
           }
         } catch (apiError: any) {
           clearTimeout(timeoutId);
-          console.log('[enrich.openai.api.error]', JSON.stringify({
-            userId: input.userId,
-            retry,
-            errorType: apiError?.constructor?.name || 'Unknown',
-            errorMessage: (apiError?.message || String(apiError)).substring(0, 300)
-          }));
           throw apiError;
         }
-      } catch (error: any) {
-        lastError = error;
-        console.log('[enrich.openai.error]', JSON.stringify({ 
-          userId: input.userId, 
+      } catch (err: any) {
+        const msg = String(err?.message ?? '');
+        const status: number | null =
+          err?.status ??
+          err?.response?.status ??
+          err?.cause?.status ??
+          err?.error?.status ??
+          null;
+
+        let errorCode: string = 'unknown';
+        if (msg.includes('only supported in v1/responses') || msg.includes('v1/chat/completions')) {
+          errorCode = 'model_endpoint_mismatch';
+        } else if (status === 401 || status === 403) {
+          errorCode = 'auth_error';
+        } else if (status === 429) {
+          errorCode = 'rate_limited';
+        } else if (status !== null && status >= 400 && status < 500) {
+          errorCode = 'bad_request';
+        } else if (status !== null && status >= 500) {
+          errorCode = 'provider_error';
+        }
+
+        const retryable = status == null || status >= 500 || status === 429;
+
+        console.error('[enrich.openai.api.error]', JSON.stringify({
+          userId: input.userId,
           retry,
-          errorName: error?.name,
-          errorMessage: (error?.message || '').substring(0, 150),
-          willRetry: retry < 3
+          model: ENRICH_MODEL,
+          api: ENRICH_API,
+          status,
+          errorCode,
+          errorType: err?.name ?? null,
+          errorMessage: msg.substring(0, 300),
+          retryable
         }));
-        if (retry < 3) {
+
+        const willRetry = retryable && retry < MAX_RETRIES;
+        console.error('[enrich.openai.error]', JSON.stringify({
+          userId: input.userId,
+          retry,
+          errorCode,
+          status,
+          errorMessage: msg.substring(0, 150),
+          willRetry,
+          retryable
+        }));
+
+        lastError = err;
+        lastErrorCode = errorCode;
+
+        if (!retryable) break;
+        if (retry < MAX_RETRIES) {
           await new Promise(resolve => setTimeout(resolve, retry * 2000));
         }
       }
     }
     
     if (!response) {
-      // 🔥 BETTER ERROR DETECTION for common API issues
+      // Map internal errorCode to EnrichmentErrorCode for DB/API
       const errorMsg = lastError?.message || '';
       let errorCode: EnrichmentErrorCode = 'unknown';
       
-      if (errorMsg.includes('timeout') || errorMsg.includes('abort')) errorCode = 'timeout';
-      else if (errorMsg.includes('quota') || errorMsg.includes('rate_limit')) errorCode = 'quota';
-      else if (errorMsg.includes('401') || errorMsg.includes('invalid_api_key')) errorCode = 'auth';
-      else if (errorMsg.includes('insufficient_quota')) errorCode = 'quota';
+      if (lastErrorCode === 'model_endpoint_mismatch') errorCode = 'model_not_allowed';
+      else if (lastErrorCode === 'auth_error') errorCode = 'auth';
+      else if (lastErrorCode === 'rate_limited') errorCode = 'quota';
+      else if (lastErrorCode === 'bad_request') errorCode = 'model_not_allowed';
+      else if (lastErrorCode === 'provider_error') errorCode = 'unknown';
+      else if (errorMsg.includes('timeout') || errorMsg.includes('abort')) errorCode = 'timeout';
+      else if (errorMsg.includes('quota') || errorMsg.includes('insufficient_quota')) errorCode = 'quota';
       
       console.log('[enrich.job.fail]', JSON.stringify({
         timestamp: new Date().toISOString(),
         userId: input.userId,
         errorCode,
+        internalErrorCode: lastErrorCode,
+        api: ENRICH_API,
         errorMessage: errorMsg.substring(0, 200),
         attempt: attemptNumber,
         durationMs: Date.now() - startTime,
@@ -804,22 +908,36 @@ export async function runEnrichmentJobAsync(input: EnrichmentInput): Promise<voi
     });
     
     // Run enrichment
-    console.log('[enrich.step] gemini.calling', JSON.stringify({ userId: input.userId }));
+    const _model = process.env.OPENAI_ENRICH_MODEL ?? DEFAULT_ENRICH_MODEL;
+    const _api = isResponsesOnlyModel(_model) ? 'responses' : 'chat.completions';
+    console.log('[enrich.step] openai.calling', JSON.stringify({ userId: input.userId, model: _model, api: _api }));
     const result = await runEnrichment(input, attemptNumber);
-    console.log('[enrich.step] gemini.returned', JSON.stringify({ 
+    console.log('[enrich.step] openai.returned', JSON.stringify({ 
       userId: input.userId, 
+      model: _model,
+      api: _api,
       success: result.enrichmentWasSuccessful,
       status: result.enrichmentStatus,
+      errorCode: result.enrichmentErrorCode,
       confidence: result.confidence 
     }));
     
-    // Calculate next retry if failed
+    // Calculate next retry if failed — non-retryable errors MUST NOT schedule
     let nextRetryAt: string | null = null;
-    if (!result.enrichmentWasSuccessful && attemptNumber < MAX_ATTEMPTS) {
-      if (!NO_RETRY_ERROR_CODES.includes(result.enrichmentErrorCode)) {
-        const backoffMs = RETRY_BACKOFF_MS[attemptNumber - 1] || RETRY_BACKOFF_MS[RETRY_BACKOFF_MS.length - 1];
-        nextRetryAt = new Date(Date.now() + backoffMs).toISOString();
-      }
+    const isRetryableError = !result.enrichmentWasSuccessful &&
+      attemptNumber < MAX_ATTEMPTS &&
+      !NO_RETRY_ERROR_CODES.includes(result.enrichmentErrorCode);
+    
+    if (isRetryableError) {
+      const backoffMs = RETRY_BACKOFF_MS[attemptNumber - 1] || RETRY_BACKOFF_MS[RETRY_BACKOFF_MS.length - 1];
+      nextRetryAt = new Date(Date.now() + backoffMs).toISOString();
+    } else if (!result.enrichmentWasSuccessful && NO_RETRY_ERROR_CODES.includes(result.enrichmentErrorCode)) {
+      console.log('[enrich.async.retry.skip]', JSON.stringify({
+        userId: input.userId,
+        errorCode: result.enrichmentErrorCode,
+        status: result.enrichmentStatus,
+        reason: 'non-retryable'
+      }));
     }
     
     // Update user with result - use terminal status
@@ -835,7 +953,7 @@ export async function runEnrichmentJobAsync(input: EnrichmentInput): Promise<voi
       confidence: result.confidence
     };
     
-    console.log('[enrich.step] db.updating', JSON.stringify({ userId: input.userId, status: terminalStatus }));
+    console.log('[enrich.step] db.updating', JSON.stringify({ userId: input.userId, status: terminalStatus, errorCode: result.enrichmentErrorCode }));
     await storage.updateUserProfile(input.userId, {
       aiProfile: {
         ...result.aiProfile,
@@ -850,14 +968,20 @@ export async function runEnrichmentJobAsync(input: EnrichmentInput): Promise<voi
       userId: input.userId,
       status: terminalStatus,
       success: result.enrichmentWasSuccessful,
+      errorCode: result.enrichmentErrorCode,
       attempt: attemptNumber,
       durationMs: Date.now() - startTime
     }));
     
-    // Schedule retry if needed
-    if (nextRetryAt && !result.enrichmentWasSuccessful) {
+    // Schedule retry ONLY if retryable
+    if (nextRetryAt && isRetryableError) {
       const backoffMs = RETRY_BACKOFF_MS[attemptNumber - 1] || RETRY_BACKOFF_MS[RETRY_BACKOFF_MS.length - 1];
-      console.log(`[enrich.async.retry] Scheduling retry in ${backoffMs / 1000}s for user:`, input.userId);
+      console.log('[enrich.async.retry]', JSON.stringify({
+        userId: input.userId,
+        delaySeconds: backoffMs / 1000,
+        attempt: attemptNumber,
+        errorCode: result.enrichmentErrorCode
+      }));
       
       setTimeout(() => {
         runEnrichmentJobAsync(input).catch(err => {
