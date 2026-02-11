@@ -543,4 +543,89 @@ router.get("/health", async (req, res) => {
   }
 });
 
+// ============================================================================
+// ENRICHMENT SMOKE TEST (1-click OpenAI Responses API validation)
+// ============================================================================
+
+router.get("/enrichment/smoke", async (req, res) => {
+  const model = process.env.OPENAI_ENRICH_MODEL || "o3-deep-research";
+  const toolType = "web_search_preview";
+  const timeoutMs = 60_000;
+
+  console.log('[enrich.smoke.start]', JSON.stringify({
+    model,
+    toolType,
+    timeoutMs,
+    triggeredBy: (req as any).adminUser?.username ?? 'unknown',
+    timestamp: new Date().toISOString()
+  }));
+
+  try {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey || !apiKey.startsWith('sk-')) {
+      console.error('[enrich.smoke.err]', JSON.stringify({ error: 'missing_api_key' }));
+      return res.status(500).json({ success: false, errorType: 'config', message: 'OPENAI_API_KEY missing or invalid' });
+    }
+
+    const { default: OpenAI } = await import('openai');
+    const openai = new OpenAI({ apiKey });
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    const start = Date.now();
+    const result = await openai.responses.create({
+      model,
+      instructions: 'Return ONLY one factual sentence. No markdown, no extra text.',
+      input: 'Find one factual sentence about OpenAI and return ONLY that sentence.',
+      tools: [{ type: 'web_search_preview', search_context_size: 'low' as any }],
+    }, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    const durationMs = Date.now() - start;
+    const outputText = result?.output_text ?? null;
+    const truncated = outputText ? outputText.substring(0, 200) : null;
+
+    console.log('[enrich.smoke.ok]', JSON.stringify({
+      model,
+      toolType,
+      durationMs,
+      status: result?.status ?? null,
+      hasOutput: !!outputText,
+      outputLength: outputText?.length ?? 0,
+      tokensUsed: (result?.usage as any)?.total_tokens ?? null
+    }));
+
+    return res.json({
+      success: true,
+      model,
+      toolType,
+      durationMs,
+      status: result?.status ?? null,
+      outputText: truncated,
+      tokensUsed: (result?.usage as any)?.total_tokens ?? null
+    });
+  } catch (err: any) {
+    const msg = String(err?.message ?? '');
+    const status = err?.status ?? err?.response?.status ?? null;
+
+    console.error('[enrich.smoke.err]', JSON.stringify({
+      model,
+      toolType,
+      status,
+      errorType: err?.name ?? null,
+      errorMessage: msg.substring(0, 300)
+    }));
+
+    return res.status(status && status >= 400 && status < 600 ? status : 500).json({
+      success: false,
+      errorType: err?.name ?? 'Unknown',
+      message: msg.substring(0, 300),
+      status,
+      model,
+      toolType
+    });
+  }
+});
+
 export default router;
