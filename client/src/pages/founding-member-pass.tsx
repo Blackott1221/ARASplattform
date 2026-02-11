@@ -11,20 +11,16 @@ import {
 import {
   Crown,
   Phone,
-  Sparkles,
-  Shield,
-  ArrowDown,
   Check,
   Zap,
   Users,
   Clock,
   ChevronRight,
-  TrendingUp,
-  AlertTriangle,
+  Lock,
 } from "lucide-react";
 
 /* ─── Smooth animated number (rAF-based, no deps) ────────────────────── */
-function useAnimatedNumber(target: number, duration = 520) {
+function useAnimatedNumber(target: number, duration = 600) {
   const [display, setDisplay] = useState(target);
   const raf = useRef(0);
   const prev = useRef(target);
@@ -100,11 +96,11 @@ function RevealSection({
     <section
       ref={ref}
       id={id}
-      className={`transition-all duration-300 ease-[cubic-bezier(.16,1,.3,1)] ${
-        visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+      className={`transition-all ease-[cubic-bezier(.16,1,.3,1)] ${
+        visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"
       } ${className}`}
       style={{
-        transitionDuration: "280ms",
+        transitionDuration: "420ms",
       }}
     >
       {children}
@@ -122,7 +118,7 @@ function GlassCard({
 }) {
   return (
     <div
-      className={`rounded-[20px] md:rounded-[24px] border border-[rgba(233,215,196,0.12)] bg-[rgba(255,255,255,0.03)] backdrop-blur-[12px] shadow-[0_18px_70px_rgba(0,0,0,0.55)] transition-all duration-300 ease-out hover:border-[rgba(254,145,0,0.22)] hover:-translate-y-[2px] hover:shadow-[0_22px_80px_rgba(0,0,0,0.6)] ${className}`}
+      className={`rounded-[24px] border border-[rgba(233,215,196,0.12)] bg-[rgba(255,255,255,0.015)] backdrop-blur-[12px] shadow-[0_18px_70px_rgba(0,0,0,0.55)] transition-all duration-300 ease-out hover:border-[rgba(254,145,0,0.22)] hover:-translate-y-[2px] hover:shadow-[0_22px_80px_rgba(0,0,0,0.6)] ${className}`}
     >
       {children}
     </div>
@@ -157,30 +153,25 @@ export default function FoundingMemberPass() {
   const [, setLocation] = useLocation();
   const [lastUpdate, setLastUpdate] = useState(0);
 
-  // Live stats from API — poll every 15s + on focus/visibility
   const { data: stats, dataUpdatedAt, refetch } = useQuery<{ cap: number; pending: number; activated: number; total: number }>({
     queryKey: ["/api/public/founding/stats"],
     refetchInterval: 15000,
     staleTime: 8000,
   });
 
-  // Track seconds since last update
-  useEffect(() => {
-    if (dataUpdatedAt) setLastUpdate(dataUpdatedAt);
-  }, [dataUpdatedAt]);
+  useEffect(() => { if (dataUpdatedAt) setLastUpdate(dataUpdatedAt); }, [dataUpdatedAt]);
 
-  // Refetch on visibility/focus
   useEffect(() => {
     const handler = () => { if (document.visibilityState === "visible") refetch(); };
+    const focusHandler = () => refetch();
     document.addEventListener("visibilitychange", handler);
-    window.addEventListener("focus", () => refetch());
+    window.addEventListener("focus", focusHandler);
     return () => {
       document.removeEventListener("visibilitychange", handler);
-      window.removeEventListener("focus", () => refetch());
+      window.removeEventListener("focus", focusHandler);
     };
   }, [refetch]);
 
-  // Seconds ago ticker
   const [secondsAgo, setSecondsAgo] = useState(0);
   useEffect(() => {
     if (!lastUpdate) return;
@@ -190,24 +181,23 @@ export default function FoundingMemberPass() {
     return () => clearInterval(id);
   }, [lastUpdate]);
 
-  // Animated numbers
   const available = useAnimatedNumber(stats ? stats.cap - stats.total : 0);
   const reserved = useAnimatedNumber(stats?.total ?? 0);
 
-  const handleCTA = useCallback(() => {
-    window.location.href = STRIPE_LINK;
+  // Subtle parallax for hero background layers
+  const [heroOffset, setHeroOffset] = useState(0);
+  useEffect(() => {
+    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReduced) return;
+    const onScroll = () => setHeroOffset(Math.min(window.scrollY * 0.15, 30));
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const scrollToDetails = useCallback(() => {
-    document.getElementById("was-du-bekommst")?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  }, []);
+  const handleCTA = useCallback(() => { window.location.href = STRIPE_LINK; }, []);
 
   return (
     <>
-      {/* Scoped styles */}
       <style>{`
         @keyframes foundingGoldWave {
           0%   { background-position: 0% 50%; }
@@ -215,29 +205,25 @@ export default function FoundingMemberPass() {
           100% { background-position: 0% 50%; }
         }
         .founding-gold-gradient {
-          background-image: linear-gradient(
-            90deg,
-            var(--aras-gold-light) 0%,
-            var(--aras-orange) 30%,
-            var(--aras-gold-dark) 55%,
-            var(--aras-gold-light) 100%
-          );
+          background-image: linear-gradient(90deg, var(--aras-gold-light) 0%, var(--aras-orange) 30%, var(--aras-gold-dark) 55%, var(--aras-gold-light) 100%);
         }
         @keyframes foundingPulse {
           0%, 100% { opacity: 1; transform: scale(1); }
-          50% { opacity: 0.5; transform: scale(1.35); }
+          50% { opacity: .5; transform: scale(1.4); }
+        }
+        @keyframes foundingNoise {
+          0%   { transform: translate(0,0); }
+          20%  { transform: translate(-1.5%,-1.5%); }
+          40%  { transform: translate(1.5%,1%); }
+          60%  { transform: translate(-1%,1.5%); }
+          80%  { transform: translate(1%,-1%); }
+          100% { transform: translate(0,0); }
         }
         @media (prefers-reduced-motion: reduce) {
-          .founding-gold-gradient {
-            animation: none !important;
-          }
-          .founding-reveal {
-            opacity: 1 !important;
-            transform: none !important;
-          }
-          .founding-pulse {
-            animation: none !important;
-          }
+          .founding-gold-gradient { animation: none !important; }
+          .founding-pulse { animation: none !important; }
+          .founding-noise-inner { animation: none !important; }
+          .founding-reveal { opacity: 1 !important; transform: none !important; }
         }
       `}</style>
 
@@ -249,143 +235,167 @@ export default function FoundingMemberPass() {
         Zum Inhalt springen
       </a>
 
-      <main
-        id="main-content"
-        className="relative min-h-screen w-full overflow-x-hidden"
-        style={{ background: "var(--aras-bg)" }}
-      >
-        {/* ═══ HERO ═══ */}
-        <section className="relative flex flex-col items-center justify-center text-center px-4 md:px-6 lg:px-8 pt-16 md:pt-24 pb-12 md:pb-16">
-          <div className="max-w-[1120px] w-full mx-auto">
-            {/* Kicker */}
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 0.85, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="font-orbitron uppercase text-[12px] tracking-[0.22em] mb-6"
-              style={{ color: "var(--aras-gold-light)" }}
-            >
-              THE COMMUNITY BRIDGE ROUND
-            </motion.p>
+      <main id="main-content" className="relative w-full overflow-x-hidden" style={{ background: "var(--aras-bg)" }}>
 
-            {/* H1 */}
+        {/* ═══ HERO ═══ */}
+        <section
+          className="relative flex flex-col items-center justify-center text-center px-5 md:px-8"
+          style={{ minHeight: "min(100vh, 980px)" }}
+        >
+          {/* BG Layer 1+2: Radial gradients with parallax */}
+          <div
+            className="absolute inset-0 pointer-events-none will-change-transform"
+            style={{
+              background: `
+                radial-gradient(1200px circle at 20% 10%, rgba(254,145,0,.18), transparent 60%),
+                radial-gradient(900px circle at 85% 20%, rgba(233,215,196,.10), transparent 65%)
+              `,
+              transform: `translateY(${heroOffset}px) translateZ(0)`,
+            }}
+          />
+
+          {/* BG Layer 3: Animated noise overlay (CSS only, 3% opacity) */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ opacity: 0.03 }}>
+            <div
+              className="founding-noise-inner absolute -inset-1/2 w-[200%] h-[200%]"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+                backgroundSize: "256px 256px",
+                animation: "foundingNoise 8s steps(5) infinite",
+              }}
+            />
+          </div>
+
+          {/* BG Layer 4: Grid horizon */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              backgroundImage: `
+                linear-gradient(rgba(233,215,196,.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(233,215,196,.05) 1px, transparent 1px)
+              `,
+              backgroundSize: "60px 60px",
+              maskImage: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.12) 50%, transparent 85%)",
+              WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.12) 50%, transparent 85%)",
+            }}
+          />
+
+          {/* Hero Content */}
+          <div className="relative z-10 max-w-[1180px] w-full mx-auto">
+
+            {/* H1 — Orbitron Dominance */}
             <motion.h1
-              initial={{ opacity: 0, y: 14 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="font-orbitron font-bold text-3xl sm:text-4xl md:text-5xl lg:text-[3.4rem] leading-tight mb-4"
+              transition={{ duration: 0.7, ease: [.16, 1, .3, 1] }}
+              className="font-orbitron font-bold leading-[1.02] mb-6"
+              style={{ fontSize: "clamp(3.2rem, 8vw, 6.8rem)" }}
             >
-              <GoldGradientText>
-                Founding Member Pass — PRO dauerhaft.
-              </GoldGradientText>
+              <span className="block" style={{ color: "var(--aras-text)" }}>
+                Founding Member
+              </span>
+              <GoldGradientText>PRO. Für immer.</GoldGradientText>
             </motion.h1>
 
-            {/* Subtitle */}
+            {/* Subline */}
             <motion.p
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-lg md:text-xl font-inter mb-3"
-              style={{ color: "var(--aras-text)" }}
+              transition={{ duration: 0.6, delay: 0.12, ease: [.16, 1, .3, 1] }}
+              className="font-inter text-base md:text-lg lg:text-xl max-w-[640px] mx-auto mb-4 leading-relaxed"
+              style={{ color: "var(--aras-text)", opacity: 0.78 }}
             >
-              500 Anrufe pro Monat inklusive. 499 CHF einmalig.
+              Einmal zahlen. Jeden Monat 500 Calls inklusive.
+              <br className="hidden sm:block" />
+              Kein Abo. Keine versteckten Kosten.
+              <br className="hidden sm:block" />
+              Sichere dir PRO dauerhaft — bevor wir auf Enterprise-Preise umstellen.
             </motion.p>
 
-            {/* Subcopy */}
+            {/* Microline */}
             <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="text-[12px] font-inter mb-10"
+              style={{ color: "var(--aras-soft)" }}
+            >
+              Limitierte Founding Runde. Nach {TOTAL_PASSES} vergebenen Pässen schließen wir.
+            </motion.p>
+
+            {/* Primary CTA */}
+            <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="text-sm md:text-base mb-5"
-              style={{ color: "var(--aras-muted)" }}
+              transition={{ duration: 0.5, delay: 0.25, ease: [.16, 1, .3, 1] }}
+              className="mb-10"
             >
-              Einmal zahlen. Jeden Monat 500 Calls inklusive. Keine monatliche Abo-Gebühr.
-            </motion.p>
-
-            {/* Trust Chips */}
-            <motion.div
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.32 }}
-              className="flex flex-wrap items-center justify-center gap-2 mb-8"
-            >
-              {[
-                { icon: Users, text: "500+ Alpha-User" },
-                { icon: Zap, text: "Bis zu 10.000 Calls parallel" },
-                { icon: Clock, text: "Low latency (typ. < 1s)" },
-              ].map(({ icon: Icon, text }) => (
-                <span
-                  key={text}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11.5px] md:text-[12px] font-inter font-medium"
-                  style={{
-                    background: "rgba(254,145,0,0.07)",
-                    border: "1px solid rgba(254,145,0,0.18)",
-                    color: "var(--aras-gold-light)",
-                  }}
-                >
-                  <Icon className="w-3 h-3 flex-shrink-0" style={{ color: "var(--aras-orange)" }} />
-                  {text}
-                </span>
-              ))}
+              <button
+                onClick={handleCTA}
+                className="aras-btn--primary h-[54px] px-8 rounded-full font-inter font-semibold text-base cursor-pointer transition-all duration-300 hover:-translate-y-[2px] active:translate-y-0"
+                style={{ minWidth: "280px" }}
+                aria-label="Pass sichern für 499 CHF — weiter zu Stripe Checkout"
+              >
+                Pass sichern (499 CHF)
+                <ChevronRight className="inline-block w-4 h-4 ml-1.5 -mt-0.5" />
+              </button>
+              <p className="text-[12px] mt-3 font-inter" style={{ color: "var(--aras-soft)" }}>
+                Sichere Bezahlung via Stripe.
+              </p>
             </motion.div>
 
-            {/* ═══ LIVE SCARCITY CARD ═══ */}
+            {/* ═══ LIVE SCARCITY MODULE ═══ */}
             {stats && (
               <motion.div
-                initial={{ opacity: 0, y: 8 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.28, delay: 0.35 }}
-                className="relative max-w-md mx-auto mb-8 rounded-[24px] overflow-hidden"
+                transition={{ duration: 0.32, delay: 0.35, ease: [.16, 1, .3, 1] }}
+                className="relative max-w-md mx-auto rounded-[28px] overflow-hidden"
                 style={{
-                  background: "rgba(255,255,255,0.022)",
-                  border: "1px solid rgba(233,215,196,0.14)",
-                  boxShadow: "0 18px 70px rgba(0,0,0,0.55)",
+                  background: "rgba(255,255,255,.02)",
+                  border: "1px solid rgba(233,215,196,.16)",
+                  boxShadow: "0 30px 120px rgba(0,0,0,.65)",
                 }}
               >
-                {/* Inner highlight */}
                 <div
                   className="absolute inset-0 pointer-events-none"
-                  style={{
-                    background: "radial-gradient(ellipse at 15% 0%, rgba(254,145,0,0.12) 0%, transparent 55%)",
-                  }}
+                  style={{ background: "radial-gradient(ellipse at 15% 0%, rgba(254,145,0,.10) 0%, transparent 55%)" }}
                 />
-                <div className="relative p-[14px] md:p-[20px]">
-                  {/* LIVE Pill + Last update */}
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-inter font-bold uppercase tracking-wide" style={{ background: "rgba(254,145,0,0.1)", color: "var(--aras-orange)" }}>
-                      <span
-                        className="founding-pulse inline-block w-[7px] h-[7px] rounded-full"
-                        style={{
-                          background: "var(--aras-orange)",
-                          animation: "foundingPulse 1.6s ease-in-out infinite",
-                        }}
-                      />
-                      LIVE
+                <div className="relative p-[18px] md:p-[22px]">
+
+                  {/* LIVE Indicator */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <span
+                      className="founding-pulse inline-block w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ background: "var(--aras-orange)", animation: "foundingPulse 1.6s ease-in-out infinite" }}
+                    />
+                    <span
+                      className="text-[10.5px] font-inter font-bold uppercase"
+                      style={{ color: "var(--aras-orange)", letterSpacing: ".28em" }}
+                    >
+                      LIVE VERFÜGBARKEIT
                     </span>
-                    {lastUpdate > 0 && (
-                      <span className="text-[11.5px] font-inter" style={{ color: "var(--aras-soft)", opacity: 0.55 }}>
-                        Update: vor {secondsAgo < 60 ? `${secondsAgo}s` : `${Math.floor(secondsAgo / 60)}m`}
-                      </span>
-                    )}
                   </div>
 
-                  {/* Headline number */}
-                  <div className="flex items-baseline gap-2 mb-3">
-                    <span className="text-[11.5px] font-inter" style={{ color: "var(--aras-muted)" }}>
-                      Noch verfügbar:
-                    </span>
-                    <span
-                      className="font-orbitron font-bold text-[28px] md:text-[34px] leading-none founding-gold-gradient bg-clip-text text-transparent"
-                      style={{ backgroundSize: "200% 100%", animation: "foundingGoldWave 5s ease-in-out infinite" }}
-                    >
-                      {available}
-                    </span>
-                    <span className="text-[12px] font-inter" style={{ color: "var(--aras-soft)" }}>/ {stats.cap}</span>
+                  {/* Counter */}
+                  <div className="mb-4">
+                    <p className="text-[11px] font-inter uppercase tracking-wider mb-1" style={{ color: "var(--aras-muted)" }}>
+                      Noch verfügbar
+                    </p>
+                    <div className="flex items-baseline gap-2">
+                      <span
+                        className="font-orbitron font-bold text-[36px] md:text-[48px] leading-none founding-gold-gradient bg-clip-text text-transparent"
+                        style={{ backgroundSize: "200% 100%", animation: "foundingGoldWave 5s ease-in-out infinite" }}
+                      >
+                        {available}
+                      </span>
+                      <span className="text-[13px] font-inter" style={{ color: "var(--aras-soft)" }}>/ {stats.cap}</span>
+                    </div>
                   </div>
 
                   {/* Progress Bar */}
                   <div
-                    className="w-full rounded-[999px] h-[8px] md:h-[10px] overflow-hidden mb-3"
+                    className="w-full rounded-[999px] h-[8px] md:h-[12px] overflow-hidden mb-3"
                     style={{ background: "rgba(255,255,255,0.06)" }}
                   >
                     <div
@@ -393,295 +403,188 @@ export default function FoundingMemberPass() {
                       style={{
                         width: `${Math.min((reserved / (stats?.cap || 1)) * 100, 100)}%`,
                         background: "linear-gradient(90deg, var(--aras-gold-light), var(--aras-orange), var(--aras-gold-dark))",
-                        boxShadow: "0 0 18px rgba(254,145,0,0.18)",
+                        boxShadow: "0 0 24px rgba(254,145,0,.28)",
                         transition: "width 520ms cubic-bezier(.16,1,.3,1)",
                       }}
                     />
                   </div>
 
-                  {/* Subline */}
-                  <p className="text-[12px] md:text-[12.5px] leading-relaxed" style={{ color: "var(--aras-muted)", opacity: 0.72 }}>
-                    Limitiert auf {stats.cap} Founding Member Pässe. Aktivierung nach Zahlung manuell per E-Mail.
+                  {/* Micro */}
+                  <p className="text-[11px] font-inter" style={{ color: "var(--aras-soft)", opacity: 0.6 }}>
+                    Automatisch aktualisiert
                   </p>
                 </div>
               </motion.div>
             )}
 
-            {/* CTA Row */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.4 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-4"
-            >
-              <button
-                onClick={handleCTA}
-                className="aras-btn--primary rounded-full px-8 py-3.5 font-inter font-semibold text-base transition-all duration-300 cursor-pointer"
-                aria-label="Pass sichern für 499 CHF — weiter zu Stripe Checkout"
-              >
-                Pass sichern (499 CHF)
-                <ChevronRight className="inline-block w-4 h-4 ml-1 -mt-0.5" />
-              </button>
+          </div>
+        </section>
 
-              <button
-                onClick={scrollToDetails}
-                className="aras-btn--secondary rounded-full px-6 py-3 font-inter text-sm border border-[rgba(233,215,196,0.15)] hover:border-[rgba(254,145,0,0.3)] transition-all duration-300"
+        {/* ═══ WARUM DIESER PASS EXISTIERT ═══ */}
+        <RevealSection className="px-5 md:px-8 py-20 md:py-28">
+          <div className="max-w-[1180px] mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+
+            {/* Left: Statement */}
+            <div>
+              <h2
+                className="font-orbitron font-bold text-[28px] md:text-[42px] leading-[1.1] mb-6"
+                style={{ color: "var(--aras-text)" }}
+              >
+                Wir belohnen die,{" "}
+                <span className="relative inline">
+                  die früh an ARAS glauben.
+                  <span
+                    className="absolute bottom-0 left-0 w-full h-[3px] rounded-full"
+                    style={{
+                      background: "linear-gradient(90deg, var(--aras-gold-light), var(--aras-orange), var(--aras-gold-dark))",
+                    }}
+                  />
+                </span>
+              </h2>
+              <p
+                className="text-sm md:text-base leading-relaxed max-w-md"
                 style={{ color: "var(--aras-muted)" }}
               >
-                Details ansehen
-                <ArrowDown className="inline-block w-3.5 h-3.5 ml-1.5 -mt-0.5" />
-              </button>
-            </motion.div>
+                Der Founding Member Pass ist unser Dankeschön an die Community, die ARAS von Tag eins begleitet. Du sicherst dir PRO zu Konditionen, die es nach dieser Runde nicht mehr geben wird.
+              </p>
+            </div>
 
-            {/* Micro note */}
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.5 }}
-              className="text-[12px] md:text-[13px]"
-              style={{ color: "var(--aras-soft)" }}
-            >
-              Nach Zahlung ordnen wir den Pass deinem ARAS-Account zu (manuell).
-            </motion.p>
+            {/* Right: 3 glass feature cards */}
+            <div className="space-y-4">
+              {[
+                { icon: Crown, title: "PRO dauerhaft", text: "Kein monatliches Abo. Dein PRO-Zugang bleibt — solange ARAS existiert." },
+                { icon: Phone, title: "500 Calls / Monat", text: "Jeden Monat 500 Anrufe inklusive. Mehr als genug für den Start." },
+                { icon: Lock, title: "Preis bleibt für dich fix", text: "499 CHF einmalig. Egal, wie sich unsere Enterprise-Preise entwickeln." },
+              ].map(({ icon: Icon, title, text }, i) => (
+                <motion.div
+                  key={title}
+                  initial={{ opacity: 0, y: 12 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-40px" }}
+                  transition={{ duration: 0.26, delay: i * 0.08, ease: [.16, 1, .3, 1] }}
+                >
+                  <GlassCard className="p-5 md:p-6 flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-[rgba(254,145,0,0.08)] border border-[rgba(254,145,0,0.18)] flex items-center justify-center flex-shrink-0">
+                      <Icon className="w-5 h-5" style={{ color: "var(--aras-orange)" }} />
+                    </div>
+                    <div>
+                      <h3 className="font-inter font-semibold text-[15px] mb-1" style={{ color: "var(--aras-text)" }}>{title}</h3>
+                      <p className="text-sm leading-relaxed" style={{ color: "var(--aras-muted)" }}>{text}</p>
+                    </div>
+                  </GlassCard>
+                </motion.div>
+              ))}
+            </div>
 
-            {/* Secondary CTA: Already paid */}
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.55 }}
-              className="mt-4"
+          </div>
+        </RevealSection>
+
+        {/* ═══ HEUTE FOUNDING. MORGEN ENTERPRISE. ═══ */}
+        <RevealSection className="px-5 md:px-8 py-20 md:py-28">
+          <div className="max-w-[1180px] mx-auto text-center">
+            <h2
+              className="font-orbitron font-bold text-[26px] md:text-[38px] leading-[1.1] mb-4"
+              style={{ color: "var(--aras-text)" }}
             >
+              Dieser Preis wird nicht zurückkommen.
+            </h2>
+            <p
+              className="font-inter text-sm md:text-base max-w-[600px] mx-auto mb-14 leading-relaxed"
+              style={{ color: "var(--aras-muted)" }}
+            >
+              Mit dem Founding Pass sicherst du dir den Zugang, bevor ARAS in die Enterprise-Phase übergeht.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 max-w-3xl mx-auto">
+              {[
+                { icon: Users, value: "500+", label: "Alpha-User" },
+                { icon: Zap, value: "10.000", label: "Parallele Calls möglich" },
+                { icon: Clock, value: "< 1s", label: "Optimierte Low-Latency" },
+              ].map(({ icon: Icon, value, label }, i) => (
+                <motion.div
+                  key={label}
+                  initial={{ opacity: 0, y: 10 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-40px" }}
+                  transition={{ duration: 0.26, delay: i * 0.08, ease: [.16, 1, .3, 1] }}
+                >
+                  <GlassCard className="p-[22px] text-center">
+                    <Icon className="w-6 h-6 mx-auto mb-3" style={{ color: "var(--aras-orange)" }} />
+                    <p className="font-orbitron font-bold text-2xl md:text-3xl mb-1" style={{ color: "var(--aras-gold-light)" }}>
+                      {value}
+                    </p>
+                    <p className="text-sm" style={{ color: "var(--aras-muted)" }}>{label}</p>
+                  </GlassCard>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </RevealSection>
+
+        {/* ═══ ENTSCHEIDUNG IN 30 SEKUNDEN ═══ */}
+        <RevealSection className="px-5 md:px-8 py-20 md:py-28">
+          <div
+            className="max-w-[780px] mx-auto rounded-[32px] px-6 md:px-12 py-12 md:py-16 text-center"
+            style={{
+              background: "rgba(255,255,255,.015)",
+              border: "1px solid rgba(233,215,196,.10)",
+              boxShadow: "0 30px 100px rgba(0,0,0,.5)",
+            }}
+          >
+            <h2
+              className="font-orbitron font-bold text-[24px] md:text-[32px] leading-[1.1] mb-8"
+              style={{ color: "var(--aras-text)" }}
+            >
+              Entscheidung in 30 Sekunden.
+            </h2>
+
+            <ul className="space-y-4 text-left max-w-sm mx-auto mb-10">
+              {[
+                "Kein Abo",
+                "500 Calls jeden Monat",
+                "Preis für immer gesichert",
+                "Aktivierung manuell nach Zahlung",
+              ].map((item) => (
+                <li key={item} className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-[rgba(254,145,0,0.12)] border border-[rgba(254,145,0,0.25)] flex items-center justify-center flex-shrink-0">
+                    <Check className="w-3 h-3" style={{ color: "var(--aras-orange)" }} />
+                  </div>
+                  <span className="text-sm md:text-base font-inter" style={{ color: "var(--aras-text)" }}>
+                    {item}
+                  </span>
+                </li>
+              ))}
+            </ul>
+
+            <button
+              onClick={handleCTA}
+              className="aras-btn--primary h-[54px] px-8 rounded-full font-inter font-semibold text-base cursor-pointer transition-all duration-300 hover:-translate-y-[2px] active:translate-y-0 w-full sm:w-auto"
+              style={{ minWidth: "280px" }}
+              aria-label="Pass sichern für 499 CHF"
+            >
+              Pass sichern (499 CHF)
+              <ChevronRight className="inline-block w-4 h-4 ml-1.5 -mt-0.5" />
+            </button>
+
+            <p className="text-[12px] mt-4 font-inter" style={{ color: "var(--aras-soft)" }}>
+              Sichere Bezahlung via Stripe.
+            </p>
+
+            <p className="mt-4">
               <a
                 href="/founding/success"
-                className="text-[13px] font-inter underline-offset-4 hover:underline transition-opacity opacity-[0.7] hover:opacity-100"
+                className="text-[12.5px] font-inter underline-offset-4 hover:underline transition-opacity opacity-60 hover:opacity-100"
                 style={{ color: "var(--aras-gold-light)" }}
               >
                 Schon bezahlt? Account zuordnen →
               </a>
-            </motion.p>
-          </div>
-        </section>
-
-        {/* ═══ WAS DU BEKOMMST ═══ */}
-        <RevealSection
-          id="was-du-bekommst"
-          className="px-4 md:px-6 lg:px-8 py-11 md:py-16"
-        >
-          <div className="max-w-[1120px] mx-auto">
-            <h2
-              className="font-orbitron font-bold text-2xl md:text-3xl mb-10 text-center"
-              style={{ color: "var(--aras-text)" }}
-            >
-              Was du bekommst
-            </h2>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              {[
-                {
-                  icon: Crown,
-                  title: "PRO dauerhaft",
-                  text: "Du bekommst den PRO-Zugang dauerhaft — ohne monatliche Abo-Gebühren.",
-                },
-                {
-                  icon: Phone,
-                  title: "500 Anrufe pro Monat inklusive",
-                  text: "Jeden Monat sind 500 Anrufe enthalten. Für viele Teams reicht das bereits für spürbare Outbound-Ergebnisse.",
-                },
-                {
-                  icon: Sparkles,
-                  title: "Priorisierte Updates",
-                  text: "Founding Member bekommen neue Outbound-Features früher und werden bei Feedback-Runden priorisiert.",
-                },
-                {
-                  icon: Shield,
-                  title: "Faire Regeln",
-                  text: "Transparente Nutzung: du weißt immer, was inkludiert ist — ohne versteckte Überraschungen.",
-                },
-              ].map(({ icon: Icon, title, text }) => (
-                <GlassCard key={title} className="p-6">
-                  <div className="w-10 h-10 rounded-xl bg-[rgba(254,145,0,0.1)] border border-[rgba(254,145,0,0.2)] flex items-center justify-center mb-4">
-                    <Icon
-                      className="w-5 h-5"
-                      style={{ color: "var(--aras-orange)" }}
-                    />
-                  </div>
-                  <h3
-                    className="font-inter font-semibold text-base mb-2"
-                    style={{ color: "var(--aras-text)" }}
-                  >
-                    {title}
-                  </h3>
-                  <p
-                    className="text-sm leading-relaxed"
-                    style={{ color: "var(--aras-muted)" }}
-                  >
-                    {text}
-                  </p>
-                </GlassCard>
-              ))}
-            </div>
-          </div>
-        </RevealSection>
-
-        {/* ═══ SO FUNKTIONIERT'S ═══ */}
-        <RevealSection className="px-4 md:px-6 lg:px-8 py-11 md:py-16">
-          <div className="max-w-[1120px] mx-auto">
-            <h2
-              className="font-orbitron font-bold text-2xl md:text-3xl mb-10 text-center"
-              style={{ color: "var(--aras-text)" }}
-            >
-              So funktioniert's
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto">
-              {[
-                {
-                  step: "1",
-                  title: "Pass kaufen",
-                  text: "Stripe Checkout — sicher, schnell, verschlüsselt.",
-                },
-                {
-                  step: "2",
-                  title: "ARAS-Account zuordnen",
-                  text: "Wir identifizieren dich über die Zahlungs-E-Mail. Bitte nutze dieselbe E-Mail wie im ARAS-Account.",
-                },
-                {
-                  step: "3",
-                  title: "Wir schalten PRO frei",
-                  text: "Manuell — in der Regel innerhalb von 24 Stunden.",
-                },
-              ].map(({ step, title, text }) => (
-                <GlassCard key={step} className="p-6 text-center">
-                  <div
-                    className="w-9 h-9 rounded-full border-2 border-[var(--aras-orange)] flex items-center justify-center mx-auto mb-4 font-orbitron font-bold text-sm"
-                    style={{ color: "var(--aras-orange)" }}
-                  >
-                    {step}
-                  </div>
-                  <h3
-                    className="font-inter font-semibold text-base mb-2"
-                    style={{ color: "var(--aras-text)" }}
-                  >
-                    {title}
-                  </h3>
-                  <p
-                    className="text-sm leading-relaxed"
-                    style={{ color: "var(--aras-muted)" }}
-                  >
-                    {text}
-                  </p>
-                </GlassCard>
-              ))}
-            </div>
-          </div>
-        </RevealSection>
-
-        {/* ═══ FOMO STRIP ═══ */}
-        <RevealSection className="px-4 md:px-6 lg:px-8 py-6">
-          <div className="max-w-2xl mx-auto">
-            <div
-              className="flex items-center gap-3 rounded-[16px] px-5 py-3.5"
-              style={{
-                background: "rgba(254,145,0,0.06)",
-                border: "1px solid rgba(254,145,0,0.18)",
-              }}
-            >
-              <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{ color: "var(--aras-orange)" }} />
-              <p className="text-[13px] md:text-sm font-inter" style={{ color: "var(--aras-gold-light)" }}>
-                Diese Runde ist limitiert. Sobald {TOTAL_PASSES} vergeben sind, schließen wir.
-              </p>
-            </div>
-          </div>
-        </RevealSection>
-
-        {/* ═══ WARUM JETZT ═══ */}
-        <RevealSection className="px-4 md:px-6 lg:px-8 py-11 md:py-16">
-          <div className="max-w-[1120px] mx-auto">
-            <h2
-              className="font-orbitron font-bold text-2xl md:text-3xl mb-8 text-center"
-              style={{ color: "var(--aras-text)" }}
-            >
-              Warum jetzt?
-            </h2>
-
-            <GlassCard className="max-w-2xl mx-auto p-8">
-              <ul className="space-y-5">
-                {[
-                  { icon: TrendingUp, text: "PRO dauerhaft sichern, bevor Preise auf Enterprise-Niveau steigen." },
-                  { icon: Phone, text: "500 Calls/Monat inklusive — ideal zum Testen und Skalieren." },
-                  { icon: Crown, text: "Du bist Teil der Founding Community und beeinflusst die Roadmap." },
-                ].map(({ icon: Icon, text }, i) => (
-                  <li key={i} className="flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-full bg-[rgba(254,145,0,0.12)] border border-[rgba(254,145,0,0.25)] flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <Icon className="w-3.5 h-3.5" style={{ color: "var(--aras-orange)" }} />
-                    </div>
-                    <span
-                      className="text-sm md:text-base leading-relaxed"
-                      style={{ color: "var(--aras-muted)" }}
-                    >
-                      {text}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </GlassCard>
-          </div>
-        </RevealSection>
-
-        {/* ═══ PROOF / STATS ═══ */}
-        <RevealSection className="px-4 md:px-6 lg:px-8 py-11 md:py-16">
-          <div className="max-w-[1120px] mx-auto">
-            <h2
-              className="font-orbitron font-bold text-2xl md:text-3xl mb-10 text-center"
-              style={{ color: "var(--aras-text)" }}
-            >
-              Proof
-            </h2>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 max-w-3xl mx-auto">
-              {[
-                {
-                  icon: Users,
-                  value: "500+",
-                  label: "Alpha-User",
-                },
-                {
-                  icon: Zap,
-                  value: "10.000",
-                  label: "Calls parallel möglich",
-                },
-                {
-                  icon: Clock,
-                  value: "< 1s",
-                  label: "Latenz (typisch) / realtime voice",
-                },
-              ].map(({ icon: Icon, value, label }) => (
-                <GlassCard key={label} className="p-6 text-center">
-                  <Icon
-                    className="w-6 h-6 mx-auto mb-3"
-                    style={{ color: "var(--aras-orange)" }}
-                  />
-                  <p
-                    className="font-orbitron font-bold text-2xl md:text-3xl mb-1"
-                    style={{ color: "var(--aras-gold-light)" }}
-                  >
-                    {value}
-                  </p>
-                  <p
-                    className="text-sm"
-                    style={{ color: "var(--aras-muted)" }}
-                  >
-                    {label}
-                  </p>
-                </GlassCard>
-              ))}
-            </div>
+            </p>
           </div>
         </RevealSection>
 
         {/* ═══ FAQ ═══ */}
-        <RevealSection className="px-4 md:px-6 lg:px-8 py-11 md:py-16">
-          <div className="max-w-[1120px] mx-auto">
+        <RevealSection className="px-5 md:px-8 py-20 md:py-28">
+          <div className="max-w-[1180px] mx-auto">
             <h2
               className="font-orbitron font-bold text-2xl md:text-3xl mb-10 text-center"
               style={{ color: "var(--aras-text)" }}
@@ -698,7 +601,7 @@ export default function FoundingMemberPass() {
                   },
                   {
                     q: "Wie erfolgt die Aktivierung?",
-                    a: "Manuell — nach Zahlung ordnen wir den Pass anhand deiner E-Mail / Login deinem Account zu. In der Regel innerhalb von 24 Stunden.",
+                    a: "Manuell — nach Zahlung ordnen wir den Pass anhand deiner E-Mail deinem Account zu. In der Regel innerhalb von 24 Stunden.",
                   },
                   {
                     q: "Was heißt 500 Calls/Monat?",
@@ -716,19 +619,16 @@ export default function FoundingMemberPass() {
                   <AccordionItem
                     key={i}
                     value={`faq-${i}`}
-                    className="border-b border-[rgba(233,215,196,0.1)]"
+                    className="border-b border-[rgba(233,215,196,0.08)]"
                   >
                     <AccordionTrigger
-                      className="text-left text-sm md:text-base font-inter font-medium py-4 hover:no-underline"
+                      className="text-left text-sm md:text-base font-inter font-medium py-5 hover:no-underline"
                       style={{ color: "var(--aras-text)" }}
                     >
                       {q}
                     </AccordionTrigger>
                     <AccordionContent>
-                      <p
-                        className="text-sm leading-relaxed"
-                        style={{ color: "var(--aras-muted)" }}
-                      >
+                      <p className="text-sm leading-relaxed pb-2" style={{ color: "var(--aras-muted)" }}>
                         {a}
                       </p>
                     </AccordionContent>
@@ -739,43 +639,9 @@ export default function FoundingMemberPass() {
           </div>
         </RevealSection>
 
-        {/* ═══ BOTTOM CTA ═══ */}
-        <RevealSection className="px-4 md:px-6 lg:px-8 py-11 md:py-16">
-          <div className="max-w-[1120px] mx-auto text-center">
-            <h2
-              className="font-orbitron font-bold text-xl md:text-2xl mb-3"
-              style={{ color: "var(--aras-text)" }}
-            >
-              Bereit?
-            </h2>
-            {stats && (
-              <p className="text-sm mb-6 font-inter" style={{ color: "var(--aras-muted)" }}>
-                Noch <span className="font-semibold" style={{ color: "var(--aras-gold-light)" }}>{stats.cap - stats.total}</span> von {stats.cap} Pässen verfügbar.
-              </p>
-            )}
-            <button
-              onClick={handleCTA}
-              className="aras-btn--primary rounded-full px-8 py-3.5 font-inter font-semibold text-base transition-all duration-300 cursor-pointer"
-              aria-label="Pass sichern für 499 CHF — weiter zu Stripe Checkout"
-            >
-              Pass sichern (499 CHF)
-              <ChevronRight className="inline-block w-4 h-4 ml-1 -mt-0.5" />
-            </button>
-            <p className="text-xs mt-4" style={{ color: "var(--aras-soft)" }}>
-              <a
-                href="/founding/success"
-                className="hover:underline underline-offset-4 transition-opacity opacity-[0.7] hover:opacity-100"
-                style={{ color: "var(--aras-gold-light)" }}
-              >
-                Schon bezahlt? Account zuordnen →
-              </a>
-            </p>
-          </div>
-        </RevealSection>
-
         {/* ═══ FOOTER ═══ */}
-        <footer className="px-4 md:px-6 lg:px-8 py-8 md:py-12 border-t border-[rgba(233,215,196,0.08)]">
-          <div className="max-w-[1120px] mx-auto text-center">
+        <footer className="px-5 md:px-8 py-10 md:py-14 border-t border-[rgba(233,215,196,0.06)]">
+          <div className="max-w-[1180px] mx-auto text-center">
             <p
               className="text-xs md:text-[13px] leading-relaxed max-w-xl mx-auto"
               style={{ color: "var(--aras-soft)" }}
@@ -784,19 +650,11 @@ export default function FoundingMemberPass() {
               von Zielgruppe, Datenqualität und Kampagnenaufbau ab.
             </p>
             <div className="flex items-center justify-center gap-4 mt-4">
-              <a
-                href="/terms"
-                className="text-xs hover:underline transition-colors"
-                style={{ color: "var(--aras-soft)" }}
-              >
+              <a href="/terms" className="text-xs hover:underline transition-colors" style={{ color: "var(--aras-soft)" }}>
                 AGB
               </a>
               <span style={{ color: "var(--aras-soft)" }}>·</span>
-              <a
-                href="/privacy"
-                className="text-xs hover:underline transition-colors"
-                style={{ color: "var(--aras-soft)" }}
-              >
+              <a href="/privacy" className="text-xs hover:underline transition-colors" style={{ color: "var(--aras-soft)" }}>
                 Datenschutz
               </a>
             </div>
@@ -805,30 +663,35 @@ export default function FoundingMemberPass() {
 
         {/* ═══ MOBILE STICKY CTA BAR ═══ */}
         <div
-          className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between gap-3 px-4 border-t border-[rgba(233,215,196,0.10)] sm:hidden"
+          className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between gap-3 px-5 border-t border-[rgba(233,215,196,0.08)] sm:hidden"
           style={{
-            height: "64px",
-            background: "rgba(0,0,0,0.82)",
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
+            height: "68px",
+            background: "rgba(0,0,0,0.88)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
           }}
         >
           {stats && (
-            <span className="text-[11px] font-inter font-medium whitespace-nowrap" style={{ color: "var(--aras-gold-light)" }}>
-              {stats.cap - stats.total} verfügbar
-            </span>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-inter uppercase tracking-wider" style={{ color: "var(--aras-soft)" }}>
+                Verfügbar
+              </span>
+              <span className="text-[14px] font-orbitron font-bold" style={{ color: "var(--aras-gold-light)" }}>
+                {stats.cap - stats.total}/{stats.cap}
+              </span>
+            </div>
           )}
           <button
             onClick={handleCTA}
-            className="aras-btn--primary rounded-full px-5 py-2.5 font-inter font-semibold text-sm flex-1 max-w-[200px] transition-all duration-200 cursor-pointer"
+            className="aras-btn--primary h-[44px] rounded-full px-6 font-inter font-semibold text-sm cursor-pointer transition-all duration-200"
             aria-label="Pass sichern"
           >
-            Pass sichern
+            Pass sichern (499 CHF)
           </button>
         </div>
 
         {/* Bottom spacer for sticky bar on mobile */}
-        <div className="h-16 sm:hidden" aria-hidden="true" />
+        <div className="h-[68px] sm:hidden" aria-hidden="true" />
       </main>
     </>
   );
