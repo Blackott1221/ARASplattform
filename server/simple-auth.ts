@@ -393,7 +393,8 @@ export function setupSimpleAuth(app: Express) {
           language: language || 'de',
           primaryGoal: primaryGoal || '',
           firstName: firstName || '',
-          lastName: lastName || ''
+          lastName: lastName || '',
+          email: email || undefined
         };
         triggerEnrichmentAsync(enrichmentInput);
         console.log('[register.enrich.triggered] Async enrichment job started for user:', user.id);

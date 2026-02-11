@@ -167,6 +167,7 @@ export interface EnrichmentInput {
   primaryGoal: string;
   firstName: string;
   lastName: string;
+  email?: string;
 }
 
 // 🔥 ENRICHMENT RESULT
@@ -213,6 +214,48 @@ function getResponsesOutputText(result: any): string | null {
 
   if (chunks.length) return chunks.join('\n').trim();
   return null;
+}
+
+// Generic email domains — do NOT use for domain-restricted web_search
+const GENERIC_EMAIL_DOMAINS = new Set([
+  'gmail.com', 'googlemail.com', 'outlook.com', 'hotmail.com', 'yahoo.com',
+  'icloud.com', 'proton.me', 'protonmail.com', 'gmx.de', 'gmx.net', 'gmx.at',
+  'gmx.ch', 'live.com', 'msn.com', 'aol.com', 'mail.com', 'web.de', 'freenet.de',
+  't-online.de', 'posteo.de', 'tutanota.com', 'zoho.com', 'yandex.com'
+]);
+
+function extractDomainFromUrl(url: string): string | null {
+  try {
+    let cleaned = url.trim();
+    if (!cleaned.includes('://')) cleaned = 'https://' + cleaned;
+    const hostname = new URL(cleaned).hostname.replace(/^www\./, '');
+    return hostname || null;
+  } catch {
+    return null;
+  }
+}
+
+function extractDomainFromEmail(email: string | undefined): string | null {
+  if (!email || !email.includes('@')) return null;
+  const domain = email.split('@')[1]?.toLowerCase().trim();
+  if (!domain || GENERIC_EMAIL_DOMAINS.has(domain)) return null;
+  return domain;
+}
+
+function buildResponsesTools(params: { website: string | null; email?: string }): { tools: any[]; allowedDomains: string[] | null } {
+  const domain = (params.website ? extractDomainFromUrl(params.website) : null)
+    ?? extractDomainFromEmail(params.email);
+
+  if (domain) {
+    return {
+      tools: [{ type: 'web_search', filters: { allowed_domains: [domain] } }],
+      allowedDomains: [domain]
+    };
+  }
+  return {
+    tools: [{ type: 'web_search' }],
+    allowedDomains: null
+  };
 }
 
 // 🔥 RETRY CONFIG
@@ -370,7 +413,8 @@ export async function runEnrichment(input: EnrichmentInput, attemptNumber: numbe
   // 🔥 MODEL VALIDATION - OpenAI GPT-4o
   const ENRICH_MODEL = process.env.OPENAI_ENRICH_MODEL ?? DEFAULT_ENRICH_MODEL;
   const ENRICH_API: 'responses' | 'chat.completions' = isResponsesOnlyModel(ENRICH_MODEL) ? 'responses' : 'chat.completions';
-  console.log('[enrich.openai.route]', JSON.stringify({ userId: input.userId, model: ENRICH_MODEL, api: ENRICH_API, timeoutMs: ENRICH_API === 'responses' ? 300_000 : 90_000 }));
+  const responsesTooling = ENRICH_API === 'responses' ? buildResponsesTools({ website, email: input.email }) : null;
+  console.log('[enrich.openai.route]', JSON.stringify({ userId: input.userId, model: ENRICH_MODEL, api: ENRICH_API, timeoutMs: ENRICH_API === 'responses' ? 300_000 : 90_000, toolsCount: responsesTooling?.tools.length ?? 0, allowedDomains: responsesTooling?.allowedDomains ?? null }));
   
   if (!ALLOWED_ENRICH_MODELS.includes(ENRICH_MODEL as any)) {
     console.error(`[enrich.job.fail] Model not allowed: ${ENRICH_MODEL}`);
@@ -516,7 +560,9 @@ STRENGE REGELN:
           retry, 
           model: ENRICH_MODEL,
           api: ENRICH_API,
-          timeoutMs: TIMEOUT_MS 
+          timeoutMs: TIMEOUT_MS,
+          toolsCount: responsesTooling?.tools.length ?? 0,
+          allowedDomains: responsesTooling?.allowedDomains ?? null
         }));
         
         // 🔥 OpenAI API CALL with timeout
@@ -533,6 +579,7 @@ STRENGE REGELN:
               model: ENRICH_MODEL,
               instructions: 'Du bist ein Elite-Business-Intelligence-Agent. Antworte AUSSCHLIESSLICH mit validem JSON. Keine Markdown-Codeblöcke, kein Text davor oder danach. Die Antwort MUSS mit { beginnen und mit } enden.',
               input: companyDeepDive,
+              tools: responsesTooling!.tools,
             }, { signal: controller.signal });
             
             clearTimeout(timeoutId);
@@ -598,8 +645,12 @@ STRENGE REGELN:
           null;
 
         let errorCode: string = 'unknown';
+        let hint: string | null = null;
         if (msg.includes('only supported in v1/responses') || msg.includes('v1/chat/completions')) {
           errorCode = 'model_endpoint_mismatch';
+        } else if (msg.includes('require at least one of') || msg.includes('web_search_preview')) {
+          errorCode = 'missing_required_tool';
+          hint = 'Deep-research requires tools:[{type:"web_search"}] in Responses API call.';
         } else if (status === 401 || status === 403) {
           errorCode = 'auth_error';
         } else if (status === 429) {
@@ -621,7 +672,8 @@ STRENGE REGELN:
           errorCode,
           errorType: err?.name ?? null,
           errorMessage: msg.substring(0, 300),
-          retryable
+          retryable,
+          hint
         }));
 
         const willRetry = retryable && retry < MAX_RETRIES;
@@ -651,9 +703,10 @@ STRENGE REGELN:
       let errorCode: EnrichmentErrorCode = 'unknown';
       
       if (lastErrorCode === 'model_endpoint_mismatch') errorCode = 'model_not_allowed';
+      else if (lastErrorCode === 'missing_required_tool') errorCode = 'unknown';
       else if (lastErrorCode === 'auth_error') errorCode = 'auth';
       else if (lastErrorCode === 'rate_limited') errorCode = 'quota';
-      else if (lastErrorCode === 'bad_request') errorCode = 'model_not_allowed';
+      else if (lastErrorCode === 'bad_request') errorCode = 'unknown';
       else if (lastErrorCode === 'provider_error') errorCode = 'unknown';
       else if (errorMsg.includes('timeout') || errorMsg.includes('abort')) errorCode = 'timeout';
       else if (errorMsg.includes('quota') || errorMsg.includes('insufficient_quota')) errorCode = 'quota';
@@ -1076,7 +1129,8 @@ export async function forceReEnrich(userId: string): Promise<{ success: boolean;
     language: user.language || 'de',
     primaryGoal: user.primaryGoal || '',
     firstName: user.firstName || '',
-    lastName: user.lastName || ''
+    lastName: user.lastName || '',
+    email: user.email || undefined
   };
   
   // Trigger async
