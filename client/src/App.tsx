@@ -38,6 +38,8 @@ import AppPage from "@/pages/app";
 // Blog imports - SEO-optimized pages
 import Blog from "@/pages/blog";
 import BlogPost from "@/pages/blog-post";
+import FoundingMemberPass from "@/pages/founding-member-pass";
+import FoundingMemberSuccess from "@/pages/founding-member-success";
 
 // Investor Pages (hidden, not in menu)
 import InvestorSchwabPage from "@/pages/app/investor/schwab";
@@ -162,6 +164,8 @@ function Router() {
         <Route path="/welcome" component={Welcome} />
         <Route path="/blog" component={Blog} />
         <Route path="/blog/:slug" component={BlogPost} />
+        <Route path="/founding/success" component={FoundingMemberSuccess} />
+        <Route path="/founding" component={FoundingMemberPass} />
         
         {/* 🔒 INVESTOR PAGES - Public but hidden (direct link only) */}
         <Route path="/app/investor/schwab" component={InvestorSchwabPage} />
