@@ -188,6 +188,10 @@ function isResponsesOnlyModel(model: string): boolean {
   return RESPONSES_ONLY_MODELS.has(model);
 }
 
+function isDeepResearchModel(model: string): boolean {
+  return model.includes('deep-research') || model === 'o3-deep-research';
+}
+
 // Defensive extraction: SDK may provide output_text OR structured output array
 function getResponsesOutputText(result: any): string | null {
   const direct = result?.output_text;
@@ -248,12 +252,12 @@ function buildResponsesTools(params: { website: string | null; email?: string })
 
   if (domain) {
     return {
-      tools: [{ type: 'web_search', filters: { allowed_domains: [domain] } }],
+      tools: [{ type: 'web_search_preview', search_context_size: 'medium', filters: { allowed_domains: [domain] } }],
       allowedDomains: [domain]
     };
   }
   return {
-    tools: [{ type: 'web_search' }],
+    tools: [{ type: 'web_search_preview', search_context_size: 'medium' }],
     allowedDomains: null
   };
 }
@@ -414,7 +418,7 @@ export async function runEnrichment(input: EnrichmentInput, attemptNumber: numbe
   const ENRICH_MODEL = process.env.OPENAI_ENRICH_MODEL ?? DEFAULT_ENRICH_MODEL;
   const ENRICH_API: 'responses' | 'chat.completions' = isResponsesOnlyModel(ENRICH_MODEL) ? 'responses' : 'chat.completions';
   const responsesTooling = ENRICH_API === 'responses' ? buildResponsesTools({ website, email: input.email }) : null;
-  console.log('[enrich.openai.route]', JSON.stringify({ userId: input.userId, model: ENRICH_MODEL, api: ENRICH_API, timeoutMs: ENRICH_API === 'responses' ? 300_000 : 90_000, toolsCount: responsesTooling?.tools.length ?? 0, allowedDomains: responsesTooling?.allowedDomains ?? null }));
+  console.log('[enrich.openai.route]', JSON.stringify({ userId: input.userId, model: ENRICH_MODEL, api: ENRICH_API, timeoutMs: ENRICH_API === 'responses' ? 300_000 : 90_000, toolsEnabled: !!responsesTooling, tools: responsesTooling?.tools.map((t: any) => t.type) ?? [], toolsCount: responsesTooling?.tools.length ?? 0, allowedDomains: responsesTooling?.allowedDomains ?? null }));
   
   if (!ALLOWED_ENRICH_MODELS.includes(ENRICH_MODEL as any)) {
     console.error(`[enrich.job.fail] Model not allowed: ${ENRICH_MODEL}`);
@@ -650,7 +654,7 @@ STRENGE REGELN:
           errorCode = 'model_endpoint_mismatch';
         } else if (msg.includes('require at least one of') || msg.includes('web_search_preview')) {
           errorCode = 'missing_required_tool';
-          hint = 'Deep-research requires tools:[{type:"web_search"}] in Responses API call.';
+          hint = 'Deep-research requires tools:[{type:"web_search_preview"}] in Responses API call.';
         } else if (status === 401 || status === 403) {
           errorCode = 'auth_error';
         } else if (status === 429) {
