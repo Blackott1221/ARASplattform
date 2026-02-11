@@ -19,7 +19,36 @@ import {
   Users,
   Clock,
   ChevronRight,
+  TrendingUp,
+  AlertTriangle,
 } from "lucide-react";
+
+/* ─── Smooth animated number (rAF-based, no deps) ────────────────────── */
+function useAnimatedNumber(target: number, duration = 520) {
+  const [display, setDisplay] = useState(target);
+  const raf = useRef(0);
+  const prev = useRef(target);
+
+  useEffect(() => {
+    const from = prev.current;
+    const delta = target - from;
+    if (delta === 0) return;
+    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReduced) { setDisplay(target); prev.current = target; return; }
+    const start = performance.now();
+    const step = (now: number) => {
+      const t = Math.min((now - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - t, 3); // easeOutCubic
+      setDisplay(Math.round(from + delta * ease));
+      if (t < 1) raf.current = requestAnimationFrame(step);
+      else prev.current = target;
+    };
+    raf.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf.current);
+  }, [target, duration]);
+
+  return display;
+}
 
 /* ─── Constants ────────────────────────────────────────────────────────── */
 const STRIPE_LINK = "https://buy.stripe.com/cNi3cpbUL4Tu6aO6x67Zu01";
@@ -126,23 +155,48 @@ function GoldGradientText({
    ═══════════════════════════════════════════════════════════════════════════ */
 export default function FoundingMemberPass() {
   const [, setLocation] = useLocation();
-  const [alphaChecked, setAlphaChecked] = useState(false);
-  const [showError, setShowError] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState(0);
 
-  // Live stats from API
-  const { data: stats } = useQuery<{ cap: number; pending: number; activated: number; total: number }>({
+  // Live stats from API — poll every 15s + on focus/visibility
+  const { data: stats, dataUpdatedAt, refetch } = useQuery<{ cap: number; pending: number; activated: number; total: number }>({
     queryKey: ["/api/public/founding/stats"],
-    refetchInterval: 30000,
-    staleTime: 15000,
+    refetchInterval: 15000,
+    staleTime: 8000,
   });
 
+  // Track seconds since last update
+  useEffect(() => {
+    if (dataUpdatedAt) setLastUpdate(dataUpdatedAt);
+  }, [dataUpdatedAt]);
+
+  // Refetch on visibility/focus
+  useEffect(() => {
+    const handler = () => { if (document.visibilityState === "visible") refetch(); };
+    document.addEventListener("visibilitychange", handler);
+    window.addEventListener("focus", () => refetch());
+    return () => {
+      document.removeEventListener("visibilitychange", handler);
+      window.removeEventListener("focus", () => refetch());
+    };
+  }, [refetch]);
+
+  // Seconds ago ticker
+  const [secondsAgo, setSecondsAgo] = useState(0);
+  useEffect(() => {
+    if (!lastUpdate) return;
+    const tick = () => setSecondsAgo(Math.floor((Date.now() - lastUpdate) / 1000));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [lastUpdate]);
+
+  // Animated numbers
+  const available = useAnimatedNumber(stats ? stats.cap - stats.total : 0);
+  const reserved = useAnimatedNumber(stats?.total ?? 0);
+
   const handleCTA = useCallback(() => {
-    if (!alphaChecked) {
-      setShowError(true);
-      return;
-    }
     window.location.href = STRIPE_LINK;
-  }, [alphaChecked]);
+  }, []);
 
   const scrollToDetails = useCallback(() => {
     document.getElementById("was-du-bekommst")?.scrollIntoView({
@@ -150,11 +204,6 @@ export default function FoundingMemberPass() {
       block: "start",
     });
   }, []);
-
-  // Reset error when checkbox changes
-  useEffect(() => {
-    if (alphaChecked) setShowError(false);
-  }, [alphaChecked]);
 
   return (
     <>
@@ -174,6 +223,10 @@ export default function FoundingMemberPass() {
             var(--aras-gold-light) 100%
           );
         }
+        @keyframes foundingPulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(1.35); }
+        }
         @media (prefers-reduced-motion: reduce) {
           .founding-gold-gradient {
             animation: none !important;
@@ -181,6 +234,9 @@ export default function FoundingMemberPass() {
           .founding-reveal {
             opacity: 1 !important;
             transform: none !important;
+          }
+          .founding-pulse {
+            animation: none !important;
           }
         }
       `}</style>
@@ -240,85 +296,116 @@ export default function FoundingMemberPass() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
-              className="text-sm md:text-base mb-6"
+              className="text-sm md:text-base mb-5"
               style={{ color: "var(--aras-muted)" }}
             >
-              Nur für unsere Alpha-Community (500+ Unternehmen). Limitiert auf{" "}
-              {TOTAL_PASSES} Pässe.
+              Einmal zahlen. Jeden Monat 500 Calls inklusive. Keine monatliche Abo-Gebühr.
             </motion.p>
 
-            {/* Live Stats Progress Bar */}
+            {/* Trust Chips */}
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.32 }}
+              className="flex flex-wrap items-center justify-center gap-2 mb-8"
+            >
+              {[
+                { icon: Users, text: "500+ Alpha-User" },
+                { icon: Zap, text: "Bis zu 10.000 Calls parallel" },
+                { icon: Clock, text: "Low latency (typ. < 1s)" },
+              ].map(({ icon: Icon, text }) => (
+                <span
+                  key={text}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11.5px] md:text-[12px] font-inter font-medium"
+                  style={{
+                    background: "rgba(254,145,0,0.07)",
+                    border: "1px solid rgba(254,145,0,0.18)",
+                    color: "var(--aras-gold-light)",
+                  }}
+                >
+                  <Icon className="w-3 h-3 flex-shrink-0" style={{ color: "var(--aras-orange)" }} />
+                  {text}
+                </span>
+              ))}
+            </motion.div>
+
+            {/* ═══ LIVE SCARCITY CARD ═══ */}
             {stats && (
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.35 }}
-                className="max-w-sm mx-auto mb-10"
+                transition={{ duration: 0.28, delay: 0.35 }}
+                className="relative max-w-md mx-auto mb-8 rounded-[24px] overflow-hidden"
+                style={{
+                  background: "rgba(255,255,255,0.022)",
+                  border: "1px solid rgba(233,215,196,0.14)",
+                  boxShadow: "0 18px 70px rgba(0,0,0,0.55)",
+                }}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[12.5px] font-inter" style={{ color: "var(--aras-muted)" }}>
-                    Vergeben
-                  </span>
-                  <span className="text-[12.5px] font-inter font-semibold" style={{ color: "var(--aras-gold-light)" }}>
-                    {stats.total} / {stats.cap}
-                  </span>
-                </div>
+                {/* Inner highlight */}
                 <div
-                  className="w-full rounded-[999px] h-[8px] md:h-[10px] overflow-hidden"
-                  style={{ background: "rgba(255,255,255,0.06)" }}
-                >
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background: "radial-gradient(ellipse at 15% 0%, rgba(254,145,0,0.12) 0%, transparent 55%)",
+                  }}
+                />
+                <div className="relative p-[14px] md:p-[20px]">
+                  {/* LIVE Pill + Last update */}
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-inter font-bold uppercase tracking-wide" style={{ background: "rgba(254,145,0,0.1)", color: "var(--aras-orange)" }}>
+                      <span
+                        className="founding-pulse inline-block w-[7px] h-[7px] rounded-full"
+                        style={{
+                          background: "var(--aras-orange)",
+                          animation: "foundingPulse 1.6s ease-in-out infinite",
+                        }}
+                      />
+                      LIVE
+                    </span>
+                    {lastUpdate > 0 && (
+                      <span className="text-[11.5px] font-inter" style={{ color: "var(--aras-soft)", opacity: 0.55 }}>
+                        Update: vor {secondsAgo < 60 ? `${secondsAgo}s` : `${Math.floor(secondsAgo / 60)}m`}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Headline number */}
+                  <div className="flex items-baseline gap-2 mb-3">
+                    <span className="text-[11.5px] font-inter" style={{ color: "var(--aras-muted)" }}>
+                      Noch verfügbar:
+                    </span>
+                    <span
+                      className="font-orbitron font-bold text-[28px] md:text-[34px] leading-none founding-gold-gradient bg-clip-text text-transparent"
+                      style={{ backgroundSize: "200% 100%", animation: "foundingGoldWave 5s ease-in-out infinite" }}
+                    >
+                      {available}
+                    </span>
+                    <span className="text-[12px] font-inter" style={{ color: "var(--aras-soft)" }}>/ {stats.cap}</span>
+                  </div>
+
+                  {/* Progress Bar */}
                   <div
-                    className="h-full rounded-[999px] transition-all duration-700 ease-out"
-                    style={{
-                      width: `${Math.min((stats.total / stats.cap) * 100, 100)}%`,
-                      background: "linear-gradient(90deg, var(--aras-gold-light), var(--aras-orange), var(--aras-gold-dark))",
-                      boxShadow: "0 0 18px rgba(254,145,0,0.18)",
-                    }}
-                  />
+                    className="w-full rounded-[999px] h-[8px] md:h-[10px] overflow-hidden mb-3"
+                    style={{ background: "rgba(255,255,255,0.06)" }}
+                  >
+                    <div
+                      className="h-full rounded-[999px]"
+                      style={{
+                        width: `${Math.min((reserved / (stats?.cap || 1)) * 100, 100)}%`,
+                        background: "linear-gradient(90deg, var(--aras-gold-light), var(--aras-orange), var(--aras-gold-dark))",
+                        boxShadow: "0 0 18px rgba(254,145,0,0.18)",
+                        transition: "width 520ms cubic-bezier(.16,1,.3,1)",
+                      }}
+                    />
+                  </div>
+
+                  {/* Subline */}
+                  <p className="text-[12px] md:text-[12.5px] leading-relaxed" style={{ color: "var(--aras-muted)", opacity: 0.72 }}>
+                    Limitiert auf {stats.cap} Founding Member Pässe. Aktivierung nach Zahlung manuell per E-Mail.
+                  </p>
                 </div>
-                <p className="text-[12px] mt-2 text-center" style={{ color: "var(--aras-soft)" }}>
-                  Nur für Alpha-User. Aktivierung erfolgt manuell nach Zahlung.
-                </p>
               </motion.div>
             )}
-
-            {/* Alpha Gate Checkbox */}
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.35 }}
-              className="flex flex-col items-center gap-3 mb-6"
-            >
-              <label className="flex items-center gap-3 cursor-pointer select-none group">
-                <span
-                  className={`relative flex items-center justify-center w-5 h-5 rounded border-2 transition-all duration-200 ${
-                    alphaChecked
-                      ? "border-[var(--aras-orange)] bg-[var(--aras-orange)]"
-                      : "border-[rgba(233,215,196,0.3)] bg-transparent group-hover:border-[rgba(254,145,0,0.5)]"
-                  }`}
-                >
-                  {alphaChecked && <Check className="w-3.5 h-3.5 text-black" />}
-                  <input
-                    type="checkbox"
-                    checked={alphaChecked}
-                    onChange={(e) => setAlphaChecked(e.target.checked)}
-                    className="absolute inset-0 opacity-0 cursor-pointer"
-                    aria-label="Ich bin Alpha-User und habe bereits einen ARAS-Account."
-                  />
-                </span>
-                <span
-                  className="text-sm"
-                  style={{ color: "var(--aras-muted)" }}
-                >
-                  Ich bin Alpha-User und habe bereits einen ARAS-Account.
-                </span>
-              </label>
-              {showError && (
-                <p className="text-sm text-red-400 animate-pulse">
-                  Dieser Pass ist nur für Alpha-Accounts verfügbar.
-                </p>
-              )}
-            </motion.div>
 
             {/* CTA Row */}
             <motion.div
@@ -329,12 +416,7 @@ export default function FoundingMemberPass() {
             >
               <button
                 onClick={handleCTA}
-                disabled={!alphaChecked}
-                className={`aras-btn--primary rounded-full px-8 py-3.5 font-inter font-semibold text-base transition-all duration-300 ${
-                  alphaChecked
-                    ? "cursor-pointer"
-                    : "opacity-50 cursor-not-allowed"
-                }`}
+                className="aras-btn--primary rounded-full px-8 py-3.5 font-inter font-semibold text-base transition-all duration-300 cursor-pointer"
                 aria-label="Pass sichern für 499 CHF — weiter zu Stripe Checkout"
               >
                 Pass sichern (499 CHF)
@@ -359,8 +441,7 @@ export default function FoundingMemberPass() {
               className="text-[12px] md:text-[13px]"
               style={{ color: "var(--aras-soft)" }}
             >
-              Aktivierung manuell nach Zahlung — wir schalten PRO für deinen
-              ARAS-Account frei.
+              Nach Zahlung ordnen wir den Pass deinem ARAS-Account zu (manuell).
             </motion.p>
 
             {/* Secondary CTA: Already paid */}
@@ -375,7 +456,7 @@ export default function FoundingMemberPass() {
                 className="text-[13px] font-inter underline-offset-4 hover:underline transition-opacity opacity-[0.7] hover:opacity-100"
                 style={{ color: "var(--aras-gold-light)" }}
               >
-                Schon bezahlt? Aktivierung anstoßen →
+                Schon bezahlt? Account zuordnen →
               </a>
             </motion.p>
           </div>
@@ -495,35 +576,50 @@ export default function FoundingMemberPass() {
           </div>
         </RevealSection>
 
-        {/* ═══ WARUM WIR'S MACHEN ═══ */}
+        {/* ═══ FOMO STRIP ═══ */}
+        <RevealSection className="px-4 md:px-6 lg:px-8 py-6">
+          <div className="max-w-2xl mx-auto">
+            <div
+              className="flex items-center gap-3 rounded-[16px] px-5 py-3.5"
+              style={{
+                background: "rgba(254,145,0,0.06)",
+                border: "1px solid rgba(254,145,0,0.18)",
+              }}
+            >
+              <AlertTriangle className="w-4 h-4 flex-shrink-0" style={{ color: "var(--aras-orange)" }} />
+              <p className="text-[13px] md:text-sm font-inter" style={{ color: "var(--aras-gold-light)" }}>
+                Diese Runde ist limitiert. Sobald {TOTAL_PASSES} vergeben sind, schließen wir.
+              </p>
+            </div>
+          </div>
+        </RevealSection>
+
+        {/* ═══ WARUM JETZT ═══ */}
         <RevealSection className="px-4 md:px-6 lg:px-8 py-11 md:py-16">
           <div className="max-w-[1120px] mx-auto">
             <h2
               className="font-orbitron font-bold text-2xl md:text-3xl mb-8 text-center"
               style={{ color: "var(--aras-text)" }}
             >
-              Warum wir's machen
+              Warum jetzt?
             </h2>
 
             <GlassCard className="max-w-2xl mx-auto p-8">
-              <ul className="space-y-4">
+              <ul className="space-y-5">
                 {[
-                  "Weil ihr ARAS von Anfang an mit aufgebaut habt.",
-                  "Weil wir Preise später auf Enterprise-Niveau anheben.",
-                  "Weil wir lieber Loyalität belohnen als laute Marketingversprechen zu machen.",
-                ].map((item, i) => (
+                  { icon: TrendingUp, text: "PRO dauerhaft sichern, bevor Preise auf Enterprise-Niveau steigen." },
+                  { icon: Phone, text: "500 Calls/Monat inklusive — ideal zum Testen und Skalieren." },
+                  { icon: Crown, text: "Du bist Teil der Founding Community und beeinflusst die Roadmap." },
+                ].map(({ icon: Icon, text }, i) => (
                   <li key={i} className="flex items-start gap-3">
-                    <div className="w-5 h-5 rounded-full bg-[rgba(254,145,0,0.12)] border border-[rgba(254,145,0,0.25)] flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <Check
-                        className="w-3 h-3"
-                        style={{ color: "var(--aras-orange)" }}
-                      />
+                    <div className="w-6 h-6 rounded-full bg-[rgba(254,145,0,0.12)] border border-[rgba(254,145,0,0.25)] flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Icon className="w-3.5 h-3.5" style={{ color: "var(--aras-orange)" }} />
                     </div>
                     <span
                       className="text-sm md:text-base leading-relaxed"
                       style={{ color: "var(--aras-muted)" }}
                     >
-                      {item}
+                      {text}
                     </span>
                   </li>
                 ))}
@@ -598,19 +694,15 @@ export default function FoundingMemberPass() {
                 {[
                   {
                     q: "Wer kann kaufen?",
-                    a: "Nur Alpha-User. Wenn du unsicher bist, melde dich kurz bei uns.",
+                    a: "Jeder. Du brauchst lediglich einen ARAS-Account. Falls du noch keinen hast, kannst du dich kostenlos registrieren.",
                   },
                   {
-                    q: "Was passiert nach der Zahlung?",
-                    a: "Stripe bestätigt deine Zahlung, wir ordnen sie deinem Account zu und aktivieren PRO manuell.",
+                    q: "Wie erfolgt die Aktivierung?",
+                    a: "Manuell — nach Zahlung ordnen wir den Pass anhand deiner E-Mail / Login deinem Account zu. In der Regel innerhalb von 24 Stunden.",
                   },
                   {
-                    q: "Sind wirklich 500 Anrufe pro Monat inklusive?",
-                    a: "Ja, im Founding Member Pass sind 500 Anrufe pro Monat enthalten.",
-                  },
-                  {
-                    q: "Was ist, wenn ich mehr als 500 Anrufe brauche?",
-                    a: "Dann kannst du zusätzliche Kapazität ergänzen — Details findest du in deinem Account.",
+                    q: "Was heißt 500 Calls/Monat?",
+                    a: "Jeden Monat sind 500 Anrufe inklusive. Zusätzliche Kapazität kannst du bei Bedarf jederzeit ergänzen.",
                   },
                   {
                     q: "Gilt PRO wirklich dauerhaft?",
@@ -651,32 +743,33 @@ export default function FoundingMemberPass() {
         <RevealSection className="px-4 md:px-6 lg:px-8 py-11 md:py-16">
           <div className="max-w-[1120px] mx-auto text-center">
             <h2
-              className="font-orbitron font-bold text-xl md:text-2xl mb-6"
+              className="font-orbitron font-bold text-xl md:text-2xl mb-3"
               style={{ color: "var(--aras-text)" }}
             >
               Bereit?
             </h2>
+            {stats && (
+              <p className="text-sm mb-6 font-inter" style={{ color: "var(--aras-muted)" }}>
+                Noch <span className="font-semibold" style={{ color: "var(--aras-gold-light)" }}>{stats.cap - stats.total}</span> von {stats.cap} Pässen verfügbar.
+              </p>
+            )}
             <button
               onClick={handleCTA}
-              disabled={!alphaChecked}
-              className={`aras-btn--primary rounded-full px-8 py-3.5 font-inter font-semibold text-base transition-all duration-300 ${
-                alphaChecked
-                  ? "cursor-pointer"
-                  : "opacity-50 cursor-not-allowed"
-              }`}
+              className="aras-btn--primary rounded-full px-8 py-3.5 font-inter font-semibold text-base transition-all duration-300 cursor-pointer"
               aria-label="Pass sichern für 499 CHF — weiter zu Stripe Checkout"
             >
               Pass sichern (499 CHF)
               <ChevronRight className="inline-block w-4 h-4 ml-1 -mt-0.5" />
             </button>
-            {!alphaChecked && (
-              <p
-                className="text-xs mt-3"
-                style={{ color: "var(--aras-soft)" }}
+            <p className="text-xs mt-4" style={{ color: "var(--aras-soft)" }}>
+              <a
+                href="/founding/success"
+                className="hover:underline underline-offset-4 transition-opacity opacity-[0.7] hover:opacity-100"
+                style={{ color: "var(--aras-gold-light)" }}
               >
-                Bitte bestätige oben, dass du Alpha-User bist.
-              </p>
-            )}
+                Schon bezahlt? Account zuordnen →
+              </a>
+            </p>
           </div>
         </RevealSection>
 
@@ -712,7 +805,7 @@ export default function FoundingMemberPass() {
 
         {/* ═══ MOBILE STICKY CTA BAR ═══ */}
         <div
-          className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-center gap-3 px-4 border-t border-[rgba(233,215,196,0.10)] sm:hidden"
+          className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between gap-3 px-4 border-t border-[rgba(233,215,196,0.10)] sm:hidden"
           style={{
             height: "64px",
             background: "rgba(0,0,0,0.82)",
@@ -720,24 +813,17 @@ export default function FoundingMemberPass() {
             WebkitBackdropFilter: "blur(12px)",
           }}
         >
+          {stats && (
+            <span className="text-[11px] font-inter font-medium whitespace-nowrap" style={{ color: "var(--aras-gold-light)" }}>
+              {stats.cap - stats.total} verfügbar
+            </span>
+          )}
           <button
             onClick={handleCTA}
-            disabled={!alphaChecked}
-            className={`aras-btn--primary rounded-full px-5 py-2.5 font-inter font-semibold text-sm flex-1 max-w-[200px] transition-all duration-200 ${
-              alphaChecked
-                ? "cursor-pointer"
-                : "opacity-50 cursor-not-allowed"
-            }`}
+            className="aras-btn--primary rounded-full px-5 py-2.5 font-inter font-semibold text-sm flex-1 max-w-[200px] transition-all duration-200 cursor-pointer"
             aria-label="Pass sichern"
           >
             Pass sichern
-          </button>
-          <button
-            onClick={scrollToDetails}
-            className="aras-btn--secondary rounded-full px-4 py-2.5 font-inter text-sm border border-[rgba(233,215,196,0.15)] transition-all duration-200"
-            style={{ color: "var(--aras-muted)" }}
-          >
-            Details
           </button>
         </div>
 
