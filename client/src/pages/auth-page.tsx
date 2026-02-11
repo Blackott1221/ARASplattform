@@ -2644,11 +2644,10 @@ export default function AuthPage() {
                 <img 
                   src={PlattformBild} 
                   alt="" 
-                  className="w-[420px] max-w-none opacity-20"
+                  className="w-[420px] max-w-none opacity-55"
                   style={{
-                    filter: 'blur(1px)',
-                    maskImage: 'radial-gradient(ellipse at center, black 30%, transparent 75%)',
-                    WebkitMaskImage: 'radial-gradient(ellipse at center, black 30%, transparent 75%)',
+                    maskImage: 'radial-gradient(ellipse at center, black 50%, transparent 85%)',
+                    WebkitMaskImage: 'radial-gradient(ellipse at center, black 50%, transparent 85%)',
                   }}
                 />
               </div>
