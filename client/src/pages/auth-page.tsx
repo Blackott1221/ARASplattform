@@ -1937,9 +1937,9 @@ export default function AuthPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Countdown to 01.01.2026
+  // Countdown to 01.03.2026
   useEffect(() => {
-    const targetDate = new Date('2026-01-01T00:00:00').getTime();
+    const targetDate = new Date('2026-03-01T00:00:00').getTime();
     const interval = setInterval(() => {
       const now = new Date().getTime();
       const distance = targetDate - now;
@@ -2639,18 +2639,19 @@ export default function AuthPage() {
               transition={{ duration: 0.8, delay: 0.3 }}
               className="space-y-10 relative"
             >
-              {/* Smartphone Mockup Background Image */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+              {/* Smartphone Mockup Image */}
+              <motion.div
+                initial={{ opacity: 0, y: -30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.2 }}
+                className="flex justify-center"
+              >
                 <img 
                   src={PlattformBild} 
-                  alt="" 
-                  className="w-[420px] max-w-none opacity-55"
-                  style={{
-                    maskImage: 'radial-gradient(ellipse at center, black 50%, transparent 85%)',
-                    WebkitMaskImage: 'radial-gradient(ellipse at center, black 50%, transparent 85%)',
-                  }}
+                  alt="ARAS AI Smartphone Mockup" 
+                  className="w-[320px] max-w-full"
                 />
-              </div>
+              </motion.div>
               {/* Pre-Launch Badge */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
@@ -2846,7 +2847,7 @@ export default function AuthPage() {
                       className="text-xl font-bold text-[#FE9100]"
                       style={{ fontFamily: 'Orbitron, sans-serif' }}
                     >
-                      01.01.26
+                      01.03.2026
                     </span>
                   </div>
                   
