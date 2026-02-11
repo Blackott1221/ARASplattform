@@ -58,6 +58,25 @@ async function logAudit(
   }
 }
 
+/**
+ * Helper: Non-fatal staff activity log insert.
+ * If the staff_activity_log table has a schema mismatch (e.g. missing columns),
+ * the insert will fail silently with a warning — never crashing the request.
+ */
+async function safeStaffLog(input: {
+  userId: string;
+  action: string;
+  targetType?: string;
+  targetId?: string;
+  metadata?: Record<string, any>;
+}): Promise<void> {
+  try {
+    await db.insert(staffActivityLog).values(input);
+  } catch (err: any) {
+    logger.warn("[ADMIN] staff_activity_log insert failed (non-fatal)", { action: input.action, error: err.message });
+  }
+}
+
 const router = Router();
 
 // ============================================================================
@@ -257,8 +276,8 @@ router.post("/users/:userId/password", requireAdmin, async (req: any, res) => {
       .set({ password: hashedPassword })
       .where(eq(users.id, userId));
 
-    // Log activity
-    await db.insert(staffActivityLog).values({
+    // Log activity (non-fatal)
+    await safeStaffLog({
       userId: req.session.userId,
       action: "password_reset",
       targetType: "user",
@@ -575,9 +594,9 @@ router.delete("/users/:userId", requireAdmin, async (req: any, res) => {
       return res.status(400).json({ error: "Cannot disable an admin account. Demote to user first." });
     }
 
-    // Already disabled?
+    // Idempotent: already disabled → 200
     if (user.subscriptionStatus === 'disabled') {
-      return res.status(400).json({ error: "User is already disabled" });
+      return res.json({ ok: true, success: true, action: "ALREADY_DISABLED" });
     }
 
     const previousStatus = user.subscriptionStatus;
@@ -598,8 +617,8 @@ router.delete("/users/:userId", requireAdmin, async (req: any, res) => {
       logger.warn("[ADMIN] Could not invalidate sessions for user", { userId, error: sessionErr.message });
     }
 
-    // Log activity
-    await db.insert(staffActivityLog).values({
+    // Log activity (non-fatal)
+    await safeStaffLog({
       userId: req.session.userId,
       action: "user_disabled",
       targetType: "user",
@@ -633,8 +652,9 @@ router.post("/users/:userId/enable", requireAdmin, async (req: any, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
+    // Idempotent: already enabled → 200
     if (user.subscriptionStatus !== 'disabled') {
-      return res.status(400).json({ error: "User is not disabled" });
+      return res.json({ ok: true, success: true, action: "ALREADY_ENABLED" });
     }
 
     // Re-enable: set back to 'active'
@@ -643,8 +663,8 @@ router.post("/users/:userId/enable", requireAdmin, async (req: any, res) => {
       .set({ subscriptionStatus: 'active', updatedAt: new Date() })
       .where(eq(users.id, userId));
 
-    // Log activity
-    await db.insert(staffActivityLog).values({
+    // Log activity (non-fatal)
+    await safeStaffLog({
       userId: req.session.userId,
       action: "user_enabled",
       targetType: "user",
