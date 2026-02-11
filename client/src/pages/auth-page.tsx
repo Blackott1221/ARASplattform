@@ -2594,17 +2594,6 @@ export default function AuthPage() {
       
       {/* Simple Dark Background with Subtle Glow */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        {/* Plattform Background Image */}
-        <div 
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `url(${PlattformBild})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-          }}
-        />
-
         {/* Film Grain Texture for Premium Look */}
         <div 
           className="absolute inset-0 opacity-[0.015] mix-blend-overlay"
@@ -2613,8 +2602,8 @@ export default function AuthPage() {
           }}
         />
 
-        {/* Premium Gradient Overlay - darkened to keep text readable */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/75 to-black/60" />
+        {/* Premium Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/80 to-black/70" />
         
         {/* Subtle Radial Glow */}
         <div 
@@ -2648,8 +2637,21 @@ export default function AuthPage() {
               initial={{ opacity: 0, x: -50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8, delay: 0.3 }}
-              className="space-y-10"
+              className="space-y-10 relative"
             >
+              {/* Smartphone Mockup Background Image */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+                <img 
+                  src={PlattformBild} 
+                  alt="" 
+                  className="w-[420px] max-w-none opacity-20"
+                  style={{
+                    filter: 'blur(1px)',
+                    maskImage: 'radial-gradient(ellipse at center, black 30%, transparent 75%)',
+                    WebkitMaskImage: 'radial-gradient(ellipse at center, black 30%, transparent 75%)',
+                  }}
+                />
+              </div>
               {/* Pre-Launch Badge */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
