@@ -2381,7 +2381,11 @@ export default function AuthPage() {
       trackLogin('email', result?.id);
       setLocation("/space");
     } catch (error: any) {
-      setGlobalError('error', 'Login fehlgeschlagen', error.message || 'Ungültige Anmeldedaten. Bitte überprüfe Username und Passwort.');
+      if (error.code === 'ACCOUNT_DISABLED' || error.message?.toLowerCase().includes('disabled')) {
+        setGlobalError('warning', 'Account deaktiviert', 'Dein Account wurde deaktiviert. Bitte kontaktiere den Support unter support@aras-ai.de');
+      } else {
+        setGlobalError('error', 'Login fehlgeschlagen', 'Ungültige Anmeldedaten. Bitte überprüfe Username und Passwort.');
+      }
     }
   };
 

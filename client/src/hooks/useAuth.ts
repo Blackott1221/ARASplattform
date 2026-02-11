@@ -14,7 +14,21 @@ export function useAuth() {
   const loginMutation = useMutation({
     mutationFn: async (credentials: { username: string; password: string }) => {
       console.log('[FRONTEND-DEBUG] Login attempt:', credentials.username);
-      const res = await apiRequest("POST", "/api/login", credentials);
+      // Use fetch directly — apiRequest swallows non-2xx and returns fake 200
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentials),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ message: "Login failed" }));
+        console.log('[FRONTEND-DEBUG] Login rejected:', res.status, data);
+        const err = new Error(data.message || "Login failed");
+        (err as any).code = data.code;
+        (err as any).status = res.status;
+        throw err;
+      }
       const userData = await res.json();
       console.log('[FRONTEND-DEBUG] Login response:', userData);
       return userData;

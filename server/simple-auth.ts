@@ -416,7 +416,12 @@ export function setupSimpleAuth(app: Express) {
         return res.status(500).json({ message: "Authentication error" });
       }
       if (!user) {
-        return res.status(401).json({ message: info?.message || "Invalid username or password" });
+        const isDisabled = info?.message?.toLowerCase().includes('disabled');
+        return res.status(401).json({
+          ok: false,
+          code: isDisabled ? 'ACCOUNT_DISABLED' : 'INVALID_CREDENTIALS',
+          message: info?.message || "Invalid username or password",
+        });
       }
       req.login(user, (err) => {
         if (err) {
