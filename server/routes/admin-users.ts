@@ -17,7 +17,8 @@ import {
   campaigns,
   staffActivityLog,
   adminAuditLog,
-  sessions
+  sessions,
+  userDataSources,
 } from "@shared/schema";
 import { eq, desc, and, gte, sql, count } from "drizzle-orm";
 import { requireAdmin, VALID_ROLES, type UserRole } from "../middleware/admin";
@@ -678,6 +679,423 @@ router.post("/users/:userId/enable", requireAdmin, async (req: any, res) => {
   } catch (error: any) {
     logger.error("[ADMIN] Error enabling user:", error);
     res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message: "Failed to enable user" });
+  }
+});
+
+// ============================================================================
+// PATCH /users/:userId - Update user identity (username, email)
+// ============================================================================
+
+router.patch("/users/:userId", requireAdmin, async (req: any, res) => {
+  try {
+    const { userId } = req.params;
+    const { username, email } = req.body;
+
+    // Must provide at least one field
+    if (!username && !email) {
+      return res.status(400).json({ ok: false, code: "VALIDATION_ERROR", message: "Provide username or email" });
+    }
+
+    // Fetch current user
+    const [user] = await db.select({ id: users.id, username: users.username, email: users.email })
+      .from(users).where(eq(users.id, userId));
+    if (!user) return res.status(404).json({ ok: false, code: "NOT_FOUND", message: "User not found" });
+
+    const updates: Record<string, any> = { updatedAt: new Date() };
+    const before: Record<string, any> = {};
+    const after: Record<string, any> = {};
+
+    if (username && username !== user.username) {
+      const trimmed = String(username).trim();
+      if (trimmed.length < 2 || trimmed.length > 50) {
+        return res.status(400).json({ ok: false, code: "VALIDATION_ERROR", message: "Username must be 2-50 characters" });
+      }
+      // Check uniqueness
+      const [existing] = await db.select({ id: users.id }).from(users)
+        .where(and(eq(users.username, trimmed), sql`${users.id} != ${userId}`));
+      if (existing) return res.status(409).json({ ok: false, code: "CONFLICT", message: "Username already taken" });
+      before.username = user.username;
+      after.username = trimmed;
+      updates.username = trimmed;
+    }
+
+    if (email && email !== user.email) {
+      const trimmed = String(email).trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+        return res.status(400).json({ ok: false, code: "VALIDATION_ERROR", message: "Invalid email format" });
+      }
+      // Check uniqueness
+      const [existing] = await db.select({ id: users.id }).from(users)
+        .where(and(eq(users.email, trimmed), sql`${users.id} != ${userId}`));
+      if (existing) return res.status(409).json({ ok: false, code: "CONFLICT", message: "Email already in use" });
+      before.email = user.email;
+      after.email = trimmed;
+      updates.email = trimmed;
+    }
+
+    if (Object.keys(before).length === 0) {
+      return res.json({ ok: true, action: "NO_CHANGE" });
+    }
+
+    await db.update(users).set(updates).where(eq(users.id, userId));
+
+    await safeStaffLog({
+      userId: req.session.userId,
+      action: "user_identity_edit",
+      targetType: "user",
+      targetId: userId,
+      metadata: { before, after },
+    });
+
+    logger.info("[ADMIN] User identity updated", { userId, changes: after, by: req.session.userId });
+    res.json({ ok: true, action: "UPDATED", changes: after });
+
+  } catch (error: any) {
+    logger.error("[ADMIN] Error updating user identity:", error);
+    res.status(500).json({ ok: false, code: "INTERNAL_ERROR", message: "Failed to update user" });
+  }
+});
+
+// ============================================================================
+// POST /users/:userId/reset-usage - Reset usage counters
+// ============================================================================
+
+router.post("/users/:userId/reset-usage", requireAdmin, async (req: any, res) => {
+  try {
+    const { userId } = req.params;
+
+    const [user] = await db.select({
+      id: users.id, username: users.username,
+      aiMessagesUsed: users.aiMessagesUsed,
+      voiceCallsUsed: users.voiceCallsUsed,
+      trialMessagesUsed: users.trialMessagesUsed,
+    }).from(users).where(eq(users.id, userId));
+
+    if (!user) return res.status(404).json({ ok: false, code: "NOT_FOUND", message: "User not found" });
+
+    const before = {
+      aiMessagesUsed: user.aiMessagesUsed,
+      voiceCallsUsed: user.voiceCallsUsed,
+      trialMessagesUsed: user.trialMessagesUsed,
+    };
+
+    await db.update(users).set({
+      aiMessagesUsed: 0,
+      voiceCallsUsed: 0,
+      trialMessagesUsed: 0,
+      monthlyResetDate: new Date(),
+      updatedAt: new Date(),
+    }).where(eq(users.id, userId));
+
+    await safeStaffLog({
+      userId: req.session.userId,
+      action: "usage_reset",
+      targetType: "user",
+      targetId: userId,
+      metadata: { username: user.username, before },
+    });
+
+    logger.info("[ADMIN] Usage reset", { userId, username: user.username, before, by: req.session.userId });
+    res.json({ ok: true, action: "USAGE_RESET", before });
+
+  } catch (error: any) {
+    logger.error("[ADMIN] Error resetting usage:", error);
+    res.status(500).json({ ok: false, code: "INTERNAL_ERROR", message: "Failed to reset usage" });
+  }
+});
+
+// ============================================================================
+// GET /users/:userId/settings - Get user settings
+// ============================================================================
+
+const SETTINGS_WHITELIST = ["language", "primaryGoal", "notificationSettings", "privacySettings"] as const;
+
+router.get("/users/:userId/settings", requireAdmin, async (req: any, res) => {
+  try {
+    const { userId } = req.params;
+
+    const [user] = await db.select({
+      id: users.id,
+      language: users.language,
+      primaryGoal: users.primaryGoal,
+      notificationSettings: users.notificationSettings,
+      privacySettings: users.privacySettings,
+    }).from(users).where(eq(users.id, userId));
+
+    if (!user) return res.status(404).json({ ok: false, code: "NOT_FOUND", message: "User not found" });
+
+    res.json({
+      ok: true,
+      settings: {
+        language: user.language,
+        primaryGoal: user.primaryGoal,
+        notificationSettings: user.notificationSettings || {},
+        privacySettings: user.privacySettings || {},
+      },
+    });
+
+  } catch (error: any) {
+    logger.error("[ADMIN] Error fetching settings:", error);
+    res.status(500).json({ ok: false, code: "INTERNAL_ERROR", message: "Failed to fetch settings" });
+  }
+});
+
+// ============================================================================
+// PATCH /users/:userId/settings - Update user settings
+// ============================================================================
+
+router.patch("/users/:userId/settings", requireAdmin, async (req: any, res) => {
+  try {
+    const { userId } = req.params;
+    const body = req.body;
+
+    const [user] = await db.select({ id: users.id, username: users.username })
+      .from(users).where(eq(users.id, userId));
+    if (!user) return res.status(404).json({ ok: false, code: "NOT_FOUND", message: "User not found" });
+
+    const updates: Record<string, any> = { updatedAt: new Date() };
+    const changes: Record<string, any> = {};
+
+    // Only allow whitelisted keys
+    if (body.language !== undefined) {
+      updates.language = String(body.language).slice(0, 10);
+      changes.language = updates.language;
+    }
+    if (body.primaryGoal !== undefined) {
+      updates.primaryGoal = body.primaryGoal ? String(body.primaryGoal).slice(0, 200) : null;
+      changes.primaryGoal = updates.primaryGoal;
+    }
+    if (body.notificationSettings !== undefined && typeof body.notificationSettings === "object") {
+      updates.notificationSettings = {
+        emailNotifications: !!body.notificationSettings.emailNotifications,
+        campaignAlerts: !!body.notificationSettings.campaignAlerts,
+        weeklyReports: !!body.notificationSettings.weeklyReports,
+        aiSuggestions: !!body.notificationSettings.aiSuggestions,
+      };
+      changes.notificationSettings = updates.notificationSettings;
+    }
+    if (body.privacySettings !== undefined && typeof body.privacySettings === "object") {
+      updates.privacySettings = {
+        dataCollection: !!body.privacySettings.dataCollection,
+        analytics: !!body.privacySettings.analytics,
+        thirdPartySharing: !!body.privacySettings.thirdPartySharing,
+      };
+      changes.privacySettings = updates.privacySettings;
+    }
+
+    if (Object.keys(changes).length === 0) {
+      return res.json({ ok: true, action: "NO_CHANGE" });
+    }
+
+    await db.update(users).set(updates).where(eq(users.id, userId));
+
+    await safeStaffLog({
+      userId: req.session.userId,
+      action: "settings_edit",
+      targetType: "user",
+      targetId: userId,
+      metadata: { username: user.username, changes },
+    });
+
+    logger.info("[ADMIN] Settings updated", { userId, changes, by: req.session.userId });
+    res.json({ ok: true, action: "UPDATED", changes });
+
+  } catch (error: any) {
+    logger.error("[ADMIN] Error updating settings:", error);
+    res.status(500).json({ ok: false, code: "INTERNAL_ERROR", message: "Failed to update settings" });
+  }
+});
+
+// ============================================================================
+// GET /users/:userId/kb - List user knowledge base entries
+// ============================================================================
+
+router.get("/users/:userId/kb", requireAdmin, async (req: any, res) => {
+  try {
+    const { userId } = req.params;
+    const search = (req.query.search as string || "").trim();
+    const type = req.query.type as string;
+    const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+    const offset = parseInt(req.query.offset as string) || 0;
+
+    // Verify user exists
+    const [user] = await db.select({ id: users.id }).from(users).where(eq(users.id, userId));
+    if (!user) return res.status(404).json({ ok: false, code: "NOT_FOUND", message: "User not found" });
+
+    // Build query with filters
+    let conditions = [eq(userDataSources.userId, userId)];
+    if (type && ["file", "text", "url"].includes(type)) {
+      conditions.push(eq(userDataSources.type, type as any));
+    }
+
+    if (search) {
+      conditions.push(sql`(${userDataSources.title} ILIKE ${'%' + search + '%'} OR ${userDataSources.contentText} ILIKE ${'%' + search + '%'})`);
+    }
+
+    const entries = await db.select({
+      id: userDataSources.id,
+      type: userDataSources.type,
+      title: userDataSources.title,
+      status: userDataSources.status,
+      url: userDataSources.url,
+      fileName: userDataSources.fileName,
+      fileMime: userDataSources.fileMime,
+      fileSize: userDataSources.fileSize,
+      contentPreview: sql<string>`LEFT(${userDataSources.contentText}, 200)`.as("content_preview"),
+      createdAt: userDataSources.createdAt,
+      updatedAt: userDataSources.updatedAt,
+    })
+    .from(userDataSources)
+    .where(and(...conditions))
+    .orderBy(desc(userDataSources.updatedAt))
+    .limit(limit)
+    .offset(offset);
+
+    // Get total count
+    const [countResult] = await db.select({ total: count() })
+      .from(userDataSources)
+      .where(and(...conditions));
+
+    res.json({
+      ok: true,
+      entries,
+      pagination: { limit, offset, total: countResult?.total || 0 },
+    });
+
+  } catch (error: any) {
+    logger.error("[ADMIN] Error fetching KB:", error);
+    res.status(500).json({ ok: false, code: "INTERNAL_ERROR", message: "Failed to fetch KB" });
+  }
+});
+
+// ============================================================================
+// POST /users/:userId/kb - Create KB entry
+// ============================================================================
+
+router.post("/users/:userId/kb", requireAdmin, async (req: any, res) => {
+  try {
+    const { userId } = req.params;
+    const { type, title, contentText, url } = req.body;
+
+    // Verify user
+    const [user] = await db.select({ id: users.id, username: users.username })
+      .from(users).where(eq(users.id, userId));
+    if (!user) return res.status(404).json({ ok: false, code: "NOT_FOUND", message: "User not found" });
+
+    // Validate
+    if (!type || !["text", "url"].includes(type)) {
+      return res.status(400).json({ ok: false, code: "VALIDATION_ERROR", message: "Type must be 'text' or 'url'" });
+    }
+    if (title && String(title).length > 200) {
+      return res.status(400).json({ ok: false, code: "VALIDATION_ERROR", message: "Title max 200 chars" });
+    }
+    if (contentText && String(contentText).length > 50000) {
+      return res.status(400).json({ ok: false, code: "VALIDATION_ERROR", message: "Content max 50000 chars" });
+    }
+    if (type === "url" && !url) {
+      return res.status(400).json({ ok: false, code: "VALIDATION_ERROR", message: "URL required for type 'url'" });
+    }
+    if (type === "text" && !contentText) {
+      return res.status(400).json({ ok: false, code: "VALIDATION_ERROR", message: "Content required for type 'text'" });
+    }
+
+    const [entry] = await db.insert(userDataSources).values({
+      userId,
+      type: type as "text" | "url",
+      title: title ? String(title).slice(0, 200) : null,
+      contentText: contentText ? String(contentText).slice(0, 50000) : null,
+      url: url ? String(url).slice(0, 2000) : null,
+      status: "active",
+    }).returning();
+
+    await safeStaffLog({
+      userId: req.session.userId,
+      action: "kb_create",
+      targetType: "user",
+      targetId: userId,
+      metadata: { username: user.username, entryId: entry.id, type, title },
+    });
+
+    logger.info("[ADMIN] KB entry created", { userId, entryId: entry.id, by: req.session.userId });
+    res.json({ ok: true, action: "CREATED", entry: { ...entry, contentText: undefined } });
+
+  } catch (error: any) {
+    logger.error("[ADMIN] Error creating KB entry:", error);
+    res.status(500).json({ ok: false, code: "INTERNAL_ERROR", message: "Failed to create KB entry" });
+  }
+});
+
+// ============================================================================
+// PATCH /users/:userId/kb/:entryId - Edit KB entry
+// ============================================================================
+
+router.patch("/users/:userId/kb/:entryId", requireAdmin, async (req: any, res) => {
+  try {
+    const { userId, entryId } = req.params;
+    const { title, contentText, url, status } = req.body;
+
+    // Verify entry belongs to user
+    const [entry] = await db.select()
+      .from(userDataSources)
+      .where(and(eq(userDataSources.id, parseInt(entryId)), eq(userDataSources.userId, userId)));
+    if (!entry) return res.status(404).json({ ok: false, code: "NOT_FOUND", message: "KB entry not found" });
+
+    const updates: Record<string, any> = { updatedAt: new Date() };
+    if (title !== undefined) updates.title = title ? String(title).slice(0, 200) : null;
+    if (contentText !== undefined) updates.contentText = contentText ? String(contentText).slice(0, 50000) : null;
+    if (url !== undefined) updates.url = url ? String(url).slice(0, 2000) : null;
+    if (status && ["active", "pending", "failed"].includes(status)) updates.status = status;
+
+    await db.update(userDataSources).set(updates)
+      .where(eq(userDataSources.id, parseInt(entryId)));
+
+    await safeStaffLog({
+      userId: req.session.userId,
+      action: "kb_edit",
+      targetType: "user",
+      targetId: userId,
+      metadata: { entryId: parseInt(entryId), fields: Object.keys(updates).filter(k => k !== "updatedAt") },
+    });
+
+    logger.info("[ADMIN] KB entry updated", { userId, entryId, by: req.session.userId });
+    res.json({ ok: true, action: "UPDATED" });
+
+  } catch (error: any) {
+    logger.error("[ADMIN] Error updating KB entry:", error);
+    res.status(500).json({ ok: false, code: "INTERNAL_ERROR", message: "Failed to update KB entry" });
+  }
+});
+
+// ============================================================================
+// DELETE /users/:userId/kb/:entryId - Delete KB entry
+// ============================================================================
+
+router.delete("/users/:userId/kb/:entryId", requireAdmin, async (req: any, res) => {
+  try {
+    const { userId, entryId } = req.params;
+
+    // Verify entry belongs to user
+    const [entry] = await db.select({ id: userDataSources.id, title: userDataSources.title, type: userDataSources.type })
+      .from(userDataSources)
+      .where(and(eq(userDataSources.id, parseInt(entryId)), eq(userDataSources.userId, userId)));
+    if (!entry) return res.status(404).json({ ok: false, code: "NOT_FOUND", message: "KB entry not found" });
+
+    await db.delete(userDataSources).where(eq(userDataSources.id, parseInt(entryId)));
+
+    await safeStaffLog({
+      userId: req.session.userId,
+      action: "kb_delete",
+      targetType: "user",
+      targetId: userId,
+      metadata: { entryId: parseInt(entryId), title: entry.title, type: entry.type },
+    });
+
+    logger.info("[ADMIN] KB entry deleted", { userId, entryId, by: req.session.userId });
+    res.json({ ok: true, action: "DELETED" });
+
+  } catch (error: any) {
+    logger.error("[ADMIN] Error deleting KB entry:", error);
+    res.status(500).json({ ok: false, code: "INTERNAL_ERROR", message: "Failed to delete KB entry" });
   }
 });
 

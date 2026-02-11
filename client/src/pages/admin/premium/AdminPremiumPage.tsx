@@ -15,7 +15,7 @@ import { AdminTopbar } from "./AdminTopbar";
 import { AdminKpiCards } from "./AdminKpiCards";
 import { AdminTabs } from "./AdminTabs";
 import { UsersGrid } from "./UsersGrid";
-import { UserDeepDivePanel } from "./UserDeepDivePanel";
+import { UserControlCenter } from "./UserControlCenter";
 import { ActivityLogPanel } from "./ActivityLogPanel";
 import { SystemHealthPanel } from "./SystemHealthPanel";
 import { ArasConfirmDialog } from "./ArasConfirmDialog";
@@ -299,12 +299,14 @@ export default function AdminPremiumPage() {
         )}
       </div>
 
-      {/* Deep Dive Panel */}
+      {/* User Control Center (Deep Dive) */}
       {deepDiveUserId && (
-        <UserDeepDivePanel
+        <UserControlCenter
           userId={deepDiveUserId}
           onClose={() => setDeepDiveUserId(null)}
           onOpenModal={openModal}
+          onRequestDisable={requestDisable}
+          onRequestEnable={requestEnable}
           reducedMotion={prefersReducedMotion}
         />
       )}
