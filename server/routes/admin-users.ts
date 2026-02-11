@@ -61,6 +61,22 @@ async function logAudit(
 const router = Router();
 
 // ============================================================================
+// GET /users - List all users (replaces generic CRUD, strips password hashes)
+// ============================================================================
+
+router.get("/users", requireAdmin, async (req: any, res) => {
+  try {
+    const records = await db.select().from(users).orderBy(desc(users.createdAt));
+    // Strip sensitive fields
+    const safe = records.map(({ password, ...rest }) => rest);
+    res.json(safe);
+  } catch (error: any) {
+    logger.error("[ADMIN] Error fetching users:", error);
+    res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message: 'Failed to fetch users' });
+  }
+});
+
+// ============================================================================
 // GET /users/:userId/deep-dive - Complete user data
 // ============================================================================
 

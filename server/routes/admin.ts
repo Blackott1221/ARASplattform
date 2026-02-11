@@ -182,7 +182,9 @@ function createCRUDRoutes(
 }
 
 // Create CRUD routes for all tables
-createCRUDRoutes('users', users, router);
+// NOTE: 'users' intentionally excluded — admin-users.ts handles all user endpoints
+// with proper soft-disable, audit logging, and safety checks.
+// Generic CRUD for users was causing hard-delete (FK violations) and shadowing the soft-disable.
 createCRUDRoutes('leads', leads, router);
 createCRUDRoutes('calendar-events', calendarEvents, router);
 createCRUDRoutes('contacts', contacts, router);
