@@ -42,9 +42,9 @@ export const requireAdmin = async (req: Request, res: Response, next: NextFuncti
     if (role !== 'admin') {
       console.warn(`[ADMIN] Access denied for ${user.username} (role: ${role})`);
       return res.status(403).json({ 
-        error: 'Forbidden', 
-        message: 'Admin access required',
-        debug: { username: user.username, role }
+        ok: false, 
+        code: 'FORBIDDEN', 
+        message: 'Admin access required.' 
       });
     }
 
@@ -60,7 +60,7 @@ export const requireAdmin = async (req: Request, res: Response, next: NextFuncti
     return next();
   } catch (err: any) {
     console.error('[ADMIN] Middleware error:', err);
-    return res.status(500).json({ error: 'Admin check failed', message: err.message });
+    return res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message: 'Admin check failed' });
   }
 };
 
@@ -88,9 +88,9 @@ export const requireStaffOrAdmin = async (req: Request, res: Response, next: Nex
     if (role !== 'admin' && role !== 'staff') {
       console.warn(`[ADMIN] Staff/Admin access denied for ${user.username} (role: ${role})`);
       return res.status(403).json({ 
-        error: 'Forbidden', 
-        message: 'Staff or Admin access required',
-        debug: { username: user.username, role }
+        ok: false, 
+        code: 'FORBIDDEN', 
+        message: 'Staff or Admin access required.' 
       });
     }
 
@@ -101,7 +101,7 @@ export const requireStaffOrAdmin = async (req: Request, res: Response, next: Nex
     return next();
   } catch (err: any) {
     console.error('[ADMIN] Middleware error:', err);
-    return res.status(500).json({ error: 'Access check failed', message: err.message });
+    return res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message: 'Access check failed' });
   }
 };
 

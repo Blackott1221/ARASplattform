@@ -16,7 +16,8 @@ import {
   chatSessions,
   campaigns,
   staffActivityLog,
-  adminAuditLog
+  adminAuditLog,
+  sessions
 } from "@shared/schema";
 import { eq, desc, and, gte, sql, count } from "drizzle-orm";
 import { requireAdmin, VALID_ROLES, type UserRole } from "../middleware/admin";
@@ -531,43 +532,116 @@ router.get("/roles/stats", requireAdmin, async (req: any, res) => {
 });
 
 // ============================================================================
-// DELETE /users/:userId - Delete user
+// DELETE /users/:userId - Disable user (soft-delete: sets subscriptionStatus='disabled')
 // ============================================================================
 
 router.delete("/users/:userId", requireAdmin, async (req: any, res) => {
   try {
     const { userId } = req.params;
 
-    // Prevent self-deletion
+    // Prevent self-disable
     if (userId === req.session.userId) {
-      return res.status(400).json({ error: "Cannot delete yourself" });
+      return res.status(400).json({ error: "Cannot disable yourself" });
     }
 
     // Get user info for logging
-    const [user] = await db.select({ username: users.username }).from(users).where(eq(users.id, userId));
+    const [user] = await db
+      .select({ username: users.username, userRole: users.userRole, subscriptionStatus: users.subscriptionStatus })
+      .from(users)
+      .where(eq(users.id, userId));
     
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Delete user (cascade should handle related data)
-    await db.delete(users).where(eq(users.id, userId));
+    // Prevent disabling other admins (safety)
+    if (user.userRole === 'admin') {
+      return res.status(400).json({ error: "Cannot disable an admin account. Demote to user first." });
+    }
+
+    // Already disabled?
+    if (user.subscriptionStatus === 'disabled') {
+      return res.status(400).json({ error: "User is already disabled" });
+    }
+
+    const previousStatus = user.subscriptionStatus;
+
+    // Soft-disable: set subscriptionStatus to 'disabled'
+    await db
+      .update(users)
+      .set({ subscriptionStatus: 'disabled', updatedAt: new Date() })
+      .where(eq(users.id, userId));
+
+    // Invalidate all sessions for this user
+    try {
+      await db.delete(sessions).where(
+        sql`sess::jsonb -> 'passport' ->> 'user' = ${userId}`
+      );
+      logger.info("[ADMIN] Sessions invalidated for disabled user", { userId });
+    } catch (sessionErr: any) {
+      logger.warn("[ADMIN] Could not invalidate sessions for user", { userId, error: sessionErr.message });
+    }
 
     // Log activity
     await db.insert(staffActivityLog).values({
       userId: req.session.userId,
-      action: "user_deleted",
+      action: "user_disabled",
       targetType: "user",
       targetId: userId,
-      metadata: { deletedUsername: user.username },
+      metadata: { disabledUsername: user.username, previousStatus },
     });
 
-    logger.info("[ADMIN] User deleted", { userId, username: user.username, by: req.session.userId });
-    res.json({ success: true });
+    logger.info("[ADMIN] User disabled", { userId, username: user.username, by: req.session.userId });
+    res.json({ success: true, action: "DISABLED" });
 
   } catch (error: any) {
-    logger.error("[ADMIN] Error deleting user:", error);
-    res.status(500).json({ error: "Failed to delete user" });
+    logger.error("[ADMIN] Error disabling user:", error);
+    res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message: "Failed to disable user" });
+  }
+});
+
+// ============================================================================
+// POST /users/:userId/enable - Re-enable a disabled user
+// ============================================================================
+
+router.post("/users/:userId/enable", requireAdmin, async (req: any, res) => {
+  try {
+    const { userId } = req.params;
+
+    const [user] = await db
+      .select({ username: users.username, subscriptionStatus: users.subscriptionStatus })
+      .from(users)
+      .where(eq(users.id, userId));
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    if (user.subscriptionStatus !== 'disabled') {
+      return res.status(400).json({ error: "User is not disabled" });
+    }
+
+    // Re-enable: set back to 'active'
+    await db
+      .update(users)
+      .set({ subscriptionStatus: 'active', updatedAt: new Date() })
+      .where(eq(users.id, userId));
+
+    // Log activity
+    await db.insert(staffActivityLog).values({
+      userId: req.session.userId,
+      action: "user_enabled",
+      targetType: "user",
+      targetId: userId,
+      metadata: { enabledUsername: user.username },
+    });
+
+    logger.info("[ADMIN] User re-enabled", { userId, username: user.username, by: req.session.userId });
+    res.json({ success: true, action: "ENABLED" });
+
+  } catch (error: any) {
+    logger.error("[ADMIN] Error enabling user:", error);
+    res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message: "Failed to enable user" });
   }
 });
 

@@ -223,9 +223,12 @@ export function setupSimpleAuth(app: Express) {
         const user = await storage.getUserByUsername(username);
         if (!user || !(await comparePasswords(password, user.password))) {
           return done(null, false);
-        } else {
-          return done(null, user);
         }
+        // Block disabled accounts
+        if (user.subscriptionStatus === 'disabled') {
+          return done(null, false, { message: 'Account disabled. Please contact support.' });
+        }
+        return done(null, user);
       } catch (error) {
         return done(error);
       }
@@ -413,7 +416,7 @@ export function setupSimpleAuth(app: Express) {
         return res.status(500).json({ message: "Authentication error" });
       }
       if (!user) {
-        return res.status(401).json({ message: "Invalid username or password" });
+        return res.status(401).json({ message: info?.message || "Invalid username or password" });
       }
       req.login(user, (err) => {
         if (err) {

@@ -226,17 +226,39 @@ export default function AdminDashboard() {
   // Mutations
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`${getEndpoint(selectedTable.id)}/${id}`, { 
+      const res = await fetch(`/api/admin/users/${id}`, { 
         method: 'DELETE', credentials: 'include' 
       });
-      if (!res.ok) throw new Error('Delete failed');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || err.message || 'Disable failed');
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-table'] });
-      toast({ title: "✅ Gelöscht!" });
+      queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+      toast({ title: "✅ User deaktiviert", description: "Login gesperrt. Daten bleiben erhalten." });
     },
-    onError: () => toast({ title: "❌ Fehler", variant: "destructive" })
+    onError: (error: any) => toast({ title: "❌ Fehler", description: error.message, variant: "destructive" })
+  });
+
+  const enableUserMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/admin/users/${id}/enable`, {
+        method: 'POST', credentials: 'include'
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || err.message || 'Enable failed');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-table'] });
+      toast({ title: "✅ User reaktiviert" });
+    },
+    onError: (error: any) => toast({ title: "❌ Fehler", description: error.message, variant: "destructive" })
   });
 
   const changePlanMutation = useMutation({
@@ -594,14 +616,27 @@ export default function AdminDashboard() {
                       >
                         <RotateCcw className="w-4 h-4" />
                       </button>
-                      <button
-                        className="p-2 rounded bg-red-500/20 hover:bg-red-500/30 text-red-400"
-                        onClick={() => {
-                          if (confirm('Delete user?')) deleteMutation.mutate(user.id);
-                        }}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {(user.subscriptionStatus || user.subscription_status) === 'disabled' ? (
+                        <button
+                          className="p-2 rounded bg-green-500/20 hover:bg-green-500/30 text-green-400"
+                          title="Re-enable user"
+                          onClick={() => {
+                            if (confirm('Re-enable this user? Login will be allowed again.')) enableUserMutation.mutate(user.id);
+                          }}
+                        >
+                          <RotateCcw className="w-4 h-4" />
+                        </button>
+                      ) : (
+                        <button
+                          className="p-2 rounded bg-red-500/20 hover:bg-red-500/30 text-red-400"
+                          title="Disable user — blocks login, data stays preserved"
+                          onClick={() => {
+                            if (confirm('Disable this user? Login will be blocked immediately. Data stays preserved.')) deleteMutation.mutate(user.id);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}

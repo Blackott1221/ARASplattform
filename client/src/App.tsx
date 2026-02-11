@@ -58,6 +58,7 @@ import InternalContracts from "@/pages/internal/contracts";
 import InternalChat from "@/pages/internal/chat";
 import AcceptInvite from "@/pages/admin/accept-invite";
 import AdminContracts from "@/pages/admin/contracts";
+import { AdminRoute, StaffRoute } from "@/components/admin-route";
 
 // Memoized video background component - never re-renders to keep video playing continuously
 const VideoBackground = memo(() => {
@@ -203,11 +204,11 @@ function Router() {
           <Route path="/app/voice-agents" component={VoiceAgents} />
           <Route path="/leads" component={AppPage} />
           <Route path="/app/leads" component={AppPage} />
-          <Route path="/admin" component={AdminDashboard} />
-          <Route path="/admin-dashboard" component={AdminDashboard} />
-          <Route path="/admin/founding-claims" component={AdminFoundingClaims} />
-          <Route path="/app/admin" component={AdminDashboard} />
-          <Route path="/app/admin-dashboard" component={AdminDashboard} />
+          <Route path="/admin">{() => <AdminRoute><AdminDashboard /></AdminRoute>}</Route>
+          <Route path="/admin-dashboard">{() => <AdminRoute><AdminDashboard /></AdminRoute>}</Route>
+          <Route path="/admin/founding-claims">{() => <AdminRoute><AdminFoundingClaims /></AdminRoute>}</Route>
+          <Route path="/app/admin">{() => <AdminRoute><AdminDashboard /></AdminRoute>}</Route>
+          <Route path="/app/admin-dashboard">{() => <AdminRoute><AdminDashboard /></AdminRoute>}</Route>
           <Route path="/campaigns" component={Campaigns} />
           <Route path="/app/campaigns" component={Campaigns} />
           <Route path="/contacts" component={Contacts} />
@@ -222,24 +223,24 @@ function Router() {
           <Route path="/app/aras-mailing" component={ArasMailingPage} />
           
           {/* 🎯 INTERNAL CRM ROUTES - Only for admin/staff */}
-          <Route path="/internal/dashboard" component={InternalDashboard} />
-          <Route path="/internal/mails" component={InternalMails} />
-          <Route path="/internal/contacts" component={InternalContacts} />
-          <Route path="/internal/companies" component={InternalCompanies} />
-          <Route path="/internal/deals" component={InternalDeals} />
-          <Route path="/internal/tasks" component={InternalTasks} />
-          <Route path="/internal/calls" component={InternalCalls} />
-          <Route path="/internal/chat" component={InternalChat} />
-          <Route path="/internal/settings" component={InternalSettings} />
-          <Route path="/internal/contracts/:id" component={InternalContracts} />
-          <Route path="/internal/contracts" component={InternalContracts} />
-          <Route path="/internal" component={InternalDashboard} />
+          <Route path="/internal/dashboard">{() => <StaffRoute><InternalDashboard /></StaffRoute>}</Route>
+          <Route path="/internal/mails">{() => <StaffRoute><InternalMails /></StaffRoute>}</Route>
+          <Route path="/internal/contacts">{() => <StaffRoute><InternalContacts /></StaffRoute>}</Route>
+          <Route path="/internal/companies">{() => <StaffRoute><InternalCompanies /></StaffRoute>}</Route>
+          <Route path="/internal/deals">{() => <StaffRoute><InternalDeals /></StaffRoute>}</Route>
+          <Route path="/internal/tasks">{() => <StaffRoute><InternalTasks /></StaffRoute>}</Route>
+          <Route path="/internal/calls">{() => <StaffRoute><InternalCalls /></StaffRoute>}</Route>
+          <Route path="/internal/chat">{() => <StaffRoute><InternalChat /></StaffRoute>}</Route>
+          <Route path="/internal/settings">{() => <StaffRoute><InternalSettings /></StaffRoute>}</Route>
+          <Route path="/internal/contracts/:id">{() => <StaffRoute><InternalContracts /></StaffRoute>}</Route>
+          <Route path="/internal/contracts">{() => <StaffRoute><InternalContracts /></StaffRoute>}</Route>
+          <Route path="/internal">{() => <StaffRoute><InternalDashboard /></StaffRoute>}</Route>
           
           {/* Staff Invitation Accept Page */}
           <Route path="/admin/accept-invite" component={AcceptInvite} />
           
           {/* Admin Contract Manager */}
-          <Route path="/admin/contracts" component={AdminContracts} />
+          <Route path="/admin/contracts">{() => <AdminRoute><AdminContracts /></AdminRoute>}</Route>
           
         </>
       )}

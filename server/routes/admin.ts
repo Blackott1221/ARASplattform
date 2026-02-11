@@ -4,22 +4,40 @@ import {
   users, leads, calendarEvents, contacts, campaigns,
   chatSessions, chatMessages, voiceAgents, callLogs,
   voiceTasks, feedback, usageTracking, twilioSettings,
-  subscriptionPlans, sessions
+  subscriptionPlans, sessions, staffActivityLog
 } from '../../shared/schema';
 import { eq, desc, gt, sql, count } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import contractsRouter from './admin/contracts';
+import { requireAdmin } from '../middleware/admin';
 
 const router = Router();
 
 // Mount contract routes
 router.use('/contracts', contractsRouter);
 
-// 🔒 Admin Auth Middleware (you should verify admin rights here)
-function requireAdmin(req: Request, res: Response, next: any) {
-  // TODO: Add proper admin authentication check
-  // For now, just proceed
-  next();
+// 🔒 Admin Auth — real middleware imported from ../middleware/admin
+// Defense in depth: apply requireAdmin at router level for ALL routes
+router.use(requireAdmin);
+
+// Audit helper: log admin actions to staffActivityLog (no schema change needed)
+async function logAdminAction(
+  actorUserId: string,
+  action: string,
+  targetId: string,
+  metadata?: Record<string, any>
+) {
+  try {
+    await db.insert(staffActivityLog).values({
+      userId: actorUserId,
+      action,
+      targetType: 'user',
+      targetId,
+      metadata: metadata || {},
+    });
+  } catch (err) {
+    console.error('[AUDIT] Failed to log admin action:', err);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -52,7 +70,7 @@ router.get('/online-users', requireAdmin, async (req, res) => {
     });
   } catch (error: any) {
     console.error('[ADMIN ERROR] Failed to get online users:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message: 'Failed to fetch online users' });
   }
 });
 
@@ -84,7 +102,7 @@ function createCRUDRoutes(
       res.json(records);
     } catch (error: any) {
       console.error(`[ADMIN ERROR] Error fetching ${tableName}:`, error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message: `Failed to fetch ${tableName}` });
     }
   });
 
@@ -100,8 +118,8 @@ function createCRUDRoutes(
       }
       res.json(record[0]);
     } catch (error: any) {
-      console.error(`Error fetching ${tableName} record:`, error);
-      res.status(500).json({ error: error.message });
+      console.error(`[ADMIN ERROR] Error fetching ${tableName} record:`, error);
+      res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message: `Failed to fetch ${tableName} record` });
     }
   });
 
@@ -111,8 +129,8 @@ function createCRUDRoutes(
       const newRecord = await db.insert(table).values(req.body).returning();
       res.status(201).json(newRecord[0]);
     } catch (error: any) {
-      console.error(`Error creating ${tableName}:`, error);
-      res.status(500).json({ error: error.message });
+      console.error(`[ADMIN ERROR] Error creating ${tableName}:`, error);
+      res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message: `Failed to create ${tableName} record` });
     }
   });
 
@@ -140,7 +158,7 @@ function createCRUDRoutes(
       res.json(updatedRecord[0]);
     } catch (error: any) {
       console.error(`[ADMIN ERROR] Error updating ${tableName}:`, error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message: `Failed to update ${tableName} record` });
     }
   });
 
@@ -158,7 +176,7 @@ function createCRUDRoutes(
       res.json({ success: true, deleted: deletedRecord[0] });
     } catch (error: any) {
       console.error(`[ADMIN ERROR] Error deleting ${tableName}:`, error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message: `Failed to delete ${tableName} record` });
     }
   });
 }
@@ -187,8 +205,8 @@ router.get('/sessions', requireAdmin, async (req, res) => {
     const mapped = allSessions.map(s => ({ ...s, id: s.sid }));
     res.json(mapped);
   } catch (error: any) {
-    console.error('Error fetching sessions:', error);
-    res.status(500).json({ error: error.message });
+    console.error('[ADMIN ERROR] Error fetching sessions:', error);
+    res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message: 'Failed to fetch sessions' });
   }
 });
 
@@ -203,8 +221,8 @@ router.delete('/sessions/:id', requireAdmin, async (req, res) => {
     console.log(`[ADMIN] Deleted session ${id}`);
     res.json({ success: true, deleted: deleted[0] });
   } catch (error: any) {
-    console.error('Error deleting session:', error);
-    res.status(500).json({ error: error.message });
+    console.error('[ADMIN ERROR] Error deleting session:', error);
+    res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message: 'Failed to delete session' });
   }
 });
 
@@ -312,8 +330,8 @@ router.get('/stats', requireAdmin, async (req, res) => {
       statusDistribution
     });
   } catch (error: any) {
-    console.error('Error fetching stats:', error);
-    res.status(500).json({ error: error.message });
+    console.error('[ADMIN ERROR] Error fetching stats:', error);
+    res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message: 'Failed to fetch stats' });
   }
 });
 
@@ -343,11 +361,15 @@ router.post('/users/:id/change-password', requireAdmin, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    // Audit log
+    const actorId = (req as any).adminUser?.id || (req as any).session?.userId;
+    await logAdminAction(actorId, 'password_changed', id, { targetUsername: updated[0]?.username });
+
     console.log(`[ADMIN] Password changed for user ${id}`);
     res.json({ success: true, message: 'Password changed successfully' });
   } catch (error: any) {
     console.error('[ADMIN ERROR] Change password failed:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message: 'Failed to change password' });
   }
 });
 
@@ -380,11 +402,19 @@ router.post('/users/:id/change-plan', requireAdmin, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    // Audit log
+    const actorId = (req as any).adminUser?.id || (req as any).session?.userId;
+    await logAdminAction(actorId, 'plan_changed', id, {
+      targetUsername: updated[0]?.username,
+      newPlan: plan,
+      newStatus: status || undefined,
+    });
+
     console.log(`[ADMIN] Plan changed for user ${id} to ${plan}`);
     res.json({ success: true, user: updated[0] });
   } catch (error: any) {
     console.error('[ADMIN ERROR] Change plan failed:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message: 'Failed to change plan' });
   }
 });
 
@@ -409,11 +439,15 @@ router.post('/users/:id/reset-usage', requireAdmin, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    // Audit log
+    const actorId = (req as any).adminUser?.id || (req as any).session?.userId;
+    await logAdminAction(actorId, 'usage_reset', id, { targetUsername: updated[0]?.username });
+
     console.log(`[ADMIN] Usage reset for user ${id}`);
     res.json({ success: true, user: updated[0] });
   } catch (error: any) {
     console.error('[ADMIN ERROR] Reset usage failed:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ ok: false, code: 'INTERNAL_ERROR', message: 'Failed to reset usage' });
   }
 });
 
