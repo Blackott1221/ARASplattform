@@ -1,4 +1,4 @@
-import { useState, useEffect, Component, ErrorInfo, ReactNode } from "react";
+import { useState, useEffect, useRef, Component, ErrorInfo, ReactNode } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1856,6 +1856,10 @@ export default function AuthPage() {
   const { user, isLoading, loginMutation, registerMutation } = useAuth();
   const { toast } = useToast();
   
+  // 🔥 Ref to block redirect during post-registration briefing flow
+  // Refs are synchronous — immune to React batching / re-render race conditions
+  const skipAuthRedirectRef = useRef(false);
+  
   // 🔥 READ URL PARAMS FOR FLOW CONTROL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -2353,15 +2357,15 @@ export default function AuthPage() {
     return () => clearTimeout(timer);
   }, [typedText, isDeleting, typedIndex]);
 
-  // Redirect after login (but NOT during onboarding briefing)
+  // Redirect after login (but NOT during post-registration briefing)
   useEffect(() => {
-    if (!isLoading && user && onboardingPhase === 'signup') {
+    if (!isLoading && user && !skipAuthRedirectRef.current) {
       setLocation("/space");
     }
-  }, [isLoading, user, setLocation, onboardingPhase]);
+  }, [isLoading, user, setLocation]);
 
-  // Show loader during auth check or redirect (but NOT during onboarding briefing)
-  if (isLoading || (!isLoading && user && onboardingPhase === 'signup')) {
+  // Show loader during auth check or redirect (but NOT during post-registration briefing)
+  if (isLoading || (!isLoading && user && !skipAuthRedirectRef.current)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
         <motion.div
@@ -2497,6 +2501,9 @@ export default function AuthPage() {
       // Start actual registration after animation starts
       setTimeout(async () => {
         try {
+          // 🔥 Block redirect BEFORE mutateAsync — ref is synchronous,
+          // so it's already true when onSuccess triggers re-render
+          skipAuthRedirectRef.current = true;
           const result = await registerMutation.mutateAsync(registerData);
           trackSignup('email', result?.id);
           
@@ -2535,9 +2542,12 @@ export default function AuthPage() {
             ]
           });
           
-          // Transition to briefing phase after short delay
+          // 🔥 Set briefing phase IMMEDIATELY (not in setTimeout!)
+          // This must happen synchronously to prevent any redirect race
+          setOnboardingPhase('briefing');
+          
+          // Animation cleanup after short delay
           setTimeout(() => {
-            setOnboardingPhase('briefing');
             setIsResearching(false);
             setBriefingTimelineStep(0);
           }, 1500);
@@ -2545,6 +2555,7 @@ export default function AuthPage() {
         } catch (error: any) {
           clearInterval(stepInterval);
           setIsResearching(false);
+          skipAuthRedirectRef.current = false; // Reset so user can navigate after error
           
           console.error('[REGISTER-ERROR]', error);
           
