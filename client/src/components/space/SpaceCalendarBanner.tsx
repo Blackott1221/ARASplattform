@@ -1,11 +1,12 @@
 import { useState, useRef, useCallback, useMemo } from "react";
 import { Link } from "wouter";
 import { motion, useReducedMotion } from "framer-motion";
-import { CalendarDays, ArrowRight, Clock } from "lucide-react";
+import { CalendarDays, ArrowRight, Clock, Globe } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { format, parseISO, isToday, isTomorrow } from "date-fns";
 import { de } from "date-fns/locale";
+import { getNextGlobalEvent, GLOBAL_EVENT_LABELS } from "@/lib/global-events-2026";
 
 interface CalendarEventRaw {
   id: string;
@@ -14,6 +15,14 @@ interface CalendarEventRaw {
   time: string;
   location?: string;
   status: "scheduled" | "completed" | "cancelled";
+}
+
+interface DisplayEvent {
+  title: string;
+  date: string;
+  time?: string;
+  isGlobal: boolean;
+  category?: string;
 }
 
 export function SpaceCalendarBanner() {
@@ -40,27 +49,51 @@ export function SpaceCalendarBanner() {
     data: nextEvent,
     isLoading,
     isError,
-  } = useQuery<CalendarEventRaw | null>({
+  } = useQuery<DisplayEvent | null>({
     queryKey: ["/api/calendar/events", "space-next", today],
     queryFn: async () => {
-      const res = await fetch(
-        `/api/calendar/events?start=${today}&end=${endDate}`,
-        { credentials: "include" }
-      );
-      if (!res.ok) throw new Error("Calendar fetch failed");
-      const events: CalendarEventRaw[] = await res.json();
-      if (!Array.isArray(events) || events.length === 0) return null;
+      try {
+        const res = await fetch(
+          `/api/calendar/events?start=${today}&end=${endDate}`,
+          { credentials: "include" }
+        );
+        if (res.ok) {
+          const events: CalendarEventRaw[] = await res.json();
+          if (Array.isArray(events) && events.length > 0) {
+            const upcoming = events
+              .filter((e) => e.status === "scheduled")
+              .sort((a, b) => {
+                const da = `${a.date}T${a.time || "00:00"}`;
+                const db = `${b.date}T${b.time || "00:00"}`;
+                return da.localeCompare(db);
+              });
+            if (upcoming[0]) {
+              return {
+                title: upcoming[0].title,
+                date: upcoming[0].date,
+                time: upcoming[0].time,
+                isGlobal: false,
+              };
+            }
+          }
+        }
+      } catch {
+        // Personal events fetch failed — fall through to global
+      }
 
-      // Filter to scheduled only, sort ascending by date+time, pick first
-      const upcoming = events
-        .filter((e) => e.status === "scheduled")
-        .sort((a, b) => {
-          const da = `${a.date}T${a.time || "00:00"}`;
-          const db = `${b.date}T${b.time || "00:00"}`;
-          return da.localeCompare(db);
-        });
+      // Fallback: next global event (holiday, marker, ARAS update)
+      const globalEvent = getNextGlobalEvent(today);
+      if (globalEvent) {
+        return {
+          title: globalEvent.title,
+          date: globalEvent.date,
+          time: undefined,
+          isGlobal: true,
+          category: globalEvent.category,
+        };
+      }
 
-      return upcoming[0] || null;
+      return null;
     },
     enabled: !!user,
     staleTime: 60000,
@@ -353,6 +386,12 @@ export function SpaceCalendarBanner() {
                   className="flex items-center gap-2 truncate"
                   style={{ color: "rgba(255,255,255,0.82)", fontWeight: 500 }}
                 >
+                  {nextEvent.isGlobal && (
+                    <Globe
+                      className="w-3 h-3 shrink-0"
+                      style={{ color: "rgba(255,255,255,0.40)" }}
+                    />
+                  )}
                   <span className="truncate" style={{ maxWidth: "180px" }}>
                     {nextEvent.title}
                   </span>

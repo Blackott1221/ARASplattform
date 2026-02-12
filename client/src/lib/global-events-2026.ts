@@ -262,8 +262,63 @@ const YEAR_MARKERS: GlobalEvent[] = [
   marker('dst-end',   '2026-10-25', 'Winterzeit beginnt (MEZ)',    'Uhren werden um 03:00 Uhr um eine Stunde zurückgestellt (UTC+1).'),
 
   // Notable dates
-  marker('silvester', '2026-12-31', 'Silvester',         'Letzter Tag des Jahres 2026.'),
-  marker('heiligabend','2026-12-24', 'Heiligabend',      'Heiligabend. In vielen Betrieben halber Arbeitstag.'),
+  marker('silvester',  '2026-12-31', 'Silvester',         'Letzter Tag des Jahres 2026.'),
+  marker('heiligabend','2026-12-24', 'Heiligabend',       'Heiligabend. In vielen Betrieben halber Arbeitstag.'),
+
+  // =========================================================================
+  // KULTURELLE GEDENK- & AKTIONSTAGE — Fills every month
+  // =========================================================================
+  // Easter 2026 = April 5. Karneval dates relative to Easter.
+
+  // JANUAR
+  marker('holocaust-gedenktag', '2026-01-27', 'Holocaust-Gedenktag',    'Internationaler Tag des Gedenkens an die Opfer des Holocaust.'),
+
+  // FEBRUAR — Karneval / Fasching (Easter - 52..46 Tage)
+  marker('weiberfastnacht',  '2026-02-12', 'Weiberfastnacht',       'Beginn des Straßenkarnevals. Altweiber.'),
+  marker('valentinstag',     '2026-02-14', 'Valentinstag',           'Tag der Liebenden.'),
+  marker('rosenmontag',      '2026-02-16', 'Rosenmontag',           'Höhepunkt des rheinischen Karnevals. In vielen Betrieben arbeitsfrei.'),
+  marker('fastnacht',        '2026-02-17', 'Fastnacht',             'Faschingsdienstag / Veilchendienstag. Letzter Tag vor der Fastenzeit.'),
+  marker('aschermittwoch',   '2026-02-18', 'Aschermittwoch',        'Beginn der 40-tägigen Fastenzeit vor Ostern.'),
+
+  // MÄRZ
+  marker('fruehlingsanfang', '2026-03-20', 'Frühlingsanfang',       'Astronomischer Frühlingsbeginn (Tag-und-Nacht-Gleiche).'),
+
+  // APRIL
+  marker('gründonnerstag',   '2026-04-02', 'Gründonnerstag',        'Vorabend des Karfreitags. Beginn des Osterwochenendes.'),
+
+  // MAI
+  marker('europatag',        '2026-05-09', 'Europatag',             'Tag der Europäischen Union.'),
+  marker('muttertag',        '2026-05-10', 'Muttertag',             'Muttertag — zweiter Sonntag im Mai.'),
+
+  // JUNI
+  marker('sommersonnenwende','2026-06-21', 'Sommersonnenwende',     'Längster Tag des Jahres. Astronomischer Sommerbeginn.'),
+  marker('vatertag-ch',      '2026-06-07', 'Vätertag (CH)',         'Schweizer Vätertag — erster Sonntag im Juni.'),
+
+  // JULI
+  marker('ch-schuetzenfest', '2026-07-11', 'Eidg. Schützenfest',    'Traditioneller Schweizer Festanlass.'),
+
+  // AUGUST
+  marker('friedensfest-aug', '2026-08-08', 'Augsburger Friedensfest','Regionaler Feiertag in Augsburg (DE-BY).'),
+
+  // SEPTEMBER
+  marker('herbstanfang',     '2026-09-22', 'Herbstanfang',          'Astronomischer Herbstbeginn (Tag-und-Nacht-Gleiche).'),
+  marker('erntedankfest',    '2026-10-04', 'Erntedankfest',         'Erster Sonntag im Oktober. Kirchliches Fest.'),
+
+  // OKTOBER
+  marker('halloween',        '2026-10-31', 'Halloween',             'Kulturell gefeierter Vorabend von Allerheiligen.'),
+
+  // NOVEMBER
+  marker('martinstag',       '2026-11-11', 'Martinstag',            'St. Martin — Laternenumzüge und Gänseessen.'),
+  marker('volkstrauertag',   '2026-11-15', 'Volkstrauertag',        'Nationaler Gedenktag für die Opfer von Krieg und Gewalt.'),
+  marker('totensonntag',     '2026-11-22', 'Totensonntag',          'Evangelischer Gedenktag für die Verstorbenen. Stiller Feiertag.'),
+  marker('1-advent',         '2026-11-29', '1. Advent',             'Erster Advent — Beginn der Adventszeit.'),
+
+  // DEZEMBER
+  marker('nikolaus',         '2026-12-06', 'Nikolaustag',           'Nikolaustag — Kinder erhalten Geschenke.'),
+  marker('2-advent',         '2026-12-06', '2. Advent',             'Zweiter Advent.'),
+  marker('3-advent',         '2026-12-13', '3. Advent',             'Dritter Advent.'),
+  marker('4-advent',         '2026-12-20', '4. Advent',             'Vierter Advent — letzter Sonntag vor Weihnachten.'),
+  marker('wintersonnenwende','2026-12-21', 'Wintersonnenwende',     'Kürzester Tag des Jahres. Astronomischer Winterbeginn.'),
 ];
 
 // ============================================================================
@@ -289,7 +344,7 @@ export function getGlobalEvents2026(): GlobalEvent[] {
 export const GLOBAL_EVENT_FILTERS = [
   { id: 'holiday' as const, label: 'Feiertage (national)', defaultOn: true },
   { id: 'holiday_regional' as const, label: 'Regionale Feiertage', defaultOn: true },
-  { id: 'aras_update' as const, label: 'ARAS AI Updates', defaultOn: false },
+  { id: 'aras_update' as const, label: 'ARAS AI Updates', defaultOn: true },
   { id: 'marker' as const, label: 'Jahresmarker', defaultOn: true },
 ] as const;
 
@@ -307,3 +362,16 @@ export const GLOBAL_EVENT_LABELS: Record<GlobalEventCategory, string> = {
   aras_update: 'ARAS Update',
   marker: 'Marker',
 };
+
+/**
+ * Returns the next upcoming global event from today.
+ * Used by SpaceCalendarBanner.
+ */
+export function getNextGlobalEvent(fromDate?: string): GlobalEvent | null {
+  const today = fromDate || new Date().toISOString().slice(0, 10);
+  const events = getGlobalEvents2026();
+  const upcoming = events
+    .filter(e => e.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  return upcoming[0] || null;
+}
