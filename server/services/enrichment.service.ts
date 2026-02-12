@@ -246,18 +246,21 @@ function extractDomainFromEmail(email: string | undefined): string | null {
   return domain;
 }
 
+// deep-research models ONLY support search_context_size "medium"
+const SEARCH_CONTEXT_SIZE = 'medium' as const;
+
 function buildResponsesTools(params: { website: string | null; email?: string }): { tools: any[]; allowedDomains: string[] | null } {
   const domain = (params.website ? extractDomainFromUrl(params.website) : null)
     ?? extractDomainFromEmail(params.email);
 
   if (domain) {
     return {
-      tools: [{ type: 'web_search_preview', search_context_size: 'medium', filters: { allowed_domains: [domain] } }],
+      tools: [{ type: 'web_search_preview', search_context_size: SEARCH_CONTEXT_SIZE, filters: { allowed_domains: [domain] } }],
       allowedDomains: [domain]
     };
   }
   return {
-    tools: [{ type: 'web_search_preview', search_context_size: 'medium' }],
+    tools: [{ type: 'web_search_preview', search_context_size: SEARCH_CONTEXT_SIZE }],
     allowedDomains: null
   };
 }

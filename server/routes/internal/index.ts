@@ -550,11 +550,13 @@ router.get("/health", async (req, res) => {
 router.get("/enrichment/smoke", async (req, res) => {
   const model = process.env.OPENAI_ENRICH_MODEL || "o3-deep-research";
   const toolType = "web_search_preview";
+  const searchContextSize = "medium"; // deep-research models ONLY support "medium"
   const timeoutMs = 60_000;
 
   console.log('[enrich.smoke.start]', JSON.stringify({
     model,
     toolType,
+    searchContextSize,
     timeoutMs,
     triggeredBy: (req as any).adminUser?.username ?? 'unknown',
     timestamp: new Date().toISOString()
@@ -578,7 +580,7 @@ router.get("/enrichment/smoke", async (req, res) => {
       model,
       instructions: 'Return ONLY one factual sentence. No markdown, no extra text.',
       input: 'Find one factual sentence about OpenAI and return ONLY that sentence.',
-      tools: [{ type: 'web_search_preview', search_context_size: 'low' as any }],
+      tools: [{ type: 'web_search_preview', search_context_size: searchContextSize as any }],
     }, { signal: controller.signal });
     clearTimeout(timeoutId);
 
