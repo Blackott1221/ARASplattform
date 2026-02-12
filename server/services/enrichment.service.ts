@@ -1,10 +1,10 @@
 /**
  * 🔥 ENRICHMENT SERVICE
  * Async company intelligence enrichment with retry + quality gate
- * 🔥 SWITCHED TO OPENAI GPT-4o - More reliable than Gemini
+ * 🔥 POWERED BY GOOGLE GEMINI — zero OpenAI dependency
  */
 
-import OpenAI from "openai";
+import { geminiEnrichProfile, type GeminiEnrichInput } from "../lib/gemini-enrich";
 import { storage } from "../storage";
 import { type EnrichmentStatus, type EnrichmentErrorCode } from "@shared/schema";
 
@@ -179,87 +179,8 @@ export interface EnrichmentResult {
   confidence: 'low' | 'medium' | 'high';
 }
 
-// 🔥 MODEL ALLOWLIST - OpenAI Feb 2026 (ORG VERIFIED ✅)
-const ALLOWED_ENRICH_MODELS = ['o3-deep-research', 'o4-mini-deep-research', 'gpt-5.2', 'gpt-5.2-pro'] as const;
-const DEFAULT_ENRICH_MODEL = 'o3-deep-research'; // 🔥 BEST deep research model!
-const RESPONSES_ONLY_MODELS = new Set<string>(['o3-deep-research', 'o4-mini-deep-research']);
-
-function isResponsesOnlyModel(model: string): boolean {
-  return RESPONSES_ONLY_MODELS.has(model);
-}
-
-function isDeepResearchModel(model: string): boolean {
-  return model.includes('deep-research') || model === 'o3-deep-research';
-}
-
-// Defensive extraction: SDK may provide output_text OR structured output array
-function getResponsesOutputText(result: any): string | null {
-  const direct = result?.output_text;
-  if (typeof direct === 'string' && direct.trim()) return direct;
-
-  const out = result?.output;
-  if (!Array.isArray(out)) return null;
-
-  const chunks: string[] = [];
-  for (const item of out) {
-    const content = item?.content;
-    if (!Array.isArray(content)) continue;
-    for (const c of content) {
-      const t1 = c?.text;
-      if ((c?.type === 'output_text' || c?.type === 'text') && typeof t1 === 'string' && t1.trim()) {
-        chunks.push(t1);
-      }
-      const t2 = c?.text?.value;
-      if ((c?.type === 'output_text' || c?.type === 'text') && typeof t2 === 'string' && t2.trim()) {
-        chunks.push(t2);
-      }
-    }
-  }
-
-  if (chunks.length) return chunks.join('\n').trim();
-  return null;
-}
-
-// Generic email domains — do NOT use for domain-restricted web_search
-const GENERIC_EMAIL_DOMAINS = new Set([
-  'gmail.com', 'googlemail.com', 'outlook.com', 'hotmail.com', 'yahoo.com',
-  'icloud.com', 'proton.me', 'protonmail.com', 'gmx.de', 'gmx.net', 'gmx.at',
-  'gmx.ch', 'live.com', 'msn.com', 'aol.com', 'mail.com', 'web.de', 'freenet.de',
-  't-online.de', 'posteo.de', 'tutanota.com', 'zoho.com', 'yandex.com'
-]);
-
-function extractDomainFromUrl(url: string): string | null {
-  try {
-    let cleaned = url.trim();
-    if (!cleaned.includes('://')) cleaned = 'https://' + cleaned;
-    const hostname = new URL(cleaned).hostname.replace(/^www\./, '');
-    return hostname || null;
-  } catch {
-    return null;
-  }
-}
-
-function extractDomainFromEmail(email: string | undefined): string | null {
-  if (!email || !email.includes('@')) return null;
-  const domain = email.split('@')[1]?.toLowerCase().trim();
-  if (!domain || GENERIC_EMAIL_DOMAINS.has(domain)) return null;
-  return domain;
-}
-
-// deep-research models ONLY support search_context_size "medium"
-const SEARCH_CONTEXT_SIZE = 'medium' as const;
-
-function buildResponsesTools(params: { website: string | null; email?: string }): { tools: any[]; allowedDomains: string[] | null } {
-  // Extract domain for LOGGING only — do NOT restrict web_search to one domain.
-  // Deep research needs the full web: LinkedIn, news, reviews, competitors, etc.
-  const domain = (params.website ? extractDomainFromUrl(params.website) : null)
-    ?? extractDomainFromEmail(params.email);
-
-  return {
-    tools: [{ type: 'web_search_preview', search_context_size: SEARCH_CONTEXT_SIZE }],
-    allowedDomains: domain ? [domain] : null  // logged only, NOT passed as filter
-  };
-}
+// 🔥 PROVIDER: Google Gemini (zero OpenAI dependency)
+const ENRICH_PROVIDER = 'gemini' as const;
 
 // 🔥 RETRY CONFIG
 const MAX_ATTEMPTS = 3;
@@ -398,6 +319,7 @@ Bleibe immer ARAS AI - entwickelt von der Schwarzott Group.`;
 /**
  * 🔥 RUN ENRICHMENT JOB
  * Pure function that performs the enrichment and returns the result
+ * 🔥 POWERED BY GOOGLE GEMINI — zero OpenAI dependency
  */
 export async function runEnrichment(input: EnrichmentInput, attemptNumber: number = 1): Promise<EnrichmentResult> {
   const startTime = Date.now();
@@ -408,328 +330,55 @@ export async function runEnrichment(input: EnrichmentInput, attemptNumber: numbe
     timestamp: new Date().toISOString(),
     userId: input.userId,
     attempt: attemptNumber,
+    provider: ENRICH_PROVIDER,
     hasCompany: !!company,
     hasIndustry: !!industry,
     hasWebsite: !!website
   }));
   
-  // 🔥 MODEL VALIDATION - OpenAI GPT-4o
-  const ENRICH_MODEL = process.env.OPENAI_ENRICH_MODEL ?? DEFAULT_ENRICH_MODEL;
-  const ENRICH_API: 'responses' | 'chat.completions' = isResponsesOnlyModel(ENRICH_MODEL) ? 'responses' : 'chat.completions';
-  const responsesTooling = ENRICH_API === 'responses' ? buildResponsesTools({ website, email: input.email }) : null;
-  console.log('[enrich.openai.route]', JSON.stringify({ userId: input.userId, model: ENRICH_MODEL, api: ENRICH_API, timeoutMs: ENRICH_API === 'responses' ? 300_000 : 90_000, toolsEnabled: !!responsesTooling, tools: responsesTooling?.tools.map((t: any) => t.type) ?? [], toolsCount: responsesTooling?.tools.length ?? 0, allowedDomains: responsesTooling?.allowedDomains ?? null }));
-  
-  if (!ALLOWED_ENRICH_MODELS.includes(ENRICH_MODEL as any)) {
-    console.error(`[enrich.job.fail] Model not allowed: ${ENRICH_MODEL}`);
+  // 🔥 API KEY CHECK — Gemini
+  const geminiKey = process.env.GOOGLE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+  if (!geminiKey) {
+    console.error('[enrich.job.fail] No GOOGLE_GEMINI_API_KEY in environment');
     return {
-      aiProfile: buildFallbackProfile(input, 'model_not_allowed'),
+      aiProfile: buildFallbackProfile(input, 'auth'),
       enrichmentWasSuccessful: false,
       enrichmentStatus: 'fallback',
-      enrichmentErrorCode: 'model_not_allowed',
+      enrichmentErrorCode: 'auth',
       confidence: 'low'
     };
   }
   
   try {
-    // 🔥 API KEY VALIDATION - OpenAI
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey || !apiKey.startsWith('sk-')) {
-      console.error('[enrich.job.fail] Invalid or missing OpenAI API key');
-      return {
-        aiProfile: buildFallbackProfile(input, 'auth'),
-        enrichmentWasSuccessful: false,
-        enrichmentStatus: 'fallback',
-        enrichmentErrorCode: 'auth',
-        confidence: 'low'
-      };
-    }
+    // 🔥 CALL GEMINI ENRICHMENT
+    const geminiInput: GeminiEnrichInput = {
+      company, industry, role, website,
+      firstName, lastName, primaryGoal, language,
+      email: input.email
+    };
     
-    console.log('[enrich.model.init]', JSON.stringify({ model: ENRICH_MODEL, provider: 'openai', userId: input.userId }));
+    const geminiResult = await geminiEnrichProfile(geminiInput);
     
-    const openai = new OpenAI({ apiKey });
-    
-    console.log('[enrich.model.ready]', JSON.stringify({ model: ENRICH_MODEL, provider: 'openai', userId: input.userId }));
-    
-    // 🔥 Normalize website URL for prompt (ensure https://)
-    let websiteUrl = website || null;
-    if (websiteUrl && !websiteUrl.startsWith('http://') && !websiteUrl.startsWith('https://')) {
-      websiteUrl = 'https://' + websiteUrl;
-    }
-    
-    // 🔥 WOW-LEVEL DEEP INTELLIGENCE PROMPT
-    const companyDeepDive = `
-[🤖 ARAS DEEP INTELLIGENCE ENGINE - ULTRA RESEARCH MODE]
-
-Unternehmen: ${company}
-Website: ${websiteUrl || 'Nicht angegeben'}
-Branche: ${industry}
-Kontaktperson: ${firstName} ${lastName} (${role})
-Primäres Ziel: ${primaryGoal}
-
-Du bist ein Elite-Business-Intelligence-Agent für ARAS AI. Deine Aufgabe: Erstelle ein VOLLSTÄNDIGES Outbound-Playbook für dieses Unternehmen.
-
-🔍 RECHERCHIERE ÜBER GOOGLE SEARCH:
-1. Besuche die Website ${websiteUrl || company + '.com'} und analysiere ALLE Seiten
-2. Suche nach Pressemitteilungen, News, LinkedIn-Profilen
-3. Finde Bewertungen, Kundenreferenzen, Case Studies
-4. Recherchiere Wettbewerber und Marktposition
-
-📊 ERSTELLE FOLGENDE ULTRA-DETAILLIERTE ANALYSE:
-
-🏢 UNTERNEHMENS-DNA:
-- Exakte Gründungsgeschichte mit Jahr
-- Gründer/CEO mit vollständigem Namen und Background
-- Mitarbeiterzahl (exakt oder Schätzung mit Quelle)
-- Standorte, Niederlassungen, Märkte
-- Unternehmenskultur und Werte
-
-💼 PRODUKTE & SERVICES (mindestens 5 von jedem):
-- Alle Produkte mit kurzer Beschreibung
-- Alle Services mit Zielgruppe
-- Preismodelle wenn bekannt
-- Besondere Features
-
-🎯 ZIELGRUPPEN-ANALYSE:
-- Primäre Zielgruppe (Branche, Größe, Entscheider)
-- Sekundäre Zielgruppen
-- Typische Pain Points der Zielgruppe
-- Kaufmotive und Entscheidungskriterien
-
-� WETTBEWERBS-ANALYSE (mindestens 5):
-- Direkte Wettbewerber mit Namen
-- Indirekte Wettbewerber
-- Marktposition des Unternehmens
-- Differenzierungsmerkmale
-
-📞 OUTBOUND PLAYBOOK:
-- 10 effektive Call-Angles (Gesprächseinstiege)
-- 10 häufige Einwände mit überzeugenden Antworten
-- Beste Kontaktzeiten mit Begründung
-- Empfohlene Tonalität
-
-🔑 KEYWORDS & SEO (mindestens 15):
-- Branchenspezifische Keywords
-- Produktbezogene Keywords
-- Problem-Keywords der Zielgruppe
-
-⚠️ KRITISCH - AUSGABEFORMAT:
-Antworte AUSSCHLIESSLICH mit einem validen JSON-Objekt.
-KEINE Markdown-Codeblöcke (\`\`\`), KEIN Text davor oder danach.
-Die Antwort MUSS mit { beginnen und mit } enden.
-
-{
-  "companyDescription": "string (min 300 Zeichen)",
-  "foundedYear": "string oder leerer String",
-  "ceoName": "string oder leerer String",
-  "employeeCount": "string",
-  "headquarters": "string",
-  "products": ["string", "string", "string", "string", "string"],
-  "services": ["string", "string", "string", "string", "string"],
-  "targetAudience": "string (min 100 Zeichen)",
-  "targetAudienceSegments": ["string", "string", "string"],
-  "decisionMakers": ["string", "string"],
-  "competitors": ["string", "string", "string"],
-  "uniqueSellingPoints": ["string", "string", "string"],
-  "brandVoice": "string",
-  "callAngles": ["string", "string", "string", "string", "string"],
-  "objectionHandling": [
-    {"objection": "string", "response": "string"},
-    {"objection": "string", "response": "string"},
-    {"objection": "string", "response": "string"}
-  ],
-  "bestCallTimes": "string",
-  "effectiveKeywords": ["string", "string", "string", "string", "string"],
-  "opportunities": ["string", "string", "string"],
-  "marketPosition": "string",
-  "recentNews": ["string"],
-  "confidence": "high" | "medium" | "low"
-}
-
-STRENGE REGELN:
-1. NUR JSON - kein Text, kein Markdown, keine Erklärungen
-2. Alle Felder MÜSSEN vorhanden sein
-3. Arrays MÜSSEN Arrays sein (niemals Strings)
-4. Strings MÜSSEN Strings sein (niemals null - verwende "")
-5. objectionHandling MUSS ein Array von Objekten mit "objection" und "response" sein
-6. Nutze Google Search für echte Daten
-7. Bei Unbekanntem: leerer String "" oder leeres Array []
-`;
-
-    // 🔥 RETRY LOGIC WITH DETAILED LOGGING
-    let response: string | null = null;
-    let lastError: any = null;
-    let lastErrorCode: string = 'unknown';
-    const MAX_RETRIES = 3;
-    const TIMEOUT_MS = isResponsesOnlyModel(ENRICH_MODEL) ? 300_000 : 90_000;
-    
-    for (let retry = 1; retry <= MAX_RETRIES; retry++) {
-      try {
-        console.log('[enrich.openai.attempt]', JSON.stringify({ 
-          userId: input.userId, 
-          retry, 
-          model: ENRICH_MODEL,
-          api: ENRICH_API,
-          timeoutMs: TIMEOUT_MS,
-          toolsCount: responsesTooling?.tools.length ?? 0,
-          allowedDomains: responsesTooling?.allowedDomains ?? null
-        }));
-        
-        // 🔥 OpenAI API CALL with timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
-        
-        try {
-          let tempResponse: string | null = null;
-          let logMeta: Record<string, any> = { api: ENRICH_API, model: ENRICH_MODEL };
-          
-          if (ENRICH_API === 'responses') {
-            // 🔥 Responses API for deep-research models (v1/responses)
-            const result = await openai.responses.create({
-              model: ENRICH_MODEL,
-              instructions: 'Du bist ein Elite-Business-Intelligence-Agent. Antworte AUSSCHLIESSLICH mit validem JSON. Keine Markdown-Codeblöcke, kein Text davor oder danach. Die Antwort MUSS mit { beginnen und mit } enden.',
-              input: companyDeepDive,
-              tools: responsesTooling!.tools,
-            }, { signal: controller.signal });
-            
-            clearTimeout(timeoutId);
-            tempResponse = getResponsesOutputText(result);
-            logMeta = {
-              ...logMeta,
-              status: result?.status ?? null,
-              tokensUsed: (result?.usage as any)?.total_tokens ?? null
-            };
-          } else {
-            // 🔥 Chat Completions API for standard models (v1/chat/completions)
-            const completion = await openai.chat.completions.create({
-              model: ENRICH_MODEL,
-              messages: [
-                {
-                  role: 'system',
-                  content: 'Du bist ein Elite-Business-Intelligence-Agent. Antworte AUSSCHLIESSLICH mit validem JSON. Keine Markdown-Codeblöcke, kein Text davor oder danach. Die Antwort MUSS mit { beginnen und mit } enden.'
-                },
-                {
-                  role: 'user',
-                  content: companyDeepDive
-                }
-              ],
-              temperature: 0.7,
-              max_completion_tokens: 8192,
-              response_format: { type: 'json_object' }
-            }, { signal: controller.signal });
-            
-            clearTimeout(timeoutId);
-            tempResponse = completion?.choices?.[0]?.message?.content ?? null;
-            logMeta = {
-              ...logMeta,
-              finishReason: completion?.choices?.[0]?.finish_reason ?? null,
-              tokensUsed: completion?.usage?.total_tokens ?? null
-            };
-          }
-          
-          const responseLength = tempResponse?.length || 0;
-          
-          console.log('[enrich.openai.response]', JSON.stringify({ 
-            userId: input.userId, 
-            retry,
-            hasResponse: !!tempResponse,
-            responseLength,
-            ...logMeta
-          }));
-          
-          if (tempResponse && responseLength > 200) {
-            response = tempResponse;
-            break;
-          }
-        } catch (apiError: any) {
-          clearTimeout(timeoutId);
-          throw apiError;
-        }
-      } catch (err: any) {
-        const msg = String(err?.message ?? '');
-        const status: number | null =
-          err?.status ??
-          err?.response?.status ??
-          err?.cause?.status ??
-          err?.error?.status ??
-          null;
-
-        let errorCode: string = 'unknown';
-        let hint: string | null = null;
-        if (msg.includes('only supported in v1/responses') || msg.includes('v1/chat/completions')) {
-          errorCode = 'model_endpoint_mismatch';
-        } else if (msg.includes('require at least one of') || msg.includes('web_search_preview')) {
-          errorCode = 'missing_required_tool';
-          hint = 'Deep-research requires tools:[{type:"web_search_preview"}] in Responses API call.';
-        } else if (status === 401 || status === 403) {
-          errorCode = 'auth_error';
-        } else if (status === 429) {
-          errorCode = 'rate_limited';
-        } else if (status !== null && status >= 400 && status < 500) {
-          errorCode = 'bad_request';
-        } else if (status !== null && status >= 500) {
-          errorCode = 'provider_error';
-        }
-
-        const retryable = status == null || status >= 500 || status === 429;
-
-        console.error('[enrich.openai.api.error]', JSON.stringify({
-          userId: input.userId,
-          retry,
-          model: ENRICH_MODEL,
-          api: ENRICH_API,
-          status,
-          errorCode,
-          errorType: err?.name ?? null,
-          errorMessage: msg.substring(0, 300),
-          retryable,
-          hint
-        }));
-
-        const willRetry = retryable && retry < MAX_RETRIES;
-        console.error('[enrich.openai.error]', JSON.stringify({
-          userId: input.userId,
-          retry,
-          errorCode,
-          status,
-          errorMessage: msg.substring(0, 150),
-          willRetry,
-          retryable
-        }));
-
-        lastError = err;
-        lastErrorCode = errorCode;
-
-        if (!retryable) break;
-        if (retry < MAX_RETRIES) {
-          await new Promise(resolve => setTimeout(resolve, retry * 2000));
-        }
-      }
-    }
-    
-    if (!response) {
-      // Map internal errorCode to EnrichmentErrorCode for DB/API
-      const errorMsg = lastError?.message || '';
+    // Handle Gemini failure
+    if (!geminiResult.success || !geminiResult.data) {
+      // Map Gemini error to EnrichmentErrorCode
       let errorCode: EnrichmentErrorCode = 'unknown';
-      
-      if (lastErrorCode === 'model_endpoint_mismatch') errorCode = 'model_not_allowed';
-      else if (lastErrorCode === 'missing_required_tool') errorCode = 'unknown';
-      else if (lastErrorCode === 'auth_error') errorCode = 'auth';
-      else if (lastErrorCode === 'rate_limited') errorCode = 'quota';
-      else if (lastErrorCode === 'bad_request') errorCode = 'unknown';
-      else if (lastErrorCode === 'provider_error') errorCode = 'unknown';
-      else if (errorMsg.includes('timeout') || errorMsg.includes('abort')) errorCode = 'timeout';
-      else if (errorMsg.includes('quota') || errorMsg.includes('insufficient_quota')) errorCode = 'quota';
+      if (geminiResult.error === 'missing_gemini_key') errorCode = 'auth';
+      else if (geminiResult.error === 'timeout') errorCode = 'timeout';
+      else if (geminiResult.error === 'quota') errorCode = 'quota';
+      else if (geminiResult.error === 'auth') errorCode = 'auth';
+      else if (geminiResult.error === 'parse_failed') errorCode = 'parse';
+      else if (geminiResult.error === 'empty_response') errorCode = 'unknown';
       
       console.log('[enrich.job.fail]', JSON.stringify({
         timestamp: new Date().toISOString(),
         userId: input.userId,
+        provider: ENRICH_PROVIDER,
+        model: geminiResult.model,
         errorCode,
-        internalErrorCode: lastErrorCode,
-        api: ENRICH_API,
-        errorMessage: errorMsg.substring(0, 200),
+        geminiError: geminiResult.error,
         attempt: attemptNumber,
-        durationMs: Date.now() - startTime,
-        hint: errorCode === 'auth' ? 'Check OPENAI_API_KEY in environment variables' : null
+        durationMs: geminiResult.durationMs
       }));
       
       return {
@@ -741,53 +390,14 @@ STRENGE REGELN:
       };
     }
     
-    // 🔥 ROBUST JSON EXTRACTION (handles markdown fences, extra text, repairs)
-    console.log('[enrich.parse.start]', JSON.stringify({ 
-      userId: input.userId, 
-      responseLength: response.length 
-    }));
-    
-    const extractResult = extractJsonFromText(response);
-    
-    if (!extractResult.json) {
-      console.log('[enrich.parse.fail]', JSON.stringify({
-        userId: input.userId,
-        error: extractResult.error,
-        responsePreview: response.substring(0, 200)
-      }));
-      
-      console.log('[enrich.job.fail]', JSON.stringify({
-        timestamp: new Date().toISOString(),
-        userId: input.userId,
-        errorCode: 'parse',
-        parseError: extractResult.error,
-        attempt: attemptNumber,
-        durationMs: Date.now() - startTime
-      }));
-      
-      return {
-        aiProfile: buildFallbackProfile(input, 'parse'),
-        enrichmentWasSuccessful: false,
-        enrichmentStatus: 'fallback',
-        enrichmentErrorCode: 'parse',
-        confidence: 'low'
-      };
-    }
-    
-    // 🔥 SCHEMA REPAIR - ensure all required fields exist
-    const repairResult = repairEnrichmentSchema(extractResult.json);
+    // 🔥 SCHEMA REPAIR — ensure all required fields exist
+    const repairResult = repairEnrichmentSchema(geminiResult.data);
     const companyIntel = repairResult.data;
     
     if (repairResult.fieldsRepaired.length > 0) {
       console.log('[enrich.parse.repaired]', JSON.stringify({
         userId: input.userId,
-        jsonRepaired: extractResult.repaired,
         fieldsRepaired: repairResult.fieldsRepaired
-      }));
-    } else {
-      console.log('[enrich.parse.success]', JSON.stringify({
-        userId: input.userId,
-        jsonRepaired: extractResult.repaired
       }));
     }
     
@@ -799,8 +409,10 @@ STRENGE REGELN:
       console.log('[enrich.job.fail]', JSON.stringify({
         timestamp: new Date().toISOString(),
         userId: input.userId,
+        provider: ENRICH_PROVIDER,
         errorCode: 'quality_gate_failed',
         qualityScore: score,
+        qualityDetails: details,
         attempt: attemptNumber,
         durationMs: Date.now() - startTime
       }));
@@ -884,9 +496,13 @@ Bleibe immer ARAS AI - entwickelt von der Schwarzott Group.`;
     console.log('[enrich.job.ok]', JSON.stringify({
       timestamp: new Date().toISOString(),
       userId: input.userId,
+      provider: ENRICH_PROVIDER,
+      model: geminiResult.model,
       attempt: attemptNumber,
       qualityScore: score,
       confidence,
+      tokensUsed: geminiResult.tokensUsed,
+      sourcesCount: geminiResult.sources.length,
       durationMs: Date.now() - startTime
     }));
     
@@ -899,13 +515,14 @@ Bleibe immer ARAS AI - entwickelt von der Schwarzott Group.`;
     };
     
   } catch (error: any) {
-    const errorCode: EnrichmentErrorCode = error?.message?.includes('Timeout') ? 'timeout' :
+    const errorCode: EnrichmentErrorCode = error?.message?.includes('timeout') ? 'timeout' :
                                            error?.message?.includes('quota') ? 'quota' :
-                                           error?.message?.includes('API Key') ? 'auth' : 'unknown';
+                                           error?.message?.includes('API') ? 'auth' : 'unknown';
     
     console.log('[enrich.job.fail]', JSON.stringify({
       timestamp: new Date().toISOString(),
       userId: input.userId,
+      provider: ENRICH_PROVIDER,
       errorCode,
       errorMessage: (error?.message || '').substring(0, 100),
       attempt: attemptNumber,
@@ -972,18 +589,15 @@ export async function runEnrichmentJobAsync(input: EnrichmentInput): Promise<voi
     });
     console.log('[enrich.persist] in_progress_saved', JSON.stringify({ userId: input.userId, attempt: attemptNumber }));
     
-    // Run enrichment
-    const _model = process.env.OPENAI_ENRICH_MODEL ?? DEFAULT_ENRICH_MODEL;
-    const _api = isResponsesOnlyModel(_model) ? 'responses' : 'chat.completions';
-    const openaiStart = Date.now();
-    console.log('[enrich.step] openai.calling', JSON.stringify({ userId: input.userId, model: _model, api: _api }));
+    // Run enrichment (Gemini)
+    const geminiStart = Date.now();
+    console.log('[enrich.step] gemini.calling', JSON.stringify({ userId: input.userId, provider: ENRICH_PROVIDER }));
     const result = await runEnrichment(input, attemptNumber);
-    const openaiDurationMs = Date.now() - openaiStart;
-    console.log('[enrich.step] openai.returned', JSON.stringify({ 
+    const geminiDurationMs = Date.now() - geminiStart;
+    console.log('[enrich.step] gemini.returned', JSON.stringify({ 
       userId: input.userId, 
-      model: _model,
-      api: _api,
-      openaiDurationMs,
+      provider: ENRICH_PROVIDER,
+      geminiDurationMs,
       success: result.enrichmentWasSuccessful,
       status: result.enrichmentStatus,
       errorCode: result.enrichmentErrorCode,

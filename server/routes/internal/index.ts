@@ -573,88 +573,79 @@ router.post("/enrichment/run", async (req, res) => {
 });
 
 // ============================================================================
-// ENRICHMENT SMOKE TEST (1-click OpenAI Responses API validation)
+// ENRICHMENT SMOKE TEST (1-click Gemini API validation)
 // ============================================================================
 
 router.get("/enrichment/smoke", async (req, res) => {
-  const model = process.env.OPENAI_ENRICH_MODEL || "o3-deep-research";
-  const toolType = "web_search_preview";
-  const searchContextSize = "medium"; // deep-research models ONLY support "medium"
-  const timeoutMs = 60_000;
+  const model = process.env.GEMINI_ENRICH_MODEL || "gemini-2.5-pro-preview-06-05";
+  const timeoutMs = 30_000;
 
   console.log('[enrich.smoke.start]', JSON.stringify({
     model,
-    toolType,
-    searchContextSize,
+    provider: 'gemini',
     timeoutMs,
     triggeredBy: (req as any).adminUser?.username ?? 'unknown',
     timestamp: new Date().toISOString()
   }));
 
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey || !apiKey.startsWith('sk-')) {
-      console.error('[enrich.smoke.err]', JSON.stringify({ error: 'missing_api_key' }));
-      return res.status(500).json({ success: false, errorType: 'config', message: 'OPENAI_API_KEY missing or invalid' });
+    const apiKey = process.env.GOOGLE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.error('[enrich.smoke.err]', JSON.stringify({ error: 'missing_gemini_key' }));
+      return res.status(500).json({ success: false, errorType: 'config', message: 'GOOGLE_GEMINI_API_KEY missing' });
     }
 
-    const { default: OpenAI } = await import('openai');
-    const openai = new OpenAI({ apiKey });
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const { GoogleGenAI } = await import('@google/genai');
+    const ai = new GoogleGenAI({ apiKey });
 
     const start = Date.now();
-    const result = await openai.responses.create({
+    const result = await ai.models.generateContent({
       model,
-      instructions: 'Return ONLY one factual sentence. No markdown, no extra text.',
-      input: 'Find one factual sentence about OpenAI and return ONLY that sentence.',
-      tools: [{ type: 'web_search_preview', search_context_size: searchContextSize as any }],
-    }, { signal: controller.signal });
-    clearTimeout(timeoutId);
+      contents: 'Return ONLY one factual sentence about Google Gemini AI. No markdown, no extra text.',
+      config: {
+        temperature: 0.2,
+        maxOutputTokens: 100
+      }
+    });
 
     const durationMs = Date.now() - start;
-    const outputText = result?.output_text ?? null;
-    const truncated = outputText ? outputText.substring(0, 200) : null;
+    const outputText = result?.text || '';
+    const truncated = outputText.substring(0, 200);
+    const tokensUsed = (result as any)?.usageMetadata?.totalTokenCount ?? null;
 
     console.log('[enrich.smoke.ok]', JSON.stringify({
       model,
-      toolType,
+      provider: 'gemini',
       durationMs,
-      status: result?.status ?? null,
       hasOutput: !!outputText,
-      outputLength: outputText?.length ?? 0,
-      tokensUsed: (result?.usage as any)?.total_tokens ?? null
+      outputLength: outputText.length,
+      tokensUsed
     }));
 
     return res.json({
       success: true,
       model,
-      toolType,
+      provider: 'gemini',
       durationMs,
-      status: result?.status ?? null,
       outputText: truncated,
-      tokensUsed: (result?.usage as any)?.total_tokens ?? null
+      tokensUsed
     });
   } catch (err: any) {
     const msg = String(err?.message ?? '');
-    const status = err?.status ?? err?.response?.status ?? null;
 
     console.error('[enrich.smoke.err]', JSON.stringify({
       model,
-      toolType,
-      status,
+      provider: 'gemini',
       errorType: err?.name ?? null,
       errorMessage: msg.substring(0, 300)
     }));
 
-    return res.status(status && status >= 400 && status < 600 ? status : 500).json({
+    return res.status(500).json({
       success: false,
       errorType: err?.name ?? 'Unknown',
       message: msg.substring(0, 300),
-      status,
       model,
-      toolType
+      provider: 'gemini'
     });
   }
 });
