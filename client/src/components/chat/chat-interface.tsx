@@ -23,6 +23,7 @@ import { SpaceKnowledgeBanner } from "@/components/space/SpaceKnowledgeBanner";
 import { SpaceCalendarBanner } from "@/components/space/SpaceCalendarBanner";
 import { SpaceMatrixIntel } from "@/components/space/SpaceMatrixIntel";
 import HowArasThinksDeck from "@/components/space/HowArasThinksDeck";
+import { SpaceDailyNews } from "@/components/space/SpaceDailyNews";
 
 const ANIMATED_TEXTS = [
   "Outbound Calls",
@@ -1215,6 +1216,9 @@ Antworte NUR mit dem Prompt selbst, ohne Einleitung oder Erklärung.`,
 
             {/* KALENDER BANNER - Link to /app/calendar + Live Next Event */}
             <SpaceCalendarBanner />
+
+            {/* DAILY INDUSTRY NEWS - AI-curated news for user's industry */}
+            <SpaceDailyNews />
 
             {/* HOW ARAS THINKS - Transparent Glass Operator Deck */}
             <HowArasThinksDeck />

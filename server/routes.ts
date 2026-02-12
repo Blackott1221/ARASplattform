@@ -192,6 +192,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const mailInboundRoutes = await import('./routes/mail-inbound');
   app.use('/api', mailInboundRoutes.default);
 
+  // 📰 Setup News Routes (Daily Industry News Digest)
+  const newsRoutes = await import('./routes/news');
+  app.use('/api/news', newsRoutes.default);
+
   // Debug route to check auth status
   app.get('/api/auth/status', (req: any, res) => {
     res.json({
