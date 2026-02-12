@@ -544,6 +544,35 @@ router.get("/health", async (req, res) => {
 });
 
 // ============================================================================
+// ENRICHMENT: TRIGGER RUN (Admin re-enrichment for any user)
+// ============================================================================
+
+router.post("/enrichment/run", async (req, res) => {
+  try {
+    const adminUser = (req as any).adminUser;
+    const targetUserId = req.body?.userId || adminUser?.id;
+    
+    if (!targetUserId) {
+      return res.status(400).json({ success: false, message: 'userId required' });
+    }
+
+    console.log('[enrich.admin.run]', JSON.stringify({
+      targetUserId,
+      triggeredBy: adminUser?.username ?? 'unknown',
+      timestamp: new Date().toISOString()
+    }));
+
+    const { forceReEnrich } = await import('../../services/enrichment.service');
+    const result = await forceReEnrich(targetUserId);
+
+    return res.json(result);
+  } catch (err: any) {
+    console.error('[enrich.admin.run.error]', err?.message);
+    return res.status(500).json({ success: false, message: err?.message || 'Unknown error' });
+  }
+});
+
+// ============================================================================
 // ENRICHMENT SMOKE TEST (1-click OpenAI Responses API validation)
 // ============================================================================
 

@@ -2025,7 +2025,7 @@ export default function AuthPage() {
     
     const controller = new AbortController();
     let pollCount = 0;
-    const MAX_POLLS = 20;
+    const MAX_POLLS = 90; // ~3 min for deep-research models
     
     const pollProfileContext = async () => {
       try {
@@ -2064,8 +2064,9 @@ export default function AuthPage() {
         pollCount++;
         setBriefingPollingCount(pollCount);
         
-        const enrichmentStatus = data.aiProfile?.enrichmentMeta?.status || 'unknown';
-        console.log('[BRIEFING] Poll', pollCount, 'status:', enrichmentStatus);
+        const enrichmentStatus = data.enrichmentMeta?.status || data.aiProfile?.enrichmentMeta?.status || 'unknown';
+        const isProfileEnriched = data.profileEnriched === true;
+        console.log('[BRIEFING] Poll', pollCount, 'status:', enrichmentStatus, 'profileEnriched:', isProfileEnriched);
         
         if (data.aiProfile) {
           const profile = data.aiProfile;
@@ -2110,8 +2111,8 @@ export default function AuthPage() {
         
         // 🔥 Check for TERMINAL statuses from enrichment service
         // complete = success, failed = error, timeout = took too long, fallback = used generic data
-        if (['complete', 'live_research', 'ok', 'limited'].includes(enrichmentStatus)) {
-          console.log('[BRIEFING] ✅ Enrichment complete with status:', enrichmentStatus);
+        if (isProfileEnriched || ['complete', 'live_research', 'ok', 'limited'].includes(enrichmentStatus)) {
+          console.log('[BRIEFING] ✅ Enrichment complete with status:', enrichmentStatus, 'profileEnriched:', isProfileEnriched);
           setBriefingData(prev => prev ? { ...prev, status: 'ready', enrichmentStatus } : prev);
           setOnboardingPhase('complete');
           return;
@@ -2130,7 +2131,7 @@ export default function AuthPage() {
           return;
         }
         
-        setTimeout(pollProfileContext, 2000);
+        setTimeout(pollProfileContext, 3000);
         
       } catch (error: any) {
         if (error.name === 'AbortError') return;
@@ -2139,7 +2140,7 @@ export default function AuthPage() {
       }
     };
     
-    const initialDelay = setTimeout(pollProfileContext, 1500);
+    const initialDelay = setTimeout(pollProfileContext, 2000);
     const timelineInterval = setInterval(() => {
       setBriefingTimelineStep(prev => Math.min(prev + 1, 4));
     }, 3000);

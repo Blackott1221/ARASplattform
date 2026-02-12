@@ -383,6 +383,27 @@ export function setupSimpleAuth(app: Express) {
 
       // 🔥 STEP 5: ASYNC ENRICHMENT TRIGGER (non-blocking)
       if (company && industry) {
+        // Set initial enrichment state BEFORE triggering async job
+        // so frontend polling immediately sees "queued" instead of null
+        try {
+          await storage.updateUserProfile(user.id, {
+            aiProfile: {
+              ...(user.aiProfile || {}),
+              enrichmentMeta: {
+                status: 'queued',
+                attempts: 0,
+                lastUpdated: new Date().toISOString(),
+                errorCode: null,
+                nextRetryAt: null,
+                confidence: null
+              }
+            },
+            profileEnriched: false
+          });
+        } catch (dbErr: any) {
+          console.error('[register.enrich.init] Failed to set initial state:', dbErr?.message);
+        }
+
         const enrichmentInput: EnrichmentInput = {
           userId: user.id,
           company,

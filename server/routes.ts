@@ -287,6 +287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Return sanitized profile context for AI enhancement
+      const aiProfile = (user.aiProfile || null) as any;
       return res.json({
         id: user.id,
         name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username,
@@ -297,7 +298,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         industry: user.industry || null,
         jobRole: user.jobRole || null,
         phone: user.phone || null,
-        aiProfile: user.aiProfile || null
+        aiProfile,
+        // 🔥 Enrichment status fields for frontend polling
+        profileEnriched: user.profileEnriched ?? false,
+        enrichmentStatus: aiProfile?.enrichmentStatus ?? null,
+        enrichmentMeta: aiProfile?.enrichmentMeta ?? null,
+        lastEnrichmentDate: user.lastEnrichmentDate ?? null
       });
     } catch (error) {
       logger.error('[PROFILE-CONTEXT] Error loading user profile context:', error);
