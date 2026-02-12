@@ -8,6 +8,7 @@ import { Loader2, Eye, EyeOff, AlertCircle, CheckCircle2, ArrowRight, Phone, Cal
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { trackLogin, trackSignup, captureUTMParameters } from "@/lib/analytics";
+import { queryClient } from "@/lib/queryClient";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { T } from "@/lib/auto-translate";
 import PlattformBild from "@/assets/Plattform_bild.png";
@@ -3310,7 +3311,10 @@ export default function AuthPage() {
                           className="pt-4"
                         >
                           <motion.button
-                            onClick={() => setLocation('/space')}
+                            onClick={() => {
+                              queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+                              setLocation('/space');
+                            }}
                             whileHover={{ y: -2, boxShadow: '0 26px 92px rgba(254,145,0,0.18), 0 22px 74px rgba(0,0,0,0.60)' }}
                             whileTap={{ y: 0, scale: 0.99 }}
                             className="relative w-full h-12 md:h-14 rounded-full font-extrabold text-sm uppercase overflow-hidden flex items-center justify-center gap-3 focus:outline-none focus:ring-2 focus:ring-offset-0"
