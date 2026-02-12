@@ -59,7 +59,20 @@ export function useAuth() {
       primaryGoal?: string;
     }) => {
       console.log('[FRONTEND-DEBUG] Register attempt:', userData.username);
-      const res = await apiRequest("POST", "/api/register", userData);
+      // Use fetch directly — apiRequest swallows non-2xx and returns fake 200
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userData),
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ message: "Registration failed" }));
+        console.log('[FRONTEND-DEBUG] Register rejected:', res.status, data);
+        const err = new Error(data.message || "Registration failed");
+        (err as any).status = res.status;
+        throw err;
+      }
       const newUser = await res.json();
       console.log('[FRONTEND-DEBUG] Register response:', newUser);
       return newUser;

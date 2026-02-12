@@ -2505,7 +2505,20 @@ export default function AuthPage() {
           // 🔥 Block redirect BEFORE mutateAsync — ref is synchronous,
           // so it's already true when onSuccess triggers re-render
           skipAuthRedirectRef.current = true;
-          const result = await registerMutation.mutateAsync(registerData);
+          
+          // Retry once on transient network errors (Safari "Load failed")
+          let result;
+          try {
+            result = await registerMutation.mutateAsync(registerData);
+          } catch (firstErr: any) {
+            if (firstErr?.message === 'Load failed' || firstErr?.message === 'Failed to fetch') {
+              console.warn('[REGISTER] Transient network error, retrying once...', firstErr.message);
+              await new Promise(r => setTimeout(r, 1500));
+              result = await registerMutation.mutateAsync(registerData);
+            } else {
+              throw firstErr;
+            }
+          }
           trackSignup('email', result?.id);
           
           // 🔥 STEP 8: CINEMATIC ONBOARDING - Transition to Intelligence Briefing
@@ -2519,28 +2532,15 @@ export default function AuthPage() {
             status: 'polling',
             enrichmentStatus: 'in_progress',
             qualityScore: 0,
-            companySnapshot: `${registerData.company} ist ein Unternehmen in der ${registerData.industry || 'Geschäfts'}-Branche. ARAS AI analysiert gerade alle verfügbaren Informationen...`,
-            targetAudience: [
-              `Entscheider in ${registerData.industry || 'relevanten'} Unternehmen`,
-              `${registerData.primaryGoal === 'mehr_termine' ? 'Terminvereinbarungen' : registerData.primaryGoal === 'lead_qualifizierung' ? 'qualifizierte Leads' : 'Outbound-Lösungen'}`,
-              'B2B-Kunden mit Wachstumspotenzial'
-            ],
+            companySnapshot: '',
+            targetAudience: [],
             targetAudienceSegments: [],
-            callAngles: [
-              'ARAS AI recherchiert Gesprächseinstiege...',
-              'Branchenspezifische Angles werden geladen...'
-            ],
-            objections: [
-              { objection: 'Einwände werden analysiert...', response: 'Überzeugende Antworten werden generiert...' }
-            ],
+            callAngles: [],
+            objections: [],
             competitors: [],
             uniqueSellingPoints: [],
             decisionMakers: [],
-            nextActions: [
-              'Erste Kampagne erstellen',
-              'Zielgruppe definieren',
-              'ARAS AI Anruf testen'
-            ]
+            nextActions: []
           });
           
           // 🔥 Set briefing phase IMMEDIATELY (not in setTimeout!)
@@ -2584,7 +2584,7 @@ export default function AuthPage() {
           if (errorText.includes('email') || errorText.includes('username')) {
             setRegistrationStep(1); // Go back to step 1 for user info
           } else {
-            setRegistrationStep(3); // Go back to step 3 for other errors
+            setRegistrationStep(2); // Go back to step 2 so user can retry
           }
           
           setResearchStatus("");
@@ -3037,278 +3037,341 @@ export default function AuthPage() {
                   )}
                 </AnimatePresence>
 
-                {/* 🔥 STEP 8C: INTELLIGENCE BRIEFING SCREEN */}
+                {/* ARAS CI — INTELLIGENCE BRIEFING */}
                 <AnimatePresence mode="wait">
                   {(onboardingPhase === 'briefing' || onboardingPhase === 'complete') && briefingData && (
                     <motion.div
                       key="intelligence-briefing"
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ duration: 0.4, ease: "easeOut" }}
-                      className="space-y-6"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                      className="space-y-5"
                     >
-                      {/* Briefing Header */}
-                      <div className="text-center mb-6">
+                      {/* ═══ HEADER ═══ */}
+                      <div className="text-center space-y-3">
                         <motion.div
-                          initial={{ opacity: 0, y: -10 }}
+                          initial={{ opacity: 0, y: -12 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.2 }}
+                          transition={{ delay: 0.15 }}
+                          className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full border border-[#e9d7c4]/16"
+                          style={{ background: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(12px)' }}
                         >
-                          <h2 
-                            className="text-xl md:text-2xl font-black mb-2"
-                            style={{ fontFamily: 'Orbitron, sans-serif', color: '#FE9100' }}
-                          >
-                            {onboardingPhase === 'complete' ? 'DEIN OUTBOUND PLAYBOOK' : 'ARAS AI INTELLIGENCE BRIEFING'}
-                          </h2>
-                          <p className="text-sm text-gray-400">
-                            {onboardingPhase === 'complete' 
-                              ? `Personalisiert für ${registerData.company}`
-                              : 'Wir verbinden deine Angaben mit öffentlichen Signalen...'}
-                          </p>
+                          <motion.div
+                            className="w-2 h-2 rounded-full"
+                            style={{ background: 'linear-gradient(180deg, #FE9100, #a34e00)', boxShadow: '0 0 14px rgba(254,145,0,0.6)' }}
+                            animate={{ scale: [1, 1.3, 1], opacity: [1, 0.6, 1] }}
+                            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                          />
+                          <span className="text-[11px] font-bold tracking-[0.22em] uppercase" style={{ fontFamily: 'Orbitron, sans-serif', color: 'rgba(233,215,196,0.92)' }}>
+                            {onboardingPhase === 'complete' ? 'ANALYSE ABGESCHLOSSEN' : 'LIVE ANALYSE'}
+                          </span>
                         </motion.div>
-                      </div>
 
-                      {/* Live Timeline (while polling) */}
-                      {briefingData.status === 'polling' && (
-                        <motion.div 
-                          className="space-y-3 mb-6"
+                        <motion.h2
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.25, type: 'spring', stiffness: 200 }}
+                          className="text-xl md:text-2xl font-black"
+                          style={{
+                            fontFamily: 'Orbitron, sans-serif',
+                            background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #e9d7c4)',
+                            backgroundSize: '300% 100%',
+                            backgroundClip: 'text',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            animation: 'arasGradientFlow 4s ease infinite',
+                          }}
+                        >
+                          {registerData.company || 'ARAS AI'}
+                        </motion.h2>
+                        <style>{`@keyframes arasGradientFlow { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }`}</style>
+
+                        <motion.p
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
+                          transition={{ delay: 0.35 }}
+                          className="text-sm max-w-sm mx-auto"
+                          style={{ color: 'rgba(245,245,247,0.56)' }}
                         >
-                          {['Parsing Website & Domain', 'Analysiere Zielgruppe', 'Erstelle Call-Strategie', 'Generiere Einwandbehandlung'].map((step, i) => (
-                            <motion.div
-                              key={step}
-                              initial={{ opacity: 0, x: -20 }}
-                              animate={{ opacity: briefingTimelineStep >= i ? 1 : 0.4, x: 0 }}
-                              transition={{ delay: i * 0.3 }}
-                              className="flex items-center gap-3"
-                            >
-                              <div 
-                                className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
-                                style={{
-                                  background: briefingTimelineStep >= i 
-                                    ? 'linear-gradient(135deg, #FE9100, #a34e00)' 
-                                    : 'rgba(255,255,255,0.1)',
-                                  color: briefingTimelineStep >= i ? '#000' : '#666'
-                                }}
-                              >
-                                {briefingTimelineStep > i ? '✓' : i + 1}
-                              </div>
-                              <span className={`text-sm ${briefingTimelineStep >= i ? 'text-white' : 'text-gray-500'}`}>
-                                {step}
-                              </span>
-                              {briefingTimelineStep === i && (
-                                <motion.div
-                                  animate={{ opacity: [0.5, 1, 0.5] }}
-                                  transition={{ duration: 1.5, repeat: Infinity }}
-                                  className="ml-auto"
-                                >
-                                  <Loader2 className="w-4 h-4 animate-spin text-[#FE9100]" />
-                                </motion.div>
-                              )}
-                            </motion.div>
-                          ))}
-                        </motion.div>
-                      )}
+                          {onboardingPhase === 'complete'
+                            ? `Dein Intelligence-Profil ist bereit.`
+                            : `ARAS AI analysiert ${registerData.company || 'dein Unternehmen'} mit Live-Recherche...`}
+                        </motion.p>
+                      </div>
 
-                      {/* Intelligence Cards */}
-                      <div className="space-y-4">
-                        {/* Company Snapshot */}
+                      {/* ═══ LIVE TIMELINE (while polling) ═══ */}
+                      {briefingData.status === 'polling' && (
                         <motion.div
+                          className="space-y-0 rounded-2xl overflow-hidden border border-[#e9d7c4]/10"
+                          style={{ background: 'rgba(255,255,255,0.014)', boxShadow: '0 18px 60px rgba(0,0,0,0.4)' }}
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: 0.3 }}
-                          className="p-4 rounded-xl"
-                          style={{
-                            background: 'rgba(254, 145, 0, 0.08)',
-                            border: '1px solid rgba(254, 145, 0, 0.2)'
-                          }}
                         >
-                          <h3 className="text-xs font-bold uppercase tracking-wider text-[#FE9100] mb-2">
-                            Company Snapshot
-                          </h3>
-                          <p className="text-sm text-gray-300 leading-relaxed">
-                            {briefingData.companySnapshot}
-                          </p>
-                          {briefingData.status === 'polling' && (
-                            <p className="text-xs text-gray-500 mt-2 italic">
-                              Basierend auf deinen Angaben • wird aktualisiert...
-                            </p>
-                          )}
+                          {[
+                            { label: 'Website & Domain scannen', sub: 'Öffentliche Daten werden gelesen' },
+                            { label: 'Zielgruppe identifizieren', sub: 'Marktsegmente werden analysiert' },
+                            { label: 'Call-Strategie generieren', sub: 'Gesprächseinstiege werden erstellt' },
+                            { label: 'Einwandbehandlung aufbauen', sub: 'Antworten werden optimiert' },
+                          ].map((step, i) => {
+                            const isActive = briefingTimelineStep === i;
+                            const isDone = briefingTimelineStep > i;
+                            const isPending = briefingTimelineStep < i;
+                            return (
+                              <motion.div
+                                key={step.label}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: isPending ? 0.35 : 1 }}
+                                transition={{ delay: 0.35 + i * 0.12 }}
+                                className="flex items-center gap-3 px-4 py-3 relative"
+                                style={{
+                                  borderBottom: i < 3 ? '1px solid rgba(233,215,196,0.06)' : 'none',
+                                  background: isActive ? 'rgba(254,145,0,0.06)' : 'transparent',
+                                }}
+                              >
+                                {isActive && (
+                                  <motion.div
+                                    className="absolute inset-0 pointer-events-none"
+                                    style={{ background: 'linear-gradient(90deg, transparent, rgba(254,145,0,0.04), transparent)' }}
+                                    animate={{ opacity: [0.5, 1, 0.5] }}
+                                    transition={{ duration: 2, repeat: Infinity }}
+                                  />
+                                )}
+                                <div
+                                  className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 relative z-[1]"
+                                  style={{
+                                    background: isDone ? 'linear-gradient(135deg, #FE9100, #a34e00)' : isActive ? 'rgba(254,145,0,0.15)' : 'rgba(255,255,255,0.05)',
+                                    border: `1px solid ${isDone ? 'transparent' : isActive ? 'rgba(254,145,0,0.3)' : 'rgba(233,215,196,0.08)'}`,
+                                    boxShadow: isDone ? '0 0 16px rgba(254,145,0,0.3)' : 'none',
+                                  }}
+                                >
+                                  {isDone ? (
+                                    <Check className="w-3.5 h-3.5 text-black" />
+                                  ) : isActive ? (
+                                    <motion.div
+                                      className="w-2 h-2 rounded-full"
+                                      style={{ background: '#FE9100' }}
+                                      animate={{ scale: [1, 1.4, 1] }}
+                                      transition={{ duration: 1, repeat: Infinity }}
+                                    />
+                                  ) : (
+                                    <span className="text-[10px] font-bold" style={{ color: 'rgba(245,245,247,0.3)' }}>{i + 1}</span>
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0 relative z-[1]">
+                                  <p className={`text-[13px] font-semibold ${isDone ? 'text-white' : isActive ? 'text-white' : 'text-gray-500'}`}>
+                                    {step.label}
+                                  </p>
+                                  {isActive && (
+                                    <motion.p
+                                      initial={{ opacity: 0, height: 0 }}
+                                      animate={{ opacity: 1, height: 'auto' }}
+                                      className="text-[11px] mt-0.5"
+                                      style={{ color: 'rgba(254,145,0,0.7)' }}
+                                    >
+                                      {step.sub}
+                                    </motion.p>
+                                  )}
+                                </div>
+                                {isActive && (
+                                  <motion.div
+                                    animate={{ rotate: 360 }}
+                                    transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
+                                    className="relative z-[1]"
+                                  >
+                                    <div className="w-4 h-4 rounded-full border-2 border-[#FE9100]/30 border-t-[#FE9100]" />
+                                  </motion.div>
+                                )}
+                              </motion.div>
+                            );
+                          })}
+
+                          {/* Scan progress bar */}
+                          <div className="h-[2px] w-full relative overflow-hidden" style={{ background: 'rgba(233,215,196,0.06)' }}>
+                            <motion.div
+                              className="absolute top-0 left-0 h-full"
+                              style={{ background: 'linear-gradient(90deg, #FE9100, #a34e00)' }}
+                              initial={{ width: '0%' }}
+                              animate={{ width: `${Math.min((briefingTimelineStep + 1) / 4 * 100, 100)}%` }}
+                              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                            />
+                          </div>
                         </motion.div>
+                      )}
+
+                      {/* ═══ INTELLIGENCE CARDS — appear as data arrives ═══ */}
+                      <div className="space-y-3">
+
+                        {/* Company Snapshot */}
+                        {briefingData.companySnapshot && briefingData.companySnapshot.length > 10 && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.5 }}
+                            className="rounded-2xl p-4 relative overflow-hidden border border-[#FE9100]/20 group"
+                            style={{ background: 'linear-gradient(135deg, rgba(254,145,0,0.08), rgba(255,255,255,0.012))', boxShadow: '0 18px 60px rgba(0,0,0,0.4)' }}
+                          >
+                            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" style={{ background: 'radial-gradient(400px 150px at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(254,145,0,0.08), transparent 60%)' }} />
+                            <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase mb-2" style={{ color: 'rgba(233,215,196,0.9)' }}>
+                              COMPANY INTELLIGENCE
+                            </h3>
+                            <p className="text-[13px] leading-relaxed" style={{ color: 'rgba(245,245,247,0.78)' }}>
+                              {briefingData.companySnapshot.length > 350 ? briefingData.companySnapshot.slice(0, 350) + '...' : briefingData.companySnapshot}
+                            </p>
+                          </motion.div>
+                        )}
 
                         {/* Target Audience */}
-                        <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.4 }}
-                          className="p-4 rounded-xl"
-                          style={{
-                            background: 'rgba(255, 255, 255, 0.03)',
-                            border: '1px solid rgba(255, 255, 255, 0.08)'
-                          }}
-                        >
-                          <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
-                            Best-fit Zielgruppe
-                          </h3>
-                          <ul className="space-y-1.5">
-                            {(briefingData?.targetAudience ?? []).map((audience, i) => (
-                              <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
-                                <span className="text-[#FE9100] mt-0.5">•</span>
-                                {audience || 'Wird ermittelt...'}
-                              </li>
-                            ))}
-                          </ul>
-                        </motion.div>
-
-                        {/* Call Angles */}
-                        <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.5 }}
-                          className="p-4 rounded-xl"
-                          style={{
-                            background: 'rgba(255, 255, 255, 0.03)',
-                            border: '1px solid rgba(255, 255, 255, 0.08)'
-                          }}
-                        >
-                          <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
-                            Suggested Call Angles
-                          </h3>
-                          <ul className="space-y-1.5">
-                            {(briefingData?.callAngles ?? []).map((angle, i) => (
-                              <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
-                                <span className="text-[#FE9100] mt-0.5">→</span>
-                                {angle || 'Wird ermittelt...'}
-                              </li>
-                            ))}
-                          </ul>
-                        </motion.div>
-
-                        {/* 🔥 WOW-Level: Objection Handling */}
-                        {(briefingData?.objections ?? []).length > 0 && (
+                        {(briefingData?.targetAudience ?? []).length > 0 && (
                           <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.6 }}
-                            className="p-4 rounded-xl"
-                            style={{
-                              background: 'rgba(255, 255, 255, 0.03)',
-                              border: '1px solid rgba(255, 255, 255, 0.08)'
-                            }}
+                            transition={{ duration: 0.5, delay: 0.08 }}
+                            className="rounded-xl p-4 border border-[#e9d7c4]/10 group"
+                            style={{ background: 'rgba(255,255,255,0.014)', boxShadow: '0 16px 52px rgba(0,0,0,0.35)' }}
                           >
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
-                              🎯 Einwandbehandlung ({(briefingData?.objections ?? []).length} Einwände)
+                            <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase mb-2.5" style={{ color: 'rgba(233,215,196,0.7)' }}>
+                              ZIELGRUPPE
                             </h3>
-                            <div className="space-y-3">
-                              {(briefingData?.objections ?? []).slice(0, 5).map((obj, i) => (
-                                <div key={i} className="space-y-1">
-                                  <p className="text-xs text-red-400/80 font-medium">
-                                    "{obj?.objection || 'Einwand'}"
-                                  </p>
-                                  <p className="text-sm text-green-400/90 pl-3 border-l-2 border-green-500/30">
-                                    {obj?.response || 'Antwort wird generiert...'}
-                                  </p>
+                            <p className="text-[13px] leading-relaxed" style={{ color: 'rgba(245,245,247,0.72)' }}>
+                              {(briefingData?.targetAudience ?? []).join(' ')}
+                            </p>
+                          </motion.div>
+                        )}
+
+                        {/* Call Angles + Objections side by side */}
+                        {((briefingData?.callAngles ?? []).length > 0 || (briefingData?.objections ?? []).length > 0) && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {(briefingData?.callAngles ?? []).length > 0 && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.5, delay: 0.16 }}
+                                className="rounded-xl p-4 border border-[#e9d7c4]/10"
+                                style={{ background: 'rgba(255,255,255,0.014)', boxShadow: '0 16px 52px rgba(0,0,0,0.35)' }}
+                              >
+                                <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase mb-2.5" style={{ color: 'rgba(233,215,196,0.7)' }}>
+                                  CALL ANGLES
+                                </h3>
+                                <ul className="space-y-1.5">
+                                  {(briefingData?.callAngles ?? []).slice(0, 4).map((angle: string, i: number) => (
+                                    <li key={i} className="flex items-start gap-2 text-[12px]" style={{ color: 'rgba(245,245,247,0.68)' }}>
+                                      <div className="w-1 h-1 rounded-full mt-1.5 flex-shrink-0" style={{ background: '#FE9100' }} />
+                                      {angle}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </motion.div>
+                            )}
+
+                            {(briefingData?.objections ?? []).length > 0 && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.5, delay: 0.24 }}
+                                className="rounded-xl p-4 border border-[#e9d7c4]/10"
+                                style={{ background: 'rgba(255,255,255,0.014)', boxShadow: '0 16px 52px rgba(0,0,0,0.35)' }}
+                              >
+                                <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase mb-2.5" style={{ color: 'rgba(233,215,196,0.7)' }}>
+                                  EINWANDBEHANDLUNG
+                                </h3>
+                                <div className="space-y-2.5">
+                                  {(briefingData?.objections ?? []).slice(0, 3).map((obj: any, i: number) => (
+                                    <div key={i}>
+                                      <p className="text-[11px] font-medium mb-0.5" style={{ color: 'rgba(254,145,0,0.7)' }}>
+                                        {obj?.objection || ''}
+                                      </p>
+                                      <p className="text-[12px] pl-2.5" style={{ color: 'rgba(245,245,247,0.62)', borderLeft: '2px solid rgba(254,145,0,0.2)' }}>
+                                        {obj?.response || ''}
+                                      </p>
+                                    </div>
+                                  ))}
                                 </div>
-                              ))}
-                            </div>
-                          </motion.div>
+                              </motion.div>
+                            )}
+                          </div>
                         )}
 
-                        {/* 🔥 WOW-Level: Competitors (only when available) */}
-                        {(briefingData?.competitors ?? []).length > 0 && onboardingPhase === 'complete' && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.7 }}
-                            className="p-4 rounded-xl"
-                            style={{
-                              background: 'rgba(255, 255, 255, 0.03)',
-                              border: '1px solid rgba(255, 255, 255, 0.08)'
-                            }}
-                          >
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
-                              🆚 Wettbewerber-Analyse
-                            </h3>
-                            <ul className="space-y-1.5">
-                              {(briefingData?.competitors ?? []).slice(0, 5).map((comp, i) => (
-                                <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
-                                  <span className="text-yellow-500 mt-0.5">⚡</span>
-                                  {comp}
-                                </li>
-                              ))}
-                            </ul>
-                          </motion.div>
+                        {/* Competitors + USPs */}
+                        {((briefingData?.competitors ?? []).length > 0 || (briefingData?.uniqueSellingPoints ?? []).length > 0) && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {(briefingData?.competitors ?? []).length > 0 && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.5, delay: 0.32 }}
+                                className="rounded-xl p-4 border border-[#e9d7c4]/10"
+                                style={{ background: 'rgba(255,255,255,0.014)', boxShadow: '0 16px 52px rgba(0,0,0,0.35)' }}
+                              >
+                                <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase mb-2.5" style={{ color: 'rgba(233,215,196,0.7)' }}>
+                                  WETTBEWERBER
+                                </h3>
+                                <ul className="space-y-1.5">
+                                  {(briefingData?.competitors ?? []).slice(0, 5).map((comp: string, i: number) => (
+                                    <li key={i} className="flex items-center gap-2 text-[12px]" style={{ color: 'rgba(245,245,247,0.68)' }}>
+                                      <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: 'rgba(233,215,196,0.4)' }} />
+                                      {comp}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </motion.div>
+                            )}
+
+                            {(briefingData?.uniqueSellingPoints ?? []).length > 0 && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.5, delay: 0.4 }}
+                                className="rounded-xl p-4 border border-[#FE9100]/15"
+                                style={{ background: 'linear-gradient(135deg, rgba(254,145,0,0.04), rgba(255,255,255,0.01))', boxShadow: '0 16px 52px rgba(0,0,0,0.35)' }}
+                              >
+                                <h3 className="text-[11px] font-bold tracking-[0.18em] uppercase mb-2.5" style={{ color: 'rgba(254,145,0,0.8)' }}>
+                                  UNIQUE SELLING POINTS
+                                </h3>
+                                <ul className="space-y-1.5">
+                                  {(briefingData?.uniqueSellingPoints ?? []).slice(0, 5).map((usp: string, i: number) => (
+                                    <li key={i} className="flex items-center gap-2 text-[12px]" style={{ color: 'rgba(245,245,247,0.78)' }}>
+                                      <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: '#FE9100' }} />
+                                      {usp}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </motion.div>
+                            )}
+                          </div>
                         )}
 
-                        {/* 🔥 WOW-Level: USPs (only when available) */}
-                        {(briefingData?.uniqueSellingPoints ?? []).length > 0 && onboardingPhase === 'complete' && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.8 }}
-                            className="p-4 rounded-xl"
-                            style={{
-                              background: 'rgba(254, 145, 0, 0.05)',
-                              border: '1px solid rgba(254, 145, 0, 0.15)'
-                            }}
-                          >
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-[#FE9100] mb-2">
-                              💎 Unique Selling Points
-                            </h3>
-                            <ul className="space-y-1.5">
-                              {(briefingData?.uniqueSellingPoints ?? []).slice(0, 7).map((usp, i) => (
-                                <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
-                                  <span className="text-[#FE9100] mt-0.5">✓</span>
-                                  {usp}
-                                </li>
-                              ))}
-                            </ul>
-                          </motion.div>
-                        )}
-
-                        {/* Quality Score Badge (when complete) */}
+                        {/* Quality Score (when complete) */}
                         {onboardingPhase === 'complete' && briefingData?.qualityScore > 0 && (
                           <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }}
+                            initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: 0.9 }}
-                            className="flex items-center justify-center gap-2 py-2"
+                            transition={{ delay: 0.5 }}
+                            className="flex items-center justify-center pt-1"
                           >
-                            <div 
-                              className="px-3 py-1 rounded-full text-xs font-bold"
+                            <div
+                              className="px-4 py-1.5 rounded-full text-[11px] font-bold tracking-[0.12em] uppercase"
                               style={{
-                                background: briefingData.qualityScore >= 7 
-                                  ? 'rgba(34, 197, 94, 0.2)' 
-                                  : briefingData.qualityScore >= 4 
-                                    ? 'rgba(234, 179, 8, 0.2)' 
-                                    : 'rgba(239, 68, 68, 0.2)',
-                                color: briefingData.qualityScore >= 7 
-                                  ? '#22c55e' 
-                                  : briefingData.qualityScore >= 4 
-                                    ? '#eab308' 
-                                    : '#ef4444',
-                                border: `1px solid ${briefingData.qualityScore >= 7 
-                                  ? 'rgba(34, 197, 94, 0.3)' 
-                                  : briefingData.qualityScore >= 4 
-                                    ? 'rgba(234, 179, 8, 0.3)' 
-                                    : 'rgba(239, 68, 68, 0.3)'}`
+                                fontFamily: 'Orbitron, sans-serif',
+                                background: 'rgba(254,145,0,0.08)',
+                                border: '1px solid rgba(254,145,0,0.2)',
+                                color: 'rgba(233,215,196,0.9)',
                               }}
                             >
-                              Intelligence Score: {briefingData.qualityScore}/10
+                              Intelligence Score {briefingData.qualityScore}/10
                             </div>
                           </motion.div>
                         )}
                       </div>
 
-                      {/* CTA: Enter SPACE */}
+                      {/* ═══ CTA: ENTER SPACE ═══ */}
                       {onboardingPhase === 'complete' && (
                         <motion.div
-                          initial={{ opacity: 0, y: 20 }}
+                          initial={{ opacity: 0, y: 16 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.7 }}
-                          className="pt-4"
+                          transition={{ delay: 0.6 }}
+                          className="pt-3 space-y-3"
                         >
                           <motion.button
                             onClick={() => {
@@ -3324,51 +3387,40 @@ export default function AuthPage() {
                               background: 'linear-gradient(180deg, rgba(254,145,0,0.22), rgba(255,255,255,0.04))',
                               border: '1px solid rgba(254,145,0,0.4)',
                               color: 'rgba(255,255,255,0.98)',
-                              boxShadow: '0 18px 64px rgba(254,145,0,0.15), 0 22px 74px rgba(0,0,0,0.60)'
+                              boxShadow: '0 18px 64px rgba(254,145,0,0.15), 0 22px 74px rgba(0,0,0,0.60)',
                             }}
                           >
-                            <Sparkles className="w-5 h-5" />
                             ENTER SPACE
                             <ArrowRight className="w-5 h-5" />
                           </motion.button>
-                          
-                          {/* Show retry option for failed/timeout enrichments */}
+
                           {(briefingData.enrichmentStatus === 'failed' || briefingData.enrichmentStatus === 'timeout' || briefingData.status === 'timeout') && (
-                            <div className="mt-4 p-3 rounded-lg" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                              <p className="text-xs text-red-400 mb-2">
-                                ⚠️ Intelligence Enrichment {briefingData.enrichmentStatus === 'timeout' ? 'hat zu lange gedauert' : 'ist fehlgeschlagen'}
+                            <div className="p-3 rounded-xl" style={{ background: 'rgba(239, 68, 68, 0.06)', border: '1px solid rgba(239, 68, 68, 0.15)' }}>
+                              <p className="text-[11px] mb-2" style={{ color: 'rgba(239, 68, 68, 0.7)' }}>
+                                Enrichment {briefingData.enrichmentStatus === 'timeout' ? 'hat zu lange gedauert' : 'ist fehlgeschlagen'}
                               </p>
                               <button
                                 onClick={async () => {
                                   try {
                                     setBriefingData(prev => prev ? { ...prev, status: 'polling', enrichmentStatus: 'retrying' } : prev);
                                     setOnboardingPhase('briefing');
-                                    const res = await fetch('/api/user/enrich/retry', { 
-                                      method: 'POST', 
-                                      credentials: 'include' 
-                                    });
-                                    if (res.ok) {
-                                      console.log('[BRIEFING] Retry triggered successfully');
-                                    }
+                                    const res = await fetch('/api/user/enrich/retry', { method: 'POST', credentials: 'include' });
+                                    if (res.ok) console.log('[BRIEFING] Retry triggered');
                                   } catch (e) {
                                     console.error('[BRIEFING] Retry failed:', e);
                                   }
                                 }}
-                                className="w-full py-2 rounded-lg text-xs font-bold uppercase"
-                                style={{ 
-                                  background: 'rgba(254, 145, 0, 0.2)', 
-                                  border: '1px solid rgba(254, 145, 0, 0.4)',
-                                  color: '#FE9100'
-                                }}
+                                className="w-full py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider"
+                                style={{ background: 'rgba(254, 145, 0, 0.1)', border: '1px solid rgba(254, 145, 0, 0.25)', color: 'rgba(254,145,0,0.9)' }}
                               >
-                                🔄 Erneut versuchen
+                                ERNEUT VERSUCHEN
                               </button>
                             </div>
                           )}
-                          
+
                           {briefingData.status !== 'timeout' && briefingData.enrichmentStatus !== 'failed' && (
-                            <p className="text-xs text-center text-gray-500 mt-3">
-                              Dein personalisiertes Outbound Playbook ist bereit!
+                            <p className="text-[11px] text-center" style={{ color: 'rgba(245,245,247,0.36)' }}>
+                              Dein personalisiertes Intelligence-Profil ist bereit.
                             </p>
                           )}
                         </motion.div>
@@ -3376,9 +3428,9 @@ export default function AuthPage() {
 
                       {/* Polling indicator */}
                       {briefingData.status === 'polling' && (
-                        <div className="text-center pt-2">
-                          <p className="text-xs text-gray-500">
-                            Analysiere... ({briefingPollingCount}/20)
+                        <div className="text-center pt-1">
+                          <p className="text-[11px]" style={{ color: 'rgba(245,245,247,0.3)' }}>
+                            {briefingPollingCount}/20
                           </p>
                         </div>
                       )}
