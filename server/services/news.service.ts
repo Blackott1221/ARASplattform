@@ -141,33 +141,6 @@ const SCOPE_LABELS: Record<string, string> = {
 };
 
 // ============================================================================
-// JSON SCHEMA for structured output
-// ============================================================================
-
-const NEWS_DIGEST_SCHEMA = {
-  type: "object" as const,
-  properties: {
-    items: {
-      type: "array" as const,
-      items: {
-        type: "object" as const,
-        properties: {
-          title: { type: "string" as const },
-          summaryDe: { type: "string" as const },
-          sourceName: { type: "string" as const },
-          sourceUrl: { type: "string" as const },
-          publishedAt: { type: "string" as const },
-          scope: { type: "string" as const },
-          tags: { type: "array" as const, items: { type: "string" as const } },
-        },
-        required: ["title", "summaryDe", "sourceName", "sourceUrl", "publishedAt", "scope", "tags"],
-      },
-    },
-  },
-  required: ["items"],
-};
-
-// ============================================================================
 // PROMPT BUILDER
 // ============================================================================
 
@@ -247,8 +220,6 @@ export async function generateNewsDigest(
         contents: prompt,
         config: {
           tools: [{ googleSearch: {} }],
-          responseMimeType: "application/json",
-          responseSchema: NEWS_DIGEST_SCHEMA,
           temperature: 0.4,
           maxOutputTokens: 4096,
         },
