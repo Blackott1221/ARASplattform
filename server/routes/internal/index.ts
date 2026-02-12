@@ -577,7 +577,7 @@ router.post("/enrichment/run", async (req, res) => {
 // ============================================================================
 
 router.get("/enrichment/smoke", async (req, res) => {
-  const model = process.env.GEMINI_ENRICH_MODEL || "gemini-2.5-pro-preview-06-05";
+  const model = process.env.GEMINI_ENRICH_MODEL || "gemini-3-pro-preview";
   const timeoutMs = 30_000;
 
   console.log('[enrich.smoke.start]', JSON.stringify({
