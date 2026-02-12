@@ -20,6 +20,7 @@ import arasAiImage from "@assets/ChatGPT Image 9. Apr. 2025_ 21_38_23_1754515368
 import arasLogo from "@/assets/aras_logo_1755067745303.png";
 import { SpaceConversionTips } from "@/components/space/SpaceConversionTips";
 import { SpaceKnowledgeBanner } from "@/components/space/SpaceKnowledgeBanner";
+import { SpaceCalendarBanner } from "@/components/space/SpaceCalendarBanner";
 import { SpaceMatrixIntel } from "@/components/space/SpaceMatrixIntel";
 import HowArasThinksDeck from "@/components/space/HowArasThinksDeck";
 
@@ -1211,6 +1212,9 @@ Antworte NUR mit dem Prompt selbst, ohne Einleitung oder Erklärung.`,
 
             {/* WISSENSDATENBANK BANNER - Link to /app/leads */}
             <SpaceKnowledgeBanner />
+
+            {/* KALENDER BANNER - Link to /app/calendar + Live Next Event */}
+            <SpaceCalendarBanner />
 
             {/* HOW ARAS THINKS - Transparent Glass Operator Deck */}
             <HowArasThinksDeck />
