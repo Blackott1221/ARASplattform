@@ -19,6 +19,7 @@ const safeJson = async (res: Response): Promise<any> => {
 import arasAiImage from "@assets/ChatGPT Image 9. Apr. 2025_ 21_38_23_1754515368187.png";
 import arasLogo from "@/assets/aras_logo_1755067745303.png";
 import { SpaceConversionTips } from "@/components/space/SpaceConversionTips";
+import { SpaceKnowledgeBanner } from "@/components/space/SpaceKnowledgeBanner";
 import { SpaceMatrixIntel } from "@/components/space/SpaceMatrixIntel";
 import HowArasThinksDeck from "@/components/space/HowArasThinksDeck";
 
@@ -1207,6 +1208,9 @@ Antworte NUR mit dem Prompt selbst, ohne Einleitung oder Erklärung.`,
 
             {/* CONVERSION TIPS - Ersetzt Input-Feld */}
             <SpaceConversionTips />
+
+            {/* WISSENSDATENBANK BANNER - Link to /app/leads */}
+            <SpaceKnowledgeBanner />
 
             {/* HOW ARAS THINKS - Transparent Glass Operator Deck */}
             <HowArasThinksDeck />
