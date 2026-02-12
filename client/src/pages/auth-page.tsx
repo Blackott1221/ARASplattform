@@ -2118,7 +2118,7 @@ export default function AuthPage() {
           return;
         }
         
-        if (['failed', 'timeout', 'fallback', 'error'].includes(enrichmentStatus)) {
+        if (['failed', 'timeout', 'error'].includes(enrichmentStatus)) {
           console.log('[BRIEFING] ⚠️ Enrichment ended with status:', enrichmentStatus);
           setBriefingData(prev => prev ? { ...prev, status: 'ready', enrichmentStatus } : prev);
           setOnboardingPhase('complete');
@@ -2353,15 +2353,15 @@ export default function AuthPage() {
     return () => clearTimeout(timer);
   }, [typedText, isDeleting, typedIndex]);
 
-  // Redirect after login
+  // Redirect after login (but NOT during onboarding briefing)
   useEffect(() => {
-    if (!isLoading && user) {
+    if (!isLoading && user && onboardingPhase === 'signup') {
       setLocation("/space");
     }
-  }, [isLoading, user, setLocation]);
+  }, [isLoading, user, setLocation, onboardingPhase]);
 
-  // Show loader during auth check or redirect
-  if (isLoading || (!isLoading && user)) {
+  // Show loader during auth check or redirect (but NOT during onboarding briefing)
+  if (isLoading || (!isLoading && user && onboardingPhase === 'signup')) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
         <motion.div
