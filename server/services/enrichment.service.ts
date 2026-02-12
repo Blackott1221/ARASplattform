@@ -250,18 +250,14 @@ function extractDomainFromEmail(email: string | undefined): string | null {
 const SEARCH_CONTEXT_SIZE = 'medium' as const;
 
 function buildResponsesTools(params: { website: string | null; email?: string }): { tools: any[]; allowedDomains: string[] | null } {
+  // Extract domain for LOGGING only — do NOT restrict web_search to one domain.
+  // Deep research needs the full web: LinkedIn, news, reviews, competitors, etc.
   const domain = (params.website ? extractDomainFromUrl(params.website) : null)
     ?? extractDomainFromEmail(params.email);
 
-  if (domain) {
-    return {
-      tools: [{ type: 'web_search_preview', search_context_size: SEARCH_CONTEXT_SIZE, filters: { allowed_domains: [domain] } }],
-      allowedDomains: [domain]
-    };
-  }
   return {
     tools: [{ type: 'web_search_preview', search_context_size: SEARCH_CONTEXT_SIZE }],
-    allowedDomains: null
+    allowedDomains: domain ? [domain] : null  // logged only, NOT passed as filter
   };
 }
 
@@ -319,8 +315,8 @@ function isEnrichmentValid(profile: any): { valid: boolean; score: number; detai
     score += 1; details.objectionHandling = 1;
   }
   
-  // Max score: 10, WOW threshold: 6
-  return { valid: score >= 4, score, details };
+  // Max score: 10, pass threshold: 3 (company desc + audience + 1 more)
+  return { valid: score >= 3, score, details };
 }
 
 // 🔥 CONFIDENCE FROM SCORE (scaled for WOW-level 10-point system)
@@ -454,12 +450,18 @@ export async function runEnrichment(input: EnrichmentInput, attemptNumber: numbe
     
     console.log('[enrich.model.ready]', JSON.stringify({ model: ENRICH_MODEL, provider: 'openai', userId: input.userId }));
     
+    // 🔥 Normalize website URL for prompt (ensure https://)
+    let websiteUrl = website || null;
+    if (websiteUrl && !websiteUrl.startsWith('http://') && !websiteUrl.startsWith('https://')) {
+      websiteUrl = 'https://' + websiteUrl;
+    }
+    
     // 🔥 WOW-LEVEL DEEP INTELLIGENCE PROMPT
     const companyDeepDive = `
 [🤖 ARAS DEEP INTELLIGENCE ENGINE - ULTRA RESEARCH MODE]
 
 Unternehmen: ${company}
-Website: ${website || 'Nicht angegeben'}
+Website: ${websiteUrl || 'Nicht angegeben'}
 Branche: ${industry}
 Kontaktperson: ${firstName} ${lastName} (${role})
 Primäres Ziel: ${primaryGoal}
@@ -467,7 +469,7 @@ Primäres Ziel: ${primaryGoal}
 Du bist ein Elite-Business-Intelligence-Agent für ARAS AI. Deine Aufgabe: Erstelle ein VOLLSTÄNDIGES Outbound-Playbook für dieses Unternehmen.
 
 🔍 RECHERCHIERE ÜBER GOOGLE SEARCH:
-1. Besuche die Website ${website || company + '.com'} und analysiere ALLE Seiten
+1. Besuche die Website ${websiteUrl || company + '.com'} und analysiere ALLE Seiten
 2. Suche nach Pressemitteilungen, News, LinkedIn-Profilen
 3. Finde Bewertungen, Kundenreferenzen, Case Studies
 4. Recherchiere Wettbewerber und Marktposition
@@ -961,21 +963,27 @@ export async function runEnrichmentJobAsync(input: EnrichmentInput): Promise<voi
         enrichmentMeta: {
           ...currentMeta,
           status: 'in_progress',
+          errorCode: null,
           attempts: attemptNumber,
           lastUpdated: new Date().toISOString()
         }
-      }
+      },
+      profileEnriched: false
     });
+    console.log('[enrich.persist] in_progress_saved', JSON.stringify({ userId: input.userId, attempt: attemptNumber }));
     
     // Run enrichment
     const _model = process.env.OPENAI_ENRICH_MODEL ?? DEFAULT_ENRICH_MODEL;
     const _api = isResponsesOnlyModel(_model) ? 'responses' : 'chat.completions';
+    const openaiStart = Date.now();
     console.log('[enrich.step] openai.calling', JSON.stringify({ userId: input.userId, model: _model, api: _api }));
     const result = await runEnrichment(input, attemptNumber);
+    const openaiDurationMs = Date.now() - openaiStart;
     console.log('[enrich.step] openai.returned', JSON.stringify({ 
       userId: input.userId, 
       model: _model,
       api: _api,
+      openaiDurationMs,
       success: result.enrichmentWasSuccessful,
       status: result.enrichmentStatus,
       errorCode: result.enrichmentErrorCode,
@@ -1023,6 +1031,12 @@ export async function runEnrichmentJobAsync(input: EnrichmentInput): Promise<voi
       profileEnriched: result.enrichmentWasSuccessful,
       lastEnrichmentDate: result.enrichmentWasSuccessful ? new Date() : user.lastEnrichmentDate
     });
+    console.log('[enrich.persist] result_saved', JSON.stringify({
+      userId: input.userId,
+      status: terminalStatus,
+      profileEnriched: result.enrichmentWasSuccessful,
+      enrichmentStatus: result.enrichmentStatus
+    }));
     
     console.log('[enrich.async.end]', JSON.stringify({
       userId: input.userId,
