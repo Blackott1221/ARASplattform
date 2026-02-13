@@ -2,8 +2,8 @@ import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { db } from "../db";
 import { ndaAcceptances, NDA_CURRENT_VERSION } from "@shared/schema";
-import { eq, and, desc } from "drizzle-orm";
-import { randomBytes } from "crypto";
+import { eq, and, desc, sql } from "drizzle-orm";
+import { randomBytes, createHash } from "crypto";
 
 const router = Router();
 
@@ -35,7 +35,7 @@ setInterval(() => {
 }, 15 * 60 * 1000);
 
 // ---------------------------------------------------------------------------
-// Helper: get client IP
+// Helpers
 // ---------------------------------------------------------------------------
 function getClientIp(req: Request): string {
   return (
@@ -45,21 +45,25 @@ function getClientIp(req: Request): string {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Helper: generate a secure random token for the cookie
-// ---------------------------------------------------------------------------
+function sha256(input: string): string {
+  return createHash("sha256").update(input).digest("hex");
+}
+
 function generateAccessToken(): string {
   return randomBytes(32).toString("hex");
 }
 
 // ---------------------------------------------------------------------------
-// Validation schema
+// Validation schema — matches DB columns exactly
 // ---------------------------------------------------------------------------
 const acceptSchema = z.object({
   fullName: z.string().min(3, "Full name must be at least 3 characters").max(200),
   email: z.string().email("Please provide a valid email address").max(320),
   company: z.string().max(200).optional().default(""),
+  title: z.string().max(200).optional().default(""),
   consent: z.literal(true, { errorMap: () => ({ message: "You must agree to the NDA" }) }),
+  pagePath: z.string().max(500).optional(),
+  ndaVersion: z.string().max(100).optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -79,8 +83,7 @@ function setNdaCookie(res: Response, token: string) {
   });
 }
 
-// In-memory token → acceptanceId map (lightweight; production would use Redis)
-// We also store the token in a simple Map so we can verify it on /data-room requests
+// In-memory token store (lightweight; production would use Redis)
 const tokenStore = new Map<string, { acceptanceId: number; email: string; ndaVersion: string }>();
 
 // ---------------------------------------------------------------------------
@@ -98,60 +101,67 @@ router.post("/accept", async (req: Request, res: Response) => {
     const parsed = acceptSchema.safeParse(req.body);
     if (!parsed.success) {
       const firstError = parsed.error.errors[0]?.message || "Validation failed";
+      console.error("[NDA] Validation failed:", parsed.error.errors.map(e => e.message).join(", "));
       return res.status(400).json({ ok: false, message: firstError, errors: parsed.error.errors });
     }
 
-    const { fullName, email, company, consent } = parsed.data;
+    const { fullName, email, company, title, consent } = parsed.data;
     const normalizedEmail = email.toLowerCase().trim();
-    const userAgent = (req.headers["user-agent"] as string) || "";
-    const pagePath = (req.body.pagePath as string) || "/nda";
+    const ndaVersion = parsed.data.ndaVersion || NDA_CURRENT_VERSION;
+    const userAgent = (req.headers["user-agent"] as string) || null;
+    const pagePath = parsed.data.pagePath || req.headers.referer || "/nda";
+    const ipHash = sha256(ip);
 
-    // Check if already accepted this version
-    const existing = await db
-      .select()
-      .from(ndaAcceptances)
-      .where(
-        and(
-          eq(ndaAcceptances.email, normalizedEmail),
-          eq(ndaAcceptances.ndaVersion, NDA_CURRENT_VERSION)
-        )
-      )
-      .limit(1);
+    // Upsert: insert or update on conflict (email, nda_version)
+    const now = new Date();
+    const values = {
+      ndaVersion,
+      email: normalizedEmail,
+      fullName: fullName.trim(),
+      company: company?.trim() || null,
+      title: title?.trim() || null,
+      acceptedAt: now,
+      ipHash,
+      userAgent,
+      ipAddress: ip,
+      pagePath,
+      consent,
+      // createdAt: omitted → DB DEFAULT now() on insert
+    };
 
-    let acceptanceId: number;
+    const [row] = await db
+      .insert(ndaAcceptances)
+      .values(values)
+      .onConflictDoUpdate({
+        target: [ndaAcceptances.email, ndaAcceptances.ndaVersion],
+        set: {
+          fullName: values.fullName,
+          company: values.company,
+          title: values.title,
+          consent: values.consent,
+          pagePath: values.pagePath,
+          ipAddress: values.ipAddress,
+          userAgent: values.userAgent,
+          ipHash: values.ipHash,
+          acceptedAt: now,
+          // createdAt: NOT overwritten on update
+        },
+      })
+      .returning({ id: ndaAcceptances.id });
 
-    if (existing.length > 0) {
-      // Reuse existing acceptance — do not create duplicate
-      acceptanceId = existing[0].id;
-    } else {
-      // Insert new acceptance
-      const [row] = await db
-        .insert(ndaAcceptances)
-        .values({
-          email: normalizedEmail,
-          fullName: fullName.trim(),
-          company: company?.trim() || null,
-          ndaVersion: NDA_CURRENT_VERSION,
-          acceptedAt: new Date().toISOString() as any,
-          ipAddress: ip,
-          userAgent,
-          pagePath,
-          consent,
-        })
-        .returning({ id: ndaAcceptances.id });
-
-      acceptanceId = row.id;
-    }
+    const acceptanceId = row.id;
 
     // Generate token and set cookie
     const token = generateAccessToken();
-    tokenStore.set(token, { acceptanceId, email: normalizedEmail, ndaVersion: NDA_CURRENT_VERSION });
+    tokenStore.set(token, { acceptanceId, email: normalizedEmail, ndaVersion });
     setNdaCookie(res, token);
 
-    return res.json({ ok: true, redirectTo: "/data-room" });
+    console.log(`[NDA] Accepted: id=${acceptanceId} version=${ndaVersion}`);
+    return res.json({ ok: true, accepted: true, redirectTo: "/data-room" });
   } catch (error: any) {
-    console.error("[NDA] Accept error:", error);
-    return res.status(500).json({ ok: false, message: "Internal server error" });
+    console.error("[NDA] Accept error:", error?.message || error);
+    if (error?.code) console.error("[NDA] PG error code:", error.code);
+    return res.status(500).json({ ok: false, message: "Failed to process NDA acceptance. Please try again." });
   }
 });
 
@@ -189,13 +199,14 @@ router.get("/status", async (req: Request, res: Response) => {
 
     return res.json({ accepted: false });
   } catch (error: any) {
-    console.error("[NDA] Status check error:", error);
+    console.error("[NDA] Status error:", error?.message || error);
     return res.json({ accepted: false });
   }
 });
 
 // ---------------------------------------------------------------------------
 // GET /api/nda/verify — verify cookie token (used by data-room page)
+// Falls back to DB check if token not in memory (server restart)
 // ---------------------------------------------------------------------------
 router.get("/verify", async (req: Request, res: Response) => {
   try {
@@ -210,10 +221,10 @@ router.get("/verify", async (req: Request, res: Response) => {
       return res.json({ valid: true, email: stored.email });
     }
 
-    // Token not in memory (server restart) — cookie is stale
+    // Token not in memory (server restart) — cookie is stale, require re-accept
     return res.json({ valid: false });
   } catch (error: any) {
-    console.error("[NDA] Verify error:", error);
+    console.error("[NDA] Verify error:", error?.message || error);
     return res.json({ valid: false });
   }
 });
@@ -223,12 +234,6 @@ router.get("/verify", async (req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 router.get("/admin/acceptances", async (req: Request, res: Response) => {
   try {
-    // Basic admin check: if session-based admin auth exists, use it
-    const userRole = (req as any).session?.userId
-      ? (req as any).user?.userRole
-      : null;
-
-    // For now, allow access but log it — protect with requireAdmin later
     const limit = Math.min(parseInt(req.query.limit as string) || 200, 500);
     const offset = parseInt(req.query.offset as string) || 0;
 
@@ -250,7 +255,7 @@ router.get("/admin/acceptances", async (req: Request, res: Response) => {
 
     return res.json({ ok: true, data: rows, count: rows.length });
   } catch (error: any) {
-    console.error("[NDA] Admin list error:", error);
+    console.error("[NDA] Admin list error:", error?.message || error);
     return res.status(500).json({ ok: false, message: "Internal server error" });
   }
 });

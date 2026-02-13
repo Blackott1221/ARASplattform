@@ -1201,16 +1201,18 @@ export const NDA_CURRENT_VERSION = "2026-02-13-v1";
 
 export const ndaAcceptances = pgTable("nda_acceptances", {
   id: serial("id").primaryKey(),
+  ndaVersion: text("nda_version").notNull().default(NDA_CURRENT_VERSION),
   email: text("email").notNull(),
   fullName: text("full_name").notNull(),
   company: text("company"),
-  ndaVersion: text("nda_version").notNull().default(NDA_CURRENT_VERSION),
-  acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
-  ipAddress: text("ip_address"),
+  title: text("title"),
+  acceptedAt: timestamp("accepted_at").defaultNow().notNull(),
+  ipHash: text("ip_hash"),
   userAgent: text("user_agent"),
+  ipAddress: text("ip_address"),
   pagePath: text("page_path"),
   consent: boolean("consent").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("nda_acceptances_email_idx").on(table.email),
   index("nda_acceptances_email_version_idx").on(table.email, table.ndaVersion),
