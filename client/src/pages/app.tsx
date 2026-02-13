@@ -245,7 +245,7 @@ export default function App() {
           />
         </div>
         
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-auto min-h-0">
           <Suspense fallback={
             <div className="flex items-center justify-center h-full bg-black">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FE9100]" />
