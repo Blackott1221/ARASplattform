@@ -67,6 +67,31 @@ const orbitron: React.CSSProperties = { fontFamily: "'Orbitron', system-ui, sans
 const trim = (v: any): string => (typeof v === 'string' ? v.trim() : '');
 const arr = (v: any): string[] => (Array.isArray(v) ? v.filter(Boolean) : []);
 
+// Normalize ANY data-sources response shape to a safe array
+function normalizeDataSources(raw: any): DataSource[] {
+  if (!raw) return [];
+  const found =
+    Array.isArray(raw) ? raw :
+    Array.isArray(raw?.dataSources) ? raw.dataSources :
+    Array.isArray(raw?.sources) ? raw.sources :
+    Array.isArray(raw?.items) ? raw.items :
+    Array.isArray(raw?.userDataSources) ? raw.userDataSources :
+    Array.isArray(raw?.data) ? raw.data :
+    [];
+  return found.filter(Boolean).map((s: any) => ({
+    id: s.id ?? s.source_id ?? 0,
+    userId: s.userId ?? s.user_id ?? '',
+    type: s.type ?? 'text',
+    title: s.title ?? '',
+    status: s.status ?? 'active',
+    contentText: s.contentText ?? s.content_text ?? s.content_preview ?? '',
+    url: s.url ?? '',
+    fileName: s.fileName ?? s.file_name ?? null,
+    createdAt: s.createdAt ?? s.created_at ?? '',
+    updatedAt: s.updatedAt ?? s.updated_at ?? '',
+  }));
+}
+
 const fmtDate = (v: string | Date | null | undefined): string => {
   if (!v) return '—';
   try {
@@ -224,6 +249,12 @@ function LeadsContent() {
 
   const { data: dataSources = [], isLoading: sourcesLoading } = useQuery<DataSource[]>({
     queryKey: ['/api/user/data-sources'],
+    queryFn: async () => {
+      const res = await fetch('/api/user/data-sources', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to load data sources');
+      const json = await res.json();
+      return normalizeDataSources(json);
+    },
     staleTime: 30_000,
     retry: 1,
   });
