@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from "framer-motion";
-import { Sidebar } from "@/components/layout/sidebar";
-import { TopBar } from "@/components/layout/topbar";
+import { Sidebar } from '@/components/layout/sidebar';
+import { TopBar } from '@/components/layout/topbar';
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -18,11 +18,10 @@ import {
   Trash2,
   Save,
   X,
-  CheckCircle2,
-  Users
+  Upload,
+  Download
 } from 'lucide-react';
 import type { User, SubscriptionResponse } from "@shared/schema";
-import '@/styles/glassmorphism.css';
 
 // ARAS CI
 const CI = {
@@ -52,6 +51,10 @@ export default function Contacts() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingContact, setEditingContact] = useState<ContactData | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [showUploadTooltip, setShowUploadTooltip] = useState(false);
+  const [showTemplateTooltip, setShowTemplateTooltip] = useState(false);
+  const [showInfoPanel, setShowInfoPanel] = useState(true);
 
   // Form State
   const [formData, setFormData] = useState<ContactData>({
@@ -68,6 +71,10 @@ export default function Contacts() {
     queryKey: ["/api/user/subscription"],
     enabled: !!user,
   });
+
+  const handleSectionChange = (section: string) => {
+    window.location.href = `/app/${section}`;
+  };
 
   // Fetch contacts
   const { data: contacts = [], isLoading: contactsLoading } = useQuery<ContactData[]>({
@@ -86,15 +93,18 @@ export default function Contacts() {
         credentials: 'include',
         body: JSON.stringify(contact)
       });
-      if (!res.ok) throw new Error('Failed to save contact');
+      if (!res.ok) {
+        console.error('[Contacts] Failed to save contact');
+        return null;
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
       resetForm();
       toast({
-        title: editingContact ? 'Kontakt aktualisiert' : 'Kontakt hinzugefügt',
-        description: 'Der Kontakt wurde erfolgreich gespeichert.'
+        title: editingContact ? 'Gespeichert' : 'Hinzugefügt',
+        description: 'Kontakt wurde erfolgreich gespeichert.'
       });
     },
     onError: () => {
@@ -106,6 +116,39 @@ export default function Contacts() {
     }
   });
 
+  // Bulk import mutation
+  const bulkImportMutation = useMutation({
+    mutationFn: async (contacts: ContactData[]) => {
+      const res = await fetch('/api/contacts/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ contacts })
+      });
+      if (!res.ok) {
+        console.error('[Contacts] Failed to import contacts');
+        return null;
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
+      toast({
+        title: 'Import erfolgreich',
+        description: `${data.imported} Kontakte importiert.`
+      });
+      setIsUploading(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Import fehlgeschlagen',
+        description: error.message || 'CSV konnte nicht importiert werden.',
+        variant: 'destructive'
+      });
+      setIsUploading(false);
+    }
+  });
+
   // Delete contact mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -113,14 +156,17 @@ export default function Contacts() {
         method: 'DELETE',
         credentials: 'include'
       });
-      if (!res.ok) throw new Error('Failed to delete contact');
+      if (!res.ok) {
+        console.error('[Contacts] Failed to delete contact');
+        return null;
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
       toast({
-        title: 'Kontakt gelöscht',
-        description: 'Der Kontakt wurde erfolgreich entfernt.'
+        title: 'Gelöscht',
+        description: 'Kontakt wurde entfernt.'
       });
     },
     onError: () => {
@@ -131,10 +177,6 @@ export default function Contacts() {
       });
     }
   });
-
-  const handleSectionChange = (section: string) => {
-    window.location.href = section === 'space' ? '/app' : `/app/${section}`;
-  };
 
   const resetForm = () => {
     setFormData({
@@ -158,8 +200,8 @@ export default function Contacts() {
   const handleSave = () => {
     if (!formData.company.trim()) {
       toast({
-        title: 'Unternehmensname erforderlich',
-        description: 'Bitte geben Sie mindestens einen Unternehmensnamen ein.',
+        title: 'Firma erforderlich',
+        description: 'Bitte Firmennamen eingeben.',
         variant: 'destructive'
       });
       return;
@@ -169,9 +211,133 @@ export default function Contacts() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('Möchten Sie diesen Kontakt wirklich löschen?')) {
+    if (confirm('Kontakt löschen?')) {
       deleteMutation.mutate(id);
     }
+  };
+
+  // CSV Upload Handler
+  const handleCSVUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.csv')) {
+      toast({
+        title: 'Ungültiges Format',
+        description: 'Bitte eine CSV-Datei hochladen.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        const lines = text.split('\n').filter(line => line.trim());
+        
+        if (lines.length < 2) {
+          toast({
+            title: 'Fehler',
+            description: 'CSV muss mindestens Header und eine Zeile enthalten',
+            variant: 'destructive'
+          });
+          return;
+        }
+
+        // Parse Header
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        
+        // Parse Rows
+        const contacts: ContactData[] = [];
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(',').map(v => v.trim());
+          
+          const contact: ContactData = {
+            company: '',
+            firstName: '',
+            lastName: '',
+            phone: '',
+            email: '',
+            notes: ''
+          };
+
+          headers.forEach((header, index) => {
+            const value = values[index] || '';
+            if (header.includes('firma') || header.includes('company') || header.includes('unternehmen')) {
+              contact.company = value;
+            } else if (header.includes('vorname') || header.includes('firstname') || header.includes('first')) {
+              contact.firstName = value;
+            } else if (header.includes('nachname') || header.includes('lastname') || header.includes('last')) {
+              contact.lastName = value;
+            } else if (header.includes('telefon') || header.includes('phone') || header.includes('tel')) {
+              contact.phone = value;
+            } else if (header.includes('email') || header.includes('mail') || header.includes('e-mail')) {
+              contact.email = value;
+            } else if (header.includes('notiz') || header.includes('note') || header.includes('bemerkung')) {
+              contact.notes = value;
+            }
+          });
+
+          // Only add if company is present
+          if (contact.company.trim()) {
+            contacts.push(contact);
+          }
+        }
+
+        if (contacts.length === 0) {
+          toast({
+            title: 'Fehler',
+            description: 'Keine gültigen Kontakte in der CSV gefunden. Firma ist ein Pflichtfeld. Bitte verwenden Sie die Vorlage.',
+            variant: 'destructive'
+          });
+          return;
+        }
+
+        // Import
+        bulkImportMutation.mutate(contacts);
+        
+        // Reset file input
+        if (event.target) {
+          event.target.value = '';
+        }
+
+      } catch (error: any) {
+        console.error('[CSV Upload] Parse error:', error);
+        toast({
+          title: 'CSV Fehler',
+          description: error.message || 'Fehler beim Parsen der CSV-Datei.',
+          variant: 'destructive'
+        });
+        setIsUploading(false);
+      }
+    };
+
+    reader.onerror = () => {
+      toast({
+        title: 'Fehler',
+        description: 'Datei konnte nicht gelesen werden.',
+        variant: 'destructive'
+      });
+      setIsUploading(false);
+    };
+
+    reader.readAsText(file);
+    event.target.value = ''; // Reset input
+  };
+
+  // Download CSV Template
+  const downloadCSVTemplate = () => {
+    const template = 'Firma,Vorname,Nachname,Telefon,Email,Notizen\nBeispiel GmbH,Max,Mustermann,+49123456789,max@beispiel.de,Wichtiger Kunde';
+    const blob = new Blob([template], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'kontakte-vorlage.csv';
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const filteredContacts = contacts.filter(contact =>
@@ -184,7 +350,7 @@ export default function Contacts() {
   if (authLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-black">
-        <div className="animate-spin w-8 h-8 border-4 border-t-transparent rounded-full" 
+        <div className="animate-spin w-6 h-6 border-2 border-t-transparent rounded-full" 
           style={{ borderColor: CI.orange, borderTopColor: 'transparent' }}
         />
       </div>
@@ -192,50 +358,7 @@ export default function Contacts() {
   }
 
   return (
-    <div className="flex h-screen relative overflow-hidden">
-      {/* Premium Background */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <motion.div
-          className="absolute w-[500px] h-[500px] rounded-full"
-          style={{ 
-            background: `radial-gradient(circle, ${CI.orange}12, transparent 70%)`,
-            top: '-10%',
-            left: '10%',
-            filter: 'blur(60px)'
-          }}
-          animate={{
-            x: [0, 50, 0],
-            y: [0, 30, 0],
-            scale: [1, 1.1, 1]
-          }}
-          transition={{
-            duration: 15,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        />
-        <motion.div
-          className="absolute w-[400px] h-[400px] rounded-full"
-          style={{ 
-            background: `radial-gradient(circle, ${CI.goldLight}08, transparent 70%)`,
-            bottom: '-5%',
-            right: '15%',
-            filter: 'blur(70px)'
-          }}
-          animate={{
-            x: [0, -30, 0],
-            y: [0, -50, 0],
-            scale: [1, 1.2, 1]
-          }}
-          transition={{
-            duration: 18,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 1
-          }}
-        />
-      </div>
-
+    <div className="flex h-screen relative overflow-hidden" style={{ background: 'rgba(0, 0, 0, 0.4)' }}>
       <Sidebar
         activeSection="contacts"
         onSectionChange={handleSectionChange}
@@ -251,271 +374,285 @@ export default function Contacts() {
           isVisible={true}
         />
 
-        <div className="flex-1 overflow-y-auto px-8 py-8">
-          <div className="max-w-4xl mx-auto">
-            {/* Header - ULTRA CLEAN */}
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-center justify-between mb-8"
-            >
-              <div>
-                <motion.h1
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="text-3xl font-black mb-1 tracking-tighter"
-                  style={{
-                    fontFamily: 'Orbitron, sans-serif',
-                    background: `linear-gradient(120deg, ${CI.orange}, ${CI.goldLight})`,
-                    WebkitBackgroundClip: 'text',
-                    backgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent'
-                  }}
+        <div className="flex-1 overflow-y-auto px-6 py-6" style={{ background: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.3))' }}>
+          <div className="max-w-5xl mx-auto">
+            {/* Header */}
+            <div className="mb-6">
+              <h1 className="text-3xl font-black mb-1" style={{ fontFamily: 'Orbitron, sans-serif', background: 'linear-gradient(135deg, #FE9100 0%, #ff6b00 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>KONTAKTE</h1>
+              <p className="text-xs text-gray-400">{contacts.length} gespeichert</p>
+            </div>
+
+            {/* Info Banner - Top */}
+            <AnimatePresence>
+              {showInfoPanel && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="mb-6"
                 >
-                  Kontakte
-                </motion.h1>
-                <motion.p 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="text-xs text-gray-600"
+                  <div className="backdrop-blur-sm bg-gradient-to-r from-orange-500/10 to-yellow-500/10 border border-[#FE9100]/30 rounded-lg p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-3 flex-1">
+                        <div className="w-8 h-8 rounded-lg bg-[#FE9100]/20 flex items-center justify-center flex-shrink-0">
+                          <StickyNote className="w-4 h-4 text-[#FE9100]" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-xs font-bold text-[#FE9100] uppercase tracking-wide mb-2">CSV Format Info</h3>
+                          <p className="text-xs text-gray-300 leading-relaxed">
+                            CSV Format beachten! Verwenden Sie die Vorlage für das korrekte Format. Firma ist ein Pflichtfeld.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={downloadCSVTemplate}
+                          className="px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center gap-2 hover:scale-105 whitespace-nowrap"
+                          style={{
+                            background: 'linear-gradient(135deg, #FE9100 0%, #ff6b00 100%)',
+                            color: 'black'
+                          }}
+                        >
+                          <Download className="w-3 h-3" />
+                          Vorlage
+                        </button>
+                        <button
+                          onClick={() => setShowInfoPanel(false)}
+                          className="p-1.5 hover:bg-white/10 rounded transition-colors"
+                        >
+                          <X className="w-3 h-3 text-gray-400" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Buttons Row */}
+            <div className="flex gap-3 mb-8 justify-end">
+                {/* CSV Upload - HIGH END */}
+                <motion.div 
+                  className="relative"
+                  onMouseEnter={() => setShowUploadTooltip(true)}
+                  onMouseLeave={() => setShowUploadTooltip(false)}
+                  whileHover={{ scale: 1.02 }}
                 >
-                  {contacts.length} {contacts.length === 1 ? 'Kontakt' : 'Kontakte'} gespeichert
-                </motion.p>
-              </div>
-
-              <motion.button
-                whileHover={{ 
-                  scale: 1.02, 
-                  y: -3,
-                  rotateX: 5,
-                  rotateY: -5
-                }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => {
-                  resetForm();
-                  setShowAddForm(true);
-                }}
-                className="px-5 py-2.5 rounded-lg font-semibold text-sm text-black relative overflow-hidden group"
-                style={{
-                  background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
-                  boxShadow: `0 4px 12px ${CI.orange}30`,
-                  transformStyle: 'preserve-3d',
-                  perspective: '1000px'
-                }}
-              >
-                <motion.div
-                  className="absolute inset-0 opacity-0 group-hover:opacity-100"
-                  style={{
-                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)'
-                  }}
-                  animate={{
-                    x: ['-100%', '200%']
-                  }}
-                  transition={{
-                    duration: 1.2,
-                    repeat: Infinity,
-                    repeatDelay: 1
-                  }}
-                />
-                <span className="relative flex items-center gap-1.5">
-                  <Plus className="w-4 h-4" />
-                  Neu
-                </span>
-              </motion.button>
-            </motion.div>
-
-            {/* Stats - ULTRA MINIMAL mit TILT */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="grid grid-cols-3 gap-1.5 mb-5"
-            >
-              <motion.div
-                whileHover={{ 
-                  y: -6, 
-                  rotateX: 8,
-                  rotateY: -8,
-                  scale: 1.03
-                }}
-                transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                className="relative overflow-hidden rounded-lg p-3 cursor-pointer"
-                style={{
-                  background: 'rgba(254, 145, 0, 0.03)',
-                  border: '1px solid rgba(254, 145, 0, 0.08)',
-                  backdropFilter: 'blur(8px)',
-                  transformStyle: 'preserve-3d',
-                  perspective: '1000px'
-                }}
-              >
-                <motion.div
-                  className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-300"
-                  style={{
-                    background: `linear-gradient(135deg, ${CI.orange}08, transparent)`
-                  }}
-                />
-                <div className="relative" style={{ transform: 'translateZ(20px)' }}>
-                  <motion.div 
-                    className="text-xl font-black mb-0.5"
-                    style={{ color: CI.orange }}
-                    whileHover={{ scale: 1.1, transition: { type: "spring", stiffness: 500 } }}
-                  >
-                    {contacts.length}
-                  </motion.div>
-                  <div className="text-[9px] text-gray-600 uppercase tracking-widest font-semibold">
-                    Total
-                  </div>
-                  {/* Gradient Border on Hover */}
-                  <motion.div
-                    className="absolute inset-0 rounded-md opacity-0 group-hover/stat:opacity-100"
-                    style={{
-                      background: `linear-gradient(135deg, ${CI.orange}40, transparent)`,
-                      filter: 'blur(8px)',
-                      transform: 'scale(1.1)'
-                    }}
-                    transition={{ duration: 0.3 }}
-                  />
-                </div>
-              </motion.div>
-
-              <motion.div
-                whileHover={{ 
-                  y: -6,
-                  rotateX: 8,
-                  scale: 1.03
-                }}
-                transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                className="relative overflow-hidden rounded-lg p-3 cursor-pointer"
-                style={{
-                  background: 'rgba(233, 215, 196, 0.03)',
-                  border: '1px solid rgba(233, 215, 196, 0.08)',
-                  backdropFilter: 'blur(8px)',
-                  transformStyle: 'preserve-3d',
-                  perspective: '1000px'
-                }}
-              >
-                <motion.div
-                  className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-300"
-                  style={{
-                    background: `linear-gradient(135deg, ${CI.goldLight}06, transparent)`
-                  }}
-                />
-                <div className="relative" style={{ transform: 'translateZ(20px)' }}>
-                  <div className="text-2xl font-black mb-0.5" style={{ color: CI.goldLight }}>
-                    {contacts.filter(c => c.company).length}
-                  </div>
-                  <div className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold">
-                    Firmen
-                  </div>
-                </div>
-              </motion.div>
-
-              <motion.div
-                whileHover={{ 
-                  y: -6,
-                  rotateX: 8,
-                  rotateY: 8,
-                  scale: 1.03
-                }}
-                transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                className="relative overflow-hidden rounded-lg p-3 cursor-pointer"
-                style={{
-                  background: 'rgba(254, 145, 0, 0.03)',
-                  border: '1px solid rgba(254, 145, 0, 0.08)',
-                  backdropFilter: 'blur(8px)',
-                  transformStyle: 'preserve-3d',
-                  perspective: '1000px'
-                }}
-              >
-                <motion.div
-                  className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-300"
-                  style={{
-                    background: `linear-gradient(135deg, ${CI.orange}08, transparent)`
-                  }}
-                />
-                <div className="relative" style={{ transform: 'translateZ(20px)' }}>
-                  <div className="text-2xl font-black mb-0.5" style={{ color: CI.orange }}>
-                    {contacts.filter(c => c.phone && c.email).length}
-                  </div>
-                  <div className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold">
-                    Voll
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
-
-            {/* Search Bar - ULTRA MINIMAL */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="relative mb-4"
-            >
-              <motion.div
-                whileFocus={{ scale: 1.005 }}
-                className="relative overflow-hidden rounded-md group/search"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.015)',
-                  border: '1px solid rgba(255, 255, 255, 0.04)',
-                  backdropFilter: 'blur(16px)'
-                }}
-              >
-                <div className="flex items-center gap-2 px-3 py-2">
-                  {/* Animated Border */}
-                  <motion.div
-                    className="absolute inset-0 rounded-md pointer-events-none"
-                    style={{
-                      background: `linear-gradient(90deg, transparent, ${CI.orange}20, transparent)`,
-                      opacity: 0
-                    }}
-                    animate={{
-                      x: ['-100%', '200%'],
-                      opacity: [0, 0.5, 0]
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      repeatDelay: 1,
-                      ease: "easeInOut"
-                    }}
-                  />
-                  <motion.div
-                    animate={{
-                      rotate: [0, 10, -10, 0]
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      repeatDelay: 3
-                    }}
-                  >
-                    <Search className="w-3.5 h-3.5 text-gray-600 flex-shrink-0" />
-                  </motion.div>
                   <input
-                    type="text"
-                    placeholder="Suchen..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-700 text-xs"
+                    type="file"
+                    accept=".csv"
+                    onChange={handleCSVUpload}
+                    disabled={isUploading}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-10"
+                    id="csv-upload"
                   />
-                  {searchQuery && (
-                    <motion.button
-                      initial={{ scale: 0, rotate: -180 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      exit={{ scale: 0, rotate: 180 }}
-                      whileHover={{ scale: 1.1, rotate: 90 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={() => setSearchQuery('')}
-                      className="p-1 hover:bg-white/5 rounded-md transition-colors"
-                    >
-                      <X className="w-3.5 h-3.5 text-gray-600" />
-                    </motion.button>
-                  )}
-                </div>
-              </motion.div>
-            </motion.div>
+                  <motion.button
+                    disabled={isUploading}
+                    className="group px-4 py-2 text-xs font-medium bg-white/8 hover:bg-white/12 text-white rounded-lg transition-all border border-white/20 disabled:opacity-50 relative overflow-hidden"
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    {/* Shimmer Effect */}
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                      animate={{
+                        x: ['-100%', '200%']
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        repeatDelay: 3
+                      }}
+                    />
+                    <div className="relative flex items-center gap-2">
+                      <motion.div
+                        animate={{
+                          y: isUploading ? [0, -3, 0] : 0
+                        }}
+                        transition={{
+                          duration: 0.6,
+                          repeat: isUploading ? Infinity : 0
+                        }}
+                      >
+                        <Upload className="w-4 h-4" />
+                      </motion.div>
+                      <span className="font-semibold">
+                        {isUploading ? 'Importiere...' : 'CSV hochladen'}
+                      </span>
+                    </div>
+                  </motion.button>
+
+                  {/* Animated Tooltip */}
+                  <AnimatePresence>
+                    {showUploadTooltip && !isUploading && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                        className="absolute top-full mt-2 left-0 z-50 w-64"
+                      >
+                        <div 
+                          className="px-3 py-2 rounded-lg shadow-xl border"
+                          style={{
+                            background: 'rgba(0, 0, 0, 0.95)',
+                            borderColor: `${CI.orange}40`,
+                            backdropFilter: 'blur(20px)'
+                          }}
+                        >
+                          <div className="flex items-start gap-2">
+                            <div 
+                              className="p-1 rounded"
+                              style={{ background: `${CI.orange}20` }}
+                            >
+                              <Upload className="w-3 h-3" style={{ color: CI.orange }} />
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-white mb-0.5">CSV Datei hochladen</p>
+                              <p className="text-[10px] text-gray-400">Laden Sie hier Ihre Kontaktliste als CSV-Datei hoch. Bis zu 1000 Kontakte gleichzeitig.</p>
+                            </div>
+                          </div>
+                          {/* Arrow */}
+                          <div 
+                            className="absolute -top-1 left-4 w-2 h-2 rotate-45"
+                            style={{
+                              background: `${CI.orange}40`,
+                              borderLeft: `1px solid ${CI.orange}40`,
+                              borderTop: `1px solid ${CI.orange}40`
+                            }}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+
+                {/* Download Template - HIGH END */}
+                <motion.div
+                  className="relative"
+                  onMouseEnter={() => setShowTemplateTooltip(true)}
+                  onMouseLeave={() => setShowTemplateTooltip(false)}
+                  whileHover={{ scale: 1.02 }}
+                >
+                  <motion.button
+                    onClick={downloadCSVTemplate}
+                    className="group px-4 py-2 text-xs font-medium bg-white/8 hover:bg-white/12 text-white rounded-lg transition-all border border-white/20 relative overflow-hidden"
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    {/* Shimmer Effect */}
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                      animate={{
+                        x: ['-100%', '200%']
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        repeatDelay: 4,
+                        delay: 1
+                      }}
+                    />
+                    <div className="relative flex items-center gap-2">
+                      <motion.div
+                        whileHover={{ rotate: [0, -10, 10, 0] }}
+                        transition={{ duration: 0.5 }}
+                      >
+                        <Download className="w-4 h-4" />
+                      </motion.div>
+                      <span className="font-semibold">Vorlage</span>
+                    </div>
+                  </motion.button>
+
+                  {/* Animated Tooltip */}
+                  <AnimatePresence>
+                    {showTemplateTooltip && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                        className="absolute top-full mt-2 left-0 z-50 w-64"
+                      >
+                        <div 
+                          className="px-3 py-2 rounded-lg shadow-xl border"
+                          style={{
+                            background: 'rgba(0, 0, 0, 0.95)',
+                            borderColor: `${CI.goldLight}40`,
+                            backdropFilter: 'blur(20px)'
+                          }}
+                        >
+                          <div className="flex items-start gap-2">
+                            <div 
+                              className="p-1 rounded"
+                              style={{ background: `${CI.goldLight}20` }}
+                            >
+                              <Download className="w-3 h-3" style={{ color: CI.goldLight }} />
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-white mb-0.5">Benötigen Sie eine Vorlage?</p>
+                              <p className="text-[10px] text-gray-400">Laden Sie unsere CSV-Vorlage herunter mit Beispieldaten und der richtigen Struktur.</p>
+                            </div>
+                          </div>
+                          {/* Arrow */}
+                          <div 
+                            className="absolute -top-1 left-4 w-2 h-2 rotate-45"
+                            style={{
+                              background: `${CI.goldLight}40`,
+                              borderLeft: `1px solid ${CI.goldLight}40`,
+                              borderTop: `1px solid ${CI.goldLight}40`
+                            }}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+
+                {/* Add Button - HIGH END */}
+                <motion.button
+                  onClick={() => {
+                    resetForm();
+                    setShowAddForm(true);
+                  }}
+                  className="px-4 py-2 text-xs font-semibold rounded-lg transition-all relative overflow-hidden group"
+                  style={{
+                    background: CI.orange,
+                    color: 'black'
+                  }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {/* Shimmer Effect */}
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                    animate={{
+                      x: ['-100%', '200%']
+                    }}
+                    transition={{
+                      duration: 1.5,
+                      repeat: Infinity,
+                      repeatDelay: 2
+                    }}
+                  />
+                  <div className="relative flex items-center gap-1.5">
+                    <Plus className="w-4 h-4" />
+                    <span>Neu</span>
+                  </div>
+                </motion.button>
+            </div>
+
+            {/* Search - MODERN CI */}
+            <div className="mb-4">
+              <div className="relative max-w-sm">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#FE9100]/50" />
+                <input
+                  type="text"
+                  placeholder="Suchen..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-3 py-2 text-xs backdrop-blur-sm bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-500 outline-none focus:border-[#FE9100]/50 focus:bg-black/30 transition-all"
+                />
+              </div>
+            </div>
 
             {/* Add/Edit Form */}
             <AnimatePresence>
@@ -524,435 +661,197 @@ export default function Contacts() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="glass-orange rounded-3xl p-6 mb-6 overflow-hidden"
-                  style={{
-                    boxShadow: `0 20px 60px ${CI.orange}20`
-                  }}
+                  className="mb-4 overflow-hidden"
                 >
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-2xl font-bold text-white">
-                      {editingContact ? 'Kontakt bearbeiten' : 'Neuer Kontakt'}
-                    </h3>
-                    <button
-                      onClick={resetForm}
-                      className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                    >
-                      <X className="w-5 h-5 text-gray-400" />
-                    </button>
-                  </div>
+                  <div className="p-4 backdrop-blur-sm bg-black/30 border border-[#FE9100]/20 rounded-xl">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-bold" style={{ fontFamily: 'Orbitron, sans-serif', color: '#FE9100' }}>
+                        {editingContact ? 'BEARBEITEN' : 'NEUER KONTAKT'}
+                      </h3>
+                      <button
+                        onClick={resetForm}
+                        className="p-1 hover:bg-white/10 rounded transition-colors"
+                      >
+                        <X className="w-4 h-4 text-gray-400" />
+                      </button>
+                    </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    {/* Unternehmensname (Pflichtfeld) */}
-                    <div className="col-span-2">
-                      <label className="block text-sm font-bold mb-2 text-gray-300">
-                        Unternehmensname <span style={{ color: CI.orange }}>*</span>
-                      </label>
-                      <div className="relative">
-                        <Building2 
-                          className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" 
-                        />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="col-span-2">
                         <input
                           type="text"
                           value={formData.company}
                           onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                          placeholder="z.B. ACME GmbH"
-                          className="w-full pl-11 pr-4 py-3 rounded-xl bg-black/30 border border-white/10 text-white placeholder-gray-500 outline-none focus:border-orange-500/50 transition-colors"
+                          placeholder="Firma *"
+                          className="w-full px-3 py-2 text-xs backdrop-blur-sm bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-500 outline-none focus:border-[#FE9100]/50 focus:bg-black/30 transition-all"
                         />
                       </div>
-                    </div>
 
-                    {/* Vorname */}
-                    <div>
-                      <label className="block text-sm font-bold mb-2 text-gray-300">
-                        Vorname
-                      </label>
-                      <div className="relative">
-                        <UserIcon 
-                          className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" 
-                        />
-                        <input
-                          type="text"
-                          value={formData.firstName}
-                          onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                          placeholder="Max"
-                          className="w-full pl-11 pr-4 py-3 rounded-xl bg-black/30 border border-white/10 text-white placeholder-gray-500 outline-none focus:border-orange-500/50 transition-colors"
-                        />
-                      </div>
-                    </div>
+                      <input
+                        type="text"
+                        value={formData.firstName}
+                        onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                        placeholder="Vorname"
+                        className="w-full px-3 py-2 text-xs backdrop-blur-sm bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-500 outline-none focus:border-[#FE9100]/50 focus:bg-black/30 transition-all"
+                      />
 
-                    {/* Nachname */}
-                    <div>
-                      <label className="block text-sm font-bold mb-2 text-gray-300">
-                        Nachname
-                      </label>
-                      <div className="relative">
-                        <UserIcon 
-                          className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" 
-                        />
-                        <input
-                          type="text"
-                          value={formData.lastName}
-                          onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                          placeholder="Mustermann"
-                          className="w-full pl-11 pr-4 py-3 rounded-xl bg-black/30 border border-white/10 text-white placeholder-gray-500 outline-none focus:border-orange-500/50 transition-colors"
-                        />
-                      </div>
-                    </div>
+                      <input
+                        type="text"
+                        value={formData.lastName}
+                        onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                        placeholder="Nachname"
+                        className="w-full px-3 py-2 text-xs backdrop-blur-sm bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-500 outline-none focus:border-[#FE9100]/50 focus:bg-black/30 transition-all"
+                      />
 
-                    {/* Telefonnummer */}
-                    <div>
-                      <label className="block text-sm font-bold mb-2 text-gray-300">
-                        Telefonnummer
-                      </label>
-                      <div className="relative">
-                        <Phone 
-                          className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" 
-                        />
-                        <input
-                          type="tel"
-                          value={formData.phone}
-                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                          placeholder="+49 123 456789"
-                          className="w-full pl-11 pr-4 py-3 rounded-xl bg-black/30 border border-white/10 text-white placeholder-gray-500 outline-none focus:border-orange-500/50 transition-colors"
-                        />
-                      </div>
-                    </div>
+                      <input
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        placeholder="Telefon"
+                        className="w-full px-3 py-2 text-xs backdrop-blur-sm bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-500 outline-none focus:border-[#FE9100]/50 focus:bg-black/30 transition-all"
+                      />
 
-                    {/* E-Mail */}
-                    <div>
-                      <label className="block text-sm font-bold mb-2 text-gray-300">
-                        E-Mail
-                      </label>
-                      <div className="relative">
-                        <Mail 
-                          className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" 
-                        />
-                        <input
-                          type="email"
-                          value={formData.email}
-                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                          placeholder="max@acme.de"
-                          className="w-full pl-11 pr-4 py-3 rounded-xl bg-black/30 border border-white/10 text-white placeholder-gray-500 outline-none focus:border-orange-500/50 transition-colors"
-                        />
-                      </div>
-                    </div>
+                      <input
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        placeholder="E-Mail"
+                        className="w-full px-3 py-2 text-xs backdrop-blur-sm bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-500 outline-none focus:border-[#FE9100]/50 focus:bg-black/30 transition-all"
+                      />
 
-                    {/* Notizen */}
-                    <div className="col-span-2">
-                      <label className="block text-sm font-bold mb-2 text-gray-300">
-                        Notizen
-                      </label>
-                      <div className="relative">
-                        <StickyNote 
-                          className="absolute left-3 top-3 w-5 h-5 text-gray-400" 
-                        />
+                      <div className="col-span-2">
                         <textarea
                           value={formData.notes}
                           onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                          placeholder="Weitere Informationen zum Unternehmen..."
-                          rows={3}
-                          className="w-full pl-11 pr-4 py-3 rounded-xl bg-black/30 border border-white/10 text-white placeholder-gray-500 outline-none focus:border-orange-500/50 transition-colors resize-none"
+                          placeholder="Notizen"
+                          rows={2}
+                          className="w-full px-3 py-2 text-xs backdrop-blur-sm bg-black/20 border border-white/10 rounded-lg text-white placeholder-gray-500 outline-none focus:border-[#FE9100]/50 focus:bg-black/30 transition-all resize-none"
                         />
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex gap-3 mt-6">
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={handleSave}
-                      disabled={saveMutation.isPending}
-                      className="flex-1 py-3 px-6 rounded-xl font-bold text-black relative overflow-hidden"
-                      style={{
-                        background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`,
-                        boxShadow: `0 8px 24px ${CI.orange}40`
-                      }}
-                    >
-                      <span className="flex items-center justify-center gap-2">
-                        <Save className="w-5 h-5" />
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        onClick={handleSave}
+                        disabled={saveMutation.isPending}
+                        className="flex-1 py-2 text-xs font-medium rounded-md transition-all"
+                        style={{
+                          background: CI.orange,
+                          color: 'black'
+                        }}
+                      >
                         {saveMutation.isPending ? 'Speichert...' : 'Speichern'}
-                      </span>
-                    </motion.button>
+                      </button>
 
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={resetForm}
-                      className="px-6 py-3 rounded-xl font-bold text-gray-400 hover:text-white transition-colors"
-                      style={{
-                        background: 'rgba(255, 255, 255, 0.05)',
-                        border: '1px solid rgba(255, 255, 255, 0.1)'
-                      }}
-                    >
-                      Abbrechen
-                    </motion.button>
+                      <button
+                        onClick={resetForm}
+                        className="px-4 py-2 text-xs font-medium bg-white/5 hover:bg-white/10 text-gray-400 rounded-md transition-colors"
+                      >
+                        Abbrechen
+                      </button>
+                    </div>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Contacts List */}
-            <div className="space-y-2">
-              <AnimatePresence mode="popLayout">
-                {contactsLoading ? (
-                  <div className="text-center py-12 text-gray-400">
-                    Lade Kontakte...
-                  </div>
-                ) : filteredContacts.length === 0 ? (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="glass-card rounded-2xl p-12 text-center"
-                  >
-                    <Contact className="w-16 h-16 mx-auto mb-4 text-gray-600" />
-                    <h3 className="text-xl font-bold text-gray-400 mb-2">
-                      {searchQuery ? 'Keine Kontakte gefunden' : 'Noch keine Kontakte'}
-                    </h3>
-                    <p className="text-gray-500 mb-6">
-                      {searchQuery 
-                        ? 'Versuchen Sie eine andere Suche' 
-                        : 'Fügen Sie Ihren ersten Kontakt hinzu'}
-                    </p>
-                    {!searchQuery && (
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setShowAddForm(true)}
-                        className="px-6 py-3 rounded-xl font-bold text-black"
-                        style={{
-                          background: `linear-gradient(135deg, ${CI.orange}, ${CI.goldDark})`
-                        }}
-                      >
-                        <span className="flex items-center gap-2">
-                          <Plus className="w-5 h-5" />
-                          Ersten Kontakt hinzufügen
-                        </span>
-                      </motion.button>
-                    )}
-                  </motion.div>
-                ) : (
-                  filteredContacts.map((contact, index) => (
-                    <motion.div
-                      key={contact.id}
-                      layout
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.9, x: -20 }}
-                      transition={{ 
-                        delay: index * 0.02,
-                        type: "spring",
-                        stiffness: 400,
-                        damping: 20
-                      }}
-                      whileHover={{ 
-                        y: -8,
-                        rotateX: 5,
-                        rotateY: 2,
-                        scale: 1.01,
-                        transition: { 
-                          type: "spring",
-                          stiffness: 400,
-                          damping: 15
-                        }
-                      }}
-                      className="group/card relative overflow-hidden rounded-md p-3 cursor-pointer"
+            {/* Contacts List - FLAT CARDS */}
+            <div className="space-y-1.5">
+              {contactsLoading ? (
+                <div className="text-center py-12 text-gray-500 text-xs">
+                  Lade...
+                </div>
+              ) : filteredContacts.length === 0 ? (
+                <div className="text-center py-12">
+                  <Contact className="w-12 h-12 mx-auto mb-3 text-gray-700" />
+                  <p className="text-sm text-gray-500 mb-3">
+                    {searchQuery ? 'Keine Ergebnisse' : 'Keine Kontakte'}
+                  </p>
+                  {!searchQuery && (
+                    <button
+                      onClick={() => setShowAddForm(true)}
+                      className="px-4 py-2 text-xs font-medium rounded-md"
                       style={{
-                        background: 'rgba(255, 255, 255, 0.015)',
-                        border: '1px solid rgba(255, 255, 255, 0.04)',
-                        backdropFilter: 'blur(16px)',
-                        transformStyle: 'preserve-3d',
-                        perspective: '1000px'
+                        background: CI.orange,
+                        color: 'black'
                       }}
                     >
-                      {/* Animated Gradient Border on Hover */}
-                      <motion.div
-                        className="absolute inset-0 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 pointer-events-none"
+                      Ersten Kontakt hinzufügen
+                    </button>
+                  )}
+                </div>
+              ) : (
+                filteredContacts.map((contact) => (
+                  <div
+                    key={contact.id}
+                    className="group p-3 backdrop-blur-sm bg-black/20 hover:bg-black/30 border border-white/10 hover:border-[#FE9100]/30 rounded-xl transition-all"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      {/* Icon */}
+                      <div
+                        className="w-8 h-8 rounded flex items-center justify-center flex-shrink-0"
                         style={{
-                          background: `linear-gradient(135deg, ${CI.orange}15, transparent, ${CI.goldLight}10)`,
-                          filter: 'blur(12px)'
+                          background: `${CI.orange}15`,
+                          border: `1px solid ${CI.orange}30`
                         }}
-                      />
-                      
-                      {/* Subtle Hover Glow */}
-                      <motion.div
-                        className="absolute inset-0 opacity-0 group-hover/card:opacity-100 transition-opacity duration-500"
-                        style={{
-                          background: `radial-gradient(300px circle at 50% 0%, ${CI.orange}03, transparent)`,
-                          pointerEvents: 'none'
-                        }}
-                      />
-                      
-                      {/* Floating Particles on Hover */}
-                      <AnimatePresence>
-                        {[...Array(3)].map((_, i) => (
-                          <motion.div
-                            key={i}
-                            className="absolute w-0.5 h-0.5 rounded-full opacity-0 group-hover/card:opacity-100"
-                            style={{
-                              background: CI.orange,
-                              left: `${20 + i * 30}%`,
-                              top: '50%'
-                            }}
-                            animate={{
-                              y: [-10, -30, -10],
-                              opacity: [0, 0.6, 0],
-                              scale: [0, 1, 0]
-                            }}
-                            transition={{
-                              duration: 2,
-                              repeat: Infinity,
-                              delay: i * 0.3
-                            }}
-                          />
-                        ))}
-                      </AnimatePresence>
+                      >
+                        <Building2 className="w-4 h-4" style={{ color: CI.orange }} />
+                      </div>
 
-                      <div className="relative flex items-start gap-2.5" style={{ transform: 'translateZ(10px)' }}>
-                        {/* Company Icon - MICRO */}
-                        <motion.div
-                          whileHover={{ 
-                            rotate: -5, 
-                            scale: 1.08,
-                            transition: { type: "spring", stiffness: 500 }
-                          }}
-                          className="w-9 h-9 rounded flex items-center justify-center flex-shrink-0"
-                          style={{
-                            background: `${CI.orange}08`,
-                            border: `1px solid ${CI.orange}15`
-                          }}
-                        >
-                          <Building2 className="w-4.5 h-4.5" style={{ color: CI.orange }} />
-                        </motion.div>
-
-                        {/* Contact Info - ULTRA CLEAN */}
-                        <div className="flex-1 min-w-0">
-                          <motion.h3 
-                            className="text-[13px] font-bold text-white mb-1 group-hover/card:text-orange-400 transition-colors duration-300"
-                            style={{ letterSpacing: '-0.02em' }}
-                            whileHover={{ x: 2, transition: { type: "spring", stiffness: 500 } }}
-                          >
-                            {contact.company}
-                          </motion.h3>
-                          
-                          <div className="flex flex-wrap gap-x-2.5 gap-y-0.5 text-[10px] text-gray-600">
-                            {(contact.firstName || contact.lastName) && (
-                              <motion.div 
-                                className="flex items-center gap-0.5"
-                                whileHover={{ 
-                                  x: 3,
-                                  color: CI.orange,
-                                  transition: { type: "spring", stiffness: 500 } 
-                                }}
-                              >
-                                <UserIcon className="w-2.5 h-2.5 flex-shrink-0" />
-                                <span className="truncate">
-                                  {[contact.firstName, contact.lastName].filter(Boolean).join(' ')}
-                                </span>
-                              </motion.div>
-                            )}
-                            {contact.phone && (
-                              <motion.div 
-                                className="flex items-center gap-0.5"
-                                whileHover={{ 
-                                  x: 3,
-                                  color: CI.orange,
-                                  transition: { type: "spring", stiffness: 500 } 
-                                }}
-                              >
-                                <Phone className="w-2.5 h-2.5 flex-shrink-0" />
-                                <span>{contact.phone}</span>
-                              </motion.div>
-                            )}
-                            {contact.email && (
-                              <motion.div 
-                                className="flex items-center gap-0.5"
-                                whileHover={{ 
-                                  x: 3,
-                                  color: CI.orange,
-                                  transition: { type: "spring", stiffness: 500 } 
-                                }}
-                              >
-                                <Mail className="w-2.5 h-2.5 flex-shrink-0" />
-                                <span className="truncate max-w-[180px]">{contact.email}</span>
-                              </motion.div>
-                            )}
-                          </div>
-
-                          {contact.notes && (
-                            <motion.p 
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              className="mt-1 text-[9px] text-gray-700 line-clamp-1 italic"
-                            >
-                              "{contact.notes}"
-                            </motion.p>
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-xs font-semibold text-white mb-1">
+                          {contact.company}
+                        </h3>
+                        
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-gray-500">
+                          {(contact.firstName || contact.lastName) && (
+                            <span>
+                              {[contact.firstName, contact.lastName].filter(Boolean).join(' ')}
+                            </span>
+                          )}
+                          {contact.phone && (
+                            <span>{contact.phone}</span>
+                          )}
+                          {contact.email && (
+                            <span className="truncate max-w-[150px]">{contact.email}</span>
                           )}
                         </div>
 
-                        {/* Actions - MAGNETIC MICRO BUTTONS */}
-                        <motion.div 
-                          initial={{ opacity: 0, x: 10 }}
-                          animate={{ opacity: 0, x: 0 }}
-                          className="flex gap-0.5 opacity-0 group-hover/card:opacity-100 transition-opacity duration-200"
-                        >
-                          <motion.button
-                            whileHover={{ 
-                              scale: 1.2, 
-                              y: -3,
-                              rotate: -5,
-                              transition: { type: "spring", stiffness: 500 }
-                            }}
-                            whileTap={{ scale: 0.85 }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleEdit(contact);
-                            }}
-                            className="p-1.5 rounded-md transition-colors"
-                            style={{
-                              background: 'rgba(233, 215, 196, 0.08)',
-                              border: '1px solid rgba(233, 215, 196, 0.15)'
-                            }}
-                            title="Bearbeiten"
-                          >
-                            <Pencil className="w-3 h-3" style={{ color: CI.goldLight }} />
-                          </motion.button>
-
-                          <motion.button
-                            whileHover={{ 
-                              scale: 1.2, 
-                              y: -3,
-                              rotate: 5,
-                              transition: { type: "spring", stiffness: 500 }
-                            }}
-                            whileTap={{ scale: 0.85 }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(contact.id!);
-                            }}
-                            disabled={deleteMutation.isPending}
-                            className="p-1.5 rounded-md transition-colors"
-                            style={{
-                              background: 'rgba(239, 68, 68, 0.08)',
-                              border: '1px solid rgba(239, 68, 68, 0.15)'
-                            }}
-                            title="Löschen"
-                          >
-                            <Trash2 className="w-3 h-3 text-red-400" />
-                          </motion.button>
-                        </motion.div>
+                        {contact.notes && (
+                          <p className="mt-1 text-[9px] text-gray-600 line-clamp-1 italic">
+                            "{contact.notes}"
+                          </p>
+                        )}
                       </div>
-                    </motion.div>
-                  ))
-                )}
-              </AnimatePresence>
+
+                      {/* Actions */}
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => handleEdit(contact)}
+                          className="p-1.5 hover:bg-white/10 rounded transition-colors"
+                          title="Bearbeiten"
+                        >
+                          <Pencil className="w-3 h-3" style={{ color: CI.goldLight }} />
+                        </button>
+
+                        <button
+                          onClick={() => handleDelete(contact.id!)}
+                          disabled={deleteMutation.isPending}
+                          className="p-1.5 hover:bg-red-500/20 rounded transition-colors"
+                          title="Löschen"
+                        >
+                          <Trash2 className="w-3 h-3 text-red-400" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
       </div>
-
-      {/* Font */}
-      <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
     </div>
   );
 }
