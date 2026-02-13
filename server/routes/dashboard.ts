@@ -920,7 +920,7 @@ interface FollowUpItem {
 }
 
 router.get('/followups', async (req: Request, res: Response) => {
-  const userId = (req as any).user?.id;
+  const userId = req.session?.userId;
   if (!userId) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -1033,7 +1033,7 @@ interface TimelineEvent {
 }
 
 router.get('/contacts/:contactId/timeline', async (req: Request, res: Response) => {
-  const userId = (req as any).user?.id;
+  const userId = req.session?.userId;
   if (!userId) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
@@ -1165,7 +1165,7 @@ router.get('/contacts/:contactId/timeline', async (req: Request, res: Response) 
 // ═══════════════════════════════════════════════════════════════
 
 router.get('/stats', async (req: Request, res: Response) => {
-  const userId = (req as any).user?.id;
+  const userId = req.session?.userId;
   if (!userId) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
