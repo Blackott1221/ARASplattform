@@ -2,16 +2,23 @@
  * ============================================================================
  * ARAS NEWS SERVICE — Daily Industry News Digest
  * ============================================================================
- * Uses Google Gemini (@google/genai) with Google Search grounding to find
- * and curate real-time industry news. Same SDK pattern as gemini-enrich.ts.
- *
- * Click-to-load only (no auto-fetch) → saves API credits.
+ * Flash model (NOT pro) + 12s hard timeout + inflight dedupe +
+ * stale-while-revalidate cache (fresh 15min, stale up to 24h).
+ * Single Gemini call per request — no scope narrowing retries.
  * ============================================================================
  */
 
 import { GoogleGenAI } from "@google/genai";
-import { resolveGeminiModel } from "../lib/gemini-enrich";
 import { logger } from "../logger";
+
+// ============================================================================
+// CONFIG (ENV-overridable)
+// ============================================================================
+
+const NEWS_MODEL = process.env.NEWS_GEMINI_MODEL || "gemini-2.0-flash";
+const NEWS_TIMEOUT_MS = parseInt(process.env.NEWS_GEMINI_TIMEOUT_MS || "12000", 10);
+const CACHE_FRESH_MS = 15 * 60 * 1000;   // 15 min → fresh
+const CACHE_STALE_MS = 24 * 60 * 60 * 1000; // 24h → stale but usable
 
 // ============================================================================
 // TYPES
@@ -37,8 +44,10 @@ export interface NewsDigestResponse {
   generatedAt: string;
   items: NewsItem[];
   sources: string[];
-  cached: boolean;
+  fromCache: boolean;
+  stale: boolean;
   provider: string;
+  error: { code: string; message: string } | null;
 }
 
 export interface NewsDigestRequest {
@@ -51,31 +60,37 @@ export interface NewsDigestRequest {
 }
 
 // ============================================================================
-// CACHE — in-memory, 15min TTL
+// CACHE — in-memory, stale-while-revalidate
 // ============================================================================
 
 interface CacheEntry { data: NewsDigestResponse; timestamp: number; }
 const NEWS_CACHE = new Map<string, CacheEntry>();
-const CACHE_TTL_MS = 15 * 60 * 1000;
 
-function cacheKey(req: NewsDigestRequest): string {
-  return `news:${req.userId}:${req.industry}:${req.mode}:${[...req.scopes].sort().join(",")}:${new Date().toISOString().slice(0, 10)}`;
+function makeCacheKey(req: NewsDigestRequest): string {
+  return `news:${req.industry}:${req.mode}:${[...req.scopes].sort().join(",")}:${new Date().toISOString().slice(0, 10)}`;
 }
 
-function fromCache(key: string): NewsDigestResponse | null {
+function readCache(key: string): { data: NewsDigestResponse; fresh: boolean } | null {
   const e = NEWS_CACHE.get(key);
   if (!e) return null;
-  if (Date.now() - e.timestamp > CACHE_TTL_MS) { NEWS_CACHE.delete(key); return null; }
-  return { ...e.data, cached: true };
+  const age = Date.now() - e.timestamp;
+  if (age > CACHE_STALE_MS) { NEWS_CACHE.delete(key); return null; }
+  return { data: { ...e.data, fromCache: true }, fresh: age <= CACHE_FRESH_MS };
 }
 
-function toCache(key: string, data: NewsDigestResponse): void {
-  if (NEWS_CACHE.size > 150) {
-    const old = Array.from(NEWS_CACHE.entries()).sort((a, b) => a[1].timestamp - b[1].timestamp).slice(0, 40);
+function writeCache(key: string, data: NewsDigestResponse): void {
+  if (NEWS_CACHE.size > 100) {
+    const old = Array.from(NEWS_CACHE.entries()).sort((a, b) => a[1].timestamp - b[1].timestamp).slice(0, 30);
     old.forEach(([k]) => NEWS_CACHE.delete(k));
   }
   NEWS_CACHE.set(key, { data, timestamp: Date.now() });
 }
+
+// ============================================================================
+// INFLIGHT DEDUPE — same key → same promise
+// ============================================================================
+
+const INFLIGHT = new Map<string, Promise<NewsDigestResponse>>();
 
 // ============================================================================
 // LABELS
@@ -102,126 +117,118 @@ const SCOPE_LABELS: Record<string, string> = {
   ES: "Spanien", NL: "Niederlande", BE: "Belgien", LU: "Luxemburg",
 };
 
-function industryLabel(key: string): string {
-  return INDUSTRY_LABELS[key.toLowerCase().replace(/[\s-]/g, "_")] || key;
+function toLabel(key: string): string {
+  return INDUSTRY_LABELS[key?.toLowerCase().replace(/[\s-]/g, "_")] || key || "Wirtschaft & Märkte";
 }
 
 // ============================================================================
-// ROBUST JSON EXTRACTOR (handles markdown fences, mixed text, etc.)
+// ROBUST JSON EXTRACTOR
 // ============================================================================
 
 function extractJSON(raw: string): any | null {
-  // 1. Direct parse
   try { return JSON.parse(raw); } catch {}
-
-  // 2. Strip markdown fences: ```json ... ``` or ``` ... ```
-  const fenceMatch = raw.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
-  if (fenceMatch) {
-    try { return JSON.parse(fenceMatch[1]); } catch {}
-  }
-
-  // 3. Find outermost { ... }
-  const braceStart = raw.indexOf("{");
-  const braceEnd = raw.lastIndexOf("}");
-  if (braceStart !== -1 && braceEnd > braceStart) {
-    try { return JSON.parse(raw.slice(braceStart, braceEnd + 1)); } catch {}
-  }
-
-  // 4. Find outermost [ ... ] (if items returned as array directly)
-  const bracketStart = raw.indexOf("[");
-  const bracketEnd = raw.lastIndexOf("]");
-  if (bracketStart !== -1 && bracketEnd > bracketStart) {
-    try { return { items: JSON.parse(raw.slice(bracketStart, bracketEnd + 1)) }; } catch {}
-  }
-
+  const fence = raw.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
+  if (fence) { try { return JSON.parse(fence[1]); } catch {} }
+  const b1 = raw.indexOf("{"), b2 = raw.lastIndexOf("}");
+  if (b1 !== -1 && b2 > b1) { try { return JSON.parse(raw.slice(b1, b2 + 1)); } catch {} }
+  const a1 = raw.indexOf("["), a2 = raw.lastIndexOf("]");
+  if (a1 !== -1 && a2 > a1) { try { return { items: JSON.parse(raw.slice(a1, a2 + 1)) }; } catch {} }
   return null;
 }
 
 // ============================================================================
-// PROMPT BUILDER — uses ALL user DB data
+// PROMPT (compact — flash model, small output)
 // ============================================================================
 
 function buildPrompt(req: NewsDigestRequest): string {
-  const label = industryLabel(req.industry);
+  const label = toLabel(req.industry);
   const scopes = req.scopes.map((s) => SCOPE_LABELS[s] || s).join(", ");
   const today = new Date().toISOString().slice(0, 10);
+  const ai = req.aiProfile || {};
 
-  const aiProfile = req.aiProfile || {};
-  const companyDesc = aiProfile.companyDescription || "";
-  const products = Array.isArray(aiProfile.products) ? aiProfile.products.join(", ") : "";
-  const competitors = Array.isArray(aiProfile.competitors) ? aiProfile.competitors.join(", ") : "";
+  return `Nachrichten-Kurator. Nutze Google Search für AKTUELLE Nachrichten.
 
-  const modeBlock =
-    req.mode === "breaking"
-      ? "MODUS: BREAKING — nur News der letzten 24h. Priorisiere: Regulierungsänderungen, Marktschocks, Übernahmen, Insolvenzen, politische Entscheidungen."
-      : "MODUS: TOP — die wichtigsten Nachrichten der letzten 7 Tage. Priorisiere: Markttrends, große Deals, Analysen, Branchenberichte, strategische Entwicklungen.";
-
-  return `Du bist ein Elite-Nachrichten-Kurator. Nutze Google Search um AKTUELLE, ECHTE Nachrichten zu finden.
-
-DATUM HEUTE: ${today}
+DATUM: ${today}
 BRANCHE: ${label}
 ${req.company ? `UNTERNEHMEN: ${req.company}` : ""}
-${companyDesc ? `BESCHREIBUNG: ${companyDesc.slice(0, 300)}` : ""}
-${products ? `PRODUKTE/SERVICES: ${products.slice(0, 200)}` : ""}
-${competitors ? `WETTBEWERBER: ${competitors.slice(0, 200)}` : ""}
+${ai.companyDescription ? `INFO: ${String(ai.companyDescription).slice(0, 200)}` : ""}
 REGIONEN: ${scopes}
-${modeBlock}
+MODUS: ${req.mode === "breaking" ? "BREAKING (letzte 24h)" : "TOP (letzte 7 Tage)"}
 
-AUFGABE: Finde die 5 wichtigsten News-Artikel zu dieser Branche.
-Schwerpunkt: international relevant + DACH/EU wo möglich.
+Liefere 5 echte News-Artikel als JSON:
+{"items":[{"title":"...","summary":"1-2 Sätze DE","source":"Quellenname","url":"Link","date":"YYYY-MM-DD","scope":"${req.scopes[0]}","tags":["a","b"],"sentiment":"positive|neutral|negative","whyItMatters":"1 Satz"}]}
 
-Für jeden Artikel liefere:
-- "title": Originaltitel oder deutschsprachiger Titel
-- "summary": 1-2 Sätze Zusammenfassung auf Deutsch
-- "source": Name der Quelle (z.B. "Handelsblatt", "Reuters", "Der Standard")
-- "url": Link zum Originalartikel
-- "date": Erscheinungsdatum als "YYYY-MM-DD"
-- "scope": einer von: ${req.scopes.map((s) => `"${s}"`).join(", ")}
-- "tags": 2-3 Schlagworte (z.B. "markt", "regulierung", "zinsen")
-- "sentiment": "positive", "neutral", oder "negative"
-- "whyItMatters": 1 Satz warum das für die Branche relevant ist
-
-Antworte STRIKT als JSON-Objekt:
-{
-  "items": [
-    { "title": "...", "summary": "...", "source": "...", "url": "...", "date": "YYYY-MM-DD", "scope": "...", "tags": [...], "sentiment": "...", "whyItMatters": "..." }
-  ]
-}
-
-REGELN:
-- NUR echte, existierende Artikel. KEINE Erfindungen.
-- Jeder Scope sollte mindestens 1 Artikel haben (wenn möglich).
-- Keine Duplikate.
-- Antworte NUR mit JSON. Kein Markdown, keine Erklärungen.`;
+Scope-Werte: ${req.scopes.map(s => `"${s}"`).join(",")}
+NUR JSON. Keine Erklärungen.`;
 }
 
 // ============================================================================
-// CORE: Generate News Digest
+// CORE — with inflight dedupe + stale-while-revalidate
 // ============================================================================
 
-export async function generateNewsDigest(
-  req: NewsDigestRequest
-): Promise<NewsDigestResponse> {
-  const key = cacheKey(req);
-  const cached = fromCache(key);
-  if (cached) {
-    logger.info("[NEWS] Cache hit", { userId: req.userId, mode: req.mode });
-    return cached;
+export async function generateNewsDigest(req: NewsDigestRequest): Promise<NewsDigestResponse> {
+  const key = makeCacheKey(req);
+
+  // 1. Check cache
+  const cached = readCache(key);
+  if (cached?.fresh) {
+    console.log("[NEWS] fresh cache hit", JSON.stringify({ key, itemCount: cached.data.items.length }));
+    return cached.data;
   }
 
+  // 2. If stale cache exists → return it immediately, refresh async in background
+  if (cached && !cached.fresh) {
+    console.log("[NEWS] stale cache → returning + async refresh");
+    void refreshInBackground(req, key).catch((e) => console.error("[NEWS] bg-refresh error:", e?.message?.slice(0, 100)));
+    return { ...cached.data, stale: true };
+  }
+
+  // 3. No cache → fetch (with inflight dedupe)
+  return fetchWithDedupe(req, key);
+}
+
+async function refreshInBackground(req: NewsDigestRequest, key: string): Promise<void> {
+  // Don't duplicate if already inflight
+  if (INFLIGHT.has(key)) return;
+  await fetchWithDedupe(req, key);
+}
+
+async function fetchWithDedupe(req: NewsDigestRequest, key: string): Promise<NewsDigestResponse> {
+  // Inflight dedupe: if same key is already being fetched, await that promise
+  const existing = INFLIGHT.get(key);
+  if (existing) {
+    console.log("[NEWS] inflight dedupe hit", JSON.stringify({ key }));
+    return existing;
+  }
+
+  const promise = callGeminiForNews(req, key);
+  INFLIGHT.set(key, promise);
+  try {
+    return await promise;
+  } finally {
+    INFLIGHT.delete(key);
+  }
+}
+
+// ============================================================================
+// GEMINI CALL — single call, hard timeout, flash model
+// ============================================================================
+
+async function callGeminiForNews(req: NewsDigestRequest, key: string): Promise<NewsDigestResponse> {
   const apiKey = process.env.GOOGLE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    logger.warn("[NEWS] No Gemini API key");
-    return fallback(req, "Kein AI-Service konfiguriert.");
+    console.warn("[NEWS] No Gemini API key");
+    return mkError(req, "MISSING_KEY", "Kein AI-Service konfiguriert.");
   }
 
+  const model = NEWS_MODEL;
   const startTime = Date.now();
+
+  console.log("[NEWS] calling Gemini", JSON.stringify({ model, mode: req.mode, scopes: req.scopes, industry: req.industry, timeoutMs: NEWS_TIMEOUT_MS }));
+
   try {
     const ai = new GoogleGenAI({ apiKey });
-    const model = await resolveGeminiModel(apiKey);
     const prompt = buildPrompt(req);
-
-    console.log("[NEWS] Calling Gemini", JSON.stringify({ model, mode: req.mode, scopes: req.scopes, industry: req.industry }));
 
     const response = await Promise.race([
       ai.models.generateContent({
@@ -229,60 +236,48 @@ export async function generateNewsDigest(
         contents: prompt,
         config: {
           tools: [{ googleSearch: {} }],
-          temperature: 0.3,
-          maxOutputTokens: 4096,
+          temperature: 0.2,
+          maxOutputTokens: 1500,
         },
       }),
-      new Promise<never>((_, rej) => setTimeout(() => rej(new Error("TimeoutError: 55s")), 55_000)),
+      new Promise<never>((_, rej) =>
+        setTimeout(() => rej(new Error("TIMEOUT")), NEWS_TIMEOUT_MS)
+      ),
     ]);
 
-    // Extract text — handle different response shapes
+    // Extract text
     let rawText = "";
-    try {
-      rawText = response.text || "";
-    } catch {
-      // Some models return text via candidates
+    try { rawText = response.text || ""; } catch {
       try {
         const parts = (response as any)?.candidates?.[0]?.content?.parts || [];
         rawText = parts.map((p: any) => p.text || "").join("");
-      } catch { /* empty */ }
+      } catch {}
     }
 
     // Extract grounding sources
-    const groundingSources: string[] = [];
+    const sources: string[] = [];
     try {
       const gm = (response as any)?.candidates?.[0]?.groundingMetadata;
       if (gm?.groundingChunks) {
-        for (const chunk of gm.groundingChunks) {
-          if (chunk?.web?.uri) groundingSources.push(chunk.web.uri);
-        }
+        for (const c of gm.groundingChunks) { if (c?.web?.uri) sources.push(c.web.uri); }
       }
-    } catch { /* ignore */ }
+    } catch {}
 
     const durationMs = Date.now() - startTime;
-    console.log("[NEWS] Raw response", JSON.stringify({
-      textLength: rawText.length,
-      preview: rawText.slice(0, 300),
-      groundingSourceCount: groundingSources.length,
-      durationMs,
-    }));
 
     if (!rawText || rawText.length < 10) {
-      logger.warn("[NEWS] Empty Gemini response", { durationMs });
-      return fallback(req, "Leere AI-Antwort.");
+      console.warn("[NEWS] empty response", JSON.stringify({ durationMs, model, textLen: rawText.length }));
+      return mkError(req, "EMPTY", "Leere AI-Antwort.");
     }
 
-    // Parse JSON robustly
     const parsed = extractJSON(rawText);
     if (!parsed) {
-      logger.warn("[NEWS] JSON extraction failed", { preview: rawText.slice(0, 400), durationMs });
-      return fallback(req, "JSON-Parsing fehlgeschlagen.");
+      console.warn("[NEWS] JSON parse failed", JSON.stringify({ durationMs, model, preview: rawText.slice(0, 200) }));
+      return mkError(req, "PARSE", "JSON-Parsing fehlgeschlagen.");
     }
 
-    // Normalize items — handle both {items:[...]} and direct array
     const rawItems = Array.isArray(parsed.items) ? parsed.items : Array.isArray(parsed) ? parsed : [];
-
-    console.log("[NEWS] Parsed items count:", rawItems.length);
+    const today = new Date().toISOString().slice(0, 10);
 
     const items: NewsItem[] = rawItems.slice(0, 10).map((item: any, idx: number) => ({
       id: `news-${req.mode}-${Date.now()}-${idx}`,
@@ -290,7 +285,7 @@ export async function generateNewsDigest(
       summary: String(item.summary || item.summaryDe || ""),
       source: String(item.source || item.sourceName || "Unbekannt"),
       url: String(item.url || item.sourceUrl || "#"),
-      date: String(item.date || item.publishedAt || today()),
+      date: String(item.date || item.publishedAt || today),
       scope: req.scopes.includes(item.scope) ? item.scope : req.scopes[0] || "global",
       tags: Array.isArray(item.tags) ? item.tags.map(String).slice(0, 4) : [],
       sentiment: ["positive", "neutral", "negative"].includes(item.sentiment) ? item.sentiment : "neutral",
@@ -298,38 +293,47 @@ export async function generateNewsDigest(
     }));
 
     const result: NewsDigestResponse = {
-      industryLabel: industryLabel(req.industry),
+      industryLabel: toLabel(req.industry),
       scopes: req.scopes,
       mode: req.mode,
       generatedAt: new Date().toISOString(),
       items,
-      sources: groundingSources,
-      cached: false,
+      sources,
+      fromCache: false,
+      stale: false,
       provider: `gemini (${model})`,
+      error: null,
     };
 
-    logger.info("[NEWS] Digest OK", { userId: req.userId, mode: req.mode, itemCount: items.length, durationMs });
-    toCache(key, result);
+    console.log("[NEWS] OK", JSON.stringify({ model, durationMs, itemCount: items.length, sourcesCount: sources.length }));
+    writeCache(key, result);
     return result;
+
   } catch (error: any) {
     const durationMs = Date.now() - startTime;
-    logger.error("[NEWS] Gemini error", { error: (error?.message || "").slice(0, 300), durationMs });
-    return fallback(req, error?.message || "Unbekannter Fehler.");
+    const msg = error?.message || "unknown";
+    const code = msg.includes("TIMEOUT") ? "TIMEOUT" : "UPSTREAM";
+    console.error("[NEWS] Gemini error", JSON.stringify({ code, model, durationMs, error: msg.slice(0, 200) }));
+    return mkError(req, code, msg.slice(0, 120));
   }
 }
 
-function today(): string { return new Date().toISOString().slice(0, 10); }
+// ============================================================================
+// ERROR / FALLBACK BUILDER
+// ============================================================================
 
-function fallback(req: NewsDigestRequest, reason: string): NewsDigestResponse {
+function mkError(req: NewsDigestRequest, code: string, message: string): NewsDigestResponse {
   return {
-    industryLabel: industryLabel(req.industry),
+    industryLabel: toLabel(req.industry),
     scopes: req.scopes,
     mode: req.mode,
     generatedAt: new Date().toISOString(),
     items: [],
     sources: [],
-    cached: false,
-    provider: `fallback (${reason})`,
+    fromCache: false,
+    stale: false,
+    provider: "fallback",
+    error: { code, message },
   };
 }
 

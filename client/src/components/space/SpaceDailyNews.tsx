@@ -53,8 +53,10 @@ interface NewsDigestResponse {
   generatedAt: string;
   items: NewsItem[];
   sources: string[];
-  cached: boolean;
+  fromCache: boolean;
+  stale: boolean;
   provider: string;
+  error: { code: string; message: string } | null;
 }
 
 interface ScopesResponse {
@@ -118,6 +120,11 @@ export function SpaceDailyNews() {
   const [activeScopes, setActiveScopes] = useState<Set<string>>(new Set(["global"]));
   const [showSources, setShowSources] = useState(false);
 
+  // Debounce: only fire query after user stops toggling for 400ms
+  const [debouncedMode, setDebouncedMode] = useState<NewsMode>("top");
+  const [debouncedScopes, setDebouncedScopes] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Fetch scopes (lightweight, always runs)
   const { data: scopesData } = useQuery<ScopesResponse>({
     queryKey: ["/api/news/scopes"],
@@ -141,17 +148,35 @@ export function SpaceDailyNews() {
     return arr.length > 0 ? arr.join(",") : "global";
   }, [activeScopes]);
 
-  // Fetch news — ONLY when activated (click-to-load)
+  // Debounce mode + scopes changes (400ms) to prevent rapid API calls
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedMode(mode);
+      setDebouncedScopes(scopesQuery);
+    }, 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [mode, scopesQuery]);
+
+  // Initialize debounced values on first activation
+  useEffect(() => {
+    if (activated && !debouncedScopes) {
+      setDebouncedMode(mode);
+      setDebouncedScopes(scopesQuery);
+    }
+  }, [activated, mode, scopesQuery, debouncedScopes]);
+
+  // Fetch news — ONLY when activated (click-to-load), uses debounced values
   const { data: newsData, isLoading, isError, error, refetch } = useQuery<NewsDigestResponse>({
-    queryKey: ["/api/news/daily", mode, scopesQuery],
+    queryKey: ["/api/news/daily", debouncedMode, debouncedScopes],
     queryFn: async () => {
-      const res = await fetch(`/api/news/daily?mode=${mode}&scopes=${scopesQuery}`, { credentials: "include" });
+      const res = await fetch(`/api/news/daily?mode=${debouncedMode}&scopes=${debouncedScopes}`, { credentials: "include" });
       if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e as any)?.error || "Fehler"); }
       return res.json();
     },
-    enabled: !!user && activated,
-    staleTime: 2 * 60 * 1000,
-    retry: 1,
+    enabled: !!user && activated && !!debouncedScopes,
+    staleTime: 5 * 60 * 1000,
+    retry: 0,
   });
 
   const handleActivate = useCallback(() => setActivated(true), []);
@@ -272,7 +297,7 @@ export function SpaceDailyNews() {
               <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
                 {fmtTime && (
                   <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.30)" }}>
-                    {fmtTime} {newsData?.cached ? "(Cache)" : ""}
+                    {fmtTime} {newsData?.fromCache ? "(Cache)" : ""}{newsData?.stale ? " · aktualisiert…" : ""}
                   </span>
                 )}
                 <button onClick={handleRefresh} disabled={isLoading} aria-label="Aktualisieren"

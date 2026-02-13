@@ -65,23 +65,35 @@ router.get("/daily", async (req: Request, res: Response) => {
       return res.status(404).json({ error: "User nicht gefunden." });
     }
 
-    const industry = (user as any).industry || "general";
-    const company = (user as any).company || undefined;
     const aiProfile = (user as any).aiProfile || {};
+    const company = (user as any).company || undefined;
+
+    // Industry: DB field > aiProfile-derived > "general"
+    let industry = (user as any).industry || "";
+    if (!industry && aiProfile.companyDescription) {
+      // Try to infer from company description keywords
+      const desc = String(aiProfile.companyDescription).toLowerCase();
+      if (desc.includes("immobil") || desc.includes("real estate") || desc.includes("makler")) industry = "real_estate";
+      else if (desc.includes("versicher") || desc.includes("insurance")) industry = "insurance";
+      else if (desc.includes("technolog") || desc.includes("software") || desc.includes("saas")) industry = "technology";
+      else if (desc.includes("finanz") || desc.includes("bank") || desc.includes("finance")) industry = "finance";
+      else if (desc.includes("beratung") || desc.includes("consult")) industry = "consulting";
+      else if (desc.includes("gesundheit") || desc.includes("health") || desc.includes("medizin")) industry = "healthcare";
+      else if (desc.includes("marketing") || desc.includes("werb") || desc.includes("agentur")) industry = "marketing";
+      else if (desc.includes("recht") || desc.includes("kanzlei") || desc.includes("legal")) industry = "legal";
+    }
+    if (!industry) industry = "general";
 
     // Derive scopes
     let scopes: string[];
     if (scopesParam) {
-      scopes = scopesParam
-        .split(",")
-        .map((s: string) => s.trim())
-        .filter(Boolean)
-        .slice(0, 5);
+      scopes = scopesParam.split(",").map((s: string) => s.trim()).filter(Boolean).slice(0, 5);
     } else {
       scopes = deriveDefaultScopes(user);
     }
-
     if (scopes.length === 0) scopes = ["global"];
+
+    console.log("[NEWS ROUTE]", JSON.stringify({ userId, industry, company: company || "-", scopes }));
 
     // Generate digest
     const digest = await generateNewsDigest({
@@ -121,7 +133,20 @@ router.get("/scopes", async (req: Request, res: Response) => {
     }
 
     const scopes = deriveDefaultScopes(user);
-    const industry = (user as any).industry || "general";
+    const aiProfile = (user as any).aiProfile || {};
+    let industry = (user as any).industry || "";
+    if (!industry && aiProfile.companyDescription) {
+      const desc = String(aiProfile.companyDescription).toLowerCase();
+      if (desc.includes("immobil") || desc.includes("real estate") || desc.includes("makler")) industry = "real_estate";
+      else if (desc.includes("versicher") || desc.includes("insurance")) industry = "insurance";
+      else if (desc.includes("technolog") || desc.includes("software") || desc.includes("saas")) industry = "technology";
+      else if (desc.includes("finanz") || desc.includes("bank") || desc.includes("finance")) industry = "finance";
+      else if (desc.includes("beratung") || desc.includes("consult")) industry = "consulting";
+      else if (desc.includes("gesundheit") || desc.includes("health") || desc.includes("medizin")) industry = "healthcare";
+      else if (desc.includes("marketing") || desc.includes("werb") || desc.includes("agentur")) industry = "marketing";
+      else if (desc.includes("recht") || desc.includes("kanzlei") || desc.includes("legal")) industry = "legal";
+    }
+    if (!industry) industry = "general";
 
     return res.json({ scopes, industry });
   } catch (error: any) {
