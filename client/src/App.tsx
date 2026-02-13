@@ -46,6 +46,10 @@ import AdminFoundingClaims from "@/pages/admin-founding-claims";
 import InvestorSchwabPage from "@/pages/app/investor/schwab";
 import InvestorsV2Page from "@/pages/investors-v2";
 
+// NDA Gate + Data Room
+import NdaPage from "@/pages/nda";
+import DataRoomPage from "@/pages/data-room";
+
 // 🎯 INTERNAL CRM SYSTEM - Command Center (admin/staff only)
 import InternalDashboard from "@/pages/internal/dashboard";
 import InternalMails from "@/pages/internal/mails";
@@ -174,6 +178,10 @@ function Router() {
         <Route path="/investors" component={InvestorsV2Page} />
         <Route path="/app/investor/schwab" component={InvestorSchwabPage} />
         <Route path="/investor/schwab" component={InvestorSchwabPage} />
+        
+        {/* 🔒 NDA Gate + Data Room */}
+        <Route path="/nda" component={NdaPage} />
+        <Route path="/data-room" component={DataRoomPage} />
       
       {!user ? (
         <>

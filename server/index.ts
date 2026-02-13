@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { db, client } from "./db";
@@ -38,6 +39,7 @@ if (IS_PRODUCTION) {
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
 
 // ============================================================================
 // HEALTH CHECK - Must be early to verify API is responding

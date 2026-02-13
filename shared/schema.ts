@@ -1189,3 +1189,33 @@ export const foundingMemberClaims = pgTable("founding_member_claims", {
 
 export type FoundingMemberClaim = typeof foundingMemberClaims.$inferSelect;
 export type InsertFoundingMemberClaim = typeof foundingMemberClaims.$inferInsert;
+
+// ============================================================================
+// 🔒 NDA ACCEPTANCES — Digital NDA Gate for Data Room
+// ============================================================================
+// Logs every NDA acceptance with full audit trail
+// Used to gate access to /data-room
+// ============================================================================
+
+export const NDA_CURRENT_VERSION = "2026-02-13-v1";
+
+export const ndaAcceptances = pgTable("nda_acceptances", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull(),
+  fullName: text("full_name").notNull(),
+  company: text("company"),
+  ndaVersion: text("nda_version").notNull().default(NDA_CURRENT_VERSION),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  pagePath: text("page_path"),
+  consent: boolean("consent").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("nda_acceptances_email_idx").on(table.email),
+  index("nda_acceptances_email_version_idx").on(table.email, table.ndaVersion),
+  index("nda_acceptances_accepted_at_idx").on(table.acceptedAt),
+]);
+
+export type NdaAcceptance = typeof ndaAcceptances.$inferSelect;
+export type InsertNdaAcceptance = typeof ndaAcceptances.$inferInsert;

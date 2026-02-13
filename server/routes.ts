@@ -192,6 +192,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const investorLeadRoutes = await import('./routes/investor-lead');
   app.use('/api/investors', investorLeadRoutes.default);
 
+  // 🔒 NDA Gate — Public Routes (no auth, cookie-based access)
+  const ndaRoutes = await import('./routes/nda');
+  app.use('/api/nda', ndaRoutes.default);
+
   // 📧 Setup Mail Inbound Routes (Gmail intake via n8n webhook)
   const mailInboundRoutes = await import('./routes/mail-inbound');
   app.use('/api', mailInboundRoutes.default);
