@@ -21,16 +21,12 @@ import {
 } from "@/components/ui/accordion";
 import {
   Shield,
-  Mic,
   Settings2,
   Layers,
   ArrowRight,
   Loader2,
   CheckCircle2,
   ChevronRight,
-  Zap,
-  Globe,
-  TrendingUp,
   Users,
   Target,
   Rocket,
@@ -44,245 +40,452 @@ import {
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
-// Motion constants (repo-aligned: ease [0.32, 0.72, 0, 1])
+// Injected styles — component-scoped CSS for cinematic effects
+// ---------------------------------------------------------------------------
+function InvestorStyles() {
+  return (
+    <style>{`
+      .inv-glow-card {
+        position: relative;
+        border-radius: 20px;
+        border: 1px solid rgba(233,215,196,0.12);
+        background: rgba(255,255,255,0.014);
+        box-shadow: 0 18px 70px rgba(0,0,0,0.52);
+        overflow: hidden;
+        transform: perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));
+        transition: transform 0.22s cubic-bezier(0.16,1,0.3,1), border-color 0.22s ease, background 0.22s ease;
+        will-change: transform;
+      }
+      .inv-glow-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(520px 220px at var(--mx,50%) var(--my,35%), rgba(254,145,0,0.14), transparent 60%);
+        opacity: 0.9;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+      }
+      .inv-glow-card:hover {
+        border-color: rgba(254,145,0,0.22);
+        background: rgba(255,255,255,0.018);
+        transition: transform 0.08s linear, border-color 0.22s ease, background 0.22s ease;
+      }
+      .inv-glow-card:hover::before { opacity: 1; }
+      .inv-glow-inner { position: relative; z-index: 1; padding: 20px; }
+      @media (max-width: 768px) { .inv-glow-inner { padding: 16px; } }
+
+      .inv-instrument {
+        position: relative;
+        border-radius: 20px;
+        border: 1px solid rgba(233,215,196,0.10);
+        background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.008));
+        box-shadow: 0 18px 60px rgba(0,0,0,0.5);
+        overflow: hidden;
+        text-align: center;
+        padding: 28px 16px;
+      }
+      .inv-instrument::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(300px 180px at 50% 20%, rgba(254,145,0,0.08), transparent 70%);
+        pointer-events: none;
+      }
+      .inv-instrument::after {
+        content: "";
+        position: absolute;
+        top: 0; left: 50%; transform: translateX(-50%);
+        width: 60%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(254,145,0,0.4), transparent);
+      }
+
+      .inv-led {
+        width: 6px; height: 6px;
+        border-radius: 50%;
+        background: #FE9100;
+        box-shadow: 0 0 12px rgba(254,145,0,0.6);
+        animation: inv-pulse 2s ease-in-out infinite;
+        display: inline-block;
+      }
+      @keyframes inv-pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(1.4); }
+      }
+
+      .inv-btn-primary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 14px 28px;
+        border-radius: 999px;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 700;
+        font-size: 13px;
+        letter-spacing: 0.02em;
+        border: 1px solid rgba(254,145,0,0.30);
+        background: linear-gradient(180deg, rgba(254,145,0,0.16), rgba(255,255,255,0.02));
+        color: rgba(255,255,255,0.96);
+        box-shadow: 0 18px 64px rgba(254,145,0,0.10);
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.22s cubic-bezier(0.16,1,0.3,1), box-shadow 0.22s ease;
+        white-space: nowrap;
+      }
+      .inv-btn-primary::before {
+        content: '';
+        position: absolute;
+        top: 0; left: -75%;
+        width: 50%; height: 100%;
+        background: rgba(255,255,255,0.12);
+        transform: skewX(-25deg);
+        transition: left 0.6s cubic-bezier(0.25,0.8,0.25,1);
+      }
+      .inv-btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 26px 92px rgba(254,145,0,0.14), 0 22px 74px rgba(0,0,0,0.60);
+      }
+      .inv-btn-primary:hover::before { left: 175%; }
+      .inv-btn-primary:focus-visible {
+        outline: 2px solid rgba(254,145,0,0.55);
+        outline-offset: 3px;
+      }
+
+      .inv-btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 14px 28px;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: 14px;
+        letter-spacing: 0.01em;
+        border: 1px solid rgba(233,215,196,0.18);
+        background: rgba(255,255,255,0.02);
+        color: rgba(245,245,247,0.92);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        cursor: pointer;
+        white-space: nowrap;
+        transition: transform 0.22s cubic-bezier(0.16,1,0.3,1), box-shadow 0.22s ease, border-color 0.22s ease, background 0.22s ease;
+      }
+      .inv-btn-secondary:hover {
+        transform: translateY(-2px);
+        border-color: rgba(254,145,0,0.26);
+        box-shadow: 0 20px 72px rgba(0,0,0,0.58);
+        background: rgba(255,255,255,0.028);
+      }
+      .inv-btn-secondary:focus-visible {
+        outline: 2px solid rgba(254,145,0,0.35);
+        outline-offset: 3px;
+      }
+
+      .inv-horizon {
+        position: absolute;
+        left: 50%; top: 18%;
+        width: min(1200px, 92vw);
+        height: 560px;
+        transform: translateX(-50%) perspective(900px) rotateX(68deg);
+        transform-origin: center top;
+        opacity: 0.12;
+        pointer-events: none;
+        background:
+          repeating-linear-gradient(to right, rgba(233,215,196,0.06) 0 1px, transparent 1px 46px),
+          repeating-linear-gradient(to bottom, rgba(233,215,196,0.06) 0 1px, transparent 1px 46px);
+        mask-image: radial-gradient(closest-side, rgba(0,0,0,0.85), transparent 74%);
+        -webkit-mask-image: radial-gradient(closest-side, rgba(0,0,0,0.85), transparent 74%);
+      }
+
+      .inv-dock {
+        position: fixed;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 50;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 6px;
+      }
+      .inv-dock-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        background: none;
+        border: none;
+        padding: 5px 6px;
+        border-radius: 20px;
+        transition: background 0.2s ease;
+      }
+      .inv-dock-btn:hover { background: rgba(255,255,255,0.04); }
+      .inv-dock-dot {
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        background: rgba(233,215,196,0.20);
+        transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
+        flex-shrink: 0;
+      }
+      .inv-dock-btn.active .inv-dock-dot {
+        background: #FE9100;
+        box-shadow: 0 0 14px rgba(254,145,0,0.55);
+        width: 10px; height: 10px;
+      }
+      .inv-dock-label {
+        font-size: 11px;
+        font-family: 'Orbitron', sans-serif;
+        letter-spacing: 0.04em;
+        color: transparent;
+        transition: color 0.25s ease;
+        white-space: nowrap;
+        user-select: none;
+      }
+      .inv-dock-btn:hover .inv-dock-label { color: rgba(233,215,196,0.65); }
+      .inv-dock-btn.active .inv-dock-label { color: rgba(254,145,0,0.85); }
+
+      .inv-dock-progress {
+        width: 2px;
+        height: 40px;
+        background: rgba(233,215,196,0.08);
+        border-radius: 2px;
+        overflow: hidden;
+        align-self: center;
+        margin-bottom: 4px;
+      }
+      .inv-dock-progress-fill {
+        width: 100%;
+        background: linear-gradient(180deg, #FE9100, #a34e00);
+        border-radius: 2px;
+        transition: height 0.15s ease;
+      }
+
+      .inv-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 16px;
+        border-radius: 999px;
+        border: 1px solid rgba(233,215,196,0.16);
+        background: rgba(255,255,255,0.02);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        font-size: 11px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: rgba(233,215,196,0.92);
+        font-family: 'Orbitron', sans-serif;
+      }
+
+      .inv-gold-text {
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 700;
+        position: relative;
+        color: #e9d7c4;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+      }
+      .inv-gold-text::before {
+        content: attr(data-text);
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #e9d7c4);
+        background-size: 300% 100%;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        animation: inv-gradient-move 4s cubic-bezier(0.25,0.8,0.25,1) infinite;
+      }
+      @keyframes inv-gradient-move {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+
+      .inv-section-divider {
+        width: 60px;
+        height: 1px;
+        background: linear-gradient(90deg, rgba(254,145,0,0.5), transparent);
+        margin-bottom: 20px;
+      }
+
+      .inv-timeline-node {
+        width: 12px; height: 12px;
+        border-radius: 50%;
+        background: #FE9100;
+        box-shadow: 0 0 16px rgba(254,145,0,0.5);
+        position: relative;
+        flex-shrink: 0;
+      }
+      .inv-timeline-node::after {
+        content: "";
+        position: absolute;
+        inset: -3px;
+        border-radius: 50%;
+        border: 1px solid rgba(254,145,0,0.3);
+        animation: inv-pulse 2.5s ease-in-out infinite;
+      }
+
+      .inv-input {
+        width: 100%;
+        border-radius: 16px;
+        border: 1px solid rgba(233,215,196,0.10);
+        background: rgba(255,255,255,0.025);
+        padding: 14px 16px;
+        font-size: 14px;
+        color: rgba(245,245,247,0.92);
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        outline: none;
+      }
+      .inv-input::placeholder { color: rgba(245,245,247,0.25); }
+      .inv-input:focus {
+        border-color: rgba(254,145,0,0.35);
+        box-shadow: 0 0 0 3px rgba(254,145,0,0.08);
+      }
+
+      @media (max-width: 1100px) {
+        .inv-dock { display: none; }
+        .inv-horizon { top: 12%; opacity: 0.08; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .inv-glow-card { transform: none !important; transition: border-color 0.2s ease; }
+        .inv-glow-card::before { display: none; }
+        .inv-btn-primary::before { display: none; }
+        .inv-btn-primary, .inv-btn-secondary { transition: none; }
+        .inv-gold-text::before { animation: none; }
+        .inv-led { animation: none; }
+        .inv-timeline-node::after { animation: none; }
+      }
+    `}</style>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Motion constants
 // ---------------------------------------------------------------------------
 const ease = [0.32, 0.72, 0, 1] as const;
 
 function sectionVariants(reduced: boolean | null) {
   return {
-    hidden: { opacity: 0, y: reduced ? 0 : 14 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: reduced ? 0.05 : 0.6, ease },
-    },
+    hidden: { opacity: 0, y: reduced ? 0 : 18 },
+    visible: { opacity: 1, y: 0, transition: { duration: reduced ? 0.05 : 0.65, ease } },
   };
 }
 
 function staggerContainer(reduced: boolean | null) {
-  return {
-    hidden: {},
-    visible: { transition: { staggerChildren: reduced ? 0 : 0.045 } },
-  };
+  return { hidden: {}, visible: { transition: { staggerChildren: reduced ? 0 : 0.06 } } };
 }
 
 function itemVariant(reduced: boolean | null) {
   return {
-    hidden: { opacity: 0, y: reduced ? 0 : 10 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: reduced ? 0.05 : 0.45, ease },
-    },
+    hidden: { opacity: 0, y: reduced ? 0 : 12 },
+    visible: { opacity: 1, y: 0, transition: { duration: reduced ? 0.05 : 0.5, ease } },
   };
 }
 
 // ---------------------------------------------------------------------------
-// Scroll-reveal Section wrapper
+// Section wrapper
 // ---------------------------------------------------------------------------
-function Section({
-  children,
-  className,
-  id,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  id?: string;
-}) {
+function Section({ children, className, id }: { children: React.ReactNode; className?: string; id?: string }) {
   const reduced = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-60px" });
+  const inView = useInView(ref, { once: true, margin: "-80px" });
   return (
-    <motion.section
-      ref={ref}
-      id={id}
-      variants={sectionVariants(reduced)}
-      initial="hidden"
-      animate={inView ? "visible" : "hidden"}
-      className={cn("relative", className)}
-    >
+    <motion.section ref={ref} id={id} variants={sectionVariants(reduced)} initial="hidden" animate={inView ? "visible" : "hidden"} className={cn("relative", className)}>
       {children}
     </motion.section>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Eyebrow
+// Typography
 // ---------------------------------------------------------------------------
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
-    <span
-      className="inline-block font-orbitron tracking-[0.25em] uppercase text-[var(--aras-orange)] mb-4"
-      style={{ fontSize: "clamp(0.65rem, 0.8vw, 0.75rem)" }}
-    >
-      {children}
-    </span>
+    <div className="mb-5">
+      <div className="inv-section-divider" />
+      <span style={{ fontSize: "11px", letterSpacing: "0.22em", textTransform: "uppercase", color: "rgba(254,145,0,0.85)", fontFamily: "'Orbitron', sans-serif" }}>
+        {children}
+      </span>
+    </div>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Section heading
-// ---------------------------------------------------------------------------
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2
-      className="font-orbitron font-bold text-white aras-headline-gradient inline-block mb-6"
-      style={{
-        fontSize: "clamp(1.8rem, 2.4vw, 2.6rem)",
-        lineHeight: 1.1,
-        letterSpacing: "-0.01em",
-      }}
-    >
+    <h2 className="inv-gold-text mb-8" data-text={typeof children === "string" ? children : ""} style={{ fontSize: "clamp(1.7rem, 2.8vw, 2.8rem)", lineHeight: 1.08, letterSpacing: "-0.01em" }}>
       {children}
     </h2>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Glass card (premium V2)
+// GlowCard — cursor-tracking radial gradient + tilt
 // ---------------------------------------------------------------------------
-function Glass({
-  children,
-  className,
-  glow = false,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  glow?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "rounded-3xl border border-[rgba(233,215,196,0.12)] p-6 md:p-8",
-        glow && "shadow-[0_0_40px_rgba(254,145,0,0.06)]",
-        className
-      )}
-      style={{
-        background:
-          "linear-gradient(145deg, rgba(254,145,0,0.03) 0%, rgba(10,10,10,0.82) 40%, rgba(233,215,196,0.015) 100%)",
-        backdropFilter: "blur(24px)",
-        WebkitBackdropFilter: "blur(24px)",
-        boxShadow: "0 18px 60px rgba(0,0,0,0.55)",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Tilt card (subtle 2deg hover)
-// ---------------------------------------------------------------------------
-function TiltCard({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
+function GlowCard({ children, className }: { children: React.ReactNode; className?: string }) {
   const reduced = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
 
-  const onMove = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      if (reduced || !ref.current) return;
-      const r = ref.current.getBoundingClientRect();
-      const x = (e.clientX - r.left) / r.width - 0.5;
-      const y = (e.clientY - r.top) / r.height - 0.5;
-      ref.current.style.transform = `perspective(800px) rotateX(${-y * 2}deg) rotateY(${x * 2}deg) translateY(-4px)`;
-    },
-    [reduced]
-  );
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
+    if (reduced || !ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    const mx = ((e.clientX - r.left) / r.width * 100).toFixed(1);
+    const my = ((e.clientY - r.top) / r.height * 100).toFixed(1);
+    const ry = ((e.clientX - r.left) / r.width - 0.5) * 8;
+    const rx = -((e.clientY - r.top) / r.height - 0.5) * 5;
+    const el = ref.current;
+    el.style.setProperty("--mx", mx + "%");
+    el.style.setProperty("--my", my + "%");
+    el.style.setProperty("--rx", rx.toFixed(2) + "deg");
+    el.style.setProperty("--ry", ry.toFixed(2) + "deg");
+  }, [reduced]);
 
-  const onLeave = useCallback(() => {
+  const onPointerLeave = useCallback(() => {
     if (!ref.current) return;
-    ref.current.style.transform =
-      "perspective(800px) rotateX(0) rotateY(0) translateY(0)";
+    const el = ref.current;
+    el.style.setProperty("--mx", "50%");
+    el.style.setProperty("--my", "40%");
+    el.style.setProperty("--rx", "0deg");
+    el.style.setProperty("--ry", "0deg");
   }, []);
 
   return (
-    <div
-      ref={ref}
-      onMouseMove={onMove}
-      onMouseLeave={onLeave}
-      className={cn(
-        "rounded-3xl border border-[rgba(233,215,196,0.10)] p-6 md:p-7 transition-shadow duration-300",
-        "hover:shadow-[0_0_30px_rgba(254,145,0,0.08)] hover:border-[rgba(254,145,0,0.25)]",
-        className
-      )}
-      style={{
-        background:
-          "linear-gradient(145deg, rgba(255,255,255,0.025) 0%, rgba(10,10,10,0.75) 100%)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        transition:
-          "transform 0.3s cubic-bezier(0.32,0.72,0,1), box-shadow 0.3s ease, border-color 0.3s ease",
-        willChange: "transform",
-        boxShadow: "0 12px 40px rgba(0,0,0,0.4)",
-      }}
-    >
-      {children}
+    <div ref={ref} onPointerMove={onPointerMove} onPointerLeave={onPointerLeave} className={cn("inv-glow-card", className)}>
+      <div className="inv-glow-inner">{children}</div>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Scroll Progress Bar
+// Scroll Progress
 // ---------------------------------------------------------------------------
 function ScrollProgress() {
   const reduced = useReducedMotion();
   const { scrollYProgress } = useScroll();
   const [progress, setProgress] = useState(0);
-
-  useMotionValueEvent(scrollYProgress, "change", (v) => {
-    if (!reduced) setProgress(v);
-  });
-
+  useMotionValueEvent(scrollYProgress, "change", (v) => { if (!reduced) setProgress(v); });
   if (reduced) return null;
-
   return (
     <div className="fixed top-0 left-0 right-0 z-[9998] h-[2px]">
-      <motion.div
-        className="h-full origin-left"
-        style={{
-          scaleX: progress,
-          background:
-            "linear-gradient(90deg, var(--aras-orange), var(--aras-gold))",
-        }}
-      />
+      <motion.div className="h-full origin-left" style={{ scaleX: progress, background: "linear-gradient(90deg, #FE9100, #e9d7c4)" }} />
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Section Rail (desktop only)
+// Investor Dock — floating right-side navigation with dots
 // ---------------------------------------------------------------------------
-function SectionRail({
-  sections,
-  activeId,
-}: {
-  sections: { id: string; label: string }[];
-  activeId: string;
-}) {
+function InvestorDock({ sections, activeId, progress }: { sections: { id: string; label: string }[]; activeId: string; progress: number }) {
   return (
-    <nav className="hidden xl:flex fixed left-6 2xl:left-10 top-[120px] z-50 flex-col gap-2.5 w-[200px]">
+    <nav className="inv-dock" aria-label="Sections">
+      <div className="inv-dock-progress"><div className="inv-dock-progress-fill" style={{ height: `${(progress * 100).toFixed(0)}%` }} /></div>
       {sections.map((s) => (
-        <a
-          key={s.id}
-          href={`#${s.id}`}
-          onClick={(e) => {
-            e.preventDefault();
-            document.getElementById(s.id)?.scrollIntoView({ behavior: "smooth" });
-          }}
-          className={cn(
-            "text-[13px] leading-tight py-1.5 px-3 rounded-lg transition-all duration-300 font-medium",
-            activeId === s.id
-              ? "text-[var(--aras-orange)] bg-[var(--aras-orange)]/[0.08] border-l-2 border-[var(--aras-orange)]"
-              : "text-white/40 hover:text-white/65 border-l-2 border-transparent"
-          )}
-        >
-          {s.label}
-        </a>
+        <button key={s.id} onClick={() => document.getElementById(s.id)?.scrollIntoView({ behavior: "smooth" })} className={cn("inv-dock-btn", activeId === s.id && "active")}>
+          <span className="inv-dock-label">{s.label}</span>
+          <span className="inv-dock-dot" />
+        </button>
       ))}
     </nav>
   );
@@ -293,38 +496,27 @@ function SectionRail({
 // ---------------------------------------------------------------------------
 function FloatingCTA({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button
-      onClick={onClick}
-      className="xl:hidden fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full flex items-center justify-center shadow-[0_0_24px_rgba(254,145,0,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--aras-orange)]"
-      style={{
-        background: "linear-gradient(135deg, var(--aras-orange), #a34e00)",
-      }}
-      aria-label={label}
-    >
-      <ArrowRight className="w-5 h-5 text-white" />
+    <button onClick={onClick} className="lg:hidden fixed bottom-6 right-6 z-50 inv-btn-primary !p-3 !rounded-full" style={{ width: 52, height: 52 }} aria-label={label}>
+      <ArrowRight className="w-5 h-5" />
     </button>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Language Toggle (inline, glass)
+// Language Toggle
 // ---------------------------------------------------------------------------
 function LangToggle() {
   const { language, setLanguage } = useLanguage();
   return (
-    <div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/10 backdrop-blur-xl">
+    <div className="flex items-center gap-1 p-1 rounded-full bg-black/80 border border-white/10 backdrop-blur-xl shadow-2xl">
       {(["de", "en"] as const).map((l) => (
-        <button
-          key={l}
-          onClick={() => setLanguage(l)}
-          className={cn(
-            "px-4 py-1.5 rounded-lg text-xs font-bold font-orbitron uppercase transition-all duration-200",
-            language === l
-              ? "text-black bg-gradient-to-br from-[var(--aras-gold)] to-[var(--aras-orange)] shadow-[0_0_12px_rgba(254,145,0,0.3)]"
-              : "text-white/50 hover:text-white/70"
-          )}
-        >
-          {l}
+        <button key={l} onClick={() => setLanguage(l)} className={cn("px-5 py-2 rounded-full text-xs font-bold transition-all duration-200")} style={{
+          fontFamily: "'Orbitron', sans-serif",
+          background: language === l ? "linear-gradient(135deg, #e9d7c4, #FE9100)" : "transparent",
+          color: language === l ? "#0f0f0f" : "rgba(255,255,255,0.45)",
+          boxShadow: language === l ? "0 0 20px rgba(254,145,0,0.35)" : "none",
+        }}>
+          {l.toUpperCase()}
         </button>
       ))}
     </div>
@@ -332,35 +524,26 @@ function LangToggle() {
 }
 
 // ---------------------------------------------------------------------------
-// useActiveSection — tracks which section is visible
+// useActiveSection
 // ---------------------------------------------------------------------------
 function useActiveSection(ids: string[]) {
   const [active, setActive] = useState(ids[0] || "");
-
   useEffect(() => {
     const observers: IntersectionObserver[] = [];
-
     ids.forEach((id) => {
       const el = document.getElementById(id);
       if (!el) return;
-      const obs = new IntersectionObserver(
-        ([entry]) => {
-          if (entry.isIntersecting) setActive(id);
-        },
-        { rootMargin: "-30% 0px -60% 0px" }
-      );
+      const obs = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) setActive(id); }, { rootMargin: "-30% 0px -60% 0px" });
       obs.observe(el);
       observers.push(obs);
     });
-
     return () => observers.forEach((o) => o.disconnect());
   }, [ids]);
-
   return active;
 }
 
 // ---------------------------------------------------------------------------
-// Lead form schema + component
+// Lead form
 // ---------------------------------------------------------------------------
 const leadSchema = z.object({
   name: z.string().min(2),
@@ -371,718 +554,415 @@ const leadSchema = z.object({
   website: z.string().optional(),
   requestType: z.enum(["data_room", "intro_call"]).optional(),
   lang: z.string().optional(),
-  companyWebsite2: z.string().optional(), // honeypot
+  companyWebsite2: z.string().optional(),
 });
-
 type LeadData = z.infer<typeof leadSchema>;
 
-function LeadForm({
-  formType,
-  lang,
-}: {
-  formType: "data_room" | "intro_call";
-  lang: Lang;
-}) {
+function LeadForm({ formType, lang }: { formType: "data_room" | "intro_call"; lang: Lang }) {
   const copy = getInvestorCopy(lang);
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-    setValue,
-  } = useForm<LeadData>({
+  const { register, handleSubmit, formState: { errors }, reset, setValue } = useForm<LeadData>({
     resolver: zodResolver(leadSchema),
     defaultValues: { requestType: formType, lang },
   });
 
-  useEffect(() => {
-    setValue("requestType", formType);
-    setValue("lang", lang);
-  }, [formType, lang, setValue]);
+  useEffect(() => { setValue("requestType", formType); setValue("lang", lang); }, [formType, lang, setValue]);
 
   const onSubmit = async (data: LeadData) => {
-    // Honeypot check
-    if (data.companyWebsite2) {
-      setStatus("success");
-      return;
-    }
-    setStatus("loading");
-    setErrorMsg("");
+    if (data.companyWebsite2) { setStatus("success"); return; }
+    setStatus("loading"); setErrorMsg("");
     try {
-      const res = await fetch("/api/investors/lead", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, companyWebsite2: undefined }),
-      });
+      const res = await fetch("/api/investors/lead", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...data, companyWebsite2: undefined }) });
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.message || "Error");
-      setStatus("success");
-      reset();
-    } catch (err: any) {
-      setErrorMsg(err.message || "Request failed");
-      setStatus("error");
-    }
+      setStatus("success"); reset();
+    } catch (err: any) { setErrorMsg(err.message || "Request failed"); setStatus("error"); }
   };
 
   if (status === "success") {
     return (
-      <div className="flex flex-col items-center gap-4 py-10 text-center">
-        <CheckCircle2 className="w-12 h-12 text-emerald-400" />
+      <div className="flex flex-col items-center gap-4 py-12 text-center">
+        <div className="w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+          <CheckCircle2 className="w-7 h-7 text-emerald-400" />
+        </div>
         <p className="text-lg font-semibold text-white">{copy.form.success}</p>
         <p className="text-sm text-white/50">{copy.form.successSub}</p>
-        <button
-          onClick={() => setStatus("idle")}
-          className="mt-2 text-xs text-[var(--aras-orange)] underline underline-offset-4 hover:text-white transition-colors"
-        >
-          {copy.form.another}
-        </button>
+        <button onClick={() => setStatus("idle")} className="mt-2 text-xs text-[#FE9100] underline underline-offset-4 hover:text-white transition-colors">{copy.form.another}</button>
       </div>
     );
   }
 
-  const inputCls =
-    "w-full rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3.5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:ring-2 focus:ring-[var(--aras-orange)]/40 focus:border-[var(--aras-orange)]/30 transition-all duration-200";
-  const labelCls =
-    "block text-[11px] font-semibold text-[var(--aras-gold)] mb-1.5 tracking-wider uppercase";
+  const lbl = "block text-[11px] font-semibold tracking-[0.15em] uppercase mb-1.5" as const;
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      {/* Honeypot — hidden from humans */}
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <div className="absolute opacity-0 h-0 w-0 overflow-hidden" aria-hidden="true" tabIndex={-1}>
         <input {...register("companyWebsite2")} tabIndex={-1} autoComplete="off" />
       </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         <div>
-          <label className={labelCls}>{copy.form.fields.name}</label>
-          <input {...register("name")} placeholder="Max Mustermann" className={inputCls} />
-          {errors.name && (
-            <p className="text-[13px] text-[var(--aras-orange)] mt-1">{copy.form.errors.name}</p>
-          )}
+          <label className={lbl} style={{ color: "rgba(233,215,196,0.7)" }}>{copy.form.fields.name}</label>
+          <input {...register("name")} placeholder="Max Mustermann" className="inv-input" />
+          {errors.name && <p className="text-[12px] mt-1" style={{ color: "#FE9100" }}>{copy.form.errors.name}</p>}
         </div>
         <div>
-          <label className={labelCls}>{copy.form.fields.firm}</label>
-          <input {...register("firm")} placeholder="Firm / Family Office" className={inputCls} />
-          {errors.firm && (
-            <p className="text-[13px] text-[var(--aras-orange)] mt-1">{copy.form.errors.firm}</p>
-          )}
+          <label className={lbl} style={{ color: "rgba(233,215,196,0.7)" }}>{copy.form.fields.firm}</label>
+          <input {...register("firm")} placeholder="Firm / Family Office" className="inv-input" />
+          {errors.firm && <p className="text-[12px] mt-1" style={{ color: "#FE9100" }}>{copy.form.errors.firm}</p>}
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         <div>
-          <label className={labelCls}>{copy.form.fields.email}</label>
-          <input {...register("email")} type="email" placeholder="you@firm.com" className={inputCls} />
-          {errors.email && (
-            <p className="text-[13px] text-[var(--aras-orange)] mt-1">{copy.form.errors.email}</p>
-          )}
+          <label className={lbl} style={{ color: "rgba(233,215,196,0.7)" }}>{copy.form.fields.email}</label>
+          <input {...register("email")} type="email" placeholder="you@firm.com" className="inv-input" />
+          {errors.email && <p className="text-[12px] mt-1" style={{ color: "#FE9100" }}>{copy.form.errors.email}</p>}
         </div>
         <div>
-          <label className={labelCls}>{copy.form.fields.ticketSize}</label>
-          <select {...register("ticketSize")} className={inputCls}>
+          <label className={lbl} style={{ color: "rgba(233,215,196,0.7)" }}>{copy.form.fields.ticketSize}</label>
+          <select {...register("ticketSize")} className="inv-input">
             <option value="">—</option>
-            {copy.form.fields.ticketOptions.map((o) => (
-              <option key={o} value={o}>
-                {o}
-              </option>
-            ))}
+            {copy.form.fields.ticketOptions.map((o) => (<option key={o} value={o}>{o}</option>))}
           </select>
         </div>
       </div>
       <div>
-        <label className={labelCls}>{copy.form.fields.website}</label>
-        <input {...register("website")} placeholder="https://..." className={inputCls} />
+        <label className={lbl} style={{ color: "rgba(233,215,196,0.7)" }}>{copy.form.fields.website}</label>
+        <input {...register("website")} placeholder="https://..." className="inv-input" />
       </div>
       <div>
-        <label className={labelCls}>{copy.form.fields.thesis}</label>
-        <textarea
-          {...register("thesis")}
-          rows={3}
-          placeholder={copy.form.fields.thesisPlaceholder}
-          className={cn(inputCls, "resize-none")}
-        />
+        <label className={lbl} style={{ color: "rgba(233,215,196,0.7)" }}>{copy.form.fields.thesis}</label>
+        <textarea {...register("thesis")} rows={3} placeholder={copy.form.fields.thesisPlaceholder} className="inv-input" style={{ resize: "none" }} />
       </div>
-
       {status === "error" && (
-        <div className="rounded-2xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 text-[13px] text-red-300">
-          {errorMsg}
-        </div>
+        <div className="rounded-2xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 text-[13px] text-red-300">{errorMsg}</div>
       )}
-
-      <button
-        type="submit"
-        disabled={status === "loading"}
-        className="aras-btn--primary w-full h-13 rounded-2xl font-orbitron text-sm font-semibold relative overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--aras-orange)] focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:opacity-60 disabled:cursor-not-allowed"
-      >
-        <span className="relative z-10 flex items-center justify-center gap-2">
-          {status === "loading" ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <ArrowRight className="w-4 h-4" />
-          )}
-          {status === "loading"
-            ? "…"
-            : formType === "intro_call"
-              ? copy.form.submit.introCall
-              : copy.form.submit.dataRoom}
-        </span>
+      <button type="submit" disabled={status === "loading"} className="inv-btn-primary w-full" style={{ padding: "16px 28px", fontSize: "14px" }}>
+        {status === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
+        {status === "loading" ? "…" : formType === "intro_call" ? copy.form.submit.introCall : copy.form.submit.dataRoom}
       </button>
     </form>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Icon map for moat cards
+// Icon maps
 // ---------------------------------------------------------------------------
 const moatIcons = [ShieldCheck, Eye, Settings2, Cpu];
 const fundingIcons = [Layers, Rocket, Shield, BarChart3];
+const layerIcons = [Cpu, Phone, Settings2, ShieldCheck];
 
 // ===========================================================================
-// MAIN PAGE COMPONENT
+// MAIN PAGE
 // ===========================================================================
 export default function InvestorsV2Page() {
   const reduced = useReducedMotion();
   const { language } = useLanguage();
   const lang = language as Lang;
   const copy = useMemo(() => getInvestorCopy(lang), [lang]);
-
   const [formType, setFormType] = useState<"data_room" | "intro_call">("data_room");
   const formRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll();
+  const [scrollProg, setScrollProg] = useState(0);
+  useMotionValueEvent(scrollYProgress, "change", (v) => setScrollProg(v));
 
-  const scrollToForm = useCallback(
-    (type: "data_room" | "intro_call") => {
-      setFormType(type);
-      setTimeout(() => {
-        formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 50);
-    },
-    []
-  );
+  const scrollToForm = useCallback((type: "data_room" | "intro_call") => {
+    setFormType(type);
+    setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+  }, []);
 
-  const sectionIds = useMemo(
-    () => copy.nav.sections.map((s) => s.id),
-    [copy.nav.sections]
-  );
+  const sectionIds = useMemo(() => copy.nav.sections.map((s) => s.id), [copy.nav.sections]);
   const activeSection = useActiveSection(sectionIds);
 
   return (
-    <div className="relative min-h-screen">
-      <SEOHead
-        title={copy.seo.title}
-        description={copy.seo.description}
-        url="https://www.plattform-aras.ai/investors"
-      />
-
+    <div className="relative min-h-screen" style={{ background: "#0f0f0f" }}>
+      <InvestorStyles />
+      <SEOHead title={copy.seo.title} description={copy.seo.description} url="https://www.plattform-aras.ai/investors" />
       <ScrollProgress />
-      <SectionRail sections={copy.nav.sections} activeId={activeSection} />
-      <FloatingCTA
-        label={copy.hero.ctaPrimary}
-        onClick={() => scrollToForm("data_room")}
-      />
+      <InvestorDock sections={copy.nav.sections} activeId={activeSection} progress={scrollProg} />
+      <FloatingCTA label={copy.hero.ctaPrimary} onClick={() => scrollToForm("data_room")} />
 
-      {/* ── Background layers ── */}
-      <div className="fixed inset-0 pointer-events-none" style={{ zIndex: -1 }}>
-        {/* Top glow */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(ellipse 90% 45% at 50% -5%, rgba(254,145,0,0.14) 0%, transparent 65%)",
-          }}
-        />
-        {/* Bottom glow */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(ellipse 70% 35% at 50% 105%, rgba(233,215,196,0.06) 0%, transparent 60%)",
-          }}
-        />
-        {/* Center subtle sweep */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(ellipse 50% 50% at 30% 50%, rgba(254,145,0,0.04) 0%, transparent 70%)",
-          }}
-        />
-        {/* Noise overlay */}
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage:
-              "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
-            backgroundRepeat: "repeat",
-            backgroundSize: "256px",
-          }}
-        />
+      {/* ── Background ── */}
+      <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+        <div className="inv-horizon" />
+        <div className="absolute inset-0" style={{ background: "radial-gradient(1200px 700px at 18% 8%, rgba(254,145,0,0.14), transparent 62%)" }} />
+        <div className="absolute inset-0" style={{ background: "radial-gradient(900px 560px at 86% 16%, rgba(233,215,196,0.08), transparent 64%)" }} />
+        <div className="absolute inset-0" style={{ background: "radial-gradient(820px 560px at 52% 92%, rgba(163,78,0,0.10), transparent 70%)" }} />
+        <div className="absolute inset-0" style={{ background: "radial-gradient(600px 400px at 50% 50%, rgba(254,145,0,0.03), transparent 60%)" }} />
+        <div className="absolute inset-0 opacity-[0.025]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")", backgroundRepeat: "repeat", backgroundSize: "256px" }} />
       </div>
 
-      {/* ── Main content column ── */}
-      <div
-        className="relative mx-auto xl:ml-[240px] 2xl:ml-[260px]"
-        style={{ maxWidth: 1160, paddingInline: "clamp(16px, 3vw, 24px)" }}
-      >
-        {/* ─────────── HERO ─────────── */}
-        <section id="hero" className="pt-10 lg:pt-16 pb-20 lg:pb-28">
-          {/* Lang toggle */}
-          <div className="flex justify-end mb-8">
+      {/* ── Content ── */}
+      <div className="relative z-[1]" style={{ maxWidth: 1080, margin: "0 auto", paddingInline: "clamp(16px, 3.2vw, 38px)" }}>
+
+        {/* ═══ HERO ═══ */}
+        <section id="hero" style={{ paddingTop: "clamp(40px, 6vh, 80px)", paddingBottom: "clamp(80px, 12vh, 140px)" }}>
+          <div className="flex justify-end mb-10">
             <LangToggle />
           </div>
+          <motion.div initial={{ opacity: 0, y: reduced ? 0 : 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduced ? 0.05 : 0.8, ease }}>
+            <div className="inv-kicker mb-8">
+              <span className="inv-led" />
+              {copy.hero.eyebrow}
+            </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: reduced ? 0 : 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: reduced ? 0.05 : 0.7, ease }}
-          >
-            <Eyebrow>{copy.hero.eyebrow}</Eyebrow>
-
-            <h1
-              className="font-orbitron font-bold aras-headline-gradient whitespace-pre-line"
-              style={{
-                fontSize: "clamp(2.6rem, 6vw, 5.3rem)",
-                lineHeight: 0.98,
-                letterSpacing: "-0.02em",
-              }}
-            >
+            <h1 className="inv-gold-text whitespace-pre-line mb-8" data-text={copy.hero.headline.replace(/\n/g, " ")} style={{ fontSize: "clamp(2.4rem, 5.6vw, 4.8rem)", lineHeight: 1.02, letterSpacing: "-0.02em" }}>
               {copy.hero.headline}
             </h1>
 
-            <p
-              className="mt-7 text-[var(--aras-gold)]/60 leading-[1.6]"
-              style={{
-                fontSize: "clamp(1.05rem, 1.4vw, 1.35rem)",
-                maxWidth: 780,
-              }}
-            >
+            <p style={{ fontSize: "clamp(1rem, 1.3vw, 1.25rem)", lineHeight: 1.75, maxWidth: 720, color: "rgba(245,245,247,0.65)" }}>
               {copy.hero.subheadline}
             </p>
 
-            {/* Microfacts */}
-            <div className="flex flex-wrap gap-3 mt-8">
+            <div className="flex flex-wrap gap-3 mt-10">
               {copy.hero.microfacts.map((f) => (
-                <span
-                  key={f}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-medium text-white/70 border border-white/[0.08] bg-white/[0.03]"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--aras-orange)]" />
+                <span key={f} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-medium border" style={{ borderColor: "rgba(233,215,196,0.12)", background: "rgba(255,255,255,0.02)", color: "rgba(233,215,196,0.75)" }}>
+                  <span className="inv-led" style={{ width: 5, height: 5 }} />
                   {f}
                 </span>
               ))}
             </div>
 
-            {/* CTAs */}
-            <div className="flex flex-wrap gap-4 mt-10">
-              <button
-                onClick={() => scrollToForm("data_room")}
-                className="aras-btn--primary h-13 px-8 rounded-2xl font-orbitron text-sm font-semibold relative overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--aras-orange)] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
-              >
-                <span className="relative z-10 flex items-center gap-2">
-                  {copy.hero.ctaPrimary}
-                  <ChevronRight className="w-4 h-4" />
-                </span>
+            <div className="flex flex-wrap gap-4 mt-12">
+              <button onClick={() => scrollToForm("data_room")} className="inv-btn-primary">
+                <ArrowRight className="w-4 h-4" />
+                {copy.hero.ctaPrimary}
               </button>
-              <button
-                onClick={() => scrollToForm("intro_call")}
-                className="h-13 px-8 rounded-2xl text-sm font-medium bg-white/[0.05] border border-white/[0.1] text-white/80 hover:bg-white/[0.08] hover:text-white hover:border-white/[0.18] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
-              >
+              <button onClick={() => scrollToForm("intro_call")} className="inv-btn-secondary">
                 {copy.hero.ctaSecondary}
               </button>
             </div>
 
-            {/* Note */}
-            <p className="mt-6 text-[11px] text-white/30 max-w-lg">
+            <p className="mt-8" style={{ fontSize: 12, color: "rgba(245,245,247,0.35)", maxWidth: 520 }}>
               {copy.hero.note}
             </p>
           </motion.div>
         </section>
 
-        {/* ─────────── THE PROBLEM ─────────── */}
-        <Section id="problem" className="py-20 lg:py-28">
+        {/* ═══ PROBLEM ═══ */}
+        <Section id="problem" className="pb-28 lg:pb-36">
           <Eyebrow>{copy.problem.eyebrow}</Eyebrow>
           <SectionTitle>{copy.problem.title}</SectionTitle>
-
-          <div className="max-w-3xl space-y-5 mb-12">
+          <div className="max-w-3xl space-y-6 mb-14">
             {copy.problem.paragraphs.map((p, i) => (
-              <p
-                key={i}
-                className="text-[15px] md:text-base text-white/55 leading-[1.75]"
-              >
-                {p}
-              </p>
+              <p key={i} style={{ fontSize: "clamp(15px, 1.1vw, 17px)", lineHeight: 1.8, color: "rgba(245,245,247,0.58)" }}>{p}</p>
             ))}
           </div>
-
-          <motion.div
-            variants={staggerContainer(reduced)}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-40px" }}
-            className="grid grid-cols-2 lg:grid-cols-4 gap-4"
-          >
+          <motion.div variants={staggerContainer(reduced)} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {copy.problem.stats.map((s) => (
               <motion.div key={s.label} variants={itemVariant(reduced)}>
-                <Glass className="text-center py-6 px-4">
-                  <p className="font-orbitron text-2xl md:text-3xl font-bold aras-headline-gradient inline-block">
-                    {s.value}
-                  </p>
-                  <p className="text-xs text-white/45 mt-2 leading-snug">
-                    {s.label}
-                  </p>
-                </Glass>
-              </motion.div>
-            ))}
-          </motion.div>
-        </Section>
-
-        {/* ─────────── WHAT ARAS IS ─────────── */}
-        <Section id="platform" className="py-20 lg:py-28">
-          <Eyebrow>{copy.whatArasIs.eyebrow}</Eyebrow>
-          <SectionTitle>{copy.whatArasIs.title}</SectionTitle>
-
-          <p className="text-[15px] md:text-base text-white/55 leading-[1.75] max-w-3xl mb-10">
-            {copy.whatArasIs.intro}
-          </p>
-
-          <motion.div
-            variants={staggerContainer(reduced)}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-40px" }}
-            className="space-y-3 max-w-2xl"
-          >
-            {copy.whatArasIs.layers.map((layer, i) => (
-              <motion.div key={layer.title} variants={itemVariant(reduced)}>
-                <div
-                  className="rounded-2xl border border-white/[0.08] p-5 md:p-6 relative overflow-hidden"
-                  style={{
-                    background: `linear-gradient(145deg, rgba(254,145,0,${0.025 + i * 0.015}) 0%, rgba(10,10,10,0.85) 100%)`,
-                  }}
-                >
-                  <div className="flex items-center gap-3 mb-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-[var(--aras-orange)]/10 flex items-center justify-center text-[var(--aras-orange)] font-orbitron text-xs font-bold shrink-0">
-                      {i + 1}
-                    </div>
-                    <h3
-                      className="font-orbitron font-semibold text-white"
-                      style={{ fontSize: "clamp(0.85rem, 1vw, 0.95rem)" }}
-                    >
-                      {layer.title}
-                    </h3>
+                <div className="inv-instrument">
+                  <div className="relative z-[1]">
+                    <span className="inv-led mb-3 block mx-auto" />
+                    <p className="font-bold" style={{ fontFamily: "'Orbitron', sans-serif", fontSize: "clamp(1.4rem, 2.2vw, 2rem)", color: "#e9d7c4" }}>{s.value}</p>
+                    <p className="mt-2" style={{ fontSize: 12, lineHeight: 1.5, color: "rgba(245,245,247,0.50)" }}>{s.label}</p>
                   </div>
-                  <p className="text-sm text-white/50 leading-relaxed pl-11">
-                    {layer.description}
-                  </p>
                 </div>
               </motion.div>
             ))}
           </motion.div>
         </Section>
 
-        {/* ─────────── WHY WE WIN ─────────── */}
-        <Section id="moat" className="py-20 lg:py-28">
-          <Eyebrow>{copy.whyWeWin.eyebrow}</Eyebrow>
-          <SectionTitle>{copy.whyWeWin.title}</SectionTitle>
-
-          <motion.div
-            variants={staggerContainer(reduced)}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-40px" }}
-            className="grid grid-cols-1 md:grid-cols-2 gap-4"
-          >
-            {copy.whyWeWin.cards.map((card, i) => {
-              const Icon = moatIcons[i] || Shield;
+        {/* ═══ PLATFORM ═══ */}
+        <Section id="platform" className="pb-28 lg:pb-36">
+          <Eyebrow>{copy.whatArasIs.eyebrow}</Eyebrow>
+          <SectionTitle>{copy.whatArasIs.title}</SectionTitle>
+          <p className="max-w-3xl mb-12" style={{ fontSize: "clamp(15px, 1.1vw, 17px)", lineHeight: 1.8, color: "rgba(245,245,247,0.58)" }}>{copy.whatArasIs.intro}</p>
+          <motion.div variants={staggerContainer(reduced)} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }} className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">
+            {copy.whatArasIs.layers.map((layer, i) => {
+              const Icon = layerIcons[i] || Cpu;
               return (
-                <motion.div key={card.title} variants={itemVariant(reduced)}>
-                  <TiltCard className="h-full">
-                    <Icon className="w-6 h-6 text-[var(--aras-orange)] mb-4" />
-                    <h3
-                      className="font-orbitron font-semibold text-white mb-3"
-                      style={{ fontSize: "clamp(0.85rem, 1vw, 0.95rem)" }}
-                    >
-                      {card.title}
-                    </h3>
-                    <p className="text-sm text-white/50 leading-[1.7]">
-                      {card.description}
-                    </p>
-                  </TiltCard>
+                <motion.div key={layer.title} variants={itemVariant(reduced)}>
+                  <GlowCard className="h-full">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div style={{ width: 44, height: 44, borderRadius: 16, border: "1px solid rgba(233,215,196,0.14)", background: "rgba(255,255,255,0.02)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+                        <Icon className="w-[18px] h-[18px]" style={{ color: "rgba(233,215,196,0.92)" }} />
+                      </div>
+                      <h3 style={{ fontFamily: "'Orbitron', sans-serif", fontWeight: 800, fontSize: "14.6px", color: "rgba(245,245,247,0.94)" }}>{layer.title}</h3>
+                    </div>
+                    <p style={{ fontSize: "13.8px", lineHeight: 1.6, color: "rgba(245,245,247,0.60)" }}>{layer.description}</p>
+                  </GlowCard>
                 </motion.div>
               );
             })}
           </motion.div>
         </Section>
 
-        {/* ─────────── TRACTION ─────────── */}
-        <Section id="traction" className="py-20 lg:py-28">
+        {/* ═══ WHY WE WIN ═══ */}
+        <Section id="moat" className="pb-28 lg:pb-36">
+          <Eyebrow>{copy.whyWeWin.eyebrow}</Eyebrow>
+          <SectionTitle>{copy.whyWeWin.title}</SectionTitle>
+          <motion.div variants={staggerContainer(reduced)} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {copy.whyWeWin.cards.map((card, i) => {
+              const Icon = moatIcons[i] || Shield;
+              return (
+                <motion.div key={card.title} variants={itemVariant(reduced)}>
+                  <GlowCard className="h-full">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div style={{ width: 44, height: 44, borderRadius: 16, border: "1px solid rgba(233,215,196,0.14)", background: "rgba(255,255,255,0.02)", display: "grid", placeItems: "center", flexShrink: 0 }}>
+                        <Icon className="w-[18px] h-[18px]" style={{ color: "rgba(233,215,196,0.92)" }} />
+                      </div>
+                      <h3 style={{ fontFamily: "'Orbitron', sans-serif", fontWeight: 800, fontSize: "14.6px", color: "rgba(245,245,247,0.94)" }}>{card.title}</h3>
+                    </div>
+                    <p style={{ fontSize: "13.8px", lineHeight: 1.65, color: "rgba(245,245,247,0.60)" }}>{card.description}</p>
+                  </GlowCard>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        </Section>
+
+        {/* ═══ TRACTION ═══ */}
+        <Section id="traction" className="pb-28 lg:pb-36">
           <Eyebrow>{copy.traction.eyebrow}</Eyebrow>
           <SectionTitle>{copy.traction.title}</SectionTitle>
-
-          <p className="text-[15px] md:text-base text-white/55 leading-[1.75] max-w-3xl mb-8">
-            {copy.traction.intro}
-          </p>
-
-          <Glass className="max-w-2xl mb-12" glow>
-            <ul className="space-y-3.5">
+          <p className="max-w-3xl mb-10" style={{ fontSize: "clamp(15px, 1.1vw, 17px)", lineHeight: 1.8, color: "rgba(245,245,247,0.58)" }}>{copy.traction.intro}</p>
+          <GlowCard className="max-w-2xl mb-14">
+            <ul className="space-y-4">
               {copy.traction.bullets.map((b, i) => (
-                <li key={i} className="flex items-start gap-3 text-sm text-white/65 leading-relaxed">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--aras-orange)] mt-2 shrink-0" />
+                <li key={i} className="flex items-start gap-3" style={{ fontSize: 14, lineHeight: 1.65, color: "rgba(245,245,247,0.65)" }}>
+                  <span className="inv-led mt-1.5" style={{ width: 6, height: 6, flexShrink: 0 }} />
                   {b}
                 </li>
               ))}
             </ul>
-          </Glass>
-
-          <h3
-            className="font-orbitron font-semibold text-white mb-6"
-            style={{ fontSize: "clamp(1rem, 1.2vw, 1.15rem)" }}
-          >
-            {copy.traction.timelineTitle}
-          </h3>
-
-          <motion.div
-            variants={staggerContainer(reduced)}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-40px" }}
-            className="space-y-1 max-w-lg"
-          >
+          </GlowCard>
+          <h3 className="mb-7" style={{ fontFamily: "'Orbitron', sans-serif", fontWeight: 700, fontSize: "clamp(0.9rem, 1.2vw, 1.1rem)", color: "rgba(245,245,247,0.92)" }}>{copy.traction.timelineTitle}</h3>
+          <motion.div variants={staggerContainer(reduced)} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }} className="space-y-0 max-w-lg">
             {copy.traction.timeline.map((item, i) => (
-              <motion.div
-                key={item.label}
-                variants={itemVariant(reduced)}
-                className="flex items-start gap-4"
-              >
+              <motion.div key={item.label} variants={itemVariant(reduced)} className="flex items-start gap-5">
                 <div className="flex flex-col items-center">
-                  <div className="w-3 h-3 rounded-full bg-[var(--aras-orange)] shadow-[0_0_8px_rgba(254,145,0,0.5)]" />
-                  {i < copy.traction.timeline.length - 1 && (
-                    <div className="w-px h-10 bg-gradient-to-b from-[var(--aras-orange)]/40 to-transparent" />
-                  )}
+                  <div className="inv-timeline-node" />
+                  {i < copy.traction.timeline.length - 1 && <div style={{ width: 2, height: 48, background: "linear-gradient(180deg, rgba(254,145,0,0.35), transparent)" }} />}
                 </div>
-                <div className="-mt-0.5">
-                  <span className="font-orbitron text-xs font-semibold text-[var(--aras-orange)]">
-                    {item.label}
-                  </span>
-                  <p className="text-sm text-white/55 mt-0.5">{item.description}</p>
+                <div className="-mt-1 pb-4">
+                  <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 12, fontWeight: 700, color: "#FE9100" }}>{item.label}</span>
+                  <p className="mt-1" style={{ fontSize: 14, color: "rgba(245,245,247,0.55)" }}>{item.description}</p>
                 </div>
               </motion.div>
             ))}
           </motion.div>
         </Section>
 
-        {/* ─────────── GO-TO-MARKET ─────────── */}
-        <Section id="gtm" className="py-20 lg:py-28">
+        {/* ═══ GO-TO-MARKET ═══ */}
+        <Section id="gtm" className="pb-28 lg:pb-36">
           <Eyebrow>{copy.gtm.eyebrow}</Eyebrow>
           <SectionTitle>{copy.gtm.title}</SectionTitle>
-
-          <p className="text-[15px] md:text-base text-white/55 leading-[1.75] max-w-3xl mb-10">
-            {copy.gtm.intro}
-          </p>
-
-          <motion.div
-            variants={staggerContainer(reduced)}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-40px" }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"
-          >
+          <p className="max-w-3xl mb-12" style={{ fontSize: "clamp(15px, 1.1vw, 17px)", lineHeight: 1.8, color: "rgba(245,245,247,0.58)" }}>{copy.gtm.intro}</p>
+          <motion.div variants={staggerContainer(reduced)} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
             {copy.gtm.phases.map((phase) => (
               <motion.div key={phase.time} variants={itemVariant(reduced)}>
-                <TiltCard className="h-full">
-                  <span className="font-orbitron text-xs font-bold text-[var(--aras-orange)]">
-                    {phase.time}
-                  </span>
-                  <h3
-                    className="font-orbitron font-semibold text-white mt-2 mb-2.5"
-                    style={{ fontSize: "clamp(0.85rem, 1vw, 0.95rem)" }}
-                  >
-                    {phase.title}
-                  </h3>
-                  <p className="text-sm text-white/50 leading-[1.7]">
-                    {phase.description}
-                  </p>
-                </TiltCard>
+                <GlowCard className="h-full">
+                  <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 11, fontWeight: 700, color: "#FE9100", letterSpacing: "0.05em" }}>{phase.time}</span>
+                  <h3 className="mt-2 mb-3" style={{ fontFamily: "'Orbitron', sans-serif", fontWeight: 800, fontSize: "14.6px", color: "rgba(245,245,247,0.94)" }}>{phase.title}</h3>
+                  <p style={{ fontSize: "13.8px", lineHeight: 1.65, color: "rgba(245,245,247,0.60)" }}>{phase.description}</p>
+                </GlowCard>
               </motion.div>
             ))}
           </motion.div>
-
-          <Glass className="inline-block">
-            <p className="text-sm text-white/60">
-              <Target className="w-4 h-4 text-[var(--aras-orange)] inline mr-2 -mt-0.5" />
-              {copy.gtm.beachhead}
-            </p>
-          </Glass>
+          <div className="inv-glow-card" style={{ display: "inline-block" }}>
+            <div className="inv-glow-inner flex items-center gap-2" style={{ padding: "14px 20px" }}>
+              <Target className="w-4 h-4" style={{ color: "#FE9100" }} />
+              <p style={{ fontSize: 14, color: "rgba(245,245,247,0.65)" }}>{copy.gtm.beachhead}</p>
+            </div>
+          </div>
         </Section>
 
-        {/* ─────────── BUSINESS MODEL ─────────── */}
-        <Section id="model" className="py-20 lg:py-28">
+        {/* ═══ BUSINESS MODEL ═══ */}
+        <Section id="model" className="pb-28 lg:pb-36">
           <Eyebrow>{copy.businessModel.eyebrow}</Eyebrow>
           <SectionTitle>{copy.businessModel.title}</SectionTitle>
-
-          <p className="text-[15px] md:text-base text-white/55 leading-[1.75] max-w-3xl mb-10">
-            {copy.businessModel.intro}
-          </p>
-
-          <motion.div
-            variants={staggerContainer(reduced)}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-40px" }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"
-          >
+          <p className="max-w-3xl mb-12" style={{ fontSize: "clamp(15px, 1.1vw, 17px)", lineHeight: 1.8, color: "rgba(245,245,247,0.58)" }}>{copy.businessModel.intro}</p>
+          <motion.div variants={staggerContainer(reduced)} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             {copy.businessModel.models.map((m, i) => {
               const icons = [Building2, Phone, Users];
               const Icon = icons[i] || Building2;
               return (
                 <motion.div key={m.title} variants={itemVariant(reduced)}>
-                  <Glass className="h-full">
-                    <Icon className="w-6 h-6 text-[var(--aras-orange)] mb-4" />
-                    <h3
-                      className="font-orbitron font-semibold text-white mb-2"
-                      style={{ fontSize: "clamp(0.85rem, 1vw, 0.95rem)" }}
-                    >
-                      {m.title}
-                    </h3>
-                    <p className="text-sm text-white/50 leading-[1.7]">
-                      {m.description}
-                    </p>
-                  </Glass>
+                  <GlowCard className="h-full">
+                    <div style={{ width: 44, height: 44, borderRadius: 16, border: "1px solid rgba(233,215,196,0.14)", background: "rgba(255,255,255,0.02)", display: "grid", placeItems: "center", marginBottom: 14 }}>
+                      <Icon className="w-[18px] h-[18px]" style={{ color: "rgba(233,215,196,0.92)" }} />
+                    </div>
+                    <h3 className="mb-2" style={{ fontFamily: "'Orbitron', sans-serif", fontWeight: 800, fontSize: "14.6px", color: "rgba(245,245,247,0.94)" }}>{m.title}</h3>
+                    <p style={{ fontSize: "13.8px", lineHeight: 1.65, color: "rgba(245,245,247,0.60)" }}>{m.description}</p>
+                  </GlowCard>
                 </motion.div>
               );
             })}
           </motion.div>
-
-          <p className="text-xs text-white/30 max-w-xl">{copy.businessModel.note}</p>
+          <p style={{ fontSize: 12, color: "rgba(245,245,247,0.35)", maxWidth: 540 }}>{copy.businessModel.note}</p>
         </Section>
 
-        {/* ─────────── FUNDING ─────────── */}
-        <Section id="funding" className="py-20 lg:py-28">
+        {/* ═══ FUNDING ═══ */}
+        <Section id="funding" className="pb-28 lg:pb-36">
           <Eyebrow>{copy.funding.eyebrow}</Eyebrow>
           <SectionTitle>{copy.funding.title}</SectionTitle>
-
-          <p className="text-[15px] md:text-base text-white/55 leading-[1.75] max-w-3xl mb-10">
-            {copy.funding.intro}
-          </p>
-
-          <motion.div
-            variants={staggerContainer(reduced)}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-40px" }}
-            className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-12"
-          >
+          <p className="max-w-3xl mb-12" style={{ fontSize: "clamp(15px, 1.1vw, 17px)", lineHeight: 1.8, color: "rgba(245,245,247,0.58)" }}>{copy.funding.intro}</p>
+          <motion.div variants={staggerContainer(reduced)} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }} className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-14">
             {copy.funding.areas.map((area, i) => {
               const Icon = fundingIcons[i] || Layers;
               return (
                 <motion.div key={area.label} variants={itemVariant(reduced)}>
-                  <Glass className="text-center py-6">
-                    <Icon className="w-6 h-6 text-[var(--aras-orange)] mx-auto mb-2.5" />
-                    <p className="font-orbitron text-xs font-semibold text-white">
-                      {area.label}
-                    </p>
-                  </Glass>
+                  <div className="inv-instrument">
+                    <div className="relative z-[1]">
+                      <Icon className="w-6 h-6 mx-auto mb-3" style={{ color: "#FE9100" }} />
+                      <p style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 12, fontWeight: 700, color: "rgba(245,245,247,0.92)" }}>{area.label}</p>
+                    </div>
+                  </div>
                 </motion.div>
               );
             })}
           </motion.div>
-
-          <h3
-            className="font-orbitron font-semibold text-white mb-6"
-            style={{ fontSize: "clamp(1rem, 1.2vw, 1.15rem)" }}
-          >
-            {copy.funding.milestoneTitle}
-          </h3>
-
-          <motion.div
-            variants={staggerContainer(reduced)}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-40px" }}
-            className="space-y-1 max-w-lg mb-8"
-          >
+          <h3 className="mb-7" style={{ fontFamily: "'Orbitron', sans-serif", fontWeight: 700, fontSize: "clamp(0.9rem, 1.2vw, 1.1rem)", color: "rgba(245,245,247,0.92)" }}>{copy.funding.milestoneTitle}</h3>
+          <motion.div variants={staggerContainer(reduced)} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }} className="space-y-0 max-w-lg mb-10">
             {copy.funding.milestones.map((ms, i) => (
-              <motion.div
-                key={ms.time}
-                variants={itemVariant(reduced)}
-                className="flex items-start gap-4"
-              >
+              <motion.div key={ms.time} variants={itemVariant(reduced)} className="flex items-start gap-5">
                 <div className="flex flex-col items-center">
-                  <div className="w-3 h-3 rounded-full bg-[var(--aras-orange)] shadow-[0_0_8px_rgba(254,145,0,0.5)]" />
-                  {i < copy.funding.milestones.length - 1 && (
-                    <div className="w-px h-10 bg-gradient-to-b from-[var(--aras-orange)]/40 to-transparent" />
-                  )}
+                  <div className="inv-timeline-node" />
+                  {i < copy.funding.milestones.length - 1 && <div style={{ width: 2, height: 48, background: "linear-gradient(180deg, rgba(254,145,0,0.35), transparent)" }} />}
                 </div>
-                <div className="-mt-0.5">
-                  <span className="font-orbitron text-xs font-bold text-[var(--aras-orange)]">
-                    {ms.time}
-                  </span>
-                  <p className="text-sm text-white/60 mt-0.5">{ms.label}</p>
+                <div className="-mt-1 pb-4">
+                  <span style={{ fontFamily: "'Orbitron', sans-serif", fontSize: 12, fontWeight: 700, color: "#FE9100" }}>{ms.time}</span>
+                  <p className="mt-1" style={{ fontSize: 14, color: "rgba(245,245,247,0.60)" }}>{ms.label}</p>
                 </div>
               </motion.div>
             ))}
           </motion.div>
-
-          <p className="text-sm text-white/40 max-w-xl leading-relaxed">
-            {copy.funding.terms}
-          </p>
+          <p style={{ fontSize: 14, lineHeight: 1.7, color: "rgba(245,245,247,0.40)", maxWidth: 580 }}>{copy.funding.terms}</p>
         </Section>
 
-        {/* ─────────── RISKS ─────────── */}
-        <Section id="risks" className="py-20 lg:py-28">
+        {/* ═══ RISKS ═══ */}
+        <Section id="risks" className="pb-28 lg:pb-36">
           <Eyebrow>{copy.risks.eyebrow}</Eyebrow>
           <SectionTitle>{copy.risks.title}</SectionTitle>
-
-          <p className="text-[15px] md:text-base text-white/55 leading-[1.75] max-w-3xl mb-10">
-            {copy.risks.intro}
-          </p>
-
-          <motion.div
-            variants={staggerContainer(reduced)}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-40px" }}
-            className="grid grid-cols-1 md:grid-cols-2 gap-4"
-          >
+          <p className="max-w-3xl mb-12" style={{ fontSize: "clamp(15px, 1.1vw, 17px)", lineHeight: 1.8, color: "rgba(245,245,247,0.58)" }}>{copy.risks.intro}</p>
+          <motion.div variants={staggerContainer(reduced)} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-40px" }} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {copy.risks.items.map((item) => (
               <motion.div key={item.risk} variants={itemVariant(reduced)}>
-                <Glass className="h-full">
-                  <div className="flex items-center gap-2.5 mb-3">
-                    <AlertTriangle className="w-5 h-5 text-[var(--aras-orange)]" />
-                    <h3
-                      className="font-orbitron font-semibold text-white"
-                      style={{ fontSize: "clamp(0.82rem, 1vw, 0.92rem)" }}
-                    >
-                      {item.risk}
-                    </h3>
+                <GlowCard className="h-full">
+                  <div className="flex items-center gap-3 mb-3">
+                    <AlertTriangle className="w-5 h-5 shrink-0" style={{ color: "#FE9100" }} />
+                    <h3 style={{ fontFamily: "'Orbitron', sans-serif", fontWeight: 800, fontSize: "14px", color: "rgba(245,245,247,0.94)" }}>{item.risk}</h3>
                   </div>
-                  <p className="text-sm text-white/50 leading-[1.7]">
-                    {item.mitigation}
-                  </p>
-                </Glass>
+                  <p style={{ fontSize: "13.8px", lineHeight: 1.65, color: "rgba(245,245,247,0.60)" }}>{item.mitigation}</p>
+                </GlowCard>
               </motion.div>
             ))}
           </motion.div>
         </Section>
 
-        {/* ─────────── FAQ ─────────── */}
-        <Section id="faq" className="py-20 lg:py-28">
+        {/* ═══ FAQ ═══ */}
+        <Section id="faq" className="pb-28 lg:pb-36">
           <Eyebrow>{copy.faq.eyebrow}</Eyebrow>
           <SectionTitle>{copy.faq.title}</SectionTitle>
-
           <div className="max-w-3xl">
-            <Accordion type="single" collapsible className="space-y-2.5">
+            <Accordion type="single" collapsible className="space-y-3">
               {copy.faq.items.map((item, i) => (
-                <AccordionItem
-                  key={i}
-                  value={`faq-${i}`}
-                  className="border border-white/[0.08] rounded-2xl px-5 md:px-6 overflow-hidden data-[state=open]:border-[var(--aras-orange)]/20 transition-colors"
-                >
-                  <AccordionTrigger className="text-left text-sm font-medium text-white hover:no-underline hover:text-[var(--aras-orange)] transition-colors py-5">
+                <AccordionItem key={i} value={`faq-${i}`} className="rounded-2xl overflow-hidden transition-all duration-300" style={{ border: "1px solid rgba(233,215,196,0.10)", background: "rgba(255,255,255,0.012)" }}>
+                  <AccordionTrigger className="text-left text-[14.5px] font-semibold hover:no-underline transition-colors px-6 py-5" style={{ color: "rgba(245,245,247,0.88)" }}>
                     {item.q}
                   </AccordionTrigger>
-                  <AccordionContent className="text-sm text-white/50 leading-[1.7]">
+                  <AccordionContent className="px-6 pb-5" style={{ fontSize: 14, lineHeight: 1.7, color: "rgba(245,245,247,0.55)" }}>
                     {item.a}
                   </AccordionContent>
                 </AccordionItem>
@@ -1091,51 +971,36 @@ export default function InvestorsV2Page() {
           </div>
         </Section>
 
-        {/* ─────────── CONTACT / LEAD FORM ─────────── */}
-        <Section id="contact" className="py-20 lg:py-28">
+        {/* ═══ CONTACT / FORM ═══ */}
+        <Section id="contact" className="pb-28 lg:pb-36">
           <div ref={formRef} className="max-w-xl mx-auto">
-            <div className="text-center mb-8">
+            <div className="text-center mb-10">
               <Eyebrow>{copy.form.eyebrow}</Eyebrow>
               <SectionTitle>{copy.form.title}</SectionTitle>
-              <p className="text-sm text-white/45 mt-2 max-w-md mx-auto">
-                {copy.form.subtitle}
-              </p>
+              <p style={{ fontSize: 14, color: "rgba(245,245,247,0.50)", maxWidth: 420, margin: "0 auto" }}>{copy.form.subtitle}</p>
             </div>
-
-            {/* Type toggle */}
-            <div className="flex gap-2 mb-6 p-1 rounded-2xl bg-white/[0.03] border border-white/[0.08]">
-              {(
-                [
-                  { value: "data_room" as const, label: copy.form.tabs.dataRoom },
-                  { value: "intro_call" as const, label: copy.form.tabs.introCall },
-                ]
-              ).map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => setFormType(opt.value)}
-                  className={cn(
-                    "flex-1 py-3 rounded-xl text-sm font-medium transition-all duration-200",
-                    formType === opt.value
-                      ? "bg-[var(--aras-orange)]/12 text-[var(--aras-orange)] border border-[var(--aras-orange)]/25"
-                      : "text-white/40 hover:text-white/60 border border-transparent"
-                  )}
-                >
+            <div className="flex gap-2 mb-8 p-1.5 rounded-full" style={{ border: "1px solid rgba(233,215,196,0.12)", background: "rgba(255,255,255,0.015)" }}>
+              {([{ value: "data_room" as const, label: copy.form.tabs.dataRoom }, { value: "intro_call" as const, label: copy.form.tabs.introCall }]).map((opt) => (
+                <button key={opt.value} onClick={() => setFormType(opt.value)} className="flex-1 py-3 rounded-full text-sm font-semibold transition-all duration-200" style={{
+                  background: formType === opt.value ? "linear-gradient(180deg, rgba(254,145,0,0.14), rgba(255,255,255,0.02))" : "transparent",
+                  border: formType === opt.value ? "1px solid rgba(254,145,0,0.25)" : "1px solid transparent",
+                  color: formType === opt.value ? "#FE9100" : "rgba(245,245,247,0.40)",
+                }}>
                   {opt.label}
                 </button>
               ))}
             </div>
-
-            <Glass glow>
-              <LeadForm formType={formType} lang={lang} />
-            </Glass>
+            <div className="inv-glow-card">
+              <div className="inv-glow-inner" style={{ padding: "28px" }}>
+                <LeadForm formType={formType} lang={lang} />
+              </div>
+            </div>
           </div>
         </Section>
 
-        {/* ─────────── FOOTER ─────────── */}
-        <footer className="border-t border-white/[0.05] py-10 mt-4 mb-8">
-          <p className="text-[11px] text-white/25 leading-relaxed max-w-3xl">
-            {copy.footer}
-          </p>
+        {/* ═══ FOOTER ═══ */}
+        <footer style={{ borderTop: "1px solid rgba(233,215,196,0.06)", padding: "40px 0 48px" }}>
+          <p style={{ fontSize: 11, lineHeight: 1.7, color: "rgba(245,245,247,0.20)", maxWidth: 700 }}>{copy.footer}</p>
         </footer>
       </div>
     </div>
