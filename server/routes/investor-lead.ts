@@ -48,6 +48,8 @@ const investorLeadSchema = z.object({
   thesis: z.string().max(800, "Message must be under 800 characters").optional(),
   website: z.string().url().optional().or(z.literal("")),
   requestType: z.enum(["data_room", "intro_call"]).optional(),
+  lang: z.enum(["de", "en"]).optional(),
+  companyWebsite2: z.string().optional(), // honeypot
 });
 
 // POST /api/investors/lead
@@ -73,8 +75,13 @@ router.post("/lead", async (req: Request, res: Response) => {
       return res.status(400).json({ ok: false, message: firstError });
     }
 
-    const { name, firm, email, ticketSize, thesis, website, requestType } =
+    const { name, firm, email, ticketSize, thesis, website, requestType, lang, companyWebsite2 } =
       parsed.data;
+
+    // Honeypot — if filled, silently succeed without sending
+    if (companyWebsite2) {
+      return res.json({ ok: true, message: "Thank you." });
+    }
 
     // Hash IP for logging (don't store raw IP)
     const crypto = await import("crypto");
@@ -92,7 +99,7 @@ router.post("/lead", async (req: Request, res: Response) => {
     const { error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: NOTIFY_EMAIL,
-      subject: `Investor ${typeLabel} — ${firm}`,
+      subject: `Investor ${typeLabel} (${(lang || "de").toUpperCase()}) — ${firm}`,
       html: `
         <!DOCTYPE html>
         <html>
