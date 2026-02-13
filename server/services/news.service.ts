@@ -2,17 +2,15 @@
  * ============================================================================
  * ARAS NEWS SERVICE — Daily Industry News Digest
  * ============================================================================
- * Uses Google Gemini with Google Search grounding to find and curate
- * real-time industry news for each user based on their DB profile.
+ * Uses Google Gemini (@google/genai) with Google Search grounding to find
+ * and curate real-time industry news. Same SDK pattern as gemini-enrich.ts.
  *
- * - mode: "top" (curated best) | "breaking" (fast-moving, high impact)
- * - scopes: "global" + country codes (AT, DE, CH, US, …)
- * - Caching: in-memory per userId+mode+scopes, 30min TTL
- * - All summaries in German (UI language)
+ * Click-to-load only (no auto-fetch) → saves API credits.
  * ============================================================================
  */
 
 import { GoogleGenAI } from "@google/genai";
+import { resolveGeminiModel } from "../lib/gemini-enrich";
 import { logger } from "../logger";
 
 // ============================================================================
@@ -22,21 +20,23 @@ import { logger } from "../logger";
 export interface NewsItem {
   id: string;
   title: string;
-  summaryDe: string;
-  sourceName: string;
-  sourceUrl: string;
-  publishedAt: string;
+  summary: string;
+  source: string;
+  url: string;
+  date: string;
   scope: string;
   tags: string[];
+  sentiment: "positive" | "neutral" | "negative";
+  whyItMatters: string;
 }
 
 export interface NewsDigestResponse {
-  industryKey: string;
-  language: "de";
+  industryLabel: string;
   scopes: string[];
   mode: "top" | "breaking";
   generatedAt: string;
   items: NewsItem[];
+  sources: string[];
   cached: boolean;
   provider: string;
 }
@@ -45,174 +45,183 @@ export interface NewsDigestRequest {
   userId: string;
   industry: string;
   company?: string;
+  aiProfile?: any;
   mode: "top" | "breaking";
   scopes: string[];
-  language?: string;
 }
 
 // ============================================================================
-// CACHE — in-memory, 30min TTL
+// CACHE — in-memory, 15min TTL
 // ============================================================================
 
-interface CacheEntry {
-  data: NewsDigestResponse;
-  timestamp: number;
-}
-
+interface CacheEntry { data: NewsDigestResponse; timestamp: number; }
 const NEWS_CACHE = new Map<string, CacheEntry>();
-const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const CACHE_TTL_MS = 15 * 60 * 1000;
 
-function getCacheKey(req: NewsDigestRequest): string {
-  const scopesSorted = [...req.scopes].sort().join(",");
-  const today = new Date().toISOString().slice(0, 10);
-  return `news:${req.userId}:${req.industry}:${req.mode}:${scopesSorted}:${today}`;
+function cacheKey(req: NewsDigestRequest): string {
+  return `news:${req.userId}:${req.industry}:${req.mode}:${[...req.scopes].sort().join(",")}:${new Date().toISOString().slice(0, 10)}`;
 }
 
-function getFromCache(key: string): NewsDigestResponse | null {
-  const entry = NEWS_CACHE.get(key);
-  if (!entry) return null;
-  if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
-    NEWS_CACHE.delete(key);
-    return null;
-  }
-  return { ...entry.data, cached: true };
+function fromCache(key: string): NewsDigestResponse | null {
+  const e = NEWS_CACHE.get(key);
+  if (!e) return null;
+  if (Date.now() - e.timestamp > CACHE_TTL_MS) { NEWS_CACHE.delete(key); return null; }
+  return { ...e.data, cached: true };
 }
 
-function setCache(key: string, data: NewsDigestResponse): void {
-  // Evict old entries (keep max 200)
-  if (NEWS_CACHE.size > 200) {
-    const oldest = Array.from(NEWS_CACHE.entries())
-      .sort((a, b) => a[1].timestamp - b[1].timestamp)
-      .slice(0, 50);
-    oldest.forEach(([k]) => NEWS_CACHE.delete(k));
+function toCache(key: string, data: NewsDigestResponse): void {
+  if (NEWS_CACHE.size > 150) {
+    const old = Array.from(NEWS_CACHE.entries()).sort((a, b) => a[1].timestamp - b[1].timestamp).slice(0, 40);
+    old.forEach(([k]) => NEWS_CACHE.delete(k));
   }
   NEWS_CACHE.set(key, { data, timestamp: Date.now() });
 }
 
 // ============================================================================
-// INDUSTRY LABELS (German, for prompt context)
+// LABELS
 // ============================================================================
 
 const INDUSTRY_LABELS: Record<string, string> = {
-  real_estate: "Immobilien & Immobilienmakler",
-  immobilien: "Immobilien & Immobilienmakler",
-  insurance: "Versicherungen & Finanzdienstleistungen",
-  versicherung: "Versicherungen & Finanzdienstleistungen",
-  finance: "Finanzen & Banking",
-  technology: "Technologie & Software",
-  healthcare: "Gesundheitswesen & Medizin",
-  consulting: "Unternehmensberatung",
-  legal: "Recht & Kanzleien",
-  marketing: "Marketing & Werbung",
-  automotive: "Automobil & Mobilität",
-  energy: "Energie & Nachhaltigkeit",
-  retail: "Einzelhandel & E-Commerce",
-  construction: "Bauwesen & Architektur",
-  education: "Bildung & Weiterbildung",
-  food: "Gastronomie & Lebensmittel",
-  travel: "Tourismus & Reisen",
-  logistics: "Logistik & Transport",
-  manufacturing: "Produktion & Industrie",
-  media: "Medien & Unterhaltung",
+  real_estate: "Immobilien", immobilien: "Immobilien",
+  insurance: "Versicherungen", versicherung: "Versicherungen",
+  finance: "Finanzen & Banking", technology: "Technologie & Software",
+  healthcare: "Gesundheitswesen", consulting: "Unternehmensberatung",
+  legal: "Recht & Kanzleien", marketing: "Marketing & Werbung",
+  automotive: "Automobil & Mobilität", energy: "Energie & Nachhaltigkeit",
+  retail: "Einzelhandel & E-Commerce", construction: "Bauwesen & Architektur",
+  education: "Bildung & Weiterbildung", food: "Gastronomie & Lebensmittel",
+  travel: "Tourismus & Reisen", logistics: "Logistik & Transport",
+  manufacturing: "Produktion & Industrie", media: "Medien & Unterhaltung",
+  b2b_services: "B2B Dienstleistungen", general: "Wirtschaft & Märkte",
+  saas: "SaaS & Cloud", ai: "Künstliche Intelligenz",
 };
-
-function getIndustryLabel(industry: string): string {
-  const key = industry.toLowerCase().replace(/[\s-]/g, "_");
-  return INDUSTRY_LABELS[key] || industry;
-}
-
-// ============================================================================
-// SCOPE LABELS
-// ============================================================================
 
 const SCOPE_LABELS: Record<string, string> = {
-  global: "International / Weltweit",
-  AT: "Österreich",
-  DE: "Deutschland",
-  CH: "Schweiz",
-  US: "USA",
-  UK: "Großbritannien",
-  FR: "Frankreich",
-  IT: "Italien",
-  ES: "Spanien",
-  NL: "Niederlande",
-  BE: "Belgien",
-  LU: "Luxemburg",
+  global: "International", AT: "Österreich", DE: "Deutschland", CH: "Schweiz",
+  US: "USA", UK: "Großbritannien", FR: "Frankreich", IT: "Italien",
+  ES: "Spanien", NL: "Niederlande", BE: "Belgien", LU: "Luxemburg",
 };
 
-// ============================================================================
-// PROMPT BUILDER
-// ============================================================================
-
-function buildNewsPrompt(req: NewsDigestRequest): string {
-  const industryLabel = getIndustryLabel(req.industry);
-  const scopeList = req.scopes
-    .map((s) => SCOPE_LABELS[s] || s)
-    .join(", ");
-  const modeInstruction =
-    req.mode === "breaking"
-      ? `MODUS: BREAKING NEWS — Priorisiere schnelllebige, hochrelevante Nachrichten der letzten 24 Stunden.
-Suche nach: Regulierungsänderungen, Marktschocks, Übernahmen, Insolvenzen, politische Entscheidungen, bedeutende Deals.`
-      : `MODUS: TOP NEWS — Priorisiere die wichtigsten und meistdiskutierten Nachrichten der letzten 48 Stunden.
-Suche nach: Markttrends, große Deals, Analysen, Branchenberichte, strategische Entwicklungen.`;
-
-  const today = new Date().toISOString().slice(0, 10);
-
-  return `Du bist ein Elite-Nachrichten-Kurator für die ARAS AI Plattform.
-
-AUFGABE: Finde und kuratiere die ${req.mode === "breaking" ? "BREAKING" : "TOP"} Industrie-News für heute (${today}).
-
-BRANCHE: ${industryLabel}
-${req.company ? `UNTERNEHMEN DES USERS: ${req.company}` : ""}
-GEOGRAFISCHE SCHWERPUNKTE: ${scopeList}
-
-${modeInstruction}
-
-REGELN:
-1. Nutze Google Search um AKTUELLE Nachrichten zu finden (letzten 24-48h).
-2. Liefere genau 5 Nachrichten-Items (nicht mehr, nicht weniger).
-3. Jedes Item MUSS eine echte, existierende Nachricht sein — KEINE Erfindungen.
-4. summaryDe: 1-2 Sätze auf Deutsch, neutral, sachlich, nicht reißerisch.
-5. sourceName: Name der Quelle (z.B. "Handelsblatt", "Der Standard", "Reuters").
-6. sourceUrl: Die tatsächliche URL des Artikels. Wenn keine URL verfügbar, verwende die Startseite der Quelle.
-7. publishedAt: Datum im Format YYYY-MM-DD (oder YYYY-MM-DDTHH:mm wenn bekannt).
-8. scope: Genau EINER der folgenden Werte: ${req.scopes.map((s) => `"${s}"`).join(", ")}
-   - Weise jedem Artikel den passendsten Scope zu.
-   - Stelle sicher, dass mindestens 1 Artikel pro aktivem Scope dabei ist (wenn möglich).
-9. tags: 2-4 relevante Schlagworte pro Artikel (z.B. "markt", "regulierung", "zinsen", "investition").
-10. Deduplizierung: Keine zwei Items über dasselbe Ereignis.
-
-WICHTIG: Antworte NUR mit dem JSON-Objekt. Keine Erklärungen, kein Markdown.`;
+function industryLabel(key: string): string {
+  return INDUSTRY_LABELS[key.toLowerCase().replace(/[\s-]/g, "_")] || key;
 }
 
 // ============================================================================
-// CORE: Generate News Digest via Gemini + Google Search
+// ROBUST JSON EXTRACTOR (handles markdown fences, mixed text, etc.)
+// ============================================================================
+
+function extractJSON(raw: string): any | null {
+  // 1. Direct parse
+  try { return JSON.parse(raw); } catch {}
+
+  // 2. Strip markdown fences: ```json ... ``` or ``` ... ```
+  const fenceMatch = raw.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
+  if (fenceMatch) {
+    try { return JSON.parse(fenceMatch[1]); } catch {}
+  }
+
+  // 3. Find outermost { ... }
+  const braceStart = raw.indexOf("{");
+  const braceEnd = raw.lastIndexOf("}");
+  if (braceStart !== -1 && braceEnd > braceStart) {
+    try { return JSON.parse(raw.slice(braceStart, braceEnd + 1)); } catch {}
+  }
+
+  // 4. Find outermost [ ... ] (if items returned as array directly)
+  const bracketStart = raw.indexOf("[");
+  const bracketEnd = raw.lastIndexOf("]");
+  if (bracketStart !== -1 && bracketEnd > bracketStart) {
+    try { return { items: JSON.parse(raw.slice(bracketStart, bracketEnd + 1)) }; } catch {}
+  }
+
+  return null;
+}
+
+// ============================================================================
+// PROMPT BUILDER — uses ALL user DB data
+// ============================================================================
+
+function buildPrompt(req: NewsDigestRequest): string {
+  const label = industryLabel(req.industry);
+  const scopes = req.scopes.map((s) => SCOPE_LABELS[s] || s).join(", ");
+  const today = new Date().toISOString().slice(0, 10);
+
+  const aiProfile = req.aiProfile || {};
+  const companyDesc = aiProfile.companyDescription || "";
+  const products = Array.isArray(aiProfile.products) ? aiProfile.products.join(", ") : "";
+  const competitors = Array.isArray(aiProfile.competitors) ? aiProfile.competitors.join(", ") : "";
+
+  const modeBlock =
+    req.mode === "breaking"
+      ? "MODUS: BREAKING — nur News der letzten 24h. Priorisiere: Regulierungsänderungen, Marktschocks, Übernahmen, Insolvenzen, politische Entscheidungen."
+      : "MODUS: TOP — die wichtigsten Nachrichten der letzten 7 Tage. Priorisiere: Markttrends, große Deals, Analysen, Branchenberichte, strategische Entwicklungen.";
+
+  return `Du bist ein Elite-Nachrichten-Kurator. Nutze Google Search um AKTUELLE, ECHTE Nachrichten zu finden.
+
+DATUM HEUTE: ${today}
+BRANCHE: ${label}
+${req.company ? `UNTERNEHMEN: ${req.company}` : ""}
+${companyDesc ? `BESCHREIBUNG: ${companyDesc.slice(0, 300)}` : ""}
+${products ? `PRODUKTE/SERVICES: ${products.slice(0, 200)}` : ""}
+${competitors ? `WETTBEWERBER: ${competitors.slice(0, 200)}` : ""}
+REGIONEN: ${scopes}
+${modeBlock}
+
+AUFGABE: Finde die 5 wichtigsten News-Artikel zu dieser Branche.
+Schwerpunkt: international relevant + DACH/EU wo möglich.
+
+Für jeden Artikel liefere:
+- "title": Originaltitel oder deutschsprachiger Titel
+- "summary": 1-2 Sätze Zusammenfassung auf Deutsch
+- "source": Name der Quelle (z.B. "Handelsblatt", "Reuters", "Der Standard")
+- "url": Link zum Originalartikel
+- "date": Erscheinungsdatum als "YYYY-MM-DD"
+- "scope": einer von: ${req.scopes.map((s) => `"${s}"`).join(", ")}
+- "tags": 2-3 Schlagworte (z.B. "markt", "regulierung", "zinsen")
+- "sentiment": "positive", "neutral", oder "negative"
+- "whyItMatters": 1 Satz warum das für die Branche relevant ist
+
+Antworte STRIKT als JSON-Objekt:
+{
+  "items": [
+    { "title": "...", "summary": "...", "source": "...", "url": "...", "date": "YYYY-MM-DD", "scope": "...", "tags": [...], "sentiment": "...", "whyItMatters": "..." }
+  ]
+}
+
+REGELN:
+- NUR echte, existierende Artikel. KEINE Erfindungen.
+- Jeder Scope sollte mindestens 1 Artikel haben (wenn möglich).
+- Keine Duplikate.
+- Antworte NUR mit JSON. Kein Markdown, keine Erklärungen.`;
+}
+
+// ============================================================================
+// CORE: Generate News Digest
 // ============================================================================
 
 export async function generateNewsDigest(
   req: NewsDigestRequest
 ): Promise<NewsDigestResponse> {
-  // 1. Check cache
-  const cacheKey = getCacheKey(req);
-  const cached = getFromCache(cacheKey);
+  const key = cacheKey(req);
+  const cached = fromCache(key);
   if (cached) {
     logger.info("[NEWS] Cache hit", { userId: req.userId, mode: req.mode });
     return cached;
   }
 
-  // 2. Check API key
   const apiKey = process.env.GOOGLE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    logger.warn("[NEWS] No Gemini API key configured");
-    return buildFallbackResponse(req, "Kein AI-Service konfiguriert.");
+    logger.warn("[NEWS] No Gemini API key");
+    return fallback(req, "Kein AI-Service konfiguriert.");
   }
 
-  // 3. Call Gemini with Google Search grounding
   const startTime = Date.now();
   try {
     const ai = new GoogleGenAI({ apiKey });
-    const prompt = buildNewsPrompt(req);
-    const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+    const model = await resolveGeminiModel(apiKey);
+    const prompt = buildPrompt(req);
+
+    console.log("[NEWS] Calling Gemini", JSON.stringify({ model, mode: req.mode, scopes: req.scopes, industry: req.industry }));
 
     const response = await Promise.race([
       ai.models.generateContent({
@@ -220,148 +229,122 @@ export async function generateNewsDigest(
         contents: prompt,
         config: {
           tools: [{ googleSearch: {} }],
-          temperature: 0.4,
+          temperature: 0.3,
           maxOutputTokens: 4096,
         },
       }),
-      new Promise<never>((_, reject) =>
-        setTimeout(
-          () => reject(new Error("TimeoutError: News digest exceeded 45s")),
-          45_000
-        )
-      ),
+      new Promise<never>((_, rej) => setTimeout(() => rej(new Error("TimeoutError: 55s")), 55_000)),
     ]);
 
-    const rawText = response.text || "";
-    const durationMs = Date.now() - startTime;
-
-    if (!rawText || rawText.length < 20) {
-      logger.warn("[NEWS] Empty Gemini response", { durationMs });
-      return buildFallbackResponse(req, "Leere AI-Antwort.");
-    }
-
-    // Parse JSON
-    let parsed: any;
+    // Extract text — handle different response shapes
+    let rawText = "";
     try {
-      parsed = JSON.parse(rawText);
+      rawText = response.text || "";
     } catch {
-      // Try to extract JSON from potential markdown fences
-      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        try {
-          parsed = JSON.parse(jsonMatch[0]);
-        } catch {
-          logger.warn("[NEWS] JSON parse failed", {
-            durationMs,
-            preview: rawText.slice(0, 200),
-          });
-          return buildFallbackResponse(req, "JSON-Parsing fehlgeschlagen.");
-        }
-      } else {
-        return buildFallbackResponse(req, "Kein JSON in Antwort.");
-      }
+      // Some models return text via candidates
+      try {
+        const parts = (response as any)?.candidates?.[0]?.content?.parts || [];
+        rawText = parts.map((p: any) => p.text || "").join("");
+      } catch { /* empty */ }
     }
 
-    // Validate and transform items
-    const items: NewsItem[] = (parsed.items || [])
-      .slice(0, 5)
-      .map((item: any, idx: number) => ({
-        id: `news-${req.mode}-${Date.now()}-${idx}`,
-        title: String(item.title || "Unbekannter Titel"),
-        summaryDe: String(item.summaryDe || "Keine Zusammenfassung verfügbar."),
-        sourceName: String(item.sourceName || "Unbekannte Quelle"),
-        sourceUrl: String(item.sourceUrl || "#"),
-        publishedAt: String(item.publishedAt || new Date().toISOString().slice(0, 10)),
-        scope: req.scopes.includes(item.scope) ? item.scope : req.scopes[0] || "global",
-        tags: Array.isArray(item.tags)
-          ? item.tags.map(String).slice(0, 4)
-          : [],
-      }));
+    // Extract grounding sources
+    const groundingSources: string[] = [];
+    try {
+      const gm = (response as any)?.candidates?.[0]?.groundingMetadata;
+      if (gm?.groundingChunks) {
+        for (const chunk of gm.groundingChunks) {
+          if (chunk?.web?.uri) groundingSources.push(chunk.web.uri);
+        }
+      }
+    } catch { /* ignore */ }
+
+    const durationMs = Date.now() - startTime;
+    console.log("[NEWS] Raw response", JSON.stringify({
+      textLength: rawText.length,
+      preview: rawText.slice(0, 300),
+      groundingSourceCount: groundingSources.length,
+      durationMs,
+    }));
+
+    if (!rawText || rawText.length < 10) {
+      logger.warn("[NEWS] Empty Gemini response", { durationMs });
+      return fallback(req, "Leere AI-Antwort.");
+    }
+
+    // Parse JSON robustly
+    const parsed = extractJSON(rawText);
+    if (!parsed) {
+      logger.warn("[NEWS] JSON extraction failed", { preview: rawText.slice(0, 400), durationMs });
+      return fallback(req, "JSON-Parsing fehlgeschlagen.");
+    }
+
+    // Normalize items — handle both {items:[...]} and direct array
+    const rawItems = Array.isArray(parsed.items) ? parsed.items : Array.isArray(parsed) ? parsed : [];
+
+    console.log("[NEWS] Parsed items count:", rawItems.length);
+
+    const items: NewsItem[] = rawItems.slice(0, 10).map((item: any, idx: number) => ({
+      id: `news-${req.mode}-${Date.now()}-${idx}`,
+      title: String(item.title || "Unbekannter Titel"),
+      summary: String(item.summary || item.summaryDe || ""),
+      source: String(item.source || item.sourceName || "Unbekannt"),
+      url: String(item.url || item.sourceUrl || "#"),
+      date: String(item.date || item.publishedAt || today()),
+      scope: req.scopes.includes(item.scope) ? item.scope : req.scopes[0] || "global",
+      tags: Array.isArray(item.tags) ? item.tags.map(String).slice(0, 4) : [],
+      sentiment: ["positive", "neutral", "negative"].includes(item.sentiment) ? item.sentiment : "neutral",
+      whyItMatters: String(item.whyItMatters || item.why_it_matters || ""),
+    }));
 
     const result: NewsDigestResponse = {
-      industryKey: req.industry,
-      language: "de",
+      industryLabel: industryLabel(req.industry),
       scopes: req.scopes,
       mode: req.mode,
       generatedAt: new Date().toISOString(),
       items,
+      sources: groundingSources,
       cached: false,
-      provider: "gemini",
+      provider: `gemini (${model})`,
     };
 
-    logger.info("[NEWS] Digest generated", {
-      userId: req.userId,
-      mode: req.mode,
-      scopes: req.scopes,
-      itemCount: items.length,
-      durationMs,
-    });
-
-    // 4. Cache
-    setCache(cacheKey, result);
+    logger.info("[NEWS] Digest OK", { userId: req.userId, mode: req.mode, itemCount: items.length, durationMs });
+    toCache(key, result);
     return result;
   } catch (error: any) {
     const durationMs = Date.now() - startTime;
-    logger.error("[NEWS] Gemini error", {
-      error: (error?.message || "").slice(0, 200),
-      durationMs,
-    });
-    return buildFallbackResponse(req, error?.message || "Unbekannter Fehler.");
+    logger.error("[NEWS] Gemini error", { error: (error?.message || "").slice(0, 300), durationMs });
+    return fallback(req, error?.message || "Unbekannter Fehler.");
   }
 }
 
-// ============================================================================
-// FALLBACK
-// ============================================================================
+function today(): string { return new Date().toISOString().slice(0, 10); }
 
-function buildFallbackResponse(
-  req: NewsDigestRequest,
-  reason: string
-): NewsDigestResponse {
+function fallback(req: NewsDigestRequest, reason: string): NewsDigestResponse {
   return {
-    industryKey: req.industry,
-    language: "de",
+    industryLabel: industryLabel(req.industry),
     scopes: req.scopes,
     mode: req.mode,
     generatedAt: new Date().toISOString(),
     items: [],
+    sources: [],
     cached: false,
     provider: `fallback (${reason})`,
   };
 }
 
 // ============================================================================
-// SCOPE MAPPING: derive default scopes from user profile
+// SCOPE MAPPING
 // ============================================================================
 
 export function deriveDefaultScopes(user: any): string[] {
   const scopes: string[] = ["global"];
+  const hq = String(user?.aiProfile?.headquarters || "").toLowerCase();
 
-  // Try aiProfile fields for country hints
-  const aiProfile = user?.aiProfile || {};
-  const company = user?.company || "";
-  const industry = user?.industry || "";
+  if (hq.includes("österreich") || hq.includes("austria") || hq.includes("wien")) scopes.push("AT");
+  if (hq.includes("deutschland") || hq.includes("germany") || hq.includes("berlin") || hq.includes("münchen") || hq.includes("frankfurt")) scopes.push("DE");
+  if (hq.includes("schweiz") || hq.includes("switzerland") || hq.includes("zürich")) scopes.push("CH");
 
-  // Check headquarters field for country
-  const hq = aiProfile?.headquarters || "";
-  if (typeof hq === "string") {
-    const hqLower = hq.toLowerCase();
-    if (hqLower.includes("österreich") || hqLower.includes("austria") || hqLower.includes("wien") || hqLower.includes("vienna")) {
-      if (!scopes.includes("AT")) scopes.push("AT");
-    }
-    if (hqLower.includes("deutschland") || hqLower.includes("germany") || hqLower.includes("berlin") || hqLower.includes("münchen") || hqLower.includes("frankfurt")) {
-      if (!scopes.includes("DE")) scopes.push("DE");
-    }
-    if (hqLower.includes("schweiz") || hqLower.includes("switzerland") || hqLower.includes("zürich") || hqLower.includes("zurich")) {
-      if (!scopes.includes("CH")) scopes.push("CH");
-    }
-  }
-
-  // If we couldn't derive any countries, use DACH fallback
-  if (scopes.length === 1) {
-    scopes.push("AT", "DE", "CH");
-  }
-
-  // Limit to global + max 3 countries
+  if (scopes.length === 1) scopes.push("AT", "DE", "CH");
   return scopes.slice(0, 4);
 }

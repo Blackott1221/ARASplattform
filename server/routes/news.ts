@@ -67,6 +67,7 @@ router.get("/daily", async (req: Request, res: Response) => {
 
     const industry = (user as any).industry || "general";
     const company = (user as any).company || undefined;
+    const aiProfile = (user as any).aiProfile || {};
 
     // Derive scopes
     let scopes: string[];
@@ -75,24 +76,21 @@ router.get("/daily", async (req: Request, res: Response) => {
         .split(",")
         .map((s: string) => s.trim())
         .filter(Boolean)
-        .slice(0, 5); // max 5 scopes
+        .slice(0, 5);
     } else {
       scopes = deriveDefaultScopes(user);
     }
 
-    // Ensure at least "global"
-    if (scopes.length === 0) {
-      scopes = ["global"];
-    }
+    if (scopes.length === 0) scopes = ["global"];
 
     // Generate digest
     const digest = await generateNewsDigest({
       userId,
       industry,
       company,
+      aiProfile,
       mode,
       scopes,
-      language: (user as any).language || "de",
     });
 
     return res.json(digest);
