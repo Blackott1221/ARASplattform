@@ -188,6 +188,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const { publicRouter: foundingPublicRoutes } = await import('./routes/founding');
   app.use('/api/public/founding', foundingPublicRoutes);
 
+  // 💰 Investor Lead Capture — Public Route (no auth)
+  const investorLeadRoutes = await import('./routes/investor-lead');
+  app.use('/api/investors', investorLeadRoutes.default);
+
   // 📧 Setup Mail Inbound Routes (Gmail intake via n8n webhook)
   const mailInboundRoutes = await import('./routes/mail-inbound');
   app.use('/api', mailInboundRoutes.default);

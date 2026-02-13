@@ -44,6 +44,7 @@ import AdminFoundingClaims from "@/pages/admin-founding-claims";
 
 // Investor Pages (hidden, not in menu)
 import InvestorSchwabPage from "@/pages/app/investor/schwab";
+import InvestorsPage from "@/pages/investors";
 
 // 🎯 INTERNAL CRM SYSTEM - Command Center (admin/staff only)
 import InternalDashboard from "@/pages/internal/dashboard";
@@ -170,6 +171,7 @@ function Router() {
         <Route path="/founding" component={FoundingMemberPass} />
         
         {/* 🔒 INVESTOR PAGES - Public but hidden (direct link only) */}
+        <Route path="/investors" component={InvestorsPage} />
         <Route path="/app/investor/schwab" component={InvestorSchwabPage} />
         <Route path="/investor/schwab" component={InvestorSchwabPage} />
       
