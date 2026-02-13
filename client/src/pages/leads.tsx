@@ -1,154 +1,112 @@
-import React, { useState, useEffect, useRef, useCallback, Component, ErrorInfo, ReactNode, useMemo } from 'react';
+/**
+ * ============================================================================
+ * WISSENSDATENBANK — ARAS AI Knowledge Base
+ * ============================================================================
+ * Premium ARAS CI design: no icons, Orbitron headlines, glass cards.
+ * All user data visible & editable. Re-analysis modal included.
+ * Voice-sync safe: everything here feeds directly into the telephony AI.
+ * ============================================================================
+ */
+import React, { useState, useEffect, useCallback, Component, ErrorInfo, ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { useLocation } from 'wouter';
-import { safeTrim, asArray } from '@/lib/utils/safe';
-
-// V8: Parse URL search params (wouter doesn't have useSearchParams)
-function useSearchParams(): URLSearchParams {
-  const [location] = useLocation();
-  return useMemo(() => {
-    if (typeof window === 'undefined') return new URLSearchParams();
-    return new URLSearchParams(window.location.search);
-  }, [location]);
-}
-
-// ═══════════════════════════════════════════════════════════════
-// MISSING FIELD DETECTION (V8 - Guided Setup)
-// ═══════════════════════════════════════════════════════════════
-interface MissingField {
-  key: string;
-  label: string;
-  reason: string;
-  sectionId: string;
-  severity: 'warn' | 'fail';
-}
-
-const FIELD_DEFINITIONS: Omit<MissingField, 'severity'>[] = [
-  { key: 'company', label: 'Firma', reason: 'Wird für personalisierte Anrufe und Zusammenfassungen benötigt.', sectionId: 'profile-section' },
-  { key: 'companyDescription', label: 'Unternehmensbeschreibung', reason: 'Hilft ARAS, dein Geschäft zu verstehen und passend zu kommunizieren.', sectionId: 'business-section' },
-  { key: 'targetAudience', label: 'Zielgruppe', reason: 'Ermöglicht zielgerichtete Gesprächsführung und bessere Zusammenfassungen.', sectionId: 'business-section' },
-  { key: 'services', label: 'Dienstleistungen', reason: 'Verbessert die Gesprächsqualität und Kontextverständnis.', sectionId: 'business-section' },
-];
-
-function getMissingFields(userProfile: any, aiProfile: any): MissingField[] {
-  const missing: MissingField[] = [];
-  
-  // Company - fail if missing
-  if (!safeTrim(userProfile?.company)) {
-    missing.push({ ...FIELD_DEFINITIONS[0], severity: 'fail' });
-  }
-  
-  // Company Description - warn if missing, fail if too short
-  const desc = safeTrim(aiProfile?.companyDescription);
-  if (!desc) {
-    missing.push({ ...FIELD_DEFINITIONS[1], severity: 'warn' });
-  } else if (desc.length < 40) {
-    missing.push({ ...FIELD_DEFINITIONS[1], severity: 'warn', reason: 'Beschreibung zu kurz (min. 40 Zeichen empfohlen).' });
-  }
-  
-  // Target Audience - fail if missing
-  if (!safeTrim(aiProfile?.targetAudience)) {
-    missing.push({ ...FIELD_DEFINITIONS[2], severity: 'fail' });
-  }
-  
-  // Services - warn if missing
-  if (!safeTrim(aiProfile?.services)) {
-    missing.push({ ...FIELD_DEFINITIONS[3], severity: 'warn' });
-  }
-  
-  return missing;
-}
-
-// Missing field styles
-const MISSING_FIELD_STYLES = {
-  border: '1px solid rgba(255,106,0,0.55)',
-  boxShadow: '0 0 0 1px rgba(255,106,0,0.2), 0 0 24px rgba(255,106,0,0.18)',
-  background: 'rgba(255,106,0,0.06)',
-};
-
-const MISSING_HINT_STYLES = {
-  color: 'rgba(233,215,196,0.9)',
-};
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { 
-  Database, Brain, Sparkles, FileText, Link2, Upload, X, Copy, Trash2, 
-  ChevronDown, ChevronRight, Search, Filter, Eye, User, Building2, 
-  Mail, Calendar, Zap, MessageSquare, Phone, Crown, ExternalLink,
-  Check, AlertCircle, RefreshCw, Settings, MoreHorizontal, Activity,
-  Signal, Cpu, HardDrive, Layers
-} from 'lucide-react';
-import type { User as UserType, SubscriptionResponse } from '@shared/schema';
-import '@/styles/animations.css';
 
-// Animated counter hook for KPI numbers
-function useAnimatedCounter(end: number, duration: number = 600) {
-  const [count, setCount] = useState(0);
-  const [hasAnimated, setHasAnimated] = useState(false);
-  
-  useEffect(() => {
-    if (hasAnimated || end === 0) return;
-    setHasAnimated(true);
-    
-    const startTime = Date.now();
-    const animate = () => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3); // easeOutCubic
-      setCount(Math.round(end * eased));
-      if (progress < 1) requestAnimationFrame(animate);
-    };
-    requestAnimationFrame(animate);
-  }, [end, duration, hasAnimated]);
-  
-  return count;
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface DataSource {
+  id: number;
+  userId: string;
+  type: string;
+  title: string;
+  status: string;
+  contentText: string;
+  url: string;
+  fileName: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
-// ErrorBoundary to prevent black screen crashes
+interface ProfileCtx {
+  id: string;
+  name: string;
+  firstName: string | null;
+  lastName: string | null;
+  company: string | null;
+  website: string | null;
+  industry: string | null;
+  jobRole: string | null;
+  phone: string | null;
+  aiProfile: any;
+  profileEnriched: boolean;
+  enrichmentStatus: string | null;
+  lastEnrichmentDate: string | null;
+}
+
+// ============================================================================
+// STYLE CONSTANTS (ARAS CI — no icons, glass, Orbitron headlines)
+// ============================================================================
+
+const CARD = "relative rounded-[20px] border border-white/[0.07] bg-[rgba(8,8,12,0.7)] backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.45)]";
+const ACCENT = '#FE9100';
+const GOLD = '#e9d7c4';
+const orbitron: React.CSSProperties = { fontFamily: "'Orbitron', system-ui, sans-serif", fontWeight: 800, letterSpacing: '0.04em' };
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+const trim = (v: any): string => (typeof v === 'string' ? v.trim() : '');
+const arr = (v: any): string[] => (Array.isArray(v) ? v.filter(Boolean) : []);
+
+const fmtDate = (v: string | Date | null | undefined): string => {
+  if (!v) return '—';
+  try {
+    const d = v instanceof Date ? v : new Date(v);
+    return isNaN(d.getTime()) ? '—' : format(d, 'dd.MM.yyyy', { locale: de });
+  } catch { return '—'; }
+};
+
+const fmtAgo = (v: string | Date | null | undefined): string => {
+  if (!v) return '—';
+  try {
+    const d = v instanceof Date ? v : new Date(v);
+    return isNaN(d.getTime()) ? '—' : formatDistanceToNow(d, { locale: de, addSuffix: true });
+  } catch { return '—'; }
+};
+
+// ============================================================================
+// ERROR BOUNDARY
+// ============================================================================
+
 class LeadsErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
   constructor(props: { children: ReactNode }) {
     super(props);
     this.state = { hasError: false, error: null };
   }
-
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('[LEADS] ErrorBoundary caught:', error, errorInfo);
-  }
-
+  static getDerivedStateFromError(error: Error) { return { hasError: true, error }; }
+  componentDidCatch(error: Error, info: ErrorInfo) { console.error('[LEADS] ErrorBoundary:', error, info); }
   render() {
     if (this.state.hasError) {
       return (
         <div className="flex-1 flex items-center justify-center p-8">
-          <div className="bg-black/60 backdrop-blur-2xl border border-red-500/30 rounded-[22px] p-8 max-w-md text-center shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_20px_60px_rgba(0,0,0,0.55)]">
-            <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-red-500/20 to-red-600/10 flex items-center justify-center">
-              <AlertCircle className="w-7 h-7 text-red-400" />
-            </div>
-            <h2 className="text-xl font-semibold text-white mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-              Fehler aufgetreten
-            </h2>
-            <p className="text-sm text-white/60 mb-4">
-              Die Wissensdatenbank konnte nicht geladen werden.
-            </p>
-            <pre className="text-xs text-red-300/80 bg-black/40 p-3 rounded-xl border border-red-500/20 overflow-auto max-h-[100px] mb-5 text-left">
+          <div className={CARD + " p-8 max-w-md text-center"}>
+            <h2 className="text-lg font-semibold text-white mb-2" style={orbitron}>Fehler aufgetreten</h2>
+            <p className="text-sm text-white/50 mb-4">Die Wissensdatenbank konnte nicht geladen werden.</p>
+            <pre className="text-xs text-red-300/70 bg-black/40 p-3 rounded-xl border border-red-500/20 overflow-auto max-h-24 mb-4 text-left">
               {this.state.error?.message || 'Unbekannter Fehler'}
             </pre>
-            <Button
-              onClick={() => window.location.reload()}
-              className="bg-gradient-to-r from-[#ff6a00] to-[#ff8533] hover:from-[#ff6a00]/90 hover:to-[#ff8533]/90 text-white font-medium px-6 rounded-xl"
-            >
+            <button onClick={() => window.location.reload()} className="px-5 py-2 rounded-full text-sm font-semibold border border-[#FE9100]/30 text-[#e9d7c4] hover:bg-[#FE9100]/10 transition-colors">
               Seite neu laden
-            </Button>
+            </button>
           </div>
         </div>
       );
@@ -157,1503 +115,945 @@ class LeadsErrorBoundary extends Component<{ children: ReactNode }, { hasError: 
   }
 }
 
-// Safe date helper to prevent RangeError
-const safeDateLabel = (value: string | null | undefined, addSuffix = true): string => {
-  if (!value) return '—';
-  try {
-    const d = new Date(value);
-    if (isNaN(d.getTime())) return '—';
-    return formatDistanceToNow(d, { locale: de, addSuffix });
-  } catch {
-    return '—';
-  }
-};
+// ============================================================================
+// FIELD ROW — reusable label + value / input
+// ============================================================================
 
-const safeFormatDate = (value: string | null | undefined, formatStr: string): string => {
-  if (!value) return '—';
-  try {
-    const d = new Date(value);
-    if (isNaN(d.getTime())) return '—';
-    return format(d, formatStr);
-  } catch {
-    return '—';
-  }
-};
-
-// Data Source type from API
-interface DataSource {
-  id: number;
-  userId: string;
-  type: 'file' | 'text' | 'url';
-  title: string | null;
-  status: 'pending' | 'processing' | 'active' | 'failed';
-  contentText: string | null;
-  url: string | null;
-  fileName: string | null;
-  fileMime: string | null;
-  fileSize: number | null;
-  fileStorageKey: string | null;
-  errorMessage: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-function LeadsContent() {
-  // === STATE (preserved from original) ===
-  const [showAddDataDialog, setShowAddDataDialog] = useState(false);
-  const [newDataSource, setNewDataSource] = useState({ type: 'text' as 'text' | 'url' | 'file', title: '', content: '', url: '' });
-  const [isAddingSource, setIsAddingSource] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [addSourceError, setAddSourceError] = useState<string | null>(null);
-  const [isEditingBusiness, setIsEditingBusiness] = useState(false);
-  const [editedBusiness, setEditedBusiness] = useState<any>({});
-  const [biSaveError, setBiSaveError] = useState<string | null>(null);
-  const [biSaveSuccess, setBiSaveSuccess] = useState(false);
-  
-  // NEW: UI State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'text' | 'url' | 'file'>('all');
-  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'title'>('newest');
-  const [selectedSource, setSelectedSource] = useState<DataSource | null>(null);
-  const [showDevDetails, setShowDevDetails] = useState(false);
-  const [copiedContext, setCopiedContext] = useState(false);
-  const heroRef = useRef<HTMLDivElement>(null);
-  const [hasMounted, setHasMounted] = useState(false);
-  
-  // V8: Deep-link support for guided setup
-  const searchParams = useSearchParams();
-  const [highlightedFields, setHighlightedFields] = useState<Set<string>>(new Set());
-  const [showSetupBar, setShowSetupBar] = useState(false);
-  const fromPower = searchParams.get('from') === 'power';
-  const businessSectionRef = useRef<HTMLDivElement>(null);
-  const profileSectionRef = useRef<HTMLDivElement>(null);
-  
-  const { user, isLoading: authLoading } = useAuth();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  
-  // Mount animation trigger
-  useEffect(() => {
-    setHasMounted(true);
-  }, []);
-
-  // V8: Parse URL params and setup highlighting
-  useEffect(() => {
-    const missingParam = searchParams.get('missing');
-    const sectionParam = searchParams.get('section');
-    
-    if (missingParam) {
-      const keys = missingParam.split(',').map(k => safeTrim(k).replace('aiProfile.', ''));
-      setHighlightedFields(new Set(keys));
-      setShowSetupBar(true);
-      
-      // Auto-scroll to first missing field's section after short delay
-      setTimeout(() => {
-        const firstKey = keys[0];
-        const targetSection = firstKey === 'company' ? profileSectionRef : businessSectionRef;
-        targetSection.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        
-        // If business section, auto-open edit mode
-        if (firstKey !== 'company') {
-          setIsEditingBusiness(true);
-        }
-      }, 300);
-    } else if (sectionParam) {
-      setTimeout(() => {
-        const targetSection = sectionParam === 'profile-section' ? profileSectionRef : businessSectionRef;
-        targetSection.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 300);
-    }
-  }, [searchParams]);
-
-  // Fetch data sources from API
-  const { data: dataSourcesResponse, isLoading: isLoadingDataSources, refetch: refetchDataSources } = useQuery<{ success: boolean; dataSources: DataSource[] }>({
-    queryKey: ['/api/user/data-sources'],
-    enabled: !!user && !authLoading,
-  });
-
-  const dataSources = dataSourcesResponse?.dataSources || [];
-
-  // Fetch subscription data for usage stats display
-  const { data: subscriptionData } = useQuery<SubscriptionResponse>({
-    queryKey: ['/api/user/subscription'],
-    enabled: !!user && !authLoading,
-  });
-
-  // Fetch knowledge digest preview (SPACE mode)
-  const [digestMode, setDigestMode] = useState<'space' | 'power'>('space');
-  const { data: digestData, refetch: refetchDigest } = useQuery<{
-    success: boolean;
-    mode: string;
-    userId: string;
-    sourceCount: number;
-    charCount: number;
-    truncated: boolean;
-    digest: string;
-  }>({
-    queryKey: ['/api/user/knowledge/digest', digestMode],
-    queryFn: async () => {
-      const res = await fetch(`/api/user/knowledge/digest?mode=${digestMode}`, { credentials: 'include' });
-      return res.json();
-    },
-    enabled: !!user && !authLoading,
-    refetchInterval: 10000, // Refresh every 10s
-  });
-
-  // Mutation to update AI profile
-  const updateAiProfileMutation = useMutation({
-    mutationFn: async (updates: any) => {
-      const response = await fetch('/api/user/ai-profile', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-        credentials: 'include'
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update AI profile');
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/user/knowledge/digest'] });
-      refetchDigest();
-      toast({ title: 'Gespeichert', description: 'Business Intelligence aktualisiert.' });
-      setIsEditingBusiness(false);
-      setBiSaveError(null);
-      setBiSaveSuccess(true);
-      setTimeout(() => setBiSaveSuccess(false), 3000);
-    },
-    onError: (error: any) => {
-      setBiSaveError(error.message || 'Speichern fehlgeschlagen');
-      toast({ title: 'Fehler', description: error.message, variant: 'destructive' });
-    }
-  });
-
-  const userProfile = (user as UserType) || {};
-  const aiProfile = userProfile.aiProfile || {};
-
-  // V8: Compute missing fields for guided setup
-  const missingFields = useMemo(() => getMissingFields(userProfile, aiProfile), [userProfile, aiProfile]);
-  const missingFieldKeys = useMemo(() => new Set(missingFields.map(f => f.key)), [missingFields]);
-  
-  // V8: Check if a field should be highlighted (from URL or computed missing)
-  const isFieldHighlighted = useCallback((key: string) => {
-    return highlightedFields.has(key) || missingFieldKeys.has(key);
-  }, [highlightedFields, missingFieldKeys]);
-
-  // V8: Get field style for highlighted fields
-  const getFieldStyle = useCallback((key: string) => {
-    if (isFieldHighlighted(key)) {
-      return MISSING_FIELD_STYLES;
-    }
-    return {};
-  }, [isFieldHighlighted]);
-
-  // V8: Get missing field info
-  const getMissingFieldInfo = useCallback((key: string) => {
-    return missingFields.find(f => f.key === key);
-  }, [missingFields]);
-
-  // V8: Scroll to next missing field
-  const scrollToNextMissing = useCallback(() => {
-    if (missingFields.length === 0) return;
-    const firstMissing = missingFields[0];
-    const targetSection = firstMissing.key === 'company' ? profileSectionRef : businessSectionRef;
-    targetSection.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    if (firstMissing.key !== 'company') {
-      setIsEditingBusiness(true);
-    }
-  }, [missingFields]);
-
-  // Start editing business intelligence
-  const startEditingBusiness = () => {
-    setEditedBusiness({
-      companyDescription: aiProfile.companyDescription || '',
-      targetAudience: aiProfile.targetAudience || '',
-      effectiveKeywords: Array.isArray(aiProfile.effectiveKeywords) ? aiProfile.effectiveKeywords.join(', ') : '',
-      competitors: Array.isArray(aiProfile.competitors) ? aiProfile.competitors.join(', ') : '',
-      services: aiProfile.services || '',
-    });
-    setIsEditingBusiness(true);
-  };
-
-  // Save business intelligence
-  const saveBusinessIntelligence = () => {
-    setBiSaveError(null);
-    setBiSaveSuccess(false);
-    const updates = {
-      companyDescription: editedBusiness.companyDescription,
-      targetAudience: editedBusiness.targetAudience,
-      effectiveKeywords: editedBusiness.effectiveKeywords.split(',').map((k: string) => safeTrim(k)).filter(Boolean),
-      competitors: editedBusiness.competitors.split(',').map((c: string) => safeTrim(c)).filter(Boolean),
-      services: editedBusiness.services,
-    };
-    updateAiProfileMutation.mutate(updates);
-  };
-  
-  // Filter and sort data sources
-  const filteredSources = dataSources
-    .filter(s => filterType === 'all' || s.type === filterType)
-    .filter(s => {
-      if (!searchQuery) return true;
-      const q = searchQuery.toLowerCase();
-      return (s.title?.toLowerCase().includes(q)) || 
-             (s.contentText?.toLowerCase().includes(q)) ||
-             (s.url?.toLowerCase().includes(q));
-    })
-    .sort((a, b) => {
-      if (sortOrder === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      if (sortOrder === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      return (a.title || '').localeCompare(b.title || '');
-    });
-  
-  // Copy context to clipboard
-  const copyContextToClipboard = async () => {
-    if (digestData?.digest) {
-      await navigator.clipboard.writeText(digestData.digest);
-      setCopiedContext(true);
-      toast({ title: 'Kopiert', description: 'Kontext in Zwischenablage kopiert.' });
-      setTimeout(() => setCopiedContext(false), 2000);
-    }
-  };
-
-  // Handle add data source
-  const handleAddDataSource = async () => {
-    setAddSourceError(null); // Clear previous error
-    
-    // Debug logging
-    console.log('[ADD_SOURCE] Click', {
-      type: newDataSource.type,
-      title: newDataSource.title,
-      textLen: newDataSource.content?.length || 0,
-      url: newDataSource.url,
-      hasFile: !!selectedFile
-    });
-
-    // Validation
-    if (newDataSource.type === 'text' && !safeTrim(newDataSource.content)) {
-      setAddSourceError('Bitte Textinhalt eingeben');
-      return;
-    }
-    if (newDataSource.type === 'url' && !safeTrim(newDataSource.url)) {
-      setAddSourceError('Bitte URL eingeben');
-      return;
-    }
-    if (newDataSource.type === 'file') {
-      setAddSourceError('Datei-Upload kommt bald. Bitte nutze Text oder URL.');
-      return;
-    }
-
-    setIsAddingSource(true);
-
-    try {
-      let response: Response;
-
-      // File upload is disabled - this block should not be reached due to validation above
-      if (newDataSource.type === 'file') {
-        throw new Error('Datei-Upload ist noch nicht verfügbar');
-      } else {
-        const payload = {
-          type: newDataSource.type,
-          title: newDataSource.title || undefined,
-          contentText: newDataSource.type === 'text' ? newDataSource.content : undefined,
-          url: newDataSource.type === 'url' ? newDataSource.url : undefined,
-        };
-        console.log('[ADD_SOURCE] POST JSON:', payload);
-        response = await fetch('/api/user/data-sources', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(payload),
-        });
-      }
-
-      const data = await response.json();
-      console.log('[ADD_SOURCE] Response:', response.status, data);
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || `Server error: ${response.status}`);
-      }
-
-      console.log('[ADD_SOURCE] ✅ Success! userId from response:', data.userId);
-      toast({ title: 'Erfolg', description: 'Datenquelle hinzugefügt!' });
-      
-      // Invalidate ALL relevant queries
-      queryClient.invalidateQueries({ queryKey: ['/api/user/data-sources'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/user/knowledge/digest', 'space'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/user/knowledge/digest', 'power'] });
-      
-      // Refetch data
-      refetchDataSources();
-      refetchDigest();
-      
-      setShowAddDataDialog(false);
-      setNewDataSource({ type: 'text', title: '', content: '', url: '' });
-      setSelectedFile(null);
-      setAddSourceError(null);
-    } catch (error: any) {
-      console.error('[ADD_SOURCE] Error:', error);
-      const errMsg = error.message || 'Datenquelle konnte nicht hinzugefügt werden';
-      setAddSourceError(errMsg); // Persistent error display
-      toast({ title: 'Fehler', description: errMsg, variant: 'destructive' });
-    } finally {
-      setIsAddingSource(false);
-    }
-  };
-
-  // Handle delete data source
-  const handleDeleteDataSource = async (id: number) => {
-    try {
-      const response = await fetch(`/api/user/data-sources/${id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-      if (!response.ok) throw new Error('Failed to delete');
-      toast({ title: 'Gelöscht', description: 'Datenquelle entfernt.' });
-      refetchDataSources();
-    } catch (error: any) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    }
-  };
-
-  // Animated KPI counters
-  const animatedSources = useAnimatedCounter(dataSources.length);
-  const animatedMessages = useAnimatedCounter(subscriptionData?.aiMessagesUsed || 0);
-  const animatedCalls = useAnimatedCounter(subscriptionData?.voiceCallsUsed || 0);
-  
-  // Data pulse animation state
-  const [showDataPulse, setShowDataPulse] = useState(false);
-  
-  // Trigger data pulse periodically
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setShowDataPulse(true);
-      setTimeout(() => setShowDataPulse(false), 800);
-    }, 12000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Loading state
-  if (authLoading) {
-    return (
-      <div className="absolute inset-0 flex items-center justify-center bg-[#050508]">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-2 border-[#ff6a00] border-t-transparent rounded-full animate-spin" />
-          <span className="text-white/60 text-sm">Memory Vault laden...</span>
-        </div>
-      </div>
-    );
-  }
-
+function FieldRow({ label, value, editing, editValue, onChange, placeholder, multiline, error }: {
+  label: string; value: string; editing: boolean; editValue?: string;
+  onChange?: (v: string) => void; placeholder?: string; multiline?: boolean; error?: string;
+}) {
   return (
-    <div className="absolute inset-0 overflow-y-auto overflow-x-hidden bg-gradient-to-b from-[#050508] via-[#080810] to-[#0a0a12]">
-      {/* ═══════════════════════════════════════════════════════════════════
-          FIXED BACKGROUND LAYERS - Never affect scroll
-      ═══════════════════════════════════════════════════════════════════ */}
-      
-      {/* Matrix Data Grid Background */}
-      <div 
-        className="fixed inset-0 pointer-events-none z-0 opacity-[0.06]"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(255,106,0,0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,106,0,0.03) 1px, transparent 1px),
-            url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ff6a00' fill-opacity='0.15'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")
-          `,
-          backgroundSize: '40px 40px, 40px 40px, 60px 60px',
-          animation: 'arasMatrixDrift 45s linear infinite'
-        }}
-      />
-      
-      {/* Neural Particle Field */}
-      <div 
-        className="fixed inset-0 pointer-events-none z-0"
-        style={{
-          background: `
-            radial-gradient(circle 800px at 10% 20%, rgba(255,106,0,0.04) 0%, transparent 50%),
-            radial-gradient(circle 600px at 90% 80%, rgba(233,215,196,0.03) 0%, transparent 50%),
-            radial-gradient(circle 400px at 50% 50%, rgba(255,106,0,0.02) 0%, transparent 50%)
-          `,
-          animation: 'arasNeuralPulse 30s ease-in-out infinite'
-        }}
-      />
-      
-      {/* Data Pulse Effect */}
-      <AnimatePresence>
-        {showDataPulse && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1.2 }}
-            exit={{ opacity: 0, scale: 1.5 }}
-            transition={{ duration: 0.8 }}
-            className="fixed inset-0 pointer-events-none z-0"
-            style={{
-              background: 'radial-gradient(circle at 50% 30%, rgba(255,106,0,0.08) 0%, transparent 50%)'
-            }}
-          />
-        )}
-      </AnimatePresence>
-      
-      {/* ═══════════════════════════════════════════════════════════════════
-          SCROLLABLE CONTENT - pb-40 ensures bottom padding for widgets
-      ═══════════════════════════════════════════════════════════════════ */}
-      <div className="relative z-10 px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 pb-32 sm:pb-40 w-full max-w-[1400px] mx-auto space-y-4 sm:space-y-6 lg:space-y-8">
-        
-        {/* ═══════════════════════════════════════════════════════════════════
-            SECTION A: HERO HEADER
-        ═══════════════════════════════════════════════════════════════════ */}
-        <motion.div 
-          ref={heroRef}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="relative"
-        >
-          {/* Scanline effect on mount */}
-          {hasMounted && (
-            <motion.div
-              initial={{ left: '-100%' }}
-              animate={{ left: '100%' }}
-              transition={{ duration: 0.8, ease: 'easeOut' }}
-              className="absolute inset-y-0 w-32 bg-gradient-to-r from-transparent via-[#ff6a00]/20 to-transparent pointer-events-none z-20"
-              style={{ filter: 'blur(8px)' }}
+    <div className="mb-4 last:mb-0">
+      <div className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/30 mb-1.5">{label}</div>
+      {editing ? (
+        <>
+          {multiline ? (
+            <Textarea
+              value={editValue ?? ''}
+              onChange={(e) => onChange?.(e.target.value)}
+              placeholder={placeholder}
+              className="bg-white/[0.04] border-white/[0.10] text-white/90 text-sm rounded-xl min-h-[80px] focus:border-[#FE9100]/40 focus:ring-[#FE9100]/20"
+            />
+          ) : (
+            <Input
+              value={editValue ?? ''}
+              onChange={(e) => onChange?.(e.target.value)}
+              placeholder={placeholder}
+              className="bg-white/[0.04] border-white/[0.10] text-white/90 text-sm rounded-xl h-9 focus:border-[#FE9100]/40 focus:ring-[#FE9100]/20"
             />
           )}
-          
-          <div className="flex items-start justify-between gap-6 flex-wrap">
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#ff6a00] to-[#e9d7c4] flex items-center justify-center shadow-[0_0_30px_rgba(255,106,0,0.3)]">
-                  <Database className="w-7 h-7 text-black" />
-                </div>
-                <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#050508] flex items-center justify-center">
-                  <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
-                </div>
-              </div>
-              <div>
-                <h1 
-                  className="text-2xl sm:text-3xl lg:text-4xl font-bold aras-headline-gradient tracking-tight" 
-                  style={{ fontFamily: 'Orbitron, sans-serif' }}
-                >
-                  Wissensdatenbank
-                </h1>
-                <p className="text-sm text-white/50 mt-1">
-                  Verwalte deine KI-Datenquellen und Business Intelligence
-                </p>
-              </div>
-            </div>
-            
-            {/* Status Chips */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-xs text-white/70 font-medium">LIVE</span>
-              </div>
-              <div className="px-3 py-1.5 bg-black/40 backdrop-blur-xl border border-white/10 rounded-full">
-                <span className="text-xs text-white/50">Aktualisiert: </span>
-                <span className="text-xs text-white/70">{format(new Date(), 'HH:mm', { locale: de })}</span>
-              </div>
-              <div className="px-3 py-1.5 bg-black/40 backdrop-blur-xl border border-[#ff6a00]/30 rounded-full">
-                <span className="text-xs text-[#ff6a00] font-medium uppercase">{digestMode}</span>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* ═══════════════════════════════════════════════════════════════════
-            SECTION B: KPI ROW
-        ═══════════════════════════════════════════════════════════════════ */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"
-        >
-          {/* Datenquellen */}
-          <div className="group relative bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-[20px] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_20px_50px_rgba(0,0,0,0.4)] hover:border-[#ff6a00]/30 hover:shadow-[0_0_30px_rgba(255,106,0,0.1)] transition-all duration-300 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#ff6a00]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="relative">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#ff6a00]/20 to-[#ff6a00]/5 flex items-center justify-center">
-                  <Database className="w-4.5 h-4.5 text-[#ff6a00]" />
-                </div>
-                <span className="text-[10px] text-white/40 uppercase tracking-wider font-medium">Quellen</span>
-              </div>
-              <div className="text-3xl font-bold text-white mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                {animatedSources}
-              </div>
-              <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(dataSources.length * 10, 100)}%` }}
-                  transition={{ duration: 0.8, delay: 0.2 }}
-                  className="h-full bg-gradient-to-r from-[#ff6a00] to-[#e9d7c4] rounded-full"
-                />
-              </div>
-            </div>
-          </div>
-          
-          {/* KI-Nachrichten */}
-          <div className="group relative bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-[20px] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_20px_50px_rgba(0,0,0,0.4)] hover:border-[#ff6a00]/30 hover:shadow-[0_0_30px_rgba(255,106,0,0.1)] transition-all duration-300 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#ff6a00]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="relative">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#ff6a00]/20 to-[#ff6a00]/5 flex items-center justify-center">
-                  <MessageSquare className="w-4.5 h-4.5 text-[#ff6a00]" />
-                </div>
-                <span className="text-[10px] text-white/40 uppercase tracking-wider font-medium">Nachrichten</span>
-              </div>
-              <div className="text-3xl font-bold text-white mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                {animatedMessages}
-                <span className="text-lg text-white/40 font-normal">/{subscriptionData?.aiMessagesLimit || 100}</span>
-              </div>
-              <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${((subscriptionData?.aiMessagesUsed || 0) / (subscriptionData?.aiMessagesLimit || 100)) * 100}%` }}
-                  transition={{ duration: 0.8, delay: 0.3 }}
-                  className="h-full bg-gradient-to-r from-[#ff6a00] to-[#e9d7c4] rounded-full"
-                />
-              </div>
-            </div>
-          </div>
-          
-          {/* Anrufe */}
-          <div className="group relative bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-[20px] p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_20px_50px_rgba(0,0,0,0.4)] hover:border-[#ff6a00]/30 hover:shadow-[0_0_30px_rgba(255,106,0,0.1)] transition-all duration-300 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#ff6a00]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="relative">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#ff6a00]/20 to-[#ff6a00]/5 flex items-center justify-center">
-                  <Phone className="w-4.5 h-4.5 text-[#ff6a00]" />
-                </div>
-                <span className="text-[10px] text-white/40 uppercase tracking-wider font-medium">Anrufe</span>
-              </div>
-              <div className="text-3xl font-bold text-white mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                {animatedCalls}
-                <span className="text-lg text-white/40 font-normal">/{subscriptionData?.voiceCallsLimit || 50}</span>
-              </div>
-              <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${((subscriptionData?.voiceCallsUsed || 0) / (subscriptionData?.voiceCallsLimit || 50)) * 100}%` }}
-                  transition={{ duration: 0.8, delay: 0.4 }}
-                  className="h-full bg-gradient-to-r from-[#ff6a00] to-[#e9d7c4] rounded-full"
-                />
-              </div>
-            </div>
-          </div>
-          
-          {/* Plan */}
-          <div className="group relative bg-black/40 backdrop-blur-xl border border-[#ff6a00]/20 rounded-[20px] p-5 shadow-[0_0_0_1px_rgba(255,106,0,0.1),0_20px_50px_rgba(0,0,0,0.4)] hover:border-[#ff6a00]/40 hover:shadow-[0_0_40px_rgba(255,106,0,0.15)] transition-all duration-300 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#ff6a00]/10 to-transparent" />
-            <div className="relative">
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#ff6a00]/30 to-[#e9d7c4]/20 flex items-center justify-center">
-                  <Crown className="w-4.5 h-4.5 text-[#ff6a00]" />
-                </div>
-                <span className="text-[10px] text-[#ff6a00]/60 uppercase tracking-wider font-medium">Plan</span>
-              </div>
-              <div className="text-3xl font-bold text-[#ff6a00] mb-1" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                {subscriptionData?.plan?.toUpperCase() || 'FREE'}
-              </div>
-              <div className="text-xs text-white/50">Aktives Abonnement</div>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* V8: Setup Summary Bar - Only show when missing fields exist */}
-        {(missingFields.length > 0 || showSetupBar) && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-[16px] p-4 mb-6"
-            style={{
-              background: 'rgba(255,106,0,0.08)',
-              border: '1px solid rgba(255,106,0,0.25)',
-              backdropFilter: 'blur(12px)',
-            }}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white/90">
-                  Setup unvollständig: {missingFields.length} {missingFields.length === 1 ? 'Punkt' : 'Punkte'} offen
-                </p>
-                <p className="text-xs text-white/50 mt-0.5">
-                  {missingFields.map(f => f.label).join(', ')}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={scrollToNextMissing}
-                  className="px-3 py-1.5 text-xs font-medium rounded-lg transition-all hover:bg-white/10"
-                  style={{ background: 'rgba(255,106,0,0.15)', color: '#ff6a00' }}
-                >
-                  Zum nächsten Feld
-                </button>
-                {fromPower && (
-                  <a
-                    href="/app/power"
-                    className="px-3 py-1.5 text-xs font-medium rounded-lg transition-all hover:bg-white/10"
-                    style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.7)' }}
-                  >
-                    Zurück zu Power
-                  </a>
-                )}
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ═══════════════════════════════════════════════════════════════════
-            SECTION C: "ALLES ÜBER DICH" - Profile + Business Intelligence
-        ═══════════════════════════════════════════════════════════════════ */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="space-y-6"
-        >
-          {/* Profile Card */}
-          <div ref={profileSectionRef} id="profile-section" className="bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-[22px] p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_20px_50px_rgba(0,0,0,0.4)]">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff6a00]/20 to-[#e9d7c4]/10 flex items-center justify-center">
-                <User className="w-5 h-5 text-[#ff6a00]" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>Profil</h2>
-                <p className="text-xs text-white/40">Deine Kontoinformationen</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="space-y-1">
-                <div className="text-[11px] text-white/40 uppercase tracking-wider">Name</div>
-                <div className="text-sm text-white/90 font-medium">{userProfile.fullName || userProfile.username || 'Noch nicht hinterlegt'}</div>
-              </div>
-              <div className="space-y-1">
-                <div className="text-[11px] text-white/40 uppercase tracking-wider">E-Mail</div>
-                <div className="text-sm text-white/90 font-medium truncate">{userProfile.email || 'Noch nicht hinterlegt'}</div>
-              </div>
-              <div className="space-y-1">
-                <div className="text-[11px] text-white/40 uppercase tracking-wider">Unternehmen</div>
-                <div className="text-sm text-white/90 font-medium">{userProfile.company || 'Noch nicht hinterlegt'}</div>
-              </div>
-              <div className="space-y-1">
-                <div className="text-[11px] text-white/40 uppercase tracking-wider">Mitglied seit</div>
-                <div className="text-sm text-white/90 font-medium">{safeFormatDate(userProfile.createdAt, 'dd.MM.yyyy')}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Business Intelligence Card */}
-          <div ref={businessSectionRef} id="business-section" className="bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-[22px] overflow-hidden shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_20px_50px_rgba(0,0,0,0.4)]">
-            <div className="p-6 border-b border-white/[0.06] flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff6a00]/20 to-[#e9d7c4]/10 flex items-center justify-center">
-                  <Brain className="w-5 h-5 text-[#ff6a00]" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>Business Intelligence</h2>
-                  <p className="text-xs text-white/40">Informationen über dein Unternehmen</p>
-                </div>
-              </div>
-              {!isEditingBusiness ? (
-                <Button
-                  type="button"
-                  onClick={startEditingBusiness}
-                  className="bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 text-xs h-9 px-4 rounded-xl"
-                >
-                  <Settings className="w-3.5 h-3.5 mr-2" />
-                  Bearbeiten
-                </Button>
-              ) : (
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    onClick={() => { setIsEditingBusiness(false); setBiSaveError(null); }}
-                    className="bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 text-xs h-9 px-4 rounded-xl"
-                  >
-                    Abbrechen
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={saveBusinessIntelligence}
-                    disabled={updateAiProfileMutation.isPending}
-                    className="bg-gradient-to-r from-[#ff6a00] to-[#ff8533] hover:from-[#ff6a00]/90 hover:to-[#ff8533]/90 text-white text-xs h-9 px-4 rounded-xl font-medium"
-                  >
-                    {updateAiProfileMutation.isPending ? (
-                      <>
-                        <RefreshCw className="w-3.5 h-3.5 mr-2 animate-spin" />
-                        Speichern...
-                      </>
-                    ) : biSaveSuccess ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 mr-2" />
-                        Gespeichert
-                      </>
-                    ) : (
-                      'Speichern'
-                    )}
-                  </Button>
-                </div>
-              )}
-            </div>
-            
-            {/* Persistent BI Save Error */}
-            {biSaveError && (
-              <div className="mx-6 mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-3">
-                <AlertCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm text-red-400 font-medium">Speichern fehlgeschlagen</p>
-                  <p className="text-xs text-red-400/70 mt-0.5">{biSaveError}</p>
-                </div>
-                <button type="button" onClick={() => setBiSaveError(null)} className="text-red-400/60 hover:text-red-400">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-            
-            <div className="p-6">
-              {isEditingBusiness ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                  <div className="lg:col-span-2">
-                    <label className="text-[11px] text-white/50 uppercase tracking-wider mb-2 block">Unternehmensbeschreibung</label>
-                    <Textarea
-                      value={editedBusiness.companyDescription}
-                      onChange={(e) => setEditedBusiness({...editedBusiness, companyDescription: e.target.value})}
-                      className="bg-black/40 border-white/10 text-white text-sm min-h-[100px] rounded-xl focus:border-[#ff6a00]/50 focus:ring-[#ff6a00]/20"
-                      placeholder="Beschreibe dein Unternehmen..."
-                      style={getFieldStyle('companyDescription')}
-                    />
-                    {isFieldHighlighted('companyDescription') && (
-                      <p className="text-[10px] mt-1.5" style={MISSING_HINT_STYLES}>
-                        {getMissingFieldInfo('companyDescription')?.reason}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-white/50 uppercase tracking-wider mb-2 block">Zielgruppe</label>
-                    <Input
-                      value={editedBusiness.targetAudience}
-                      onChange={(e) => setEditedBusiness({...editedBusiness, targetAudience: e.target.value})}
-                      className="bg-black/40 border-white/10 text-white text-sm rounded-xl focus:border-[#ff6a00]/50 focus:ring-[#ff6a00]/20"
-                      placeholder="Wer sind deine Kunden?"
-                      style={getFieldStyle('targetAudience')}
-                    />
-                    {isFieldHighlighted('targetAudience') && (
-                      <p className="text-[10px] mt-1.5" style={MISSING_HINT_STYLES}>
-                        {getMissingFieldInfo('targetAudience')?.reason}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-white/50 uppercase tracking-wider mb-2 block">Dienstleistungen</label>
-                    <Input
-                      value={editedBusiness.services}
-                      onChange={(e) => setEditedBusiness({...editedBusiness, services: e.target.value})}
-                      className="bg-black/40 border-white/10 text-white text-sm rounded-xl focus:border-[#ff6a00]/50 focus:ring-[#ff6a00]/20"
-                      placeholder="Welche Dienstleistungen bietest du an?"
-                      style={getFieldStyle('services')}
-                    />
-                    {isFieldHighlighted('services') && (
-                      <p className="text-[10px] mt-1.5" style={MISSING_HINT_STYLES}>
-                        {getMissingFieldInfo('services')?.reason}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-white/50 uppercase tracking-wider mb-2 block">Keywords (kommagetrennt)</label>
-                    <Input
-                      value={editedBusiness.effectiveKeywords}
-                      onChange={(e) => setEditedBusiness({...editedBusiness, effectiveKeywords: e.target.value})}
-                      className="bg-black/40 border-white/10 text-white text-sm rounded-xl focus:border-[#ff6a00]/50 focus:ring-[#ff6a00]/20"
-                      placeholder="Keyword1, Keyword2, ..."
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] text-white/50 uppercase tracking-wider mb-2 block">Wettbewerber (kommagetrennt)</label>
-                    <Input
-                      value={editedBusiness.competitors}
-                      onChange={(e) => setEditedBusiness({...editedBusiness, competitors: e.target.value})}
-                      className="bg-black/40 border-white/10 text-white text-sm rounded-xl focus:border-[#ff6a00]/50 focus:ring-[#ff6a00]/20"
-                      placeholder="Wettbewerber1, Wettbewerber2, ..."
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                  <div className="lg:col-span-2 p-4 bg-white/[0.02] rounded-xl border border-white/[0.04]">
-                    <div className="text-[11px] text-white/40 uppercase tracking-wider mb-2">Unternehmensbeschreibung</div>
-                    <div className="text-sm text-white/80 leading-relaxed">
-                      {aiProfile.companyDescription || <span className="text-white/40 italic">Noch nicht hinterlegt</span>}
-                    </div>
-                  </div>
-                  <div className="p-4 bg-white/[0.02] rounded-xl border border-white/[0.04]">
-                    <div className="text-[11px] text-white/40 uppercase tracking-wider mb-2">Zielgruppe</div>
-                    <div className="text-sm text-white/80">{aiProfile.targetAudience || <span className="text-white/40 italic">Noch nicht hinterlegt</span>}</div>
-                  </div>
-                  <div className="p-4 bg-white/[0.02] rounded-xl border border-white/[0.04]">
-                    <div className="text-[11px] text-white/40 uppercase tracking-wider mb-2">Dienstleistungen</div>
-                    <div className="text-sm text-white/80">{aiProfile.services || <span className="text-white/40 italic">Noch nicht hinterlegt</span>}</div>
-                  </div>
-                  <div className="p-4 bg-white/[0.02] rounded-xl border border-white/[0.04]">
-                    <div className="text-[11px] text-white/40 uppercase tracking-wider mb-2">Keywords</div>
-                    <div className="flex flex-wrap gap-2">
-                      {Array.isArray(aiProfile.effectiveKeywords) && aiProfile.effectiveKeywords.length > 0 ? (
-                        aiProfile.effectiveKeywords.map((kw: string, i: number) => (
-                          <span key={i} className="px-2.5 py-1 bg-[#ff6a00]/10 border border-[#ff6a00]/20 rounded-lg text-xs text-[#ff6a00]">
-                            {kw}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-sm text-white/40 italic">Noch nicht hinterlegt</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="p-4 bg-white/[0.02] rounded-xl border border-white/[0.04]">
-                    <div className="text-[11px] text-white/40 uppercase tracking-wider mb-2">Wettbewerber</div>
-                    <div className="flex flex-wrap gap-2">
-                      {Array.isArray(aiProfile.competitors) && aiProfile.competitors.length > 0 ? (
-                        aiProfile.competitors.map((comp: string, i: number) => (
-                          <span key={i} className="px-2.5 py-1 bg-white/5 border border-white/10 rounded-lg text-xs text-white/70">
-                            {comp}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-sm text-white/40 italic">Noch nicht hinterlegt</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </motion.div>
-
-        {/* ═══════════════════════════════════════════════════════════════════
-            SECTION D: DATA SOURCES - Database Style
-        ═══════════════════════════════════════════════════════════════════ */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          className="bg-black/40 backdrop-blur-xl border border-white/[0.08] rounded-[22px] overflow-hidden shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_20px_50px_rgba(0,0,0,0.4)]"
-        >
-          {/* Header */}
-          <div className="p-6 border-b border-white/[0.06]">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff6a00]/20 to-[#e9d7c4]/10 flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-[#ff6a00]" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>Datenquellen</h2>
-                  <p className="text-xs text-white/40">{dataSources.length} Quellen gespeichert</p>
-                </div>
-              </div>
-              <Button
-                type="button"
-                onClick={() => setShowAddDataDialog(true)}
-                className="bg-gradient-to-r from-[#ff6a00] to-[#ff8533] hover:from-[#ff6a00]/90 hover:to-[#ff8533]/90 text-white text-xs h-9 px-4 rounded-xl font-medium"
-              >
-                <Zap className="w-3.5 h-3.5 mr-2" />
-                Hinzufügen
-              </Button>
-            </div>
-            
-            {/* Toolbar */}
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="relative flex-1 min-w-[200px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-                <Input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Quellen durchsuchen..."
-                  className="pl-10 bg-black/40 border-white/10 text-white text-sm rounded-xl h-9 focus:border-[#ff6a00]/50"
-                />
-              </div>
-              <div className="flex gap-2">
-                {(['all', 'text', 'url', 'file'] as const).map((type) => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setFilterType(type)}
-                    disabled={type === 'file'}
-                    className={`px-3 py-1.5 text-xs rounded-lg transition-all ${
-                      filterType === type 
-                        ? 'bg-[#ff6a00] text-white' 
-                        : type === 'file'
-                          ? 'bg-white/5 text-white/30 cursor-not-allowed'
-                          : 'bg-white/5 text-white/60 hover:bg-white/10'
-                    }`}
-                  >
-                    {type === 'all' ? 'Alle' : type === 'file' ? 'Datei ⏳' : type.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-              <select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as 'newest' | 'oldest' | 'title')}
-                className="bg-black/40 border border-white/10 text-white/70 text-xs rounded-lg h-9 px-3 focus:border-[#ff6a00]/50"
-              >
-                <option value="newest">Neueste</option>
-                <option value="oldest">Älteste</option>
-                <option value="title">Titel A-Z</option>
-              </select>
-            </div>
-          </div>
-          
-          {/* Sources List */}
-          <div className="max-h-[420px] overflow-y-auto">
-            {isLoadingDataSources ? (
-              <div className="flex flex-col items-center justify-center py-16">
-                <div className="w-8 h-8 border-2 border-[#ff6a00] border-t-transparent rounded-full animate-spin mb-3" />
-                <span className="text-sm text-white/40">Quellen laden...</span>
-              </div>
-            ) : filteredSources.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16">
-                <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-4">
-                  <Database className="w-8 h-8 text-white/20" />
-                </div>
-                <p className="text-white/60 text-sm mb-1">
-                  {searchQuery ? 'Keine Ergebnisse gefunden' : 'Noch keine Datenquellen'}
-                </p>
-                <p className="text-white/40 text-xs">
-                  {searchQuery ? 'Versuche einen anderen Suchbegriff' : 'Füge deine erste Quelle hinzu!'}
-                </p>
-              </div>
-            ) : (
-              <div className="divide-y divide-white/[0.04]">
-                {filteredSources.map((source) => (
-                  <div
-                    key={source.id}
-                    className="group p-4 hover:bg-white/[0.02] transition-all cursor-pointer"
-                    onClick={() => setSelectedSource(source)}
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                        source.type === 'text' ? 'bg-blue-500/10' : 'bg-green-500/10'
-                      }`}>
-                        {source.type === 'text' ? (
-                          <FileText className="w-5 h-5 text-blue-400" />
-                        ) : (
-                          <Link2 className="w-5 h-5 text-green-400" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className={`text-[10px] px-2 py-0.5 rounded-md uppercase font-medium ${
-                            source.type === 'text' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'
-                          }`}>
-                            {source.type}
-                          </span>
-                          <span className={`text-[10px] px-2 py-0.5 rounded-md ${
-                            source.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' :
-                            source.status === 'failed' ? 'bg-red-500/20 text-red-400' :
-                            'bg-yellow-500/20 text-yellow-400'
-                          }`}>
-                            {source.status === 'active' ? 'Aktiv' : source.status === 'failed' ? 'Fehler' : 'Verarbeitung'}
-                          </span>
-                        </div>
-                        <div className="text-sm text-white/90 font-medium truncate mb-1">
-                          {source.title || source.fileName || source.url || 'Ohne Titel'}
-                        </div>
-                        <div className="text-xs text-white/40 line-clamp-2">
-                          {source.contentText?.slice(0, 150) || source.url || 'Kein Inhalt'}
-                        </div>
-                        <div className="text-[11px] text-white/30 mt-2">
-                          {safeDateLabel(source.createdAt)}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setSelectedSource(source); }}
-                          className="p-2 text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); handleDeleteDataSource(source.id); }}
-                          className="p-2 text-white/40 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </motion.div>
-
-        {/* ═══════════════════════════════════════════════════════════════════
-            SECTION F: CONTEXT PREVIEW - "ARAS BRAIN" Showpiece
-        ═══════════════════════════════════════════════════════════════════ */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          className="relative bg-black/40 backdrop-blur-xl border border-[#ff6a00]/20 rounded-[22px] overflow-hidden shadow-[0_0_0_1px_rgba(255,106,0,0.1),0_20px_60px_rgba(0,0,0,0.5),0_0_80px_rgba(255,106,0,0.05)]"
-        >
-          {/* Animated border glow */}
-          <div className="absolute inset-0 rounded-[22px] opacity-30" style={{
-            background: 'linear-gradient(90deg, transparent, rgba(255,106,0,0.3), transparent)',
-            backgroundSize: '200% 100%',
-            animation: 'arasShimmer 3s ease-in-out infinite'
-          }} />
-          
-          <div className="relative p-6 border-b border-white/[0.06]">
-            <div className="flex items-start justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-4">
-                <div className="relative">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#ff6a00] to-[#e9d7c4] flex items-center justify-center shadow-[0_0_30px_rgba(255,106,0,0.4)]">
-                    <Brain className="w-6 h-6 text-black" />
-                  </div>
-                  {/* Pulse ring */}
-                  <div className="absolute inset-0 rounded-2xl border-2 border-[#ff6a00]/50 animate-ping opacity-20" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                    Kontext-Vorschau
-                  </h2>
-                  <p className="text-sm text-white/50">Was ARAS AI über dich weiß</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 flex-wrap">
-                {/* Premium Mode Toggle */}
-                <div className="flex bg-black/60 border border-white/10 rounded-xl p-1 shadow-lg">
-                  <button
-                    type="button"
-                    onClick={() => setDigestMode('space')}
-                    className={`relative px-5 py-2 text-xs font-bold rounded-lg transition-all ${
-                      digestMode === 'space' 
-                        ? 'bg-gradient-to-r from-[#ff6a00] to-[#ff8533] text-white shadow-[0_0_20px_rgba(255,106,0,0.4)]' 
-                        : 'text-white/50 hover:text-white/70'
-                    }`}
-                    style={{ fontFamily: 'Orbitron, sans-serif' }}
-                  >
-                    SPACE
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDigestMode('power')}
-                    className={`relative px-5 py-2 text-xs font-bold rounded-lg transition-all ${
-                      digestMode === 'power' 
-                        ? 'bg-gradient-to-r from-[#ff6a00] to-[#ff8533] text-white shadow-[0_0_20px_rgba(255,106,0,0.4)]' 
-                        : 'text-white/50 hover:text-white/70'
-                    }`}
-                    style={{ fontFamily: 'Orbitron, sans-serif' }}
-                  >
-                    POWER
-                  </button>
-                </div>
-                <Button
-                  type="button"
-                  onClick={copyContextToClipboard}
-                  className="bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 text-xs h-10 px-4 rounded-xl"
-                >
-                  {copiedContext ? <Check className="w-4 h-4 mr-2 text-green-400" /> : <Copy className="w-4 h-4 mr-2" />}
-                  {copiedContext ? 'Kopiert!' : 'Exportieren'}
-                </Button>
-                <a
-                  href="/app/space"
-                  className="inline-flex items-center bg-gradient-to-r from-[#ff6a00]/20 to-[#ff6a00]/10 hover:from-[#ff6a00]/30 hover:to-[#ff6a00]/20 border border-[#ff6a00]/30 text-[#ff6a00] text-xs h-10 px-4 rounded-xl transition-all font-medium"
-                >
-                  <Zap className="w-4 h-4 mr-2" />
-                  Testen
-                </a>
-              </div>
-            </div>
-          </div>
-          
-          {/* Memory Density Visualization */}
-          <div className="px-6 py-4 bg-black/20 border-b border-white/[0.04]">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              {/* Index Status */}
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2">
-                  <Signal className="w-4 h-4 text-emerald-400" />
-                  <span className="text-xs text-white/50">Index:</span>
-                  <span className="text-xs text-emerald-400 font-medium">synchron</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-[#ff6a00]" />
-                  <span className="text-xs text-white/50">Quellen:</span>
-                  <span className="text-xs text-white font-bold">{digestData?.sourceCount ?? 0} aktiv</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <HardDrive className="w-4 h-4 text-[#e9d7c4]" />
-                  <span className="text-xs text-white/50">Kontext:</span>
-                  <span className="text-xs text-white font-bold">{(digestData?.charCount ?? 0).toLocaleString()} Zeichen</span>
-                </div>
-              </div>
-              
-              {/* Memory Density Heatmap */}
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-white/40 uppercase tracking-wider">Kontextdichte</span>
-                <div className="flex gap-0.5">
-                  {Array.from({ length: 24 }).map((_, i) => {
-                    const density = Math.min((digestData?.charCount ?? 0) / 50000, 1);
-                    const threshold = i / 24;
-                    const isActive = density > threshold;
-                    const intensity = isActive ? Math.min((density - threshold) * 24, 1) : 0;
-                    return (
-                      <div
-                        key={i}
-                        className="w-1.5 h-4 rounded-sm transition-all duration-300"
-                        style={{
-                          backgroundColor: isActive 
-                            ? `rgba(255, 106, 0, ${0.3 + intensity * 0.7})` 
-                            : 'rgba(255,255,255,0.1)',
-                          boxShadow: isActive && intensity > 0.5 
-                            ? `0 0 ${4 + intensity * 4}px rgba(255,106,0,${intensity * 0.5})` 
-                            : 'none'
-                        }}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-            
-            {digestData?.truncated && (
-              <div className="mt-3 px-3 py-1.5 bg-yellow-500/10 border border-yellow-500/20 rounded-lg inline-flex items-center gap-2">
-                <AlertCircle className="w-3.5 h-3.5 text-yellow-400" />
-                <span className="text-xs text-yellow-400">Kontext wurde für optimale Performance gekürzt</span>
-              </div>
-            )}
-          </div>
-          
-          {/* Developer Details (Collapsible) */}
-          <div className="border-b border-white/[0.04]">
-            <button
-              type="button"
-              onClick={() => setShowDevDetails(!showDevDetails)}
-              className="w-full px-6 py-3 bg-black/20 cursor-pointer text-xs text-white/40 hover:text-white/60 transition-colors flex items-center gap-2"
-            >
-              <ChevronRight className={`w-3.5 h-3.5 transition-transform ${showDevDetails ? 'rotate-90' : ''}`} />
-              <Cpu className="w-3.5 h-3.5" />
-              Entwicklerdetails
-            </button>
-            <AnimatePresence>
-              {showDevDetails && (digestData as any)?.sourcesDebug && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="px-6 py-3 bg-black/30 text-xs font-mono border-t border-white/[0.04]">
-                    <div className="text-white/40">
-                      raw={((digestData as any).sourcesDebug?.rawCount) ?? '?'} | 
-                      mapped={((digestData as any).sourcesDebug?.mappedCount) ?? '?'} | 
-                      filtered={((digestData as any).sourcesDebug?.filteredCount) ?? '?'}
-                    </div>
-                    <div className="text-white/30 mt-1">
-                      IDs: {((digestData as any).sourcesDebug?.ids || []).join(', ') || 'keine'}
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-          
-          {/* Context Panel - Terminal Glass */}
-          <div className="p-6">
-            <div className="relative">
-              {/* Animated Neon Spine */}
-              <motion.div 
-                className="absolute left-0 top-0 bottom-0 w-1 rounded-full"
-                style={{
-                  background: 'linear-gradient(180deg, #ff6a00, #e9d7c4, #ff6a00)',
-                  backgroundSize: '100% 200%'
-                }}
-                animate={{
-                  backgroundPosition: ['0% 0%', '0% 100%', '0% 0%'],
-                  boxShadow: [
-                    '0 0 10px rgba(255,106,0,0.5)',
-                    '0 0 20px rgba(255,106,0,0.8)',
-                    '0 0 10px rgba(255,106,0,0.5)'
-                  ]
-                }}
-                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-              />
-              
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={digestMode}
-                  initial={{ opacity: 0, filter: 'blur(8px)', x: -10 }}
-                  animate={{ opacity: 1, filter: 'blur(0px)', x: 0 }}
-                  exit={{ opacity: 0, filter: 'blur(8px)', x: 10 }}
-                  transition={{ duration: 0.2 }}
-                  className="ml-5"
-                >
-                  {/* Scanline on mode change */}
-                  <motion.div
-                    initial={{ top: 0 }}
-                    animate={{ top: '100%' }}
-                    transition={{ duration: 0.3 }}
-                    className="absolute left-5 right-0 h-px bg-gradient-to-r from-[#ff6a00] to-transparent opacity-60"
-                    style={{ pointerEvents: 'none' }}
-                  />
-                  
-                  <pre className="bg-black/50 border border-white/[0.06] rounded-xl p-5 text-sm text-white/80 font-mono overflow-x-auto max-h-[400px] overflow-y-auto whitespace-pre-wrap leading-relaxed shadow-inner">
-                    {digestData?.digest || 'Lade Kontext...'}
-                  </pre>
-                </motion.div>
-              </AnimatePresence>
-            </div>
-          </div>
-        </motion.div>
-      </div>
-      
-      {/* Source Detail Drawer */}
-      <AnimatePresence>
-        {selectedSource && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
-              onClick={() => setSelectedSource(null)}
-            />
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="fixed right-0 top-0 bottom-0 w-full max-w-[480px] bg-[#0a0a12] border-l border-white/10 z-50 flex flex-col"
-            >
-              <div className="p-6 border-b border-white/[0.06] flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                  Quelle Details
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setSelectedSource(null)}
-                  className="p-2 text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-6 space-y-5">
-                <div>
-                  <div className="text-[11px] text-white/40 uppercase tracking-wider mb-2">Titel</div>
-                  <div className="text-white/90">{selectedSource.title || 'Ohne Titel'}</div>
-                </div>
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <div className="text-[11px] text-white/40 uppercase tracking-wider mb-2">Typ</div>
-                    <span className={`text-xs px-2.5 py-1 rounded-lg ${
-                      selectedSource.type === 'text' ? 'bg-blue-500/20 text-blue-400' : 'bg-green-500/20 text-green-400'
-                    }`}>
-                      {selectedSource.type.toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-[11px] text-white/40 uppercase tracking-wider mb-2">Status</div>
-                    <span className={`text-xs px-2.5 py-1 rounded-lg ${
-                      selectedSource.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-yellow-500/20 text-yellow-400'
-                    }`}>
-                      {selectedSource.status === 'active' ? 'Aktiv' : selectedSource.status}
-                    </span>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[11px] text-white/40 uppercase tracking-wider mb-2">Erstellt am</div>
-                  <div className="text-white/70 text-sm">{safeFormatDate(selectedSource.createdAt, 'dd.MM.yyyy HH:mm')}</div>
-                </div>
-                {selectedSource.url && (
-                  <div>
-                    <div className="text-[11px] text-white/40 uppercase tracking-wider mb-2">URL</div>
-                    <a href={selectedSource.url} target="_blank" rel="noopener noreferrer" className="text-[#ff6a00] text-sm hover:underline break-all">
-                      {selectedSource.url}
-                    </a>
-                  </div>
-                )}
-                <div>
-                  <div className="text-[11px] text-white/40 uppercase tracking-wider mb-2">Inhalt</div>
-                  <pre className="bg-black/40 border border-white/[0.06] rounded-xl p-4 text-sm text-white/70 font-mono overflow-x-auto max-h-[300px] overflow-y-auto whitespace-pre-wrap">
-                    {selectedSource.contentText || 'Kein Inhalt verfügbar'}
-                  </pre>
-                </div>
-              </div>
-              <div className="p-6 border-t border-white/[0.06] flex gap-3">
-                <Button
-                  type="button"
-                  onClick={async () => {
-                    if (selectedSource.contentText) {
-                      await navigator.clipboard.writeText(selectedSource.contentText);
-                      toast({ title: 'Kopiert', description: 'Inhalt in Zwischenablage kopiert.' });
-                    }
-                  }}
-                  className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 text-sm h-10 rounded-xl"
-                >
-                  <Copy className="w-4 h-4 mr-2" />
-                  Kopieren
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => {
-                    handleDeleteDataSource(selectedSource.id);
-                    setSelectedSource(null);
-                  }}
-                  className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-sm h-10 px-4 rounded-xl"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Löschen
-                </Button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
-      {/* Add Data Source Dialog */}
-      <Dialog open={showAddDataDialog} onOpenChange={(open) => { setShowAddDataDialog(open); if (open) setAddSourceError(null); }}>
-        <DialogContent className="bg-[#111] border border-white/10 text-white max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-semibold">Datenquelle hinzufügen</DialogTitle>
-            <DialogDescription className="text-gray-400 text-sm">
-              Informationen hinzufügen, um deinen KI-Assistenten zu verbessern
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 mt-4">
-            {/* Persistent Error Display */}
-            {addSourceError && (
-              <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                <p className="text-sm text-red-400">{addSourceError}</p>
-              </div>
-            )}
-            
-            {/* Type Selection */}
-            <div>
-              <label className="text-xs text-gray-400 mb-2 block">Typ</label>
-              <div className="flex gap-2">
-                {(['text', 'url', 'file'] as const).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => { setNewDataSource({...newDataSource, type: t}); setSelectedFile(null); }}
-                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                      newDataSource.type === t 
-                        ? 'bg-[#FE9100] text-white' 
-                        : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                    }`}
-                  >
-                    {t === 'file' ? 'Datei' : t === 'text' ? 'Text' : 'URL'}
-                  </button>
-                ))}
-              </div>
-            </div>
-            
-            {/* Title */}
-            <div>
-              <label className="text-xs text-gray-400 mb-1 block">Titel (optional)</label>
-              <Input
-                value={newDataSource.title}
-                onChange={(e) => setNewDataSource({...newDataSource, title: e.target.value})}
-                placeholder="z.B. Produktkatalog"
-                className="bg-white/5 border-white/10 text-white text-sm"
-              />
-            </div>
-            
-            {/* Content based on type */}
-            {newDataSource.type === 'text' && (
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">Textinhalt</label>
-                <Textarea
-                  value={newDataSource.content}
-                  onChange={(e) => setNewDataSource({...newDataSource, content: e.target.value})}
-                  placeholder="Füge deinen Text hier ein..."
-                  className="bg-white/5 border-white/10 text-white text-sm min-h-[120px]"
-                />
-                <p className="text-xs text-gray-500 mt-1">{newDataSource.content.length} / 50,000</p>
-              </div>
-            )}
-
-            {newDataSource.type === 'url' && (
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">URL</label>
-                <Input
-                  value={newDataSource.url}
-                  onChange={(e) => setNewDataSource({...newDataSource, url: e.target.value})}
-                  placeholder="https://example.com/page"
-                  className="bg-white/5 border-white/10 text-white text-sm"
-                />
-              </div>
-            )}
-
-            {newDataSource.type === 'file' && (
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">Datei-Upload</label>
-                <div className="border border-dashed border-white/20 rounded-lg p-6 text-center bg-white/5">
-                  <p className="text-[#FE9100] text-sm font-medium">Kommt bald</p>
-                  <p className="text-gray-500 text-xs mt-1">Datei-Upload wird in Kürze verfügbar sein.</p>
-                  <p className="text-gray-500 text-xs mt-2">Nutze vorerst Text oder URL.</p>
-                </div>
-              </div>
-            )}
-            
-            {/* Actions */}
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => { setShowAddDataDialog(false); setSelectedFile(null); }}
-                className="border-white/20 text-gray-300 hover:bg-white/10 text-sm"
-                disabled={isAddingSource}
-              >
-                Abbrechen
-              </Button>
-              <Button
-                type="button"
-                onClick={handleAddDataSource}
-                disabled={isAddingSource}
-                className="bg-[#FE9100] hover:bg-[#FE9100]/80 text-white text-sm"
-              >
-                {isAddingSource ? 'Hinzufügen...' : 'Hinzufügen'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-// Helper component for info rows with "Noch nicht hinterlegt" for empty values
-function InfoRow({ label, value, onAdd }: { label: string; value: string; onAdd?: () => void }) {
-  const isEmpty = !value || value === 'Nicht gesetzt' || value === '—';
-  return (
-    <div>
-      <div className="text-xs text-gray-500">{label}</div>
-      {isEmpty ? (
-        <div className="text-sm text-gray-500 flex items-center gap-2">
-          <span>Noch nicht hinterlegt</span>
-          {onAdd && (
-            <button 
-              onClick={onAdd}
-              className="text-[#ff6a00] hover:underline text-xs"
-            >
-              Jetzt hinzufügen
-            </button>
-          )}
-        </div>
+          {error && <div className="text-xs text-red-400 mt-1">{error}</div>}
+        </>
       ) : (
-        <div className="text-sm text-white truncate">{value}</div>
+        <div className="text-sm text-white/80 leading-relaxed break-words whitespace-pre-wrap">
+          {value || <span className="text-white/25 italic">Nicht angegeben</span>}
+        </div>
       )}
     </div>
   );
 }
 
-// Export with ErrorBoundary wrapper to prevent black screen crashes
+// ============================================================================
+// SECTION CARD — glass card with section title + edit toggle
+// ============================================================================
+
+function SectionCard({ title, children, editing, onToggleEdit, onSave, onCancel, saving, className = '' }: {
+  title: string; children: ReactNode; editing?: boolean;
+  onToggleEdit?: () => void; onSave?: () => void; onCancel?: () => void;
+  saving?: boolean; className?: string;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.25, 0.8, 0.25, 1] }}
+      className={CARD + " p-5 " + className}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-1 h-5 rounded-full" style={{ background: `linear-gradient(180deg, ${ACCENT}, ${GOLD})` }} />
+          <h3 className="text-[13px]" style={{ ...orbitron, color: GOLD }}>{title}</h3>
+        </div>
+        {onToggleEdit && !editing && (
+          <button onClick={onToggleEdit} className="text-[11px] tracking-wide uppercase text-white/35 hover:text-[#FE9100] transition-colors font-semibold">
+            Bearbeiten
+          </button>
+        )}
+        {editing && (
+          <div className="flex items-center gap-3">
+            <button onClick={onCancel} className="text-[11px] tracking-wide uppercase text-white/35 hover:text-white/60 transition-colors font-semibold">
+              Abbrechen
+            </button>
+            <button onClick={onSave} disabled={saving} className="text-[11px] tracking-wide uppercase font-semibold transition-colors" style={{ color: ACCENT }}>
+              {saving ? 'Speichern...' : 'Speichern'}
+            </button>
+          </div>
+        )}
+      </div>
+      {children}
+    </motion.div>
+  );
+}
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
+
+function LeadsContent() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  // ── State ──
+  const [editingSection, setEditingSection] = useState<string | null>(null);
+  const [profileForm, setProfileForm] = useState<Record<string, string>>({});
+  const [aiForm, setAiForm] = useState<Record<string, any>>({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [topError, setTopError] = useState('');
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
+  const [showAddSource, setShowAddSource] = useState(false);
+  const [expandedSources, setExpandedSources] = useState<Set<number>>(new Set());
+
+  // ── Data Fetching ──
+  const { data: profileCtx, isLoading: profileLoading } = useQuery<ProfileCtx>({
+    queryKey: ['/api/user/profile-context'],
+    staleTime: 30_000,
+    retry: 1,
+  });
+
+  const { data: dataSources = [], isLoading: sourcesLoading } = useQuery<DataSource[]>({
+    queryKey: ['/api/user/data-sources'],
+    staleTime: 30_000,
+    retry: 1,
+  });
+
+  const { data: digestData } = useQuery<{ digest: string; sourceCount: number }>({
+    queryKey: ['/api/user/knowledge/digest', 'space'],
+    queryFn: async () => {
+      const res = await fetch('/api/user/knowledge/digest?mode=space', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to load digest');
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+
+  const { data: subData } = useQuery<any>({
+    queryKey: ['/api/user/subscription'],
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  const ai = profileCtx?.aiProfile || {};
+
+  // ── Mutations ──
+  const profileMutation = useMutation({
+    mutationFn: async (body: Record<string, any>) => {
+      const res = await fetch('/api/user/profile', {
+        method: 'PUT', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw { status: res.status, ...data };
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/user/profile-context'] });
+      qc.invalidateQueries({ queryKey: ['/api/auth/me'] });
+      toast({ title: 'Profil aktualisiert', description: 'Änderungen gespeichert.' });
+      setEditingSection(null);
+      setFieldErrors({});
+      setTopError('');
+    },
+    onError: (err: any) => {
+      if (err.code === 'USERNAME_TAKEN') {
+        setFieldErrors({ username: err.message });
+      } else if (err.code === 'EMAIL_TAKEN') {
+        setFieldErrors({ email: err.message });
+      } else if (err.field) {
+        setFieldErrors({ [err.field]: err.message });
+      } else {
+        setTopError(err.message || 'Fehler beim Speichern.');
+      }
+    },
+  });
+
+  const aiProfileMutation = useMutation({
+    mutationFn: async (body: Record<string, any>) => {
+      const res = await fetch('/api/user/ai-profile', {
+        method: 'PATCH', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error('Failed to update');
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/user/profile-context'] });
+      qc.invalidateQueries({ queryKey: ['/api/user/knowledge/digest'] });
+      toast({ title: 'Wissensdatenbank aktualisiert' });
+      setEditingSection(null);
+    },
+    onError: () => { setTopError('Fehler beim Speichern der Business-Daten.'); },
+  });
+
+  const deleteSourceMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/user/data-sources/${id}`, { method: 'DELETE', credentials: 'include' });
+      if (!res.ok) throw new Error('Delete failed');
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/user/data-sources'] });
+      qc.invalidateQueries({ queryKey: ['/api/user/knowledge/digest'] });
+      toast({ title: 'Quelle gelöscht' });
+    },
+  });
+
+  const addSourceMutation = useMutation({
+    mutationFn: async (body: { type: string; title: string; contentText?: string; url?: string }) => {
+      const res = await fetch('/api/user/data-sources', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error('Add failed');
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/user/data-sources'] });
+      qc.invalidateQueries({ queryKey: ['/api/user/knowledge/digest'] });
+      setShowAddSource(false);
+      toast({ title: 'Quelle hinzugefügt' });
+    },
+  });
+
+  // ── Edit helpers ──
+  const startEdit = useCallback((section: string) => {
+    setFieldErrors({});
+    setTopError('');
+    if (section === 'account') {
+      setProfileForm({
+        username: user?.username || '',
+        email: (user as any)?.email || '',
+        firstName: (user as any)?.firstName || '',
+        lastName: (user as any)?.lastName || '',
+      });
+    } else if (section === 'company') {
+      setProfileForm({
+        username: user?.username || '',
+        email: (user as any)?.email || '',
+        firstName: (user as any)?.firstName || '',
+        lastName: (user as any)?.lastName || '',
+        company: profileCtx?.company || '',
+        website: profileCtx?.website || '',
+        industry: profileCtx?.industry || '',
+        jobRole: profileCtx?.jobRole || '',
+        phone: profileCtx?.phone || '',
+      });
+    } else if (section === 'business' || section === 'deep') {
+      setAiForm({ ...ai });
+    }
+    setEditingSection(section);
+  }, [user, profileCtx, ai]);
+
+  const saveProfile = useCallback(() => {
+    profileMutation.mutate({
+      username: profileForm.username,
+      email: profileForm.email,
+      firstName: profileForm.firstName,
+      lastName: profileForm.lastName,
+      company: profileForm.company || (profileCtx?.company ?? ''),
+      website: profileForm.website || (profileCtx?.website ?? ''),
+      industry: profileForm.industry || (profileCtx?.industry ?? ''),
+      jobRole: profileForm.jobRole || (profileCtx?.jobRole ?? ''),
+      phone: profileForm.phone || (profileCtx?.phone ?? ''),
+    });
+  }, [profileForm, profileCtx, profileMutation]);
+
+  const saveCompany = useCallback(() => {
+    profileMutation.mutate({
+      username: user?.username || '',
+      email: (user as any)?.email || '',
+      firstName: (user as any)?.firstName || '',
+      lastName: (user as any)?.lastName || '',
+      company: profileForm.company,
+      website: profileForm.website,
+      industry: profileForm.industry,
+      jobRole: profileForm.jobRole,
+      phone: profileForm.phone,
+    });
+  }, [profileForm, user, profileMutation]);
+
+  const saveAiProfile = useCallback(() => {
+    aiProfileMutation.mutate(aiForm);
+  }, [aiForm, aiProfileMutation]);
+
+  // ── Loading state ──
+  if (profileLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="w-8 h-8 rounded-full border-2 border-[#FE9100]/30 border-t-[#FE9100] animate-spin mx-auto mb-4" />
+          <p className="text-sm text-white/40" style={orbitron}>Wissensdatenbank laden...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const plan = subData?.plan || (user as any)?.subscriptionPlan || 'starter';
+  const enriched = profileCtx?.profileEnriched;
+  const enrichStatus = ai?.enrichmentMeta?.status || ai?.enrichmentStatus || (enriched ? 'live_research' : 'fallback');
+  const isEnriching = enrichStatus === 'queued' || enrichStatus === 'in_progress';
+
+  // ── RENDER ──
+  return (
+    <div className="flex-1 overflow-y-auto" style={{ background: 'linear-gradient(180deg, #050508 0%, #0a0a12 100%)' }}>
+      <div className="max-w-[1080px] mx-auto px-4 sm:px-6 py-8 space-y-5">
+
+        {/* ═══ HERO ═══ */}
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-2">
+          <h1 className="text-[28px] sm:text-[36px] leading-tight mb-2" style={{ ...orbitron, color: GOLD }}>
+            Wissensdatenbank
+          </h1>
+          <p className="text-sm text-white/45 max-w-xl leading-relaxed">
+            Alles, was ARAS über dich und dein Business weiß. Jede Änderung hier fließt direkt in deine Telefon-KI ein.
+          </p>
+          <div className="flex flex-wrap gap-3 mt-4">
+            <button
+              onClick={() => setShowAnalysisModal(true)}
+              className="px-5 py-2.5 rounded-full text-sm font-bold tracking-wide transition-all"
+              style={{
+                border: `1.5px solid ${ACCENT}40`,
+                background: `linear-gradient(180deg, ${ACCENT}18, transparent)`,
+                color: '#fff',
+                boxShadow: `0 0 20px ${ACCENT}15`,
+              }}
+            >
+              Business neu analysieren
+            </button>
+            <button
+              onClick={() => setShowAddSource(true)}
+              className="px-5 py-2.5 rounded-full text-sm font-semibold tracking-wide border border-white/[0.12] text-white/70 hover:text-white/90 hover:border-white/20 transition-all"
+            >
+              Quelle hinzufügen
+            </button>
+          </div>
+          {/* Enrichment Status Pill */}
+          <div className="mt-4 flex items-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full" style={{
+              background: isEnriching ? '#FFA500' : enrichStatus === 'live_research' ? '#22c55e' : '#ef4444',
+              boxShadow: isEnriching ? '0 0 8px #FFA50060' : enrichStatus === 'live_research' ? '0 0 8px #22c55e40' : '0 0 8px #ef444440',
+            }} />
+            <span className="text-[11px] text-white/40 tracking-wide uppercase font-semibold">
+              {isEnriching ? 'Analyse läuft...' : enrichStatus === 'live_research' ? 'Analysiert' : 'Basis-Profil'}
+            </span>
+            {profileCtx?.lastEnrichmentDate && (
+              <span className="text-[10px] text-white/25 ml-1">— {fmtAgo(profileCtx.lastEnrichmentDate)}</span>
+            )}
+          </div>
+        </motion.div>
+
+        {/* ═══ TOP ERROR BANNER ═══ */}
+        <AnimatePresence>
+          {topError && (
+            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 flex items-center justify-between"
+            >
+              <span className="text-sm text-red-300">{topError}</span>
+              <button onClick={() => setTopError('')} className="text-xs text-red-400/60 hover:text-red-300 ml-4 font-semibold">Schließen</button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ═══ GRID ═══ */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+          {/* ── ACCOUNT ── */}
+          <SectionCard
+            title="Account & Zugriff"
+            editing={editingSection === 'account'}
+            onToggleEdit={() => startEdit('account')}
+            onSave={saveProfile}
+            onCancel={() => setEditingSection(null)}
+            saving={profileMutation.isPending}
+          >
+            <FieldRow label="Username" value={user?.username || ''} editing={editingSection === 'account'}
+              editValue={profileForm.username} onChange={(v) => setProfileForm(p => ({ ...p, username: v }))}
+              placeholder="Username" error={fieldErrors.username} />
+            <FieldRow label="E-Mail" value={(user as any)?.email || ''} editing={editingSection === 'account'}
+              editValue={profileForm.email} onChange={(v) => setProfileForm(p => ({ ...p, email: v }))}
+              placeholder="email@beispiel.de" error={fieldErrors.email} />
+            <FieldRow label="Vorname" value={(user as any)?.firstName || ''} editing={editingSection === 'account'}
+              editValue={profileForm.firstName} onChange={(v) => setProfileForm(p => ({ ...p, firstName: v }))}
+              placeholder="Vorname" />
+            <FieldRow label="Nachname" value={(user as any)?.lastName || ''} editing={editingSection === 'account'}
+              editValue={profileForm.lastName} onChange={(v) => setProfileForm(p => ({ ...p, lastName: v }))}
+              placeholder="Nachname" />
+            <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-white/[0.06]">
+              <div>
+                <div className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/30 mb-1">Plan</div>
+                <div className="text-sm font-semibold" style={{ color: ACCENT }}>{plan.charAt(0).toUpperCase() + plan.slice(1)}</div>
+              </div>
+              <div>
+                <div className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/30 mb-1">Erstellt</div>
+                <div className="text-sm text-white/60">{fmtDate((user as any)?.createdAt)}</div>
+              </div>
+            </div>
+          </SectionCard>
+
+          {/* ── COMPANY ── */}
+          <SectionCard
+            title="Unternehmensprofil"
+            editing={editingSection === 'company'}
+            onToggleEdit={() => startEdit('company')}
+            onSave={saveCompany}
+            onCancel={() => setEditingSection(null)}
+            saving={profileMutation.isPending}
+          >
+            <FieldRow label="Firmenname" value={profileCtx?.company || ''} editing={editingSection === 'company'}
+              editValue={profileForm.company} onChange={(v) => setProfileForm(p => ({ ...p, company: v }))}
+              placeholder="ARAS AI GmbH" />
+            <FieldRow label="Website" value={profileCtx?.website || ''} editing={editingSection === 'company'}
+              editValue={profileForm.website} onChange={(v) => setProfileForm(p => ({ ...p, website: v }))}
+              placeholder="https://aras-ai.com" />
+            <FieldRow label="Branche" value={profileCtx?.industry || ''} editing={editingSection === 'company'}
+              editValue={profileForm.industry} onChange={(v) => setProfileForm(p => ({ ...p, industry: v }))}
+              placeholder="Technology / SaaS" />
+            <FieldRow label="Position / Rolle" value={profileCtx?.jobRole || ''} editing={editingSection === 'company'}
+              editValue={profileForm.jobRole} onChange={(v) => setProfileForm(p => ({ ...p, jobRole: v }))}
+              placeholder="CEO, Sales Manager, ..." />
+            <FieldRow label="Telefon" value={profileCtx?.phone || ''} editing={editingSection === 'company'}
+              editValue={profileForm.phone} onChange={(v) => setProfileForm(p => ({ ...p, phone: v }))}
+              placeholder="+43 ..." />
+          </SectionCard>
+
+          {/* ── BUSINESS INTELLIGENCE ── */}
+          <SectionCard
+            title="Business Intelligence"
+            editing={editingSection === 'business'}
+            onToggleEdit={() => startEdit('business')}
+            onSave={saveAiProfile}
+            onCancel={() => setEditingSection(null)}
+            saving={aiProfileMutation.isPending}
+            className="lg:col-span-2"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1">
+              <FieldRow label="Unternehmensbeschreibung" value={trim(ai.companyDescription)} editing={editingSection === 'business'}
+                editValue={aiForm.companyDescription} onChange={(v) => setAiForm(p => ({ ...p, companyDescription: v }))}
+                placeholder="Was macht dein Unternehmen?" multiline />
+              <FieldRow label="Zielgruppe" value={trim(ai.targetAudience)} editing={editingSection === 'business'}
+                editValue={aiForm.targetAudience} onChange={(v) => setAiForm(p => ({ ...p, targetAudience: v }))}
+                placeholder="Wer sind eure Kunden?" multiline />
+              <FieldRow label="Produkte / Services" value={arr(ai.products).join(', ') || arr(ai.services).join(', ')} editing={editingSection === 'business'}
+                editValue={(aiForm.products || []).join(', ')} onChange={(v) => setAiForm(p => ({ ...p, products: v.split(',').map((s: string) => s.trim()).filter(Boolean) }))}
+                placeholder="Produkt A, Service B, ..." />
+              <FieldRow label="Alleinstellungsmerkmale (USP)" value={arr(ai.uniqueSellingPoints).join(' · ')} editing={editingSection === 'business'}
+                editValue={(aiForm.uniqueSellingPoints || []).join(', ')} onChange={(v) => setAiForm(p => ({ ...p, uniqueSellingPoints: v.split(',').map((s: string) => s.trim()).filter(Boolean) }))}
+                placeholder="USP 1, USP 2, ..." />
+              <FieldRow label="Wertversprechen" value={trim(ai.valueProp)} editing={editingSection === 'business'}
+                editValue={aiForm.valueProp} onChange={(v) => setAiForm(p => ({ ...p, valueProp: v }))}
+                placeholder="Euer Hauptversprechen" />
+              <FieldRow label="Wettbewerber" value={arr(ai.competitors).join(', ')} editing={editingSection === 'business'}
+                editValue={(aiForm.competitors || []).join(', ')} onChange={(v) => setAiForm(p => ({ ...p, competitors: v.split(',').map((s: string) => s.trim()).filter(Boolean) }))}
+                placeholder="Firma X, Firma Y, ..." />
+              <FieldRow label="Brand Voice / Tonalität" value={trim(ai.brandVoice)} editing={editingSection === 'business'}
+                editValue={aiForm.brandVoice} onChange={(v) => setAiForm(p => ({ ...p, brandVoice: v }))}
+                placeholder="Professionell, freundlich, direkt..." multiline />
+              <FieldRow label="Effektive Keywords" value={arr(ai.effectiveKeywords).join(', ')} editing={editingSection === 'business'}
+                editValue={(aiForm.effectiveKeywords || []).join(', ')} onChange={(v) => setAiForm(p => ({ ...p, effectiveKeywords: v.split(',').map((s: string) => s.trim()).filter(Boolean) }))}
+                placeholder="Keyword 1, Keyword 2, ..." />
+            </div>
+          </SectionCard>
+
+          {/* ── DEEP INTELLIGENCE ── */}
+          <SectionCard
+            title="Tiefe Analyse"
+            editing={editingSection === 'deep'}
+            onToggleEdit={() => startEdit('deep')}
+            onSave={saveAiProfile}
+            onCancel={() => setEditingSection(null)}
+            saving={aiProfileMutation.isPending}
+            className="lg:col-span-2"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-1">
+              <FieldRow label="Gründungsjahr" value={String(ai.foundedYear || '')} editing={editingSection === 'deep'}
+                editValue={String(aiForm.foundedYear || '')} onChange={(v) => setAiForm(p => ({ ...p, foundedYear: v }))} placeholder="2024" />
+              <FieldRow label="CEO / Geschäftsführung" value={trim(ai.ceoName)} editing={editingSection === 'deep'}
+                editValue={aiForm.ceoName || ''} onChange={(v) => setAiForm(p => ({ ...p, ceoName: v }))} placeholder="Max Mustermann" />
+              <FieldRow label="Mitarbeiterzahl" value={String(ai.employeeCount || '')} editing={editingSection === 'deep'}
+                editValue={String(aiForm.employeeCount || '')} onChange={(v) => setAiForm(p => ({ ...p, employeeCount: v }))} placeholder="50" />
+              <FieldRow label="Umsatz" value={trim(ai.revenue)} editing={editingSection === 'deep'}
+                editValue={aiForm.revenue || ''} onChange={(v) => setAiForm(p => ({ ...p, revenue: v }))} placeholder="~5M EUR" />
+              <FieldRow label="Funding" value={trim(ai.fundingInfo)} editing={editingSection === 'deep'}
+                editValue={aiForm.fundingInfo || ''} onChange={(v) => setAiForm(p => ({ ...p, fundingInfo: v }))} placeholder="Series A, ..." />
+              <FieldRow label="Online-Präsenz" value={trim(ai.onlinePresence)} editing={editingSection === 'deep'}
+                editValue={aiForm.onlinePresence || ''} onChange={(v) => setAiForm(p => ({ ...p, onlinePresence: v }))} placeholder="Website, LinkedIn, ..." />
+              <FieldRow label="Aktuelle Herausforderungen" value={arr(ai.currentChallenges).join(', ')} editing={editingSection === 'deep'}
+                editValue={(aiForm.currentChallenges || []).join(', ')} onChange={(v) => setAiForm(p => ({ ...p, currentChallenges: v.split(',').map((s: string) => s.trim()).filter(Boolean) }))} placeholder="..." />
+              <FieldRow label="Chancen / Opportunities" value={arr(ai.opportunities).join(', ')} editing={editingSection === 'deep'}
+                editValue={(aiForm.opportunities || []).join(', ')} onChange={(v) => setAiForm(p => ({ ...p, opportunities: v.split(',').map((s: string) => s.trim()).filter(Boolean) }))} placeholder="..." />
+              <FieldRow label="Entscheidungsträger" value={arr(ai.decisionMakers).join(', ')} editing={editingSection === 'deep'}
+                editValue={(aiForm.decisionMakers || []).join(', ')} onChange={(v) => setAiForm(p => ({ ...p, decisionMakers: v.split(',').map((s: string) => s.trim()).filter(Boolean) }))} placeholder="..." />
+              <FieldRow label="Sales Triggers" value={arr(ai.salesTriggers).join(', ')} editing={editingSection === 'deep'}
+                editValue={(aiForm.salesTriggers || []).join(', ')} onChange={(v) => setAiForm(p => ({ ...p, salesTriggers: v.split(',').map((s: string) => s.trim()).filter(Boolean) }))} placeholder="..." />
+              <FieldRow label="Beste Anrufzeiten" value={trim(ai.bestCallTimes)} editing={editingSection === 'deep'}
+                editValue={aiForm.bestCallTimes || ''} onChange={(v) => setAiForm(p => ({ ...p, bestCallTimes: v }))} placeholder="Di-Do 10-12 Uhr" />
+              <FieldRow label="Budget-Zyklen" value={trim(ai.budgetCycles)} editing={editingSection === 'deep'}
+                editValue={aiForm.budgetCycles || ''} onChange={(v) => setAiForm(p => ({ ...p, budgetCycles: v }))} placeholder="Q1/Q3 Budget" />
+            </div>
+
+            {/* Personal Intelligence Sub-Section */}
+            <div className="mt-5 pt-4 border-t border-white/[0.06]">
+              <div className="text-[11px] font-bold tracking-[0.08em] uppercase text-white/25 mb-3">Persönliche Intelligenz</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-1">
+                <FieldRow label="Persönlichkeitstyp" value={trim(ai.personalityType)} editing={editingSection === 'deep'}
+                  editValue={aiForm.personalityType || ''} onChange={(v) => setAiForm(p => ({ ...p, personalityType: v }))} placeholder="Analytisch, Direkt..." />
+                <FieldRow label="Kommunikationsstil" value={trim(ai.communicationTone)} editing={editingSection === 'deep'}
+                  editValue={aiForm.communicationTone || ''} onChange={(v) => setAiForm(p => ({ ...p, communicationTone: v }))} placeholder="Professional, casual..." />
+                <FieldRow label="Entscheidungsstil" value={trim(ai.decisionMakingStyle)} editing={editingSection === 'deep'}
+                  editValue={aiForm.decisionMakingStyle || ''} onChange={(v) => setAiForm(p => ({ ...p, decisionMakingStyle: v }))} placeholder="Datengetrieben..." />
+                <FieldRow label="Pain Points" value={arr(ai.painPoints).join(', ')} editing={editingSection === 'deep'}
+                  editValue={(aiForm.painPoints || []).join(', ')} onChange={(v) => setAiForm(p => ({ ...p, painPoints: v.split(',').map((s: string) => s.trim()).filter(Boolean) }))} placeholder="..." />
+                <FieldRow label="Ziele" value={arr(ai.goals).join(', ')} editing={editingSection === 'deep'}
+                  editValue={(aiForm.goals || []).join(', ')} onChange={(v) => setAiForm(p => ({ ...p, goals: v.split(',').map((s: string) => s.trim()).filter(Boolean) }))} placeholder="..." />
+                <FieldRow label="Interessen" value={arr(ai.interests).join(', ')} editing={editingSection === 'deep'}
+                  editValue={(aiForm.interests || []).join(', ')} onChange={(v) => setAiForm(p => ({ ...p, interests: v.split(',').map((s: string) => s.trim()).filter(Boolean) }))} placeholder="..." />
+                <FieldRow label="Tech-Level" value={trim(ai.technicalLevel)} editing={editingSection === 'deep'}
+                  editValue={aiForm.technicalLevel || ''} onChange={(v) => setAiForm(p => ({ ...p, technicalLevel: v }))} placeholder="Hoch / Mittel / Niedrig" />
+                <FieldRow label="Prioritäten" value={arr(ai.priorityFocus).join(', ')} editing={editingSection === 'deep'}
+                  editValue={(aiForm.priorityFocus || []).join(', ')} onChange={(v) => setAiForm(p => ({ ...p, priorityFocus: v.split(',').map((s: string) => s.trim()).filter(Boolean) }))} placeholder="..." />
+                <FieldRow label="Erfolgsmetriken" value={arr(ai.successMetrics).join(', ')} editing={editingSection === 'deep'}
+                  editValue={(aiForm.successMetrics || []).join(', ')} onChange={(v) => setAiForm(p => ({ ...p, successMetrics: v.split(',').map((s: string) => s.trim()).filter(Boolean) }))} placeholder="..." />
+              </div>
+            </div>
+
+            {/* Custom Prompt */}
+            {(ai.customSystemPrompt || editingSection === 'deep') && (
+              <div className="mt-5 pt-4 border-t border-white/[0.06]">
+                <FieldRow label="Custom System Prompt" value={trim(ai.customSystemPrompt)} editing={editingSection === 'deep'}
+                  editValue={aiForm.customSystemPrompt || ''} onChange={(v) => setAiForm(p => ({ ...p, customSystemPrompt: v }))}
+                  placeholder="Eigene Anweisungen für die KI..." multiline />
+              </div>
+            )}
+          </SectionCard>
+
+          {/* ── USER FORM DATA (from re-analysis) ── */}
+          {ai._userFormData && (
+            <SectionCard title="Letzte Analyse-Eingaben" className="lg:col-span-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-1">
+                {Object.entries(ai._userFormData as Record<string, any>).filter(([k]) => k !== 'submittedAt').map(([key, val]) => (
+                  <FieldRow key={key} label={key.replace(/([A-Z])/g, ' $1').trim()} value={String(val || '')} editing={false} />
+                ))}
+              </div>
+              {ai._userFormData.submittedAt && (
+                <div className="text-[10px] text-white/20 mt-3">Eingereicht: {fmtAgo(ai._userFormData.submittedAt)}</div>
+              )}
+            </SectionCard>
+          )}
+
+          {/* ── DATA SOURCES ── */}
+          <SectionCard title={`Datenquellen (${dataSources.length})`} className="lg:col-span-2">
+            {sourcesLoading ? (
+              <div className="text-sm text-white/30 py-4">Laden...</div>
+            ) : dataSources.length === 0 ? (
+              <div className="py-6 text-center">
+                <p className="text-sm text-white/30 mb-3">Noch keine Datenquellen hinzugefügt.</p>
+                <button onClick={() => setShowAddSource(true)} className="text-xs font-semibold tracking-wide uppercase" style={{ color: ACCENT }}>
+                  Erste Quelle hinzufügen
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {dataSources.map((src) => {
+                  const isExpanded = expandedSources.has(src.id);
+                  return (
+                    <div key={src.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full border"
+                              style={{ borderColor: src.type === 'url' ? '#3b82f620' : src.type === 'text' ? '#22c55e20' : '#a855f720',
+                                       color: src.type === 'url' ? '#60a5fa' : src.type === 'text' ? '#4ade80' : '#c084fc' }}>
+                              {src.type}
+                            </span>
+                            <span className="text-sm text-white/80 font-medium truncate">{src.title || 'Ohne Titel'}</span>
+                          </div>
+                          {src.url && <div className="text-xs text-white/30 truncate">{src.url}</div>}
+                          <div className="text-[10px] text-white/20 mt-1">{fmtAgo(src.updatedAt)}</div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {src.contentText && (
+                            <button onClick={() => setExpandedSources(prev => {
+                              const next = new Set(prev);
+                              isExpanded ? next.delete(src.id) : next.add(src.id);
+                              return next;
+                            })} className="text-[10px] font-semibold tracking-wide uppercase text-white/30 hover:text-white/60 transition-colors">
+                              {isExpanded ? 'Ausblenden' : 'Anzeigen'}
+                            </button>
+                          )}
+                          <button onClick={() => { if (confirm('Quelle wirklich löschen?')) deleteSourceMutation.mutate(src.id); }}
+                            className="text-[10px] font-semibold tracking-wide uppercase text-red-400/50 hover:text-red-400 transition-colors">
+                            Löschen
+                          </button>
+                        </div>
+                      </div>
+                      <AnimatePresence>
+                        {isExpanded && src.contentText && (
+                          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden">
+                            <pre className="mt-3 p-3 rounded-lg bg-black/30 border border-white/[0.04] text-xs text-white/50 whitespace-pre-wrap max-h-[200px] overflow-auto">
+                              {src.contentText}
+                            </pre>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </SectionCard>
+
+          {/* ── CONTEXT PREVIEW ── */}
+          <SectionCard title="KI-Kontext Vorschau" className="lg:col-span-2">
+            <p className="text-[10px] text-white/25 mb-3 tracking-wide uppercase font-semibold">
+              Das sieht die Telefon-KI bei jedem Anruf
+            </p>
+            {digestData?.digest ? (
+              <div className="relative">
+                <pre className="p-4 rounded-xl bg-black/40 border border-white/[0.04] text-xs text-white/50 whitespace-pre-wrap max-h-[300px] overflow-auto leading-relaxed font-mono">
+                  {digestData.digest}
+                </pre>
+                <button onClick={() => { navigator.clipboard.writeText(digestData.digest); toast({ title: 'Kopiert!' }); }}
+                  className="absolute top-3 right-3 text-[10px] font-semibold uppercase tracking-wide text-white/25 hover:text-[#FE9100] transition-colors">
+                  Kopieren
+                </button>
+              </div>
+            ) : (
+              <div className="text-sm text-white/25 italic py-4">Kein Kontext verfügbar. Füge Daten hinzu oder starte eine Analyse.</div>
+            )}
+            {digestData?.sourceCount !== undefined && (
+              <div className="mt-2 text-[10px] text-white/20">{digestData.sourceCount} Quellen · {digestData.digest?.length || 0} Zeichen</div>
+            )}
+          </SectionCard>
+
+          {/* ── USAGE & SUBSCRIPTION ── */}
+          <SectionCard title="Nutzung & Plan">
+            <div className="space-y-3">
+              <div>
+                <div className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/30 mb-1">Plan</div>
+                <div className="text-sm font-bold" style={{ color: ACCENT }}>{plan.charAt(0).toUpperCase() + plan.slice(1)}</div>
+              </div>
+              {subData?.usage?.aiMessages !== undefined && (
+                <div>
+                  <div className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/30 mb-1">KI-Nachrichten</div>
+                  <div className="text-sm text-white/70">{subData.usage.aiMessages.used} / {subData.usage.aiMessages.limit}</div>
+                </div>
+              )}
+              {subData?.usage?.voiceCalls !== undefined && (
+                <div>
+                  <div className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/30 mb-1">Voice Calls</div>
+                  <div className="text-sm text-white/70">{subData.usage.voiceCalls.used} / {subData.usage.voiceCalls.limit}</div>
+                </div>
+              )}
+            </div>
+          </SectionCard>
+
+          {/* ── ENRICHMENT META ── */}
+          <SectionCard title="Analyse-Status">
+            <div className="space-y-3">
+              <div>
+                <div className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/30 mb-1">Status</div>
+                <div className="text-sm text-white/70">{
+                  enrichStatus === 'live_research' ? 'Live Research abgeschlossen' :
+                  enrichStatus === 'queued' ? 'In Warteschlange' :
+                  enrichStatus === 'in_progress' ? 'Wird analysiert...' :
+                  'Basis-Profil (Fallback)'
+                }</div>
+              </div>
+              {ai.enrichmentMeta?.confidence && (
+                <div>
+                  <div className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/30 mb-1">Konfidenz</div>
+                  <div className="text-sm text-white/70 capitalize">{ai.enrichmentMeta.confidence}</div>
+                </div>
+              )}
+              {ai.enrichmentMeta?.attempts !== undefined && (
+                <div>
+                  <div className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/30 mb-1">Versuche</div>
+                  <div className="text-sm text-white/70">{ai.enrichmentMeta.attempts}</div>
+                </div>
+              )}
+              {ai.enrichmentErrorCode && (
+                <div>
+                  <div className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/30 mb-1">Letzter Fehler</div>
+                  <div className="text-sm text-red-400/70">{ai.enrichmentErrorCode}</div>
+                </div>
+              )}
+              <div>
+                <div className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/30 mb-1">Letzte Aktualisierung</div>
+                <div className="text-sm text-white/60">{fmtAgo(ai.lastUpdated || profileCtx?.lastEnrichmentDate)}</div>
+              </div>
+            </div>
+          </SectionCard>
+
+        </div>
+
+        {/* ═══ RE-ANALYSIS MODAL ═══ */}
+        <AnalysisModal open={showAnalysisModal} onClose={() => setShowAnalysisModal(false)} profileCtx={profileCtx} ai={ai} />
+
+        {/* ═══ ADD SOURCE DIALOG ═══ */}
+        <AddSourceDialog open={showAddSource} onClose={() => setShowAddSource(false)} onAdd={(data) => addSourceMutation.mutate(data)} saving={addSourceMutation.isPending} />
+
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// ANALYSIS MODAL — Business Re-Analysis
+// ============================================================================
+
+function AnalysisModal({ open, onClose, profileCtx, ai }: { open: boolean; onClose: () => void; profileCtx: ProfileCtx | undefined; ai: any }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [form, setForm] = useState<Record<string, string>>({});
+  const [status, setStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  useEffect(() => {
+    if (open) {
+      setForm({
+        companyName: profileCtx?.company || '',
+        website: profileCtx?.website || '',
+        industry: profileCtx?.industry || '',
+        region: ai?._userFormData?.region || '',
+        offer: trim(ai?.companyDescription) || '',
+        targetAudience: trim(ai?.targetAudience) || '',
+        usp: arr(ai?.uniqueSellingPoints).join(', ') || '',
+        pricing: ai?._userFormData?.pricing || '',
+        objections: ai?._userFormData?.objections || '',
+        faq: ai?._userFormData?.faq || '',
+        compliance: ai?._userFormData?.compliance || '',
+        tone: trim(ai?.brandVoice) || '',
+        competitors: arr(ai?.competitors).join(', ') || '',
+        callGoal: ai?._userFormData?.callGoal || '',
+        doNotSay: ai?._userFormData?.doNotSay || '',
+      });
+      setStatus('idle');
+      setErrorMsg('');
+    }
+  }, [open, profileCtx, ai]);
+
+  const handleSubmit = async () => {
+    if (!form.companyName?.trim()) {
+      setErrorMsg('Firmenname ist erforderlich.');
+      return;
+    }
+    setStatus('running');
+    setErrorMsg('');
+    try {
+      const res = await fetch('/api/user/business-analysis', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Analyse fehlgeschlagen');
+      setStatus('done');
+      toast({ title: 'Analyse abgeschlossen', description: data.message });
+      // Refresh all data
+      setTimeout(() => {
+        qc.invalidateQueries({ queryKey: ['/api/user/profile-context'] });
+        qc.invalidateQueries({ queryKey: ['/api/user/knowledge/digest'] });
+        qc.invalidateQueries({ queryKey: ['/api/auth/me'] });
+        onClose();
+      }, 1500);
+    } catch (err: any) {
+      setStatus('error');
+      setErrorMsg(err.message || 'Unbekannter Fehler');
+    }
+  };
+
+  const fields: { key: string; label: string; multi?: boolean; required?: boolean }[] = [
+    { key: 'companyName', label: 'Firmenname', required: true },
+    { key: 'website', label: 'Website' },
+    { key: 'industry', label: 'Branche' },
+    { key: 'region', label: 'Region / Markt' },
+    { key: 'offer', label: 'Angebot / Beschreibung', multi: true },
+    { key: 'targetAudience', label: 'Zielgruppe', multi: true },
+    { key: 'usp', label: 'USPs (kommagetrennt)' },
+    { key: 'pricing', label: 'Preise / Pakete', multi: true },
+    { key: 'tone', label: 'Tonalität / Sprache' },
+    { key: 'competitors', label: 'Wettbewerber (kommagetrennt)' },
+    { key: 'callGoal', label: 'Anruf-Ziel', multi: true },
+    { key: 'objections', label: 'Häufige Einwände', multi: true },
+    { key: 'faq', label: 'FAQ', multi: true },
+    { key: 'compliance', label: 'Compliance / No-Gos', multi: true },
+    { key: 'doNotSay', label: 'Nicht sagen (Do-Not-Say)', multi: true },
+  ];
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v && status !== 'running') onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-[#0a0a0f] border-white/[0.08]" style={{ borderRadius: 22 }}>
+        <DialogHeader>
+          <DialogTitle className="text-lg" style={{ ...orbitron, color: GOLD }}>Business neu analysieren</DialogTitle>
+          <DialogDescription className="text-white/40 text-sm">
+            Fülle die Felder aus. ARAS analysiert dein Business und aktualisiert die Wissensdatenbank.
+          </DialogDescription>
+        </DialogHeader>
+
+        {status === 'running' ? (
+          <div className="py-12 text-center">
+            <div className="w-10 h-10 rounded-full border-2 border-[#FE9100]/30 border-t-[#FE9100] animate-spin mx-auto mb-4" />
+            <p className="text-sm text-white/50" style={orbitron}>Analyse läuft...</p>
+            <p className="text-xs text-white/30 mt-2">Dies kann 10-30 Sekunden dauern.</p>
+          </div>
+        ) : status === 'done' ? (
+          <div className="py-12 text-center">
+            <div className="w-10 h-10 rounded-full border-2 border-green-500/40 mx-auto mb-4 flex items-center justify-center">
+              <span className="text-green-400 text-lg">✓</span>
+            </div>
+            <p className="text-sm text-white/70" style={orbitron}>Analyse abgeschlossen</p>
+            <p className="text-xs text-white/40 mt-2">Wissensdatenbank wird aktualisiert...</p>
+          </div>
+        ) : (
+          <div className="space-y-4 mt-2">
+            {errorMsg && (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-300">
+                {errorMsg}
+              </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {fields.map((f) => (
+                <div key={f.key} className={f.multi ? 'sm:col-span-2' : ''}>
+                  <label className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/35 mb-1.5 block">
+                    {f.label}{f.required && <span className="text-red-400 ml-1">*</span>}
+                  </label>
+                  {f.multi ? (
+                    <Textarea
+                      value={form[f.key] || ''}
+                      onChange={(e) => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                      className="bg-white/[0.04] border-white/[0.10] text-white/90 text-sm rounded-xl min-h-[70px] focus:border-[#FE9100]/40"
+                    />
+                  ) : (
+                    <Input
+                      value={form[f.key] || ''}
+                      onChange={(e) => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                      className="bg-white/[0.04] border-white/[0.10] text-white/90 text-sm rounded-xl h-9 focus:border-[#FE9100]/40"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <button onClick={onClose} className="px-5 py-2 rounded-full text-sm font-semibold border border-white/[0.10] text-white/50 hover:text-white/70 transition-colors">
+                Abbrechen
+              </button>
+              <button onClick={handleSubmit} className="px-6 py-2 rounded-full text-sm font-bold tracking-wide transition-all"
+                style={{ border: `1.5px solid ${ACCENT}40`, background: `linear-gradient(180deg, ${ACCENT}18, transparent)`, color: '#fff' }}>
+                Analyse starten
+              </button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ============================================================================
+// ADD SOURCE DIALOG
+// ============================================================================
+
+function AddSourceDialog({ open, onClose, onAdd, saving }: {
+  open: boolean; onClose: () => void;
+  onAdd: (data: { type: string; title: string; contentText?: string; url?: string }) => void;
+  saving: boolean;
+}) {
+  const [type, setType] = useState<'text' | 'url'>('text');
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [url, setUrl] = useState('');
+
+  useEffect(() => {
+    if (open) { setType('text'); setTitle(''); setContent(''); setUrl(''); }
+  }, [open]);
+
+  const handleAdd = () => {
+    if (!title.trim()) return;
+    if (type === 'text') {
+      onAdd({ type: 'text', title: title.trim(), contentText: content.trim() });
+    } else {
+      onAdd({ type: 'url', title: title.trim(), url: url.trim() });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-lg bg-[#0a0a0f] border-white/[0.08]" style={{ borderRadius: 22 }}>
+        <DialogHeader>
+          <DialogTitle className="text-lg" style={{ ...orbitron, color: GOLD }}>Quelle hinzufügen</DialogTitle>
+          <DialogDescription className="text-white/40 text-sm">
+            Text oder URL als Wissensquelle hinzufügen.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 mt-2">
+          {/* Type Toggle */}
+          <div className="flex gap-2">
+            {(['text', 'url'] as const).map((t) => (
+              <button key={t} onClick={() => setType(t)}
+                className="px-4 py-1.5 rounded-full text-xs font-semibold tracking-wide uppercase transition-all"
+                style={{
+                  border: `1px solid ${type === t ? ACCENT + '40' : 'rgba(255,255,255,0.08)'}`,
+                  color: type === t ? ACCENT : 'rgba(255,255,255,0.4)',
+                  background: type === t ? ACCENT + '10' : 'transparent',
+                }}>
+                {t === 'text' ? 'Text' : 'URL'}
+              </button>
+            ))}
+          </div>
+
+          <div>
+            <label className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/35 mb-1.5 block">Titel</label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titel der Quelle"
+              className="bg-white/[0.04] border-white/[0.10] text-white/90 text-sm rounded-xl h-9 focus:border-[#FE9100]/40" />
+          </div>
+
+          {type === 'text' ? (
+            <div>
+              <label className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/35 mb-1.5 block">Inhalt</label>
+              <Textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Hier den Text einfügen..."
+                className="bg-white/[0.04] border-white/[0.10] text-white/90 text-sm rounded-xl min-h-[120px] focus:border-[#FE9100]/40" />
+            </div>
+          ) : (
+            <div>
+              <label className="text-[10px] font-semibold tracking-[0.12em] uppercase text-white/35 mb-1.5 block">URL</label>
+              <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..."
+                className="bg-white/[0.04] border-white/[0.10] text-white/90 text-sm rounded-xl h-9 focus:border-[#FE9100]/40" />
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button onClick={onClose} className="px-5 py-2 rounded-full text-sm font-semibold border border-white/[0.10] text-white/50 hover:text-white/70 transition-colors">
+              Abbrechen
+            </button>
+            <button onClick={handleAdd} disabled={saving || !title.trim()} className="px-6 py-2 rounded-full text-sm font-bold tracking-wide transition-all disabled:opacity-40"
+              style={{ border: `1.5px solid ${ACCENT}40`, background: `linear-gradient(180deg, ${ACCENT}18, transparent)`, color: '#fff' }}>
+              {saving ? 'Wird hinzugefügt...' : 'Hinzufügen'}
+            </button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ============================================================================
+// EXPORT
+// ============================================================================
+
 export default function Leads() {
   return (
     <LeadsErrorBoundary>

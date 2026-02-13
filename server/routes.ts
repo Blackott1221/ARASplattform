@@ -346,52 +346,137 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update AI Profile (Business Intelligence) - User can edit their business data
+  // Update AI Profile (Business Intelligence) - User can edit ALL business data
+  // Deep-merges incoming fields with existing ai_profile. Null/undefined fields are ignored.
   app.patch('/api/user/ai-profile', requireAuth, async (req: any, res) => {
     try {
       const userId = getAuthUserId(req);
       if (!userId) {
         return res.status(401).json({ success: false, message: 'User ID not found' });
       }
-      const { companyDescription, targetAudience, effectiveKeywords, competitors, services } = req.body;
-      logger.info(`[AI_PROFILE] PATCH userId=${userId}`);
+      logger.info(`[AI_PROFILE] PATCH userId=${userId} keys=${Object.keys(req.body).join(',')}`);
 
-      // Get current user to merge with existing ai_profile data
+      // Get current ai_profile
       const [currentUser] = await client`
         SELECT ai_profile FROM users WHERE id = ${userId}
       `;
+      const existing = currentUser?.ai_profile || {};
 
-      // Merge new data with existing ai_profile
-      const updatedAiProfile = {
-        ...(currentUser?.ai_profile || {}),
-        companyDescription: companyDescription || currentUser?.ai_profile?.companyDescription,
-        targetAudience: targetAudience || currentUser?.ai_profile?.targetAudience,
-        effectiveKeywords: effectiveKeywords && effectiveKeywords.length > 0 
-          ? effectiveKeywords 
-          : (currentUser?.ai_profile?.effectiveKeywords || []),
-        competitors: competitors && competitors.length > 0 
-          ? competitors 
-          : (currentUser?.ai_profile?.competitors || []),
-        services: services || currentUser?.ai_profile?.services,
-      };
+      // Deep merge: only overwrite fields that are explicitly provided (not undefined)
+      const incoming = req.body || {};
+      const merged = { ...existing };
+      for (const [key, value] of Object.entries(incoming)) {
+        if (value !== undefined) {
+          merged[key] = value;
+        }
+      }
+      merged.lastUpdated = new Date().toISOString();
 
-      // Convert to JSON and escape for raw SQL (bypass postgres.js limitations)
-      const jsonString = JSON.stringify(updatedAiProfile).replace(/'/g, "''");
+      // Sanitize: cap total JSON size at 500KB
+      const jsonString = JSON.stringify(merged);
+      if (jsonString.length > 500_000) {
+        return res.status(400).json({ success: false, message: 'AI-Profil zu groß (max 500KB).' });
+      }
+      const escaped = jsonString.replace(/'/g, "''");
 
-      // Update users table with merged ai_profile using unsafe for JSONB
       await client.unsafe(`
         UPDATE users
-        SET 
-          ai_profile = '${jsonString}'::jsonb,
-          updated_at = NOW()
+        SET ai_profile = '${escaped}'::jsonb, updated_at = NOW()
         WHERE id = '${userId}'
       `);
 
-      logger.info(`✅ AI Profile updated for user ${userId}`);
+      logger.info(`[AI_PROFILE] ✅ Updated for userId=${userId} (${Object.keys(incoming).length} fields)`);
       res.json({ success: true, message: 'AI Profile updated successfully' });
     } catch (error) {
-      logger.error('❌ Error updating AI profile:', error);
-      res.status(500).json({ message: 'Failed to update AI profile' });
+      logger.error('[AI_PROFILE] ❌ Error:', error);
+      res.status(500).json({ success: false, message: 'Failed to update AI profile' });
+    }
+  });
+
+  // Business Re-Analysis: save form data → trigger Gemini enrichment
+  app.post('/api/user/business-analysis', requireAuth, async (req: any, res) => {
+    try {
+      const userId = getAuthUserId(req);
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'User ID not found' });
+      }
+
+      const { companyName, website, industry, region, offer, targetAudience, usp, pricing,
+              objections, faq, compliance, tone, competitors, callGoal, doNotSay } = req.body;
+
+      if (!companyName || typeof companyName !== 'string' || companyName.trim().length < 2) {
+        return res.status(400).json({ success: false, code: 'VALIDATION_ERROR', field: 'companyName', message: 'Firmenname ist erforderlich (min. 2 Zeichen).' });
+      }
+
+      logger.info(`[BIZ-ANALYSIS] Starting for userId=${userId} company=${companyName}`);
+
+      // 1. Save user-provided form data to user fields + aiProfile
+      const trimmedCompany = companyName.trim();
+      const trimmedWebsite = website ? String(website).trim() : null;
+      const trimmedIndustry = industry ? String(industry).trim() : null;
+
+      // Update user-level fields
+      await client`
+        UPDATE users SET
+          company = ${trimmedCompany},
+          website = ${trimmedWebsite},
+          industry = ${trimmedIndustry},
+          updated_at = NOW()
+        WHERE id = ${userId}
+      `;
+
+      // 2. Merge form data into aiProfile (user-provided context for enrichment)
+      const [currentUser] = await client`SELECT ai_profile FROM users WHERE id = ${userId}`;
+      const existingProfile = currentUser?.ai_profile || {};
+
+      const formContext: Record<string, any> = {
+        ...existingProfile,
+        // Mark user-provided fields
+        companyDescription: offer ? String(offer).trim() : existingProfile.companyDescription,
+        targetAudience: targetAudience ? String(targetAudience).trim() : existingProfile.targetAudience,
+        competitors: competitors ? String(competitors).split(',').map((s: string) => s.trim()).filter(Boolean) : existingProfile.competitors,
+        brandVoice: tone ? String(tone).trim() : existingProfile.brandVoice,
+        // Additional form context stored for enrichment
+        _userFormData: {
+          region: region || null,
+          usp: usp || null,
+          pricing: pricing || null,
+          objections: objections || null,
+          faq: faq || null,
+          compliance: compliance || null,
+          callGoal: callGoal || null,
+          doNotSay: doNotSay || null,
+          submittedAt: new Date().toISOString(),
+        },
+        lastUpdated: new Date().toISOString(),
+      };
+
+      const jsonStr = JSON.stringify(formContext).replace(/'/g, "''");
+      await client.unsafe(`
+        UPDATE users SET ai_profile = '${jsonStr}'::jsonb, updated_at = NOW() WHERE id = '${userId}'
+      `);
+
+      // 3. Trigger Gemini enrichment (async, non-blocking)
+      let enrichmentResult = { success: false, message: 'Enrichment not triggered' };
+      try {
+        const { forceReEnrich } = await import('./services/enrichment.service');
+        enrichmentResult = await forceReEnrich(userId);
+      } catch (enrichErr: any) {
+        logger.error(`[BIZ-ANALYSIS] Enrichment error: ${enrichErr?.message}`);
+        enrichmentResult = { success: false, message: enrichErr?.message || 'Enrichment failed' };
+      }
+
+      logger.info(`[BIZ-ANALYSIS] ✅ Done for userId=${userId} enrichment=${enrichmentResult.success}`);
+      res.json({
+        success: true,
+        message: enrichmentResult.success
+          ? 'Analyse gestartet. Wissensdatenbank wird aktualisiert.'
+          : 'Daten gespeichert. Analyse konnte nicht gestartet werden: ' + enrichmentResult.message,
+        enrichmentTriggered: enrichmentResult.success,
+      });
+    } catch (error: any) {
+      logger.error('[BIZ-ANALYSIS] ❌ Error:', error?.message);
+      res.status(500).json({ success: false, message: 'Business-Analyse fehlgeschlagen.' });
     }
   });
 
@@ -3274,31 +3359,70 @@ Deine Aufgabe: Antworte wie ein denkender Mensch. Handle wie ein System. Klinge 
   // USER SETTINGS & PROFILE
   // ========================================================
 
-  // Update user profile
+  // Update user profile (with unique validation for username + email)
   app.put('/api/user/profile', requireAuth, async (req: any, res) => {
     try {
       const userId = req.session.userId;
-      const { username, email, firstName, lastName } = req.body;
+      if (!userId) return res.status(401).json({ success: false, message: 'Not authenticated' });
 
-      if (!username) {
-        return res.status(400).json({ message: 'Username is required' });
+      const { username, email, firstName, lastName, company, website, industry, jobRole, phone } = req.body;
+
+      if (!username || typeof username !== 'string' || username.trim().length < 2) {
+        return res.status(400).json({ success: false, code: 'VALIDATION_ERROR', field: 'username', message: 'Username muss mindestens 2 Zeichen haben.' });
+      }
+      if (username.trim().length > 50) {
+        return res.status(400).json({ success: false, code: 'VALIDATION_ERROR', field: 'username', message: 'Username darf maximal 50 Zeichen haben.' });
+      }
+
+      const trimmedUsername = username.trim();
+      const trimmedEmail = email ? String(email).trim().toLowerCase() : null;
+
+      // Check username uniqueness
+      const [existingUsername] = await client`
+        SELECT id FROM users WHERE username = ${trimmedUsername} AND id != ${userId}
+      `;
+      if (existingUsername) {
+        return res.status(409).json({ success: false, code: 'USERNAME_TAKEN', field: 'username', message: 'Dieser Username ist bereits vergeben.' });
+      }
+
+      // Check email uniqueness (if provided)
+      if (trimmedEmail) {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+          return res.status(400).json({ success: false, code: 'VALIDATION_ERROR', field: 'email', message: 'Ungültiges E-Mail-Format.' });
+        }
+        const [existingEmail] = await client`
+          SELECT id FROM users WHERE email = ${trimmedEmail} AND id != ${userId}
+        `;
+        if (existingEmail) {
+          return res.status(409).json({ success: false, code: 'EMAIL_TAKEN', field: 'email', message: 'Diese E-Mail-Adresse wird bereits verwendet.' });
+        }
       }
 
       await client`
         UPDATE users 
         SET 
-          username = ${username},
-          email = ${email || null},
-          first_name = ${firstName || null},
-          last_name = ${lastName || null},
+          username = ${trimmedUsername},
+          email = ${trimmedEmail},
+          first_name = ${firstName ? String(firstName).trim() : null},
+          last_name = ${lastName ? String(lastName).trim() : null},
+          company = ${company ? String(company).trim() : null},
+          website = ${website ? String(website).trim() : null},
+          industry = ${industry ? String(industry).trim() : null},
+          job_role = ${jobRole ? String(jobRole).trim() : null},
+          phone = ${phone ? String(phone).trim() : null},
           updated_at = NOW()
         WHERE id = ${userId}
       `;
 
-      res.json({ success: true, message: 'Profile updated successfully' });
-    } catch (error) {
-      console.error('[Settings] Profile update error:', error);
-      res.status(500).json({ message: 'Failed to update profile' });
+      logger.info(`[PROFILE] Updated for userId=${userId}`);
+      res.json({ success: true, message: 'Profil erfolgreich aktualisiert.' });
+    } catch (error: any) {
+      logger.error('[PROFILE] Update error:', error?.message);
+      // Handle DB unique constraint violations as fallback
+      if (error?.message?.includes('unique') || error?.code === '23505') {
+        return res.status(409).json({ success: false, code: 'CONFLICT', message: 'Username oder E-Mail bereits vergeben.' });
+      }
+      res.status(500).json({ success: false, message: 'Profil konnte nicht aktualisiert werden.' });
     }
   });
 
