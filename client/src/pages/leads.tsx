@@ -368,9 +368,9 @@ function LeadsContent() {
   const isRun = aRunning || isServerRun;
 
   return (
-    <div className="flex-1 overflow-y-auto" style={{ background: `linear-gradient(180deg,${C.bgDark} 0%,#07070c 100%)` }}>
+    <div className="flex-1 min-h-0 overflow-y-auto" style={{ background: `linear-gradient(180deg,${C.bgDark} 0%,#07070c 100%)` }}>
       <div className="fixed inset-0 pointer-events-none z-0" style={{ background: 'radial-gradient(1200px 700px at 18% 10%,rgba(254,145,0,0.06),transparent 62%),radial-gradient(900px 560px at 86% 18%,rgba(233,215,196,0.04),transparent 64%)' }} />
-      <div className="relative z-[1] max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-6">
+      <div className="relative z-[1] max-w-[1240px] mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 pb-24 space-y-6">
 
         {/* HEADER */}
         <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }}>
