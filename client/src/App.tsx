@@ -46,6 +46,10 @@ import AdminFoundingClaims from "@/pages/admin-founding-claims";
 import InvestorSchwabPage from "@/pages/app/investor/schwab";
 import InvestorsV2Page from "@/pages/investors-v2";
 
+// VC Pitch Deck Pages (hidden, direct link only)
+import FlyVenturesPage from "@/pages/vc/fly-ventures";
+import B2VenturePage from "@/pages/vc/b2venture";
+
 // NDA Gate + Data Room
 import NdaPage from "@/pages/nda";
 import DataRoomPage from "@/pages/data-room";
@@ -178,6 +182,10 @@ function Router() {
         <Route path="/investors" component={InvestorsV2Page} />
         <Route path="/app/investor/schwab" component={InvestorSchwabPage} />
         <Route path="/investor/schwab" component={InvestorSchwabPage} />
+        
+        {/* 🎯 VC PITCH DECK PAGES - Public but hidden (direct link only) */}
+        <Route path="/vc/fly-ventures" component={FlyVenturesPage} />
+        <Route path="/vc/b2venture" component={B2VenturePage} />
         
         {/* 🔒 NDA Gate + Data Room */}
         <Route path="/nda" component={NdaPage} />
