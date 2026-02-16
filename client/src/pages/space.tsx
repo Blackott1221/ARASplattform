@@ -445,19 +445,19 @@ export default function Space() {
                 exit={{ opacity: 0, y: -20, height: 0 }}
                 transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
                 className="relative overflow-hidden overflow-y-auto max-h-[85vh] border-b border-[#e9d7c4]/8"
-                style={{ isolation: 'isolate' }}
+                style={{ isolation: 'isolate', borderBottom: '1px solid rgba(233,215,196,0.06)' }}
               >
                 {/* Premium Aura Backgrounds */}
                 <div className="absolute inset-0 pointer-events-none" style={{
                   background: 'radial-gradient(1200px 500px at 18% 10%, rgba(254,145,0,0.08), transparent 62%), radial-gradient(800px 400px at 86% 18%, rgba(233,215,196,0.05), transparent 64%), radial-gradient(600px 300px at 50% 90%, rgba(163,78,0,0.06), transparent 70%)'
                 }} />
 
-                <div className="relative px-6 py-5 z-[1]">
-                  <div className="max-w-6xl mx-auto space-y-5">
+                <div className="relative px-4 sm:px-6 py-5 z-[1]">
+                  <div className="max-w-6xl mx-auto space-y-4 overflow-hidden">
                     
                     {/* ═══ HEADER ═══ */}
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 space-y-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0 space-y-2">
                         <motion.div 
                           initial={{ opacity: 0, y: -8 }}
                           animate={{ opacity: 1, y: 0 }}
@@ -466,7 +466,7 @@ export default function Space() {
                           style={{ background: 'rgba(255,255,255,0.02)' }}
                         >
                           <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'linear-gradient(180deg, #FE9100, #a34e00)', boxShadow: '0 0 12px rgba(254,145,0,0.5)' }} />
-                          <span className="text-[11px] font-bold tracking-[0.22em] uppercase" style={{ fontFamily: 'Orbitron, sans-serif', color: 'rgba(233,215,196,0.92)' }}>
+                          <span className="text-[10px] sm:text-[11px] font-bold tracking-[0.18em] sm:tracking-[0.22em] uppercase whitespace-nowrap" style={{ fontFamily: 'Orbitron, sans-serif', color: 'rgba(233,215,196,0.92)' }}>
                             ARAS AI® Intelligence Briefing
                           </span>
                         </motion.div>
@@ -475,8 +475,8 @@ export default function Space() {
                           initial={{ opacity: 0, x: -15 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: 0.12, type: "spring", stiffness: 200 }}
-                          className="text-2xl md:text-3xl font-black"
-                          style={{ fontFamily: 'Orbitron, sans-serif', letterSpacing: '-0.01em', background: 'linear-gradient(135deg, #e9d7c4 0%, #FE9100 50%, #a34e00 100%)', backgroundSize: '200% auto', backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
+                          className="text-xl sm:text-2xl md:text-3xl font-black truncate"
+                          style={{ fontFamily: 'Orbitron, sans-serif', letterSpacing: '-0.01em', background: 'linear-gradient(90deg, #e9d7c4 0%, #FE9100 40%, #a34e00 80%, #e9d7c4 100%)', backgroundSize: '300% auto', backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', animation: 'briefingSheen 6s linear infinite' }}
                         >
                           {companyName}
                         </motion.h2>
@@ -496,7 +496,7 @@ export default function Space() {
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: 0.3 }}
                         onClick={() => setShowWelcome(false)}
-                        className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-500 hover:text-white transition-all duration-300 group border border-[#e9d7c4]/10 hover:border-[#FE9100]/30"
+                        className="w-8 h-8 flex-shrink-0 rounded-xl flex items-center justify-center text-gray-500 hover:text-white transition-all duration-300 group border border-[#e9d7c4]/10 hover:border-[#FE9100]/30"
                         style={{ background: 'rgba(255,255,255,0.02)' }}
                       >
                         <X className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" />
@@ -517,15 +517,15 @@ export default function Space() {
                           <div className="w-10 h-10 rounded-xl border border-[#e9d7c4]/14 flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,255,255,0.02)' }}>
                             <Building2 className="w-5 h-5 text-[#e9d7c4]/90" />
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-2">
+                          <div className="flex-1 min-w-0 overflow-hidden">
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
                               <h3 className="text-xs font-bold tracking-[0.15em] uppercase" style={{ color: 'rgba(233,215,196,0.9)' }}>Unternehmensprofil</h3>
                               {aiProfile?.foundedYear && <span className="text-[10px] px-2 py-0.5 rounded-full border border-[#e9d7c4]/12 text-gray-500">seit {aiProfile.foundedYear}</span>}
                               {aiProfile?.headquarters && <span className="text-[10px] px-2 py-0.5 rounded-full border border-[#e9d7c4]/12 text-gray-500">📍 {aiProfile.headquarters}</span>}
                               {aiProfile?.employeeCount && <span className="text-[10px] px-2 py-0.5 rounded-full border border-[#e9d7c4]/12 text-gray-500">👥 {aiProfile.employeeCount}</span>}
                             </div>
-                            <p className="text-[13px] text-gray-300 leading-relaxed">
-                              {companyDescription.length > 400 ? companyDescription.slice(0, 400) + '...' : companyDescription}
+                            <p className="text-[13px] text-gray-300 leading-relaxed break-words" style={{ overflowWrap: 'break-word', wordBreak: 'break-word' }}>
+                              {companyDescription.length > 400 ? companyDescription.slice(0, 400) + '…' : companyDescription}
                             </p>
                           </div>
                         </div>
@@ -533,32 +533,32 @@ export default function Space() {
                     )}
 
                     {/* ═══ MAIN GRID — 3 columns ═══ */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 overflow-hidden">
 
                       {/* 🎯 GOAL + BRAND VOICE */}
                       <motion.div
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.25 }}
-                        className="rounded-xl p-4 border border-[#e9d7c4]/10 space-y-3"
+                        className="rounded-xl p-4 border border-[#e9d7c4]/10 space-y-3 min-w-0 overflow-hidden"
                         style={{ background: 'rgba(255,255,255,0.014)', boxShadow: '0 16px 52px rgba(0,0,0,0.35)' }}
                       >
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-lg border border-[#e9d7c4]/14 flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                          <div className="w-8 h-8 rounded-lg border border-[#e9d7c4]/14 flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,255,255,0.02)' }}>
                             <Target className="w-4 h-4 text-[#e9d7c4]/90" />
                           </div>
                           <h3 className="text-[10px] font-bold tracking-[0.18em] uppercase text-gray-500">Hauptziel</h3>
                         </div>
-                        <p className="text-sm font-semibold text-white">
+                        <p className="text-sm font-semibold text-white break-words">
                           {(user as any)?.primaryGoal?.replace(/_/g, ' ') || 'Lead Generation'}
                         </p>
                         {aiProfile?.brandVoice && (
-                          <div className="pt-2 border-t border-white/5">
+                          <div className="pt-2 border-t border-white/5 min-w-0">
                             <div className="flex items-center gap-1.5 mb-1.5">
-                              <Quote className="w-3 h-3 text-[#FE9100]/60" />
+                              <Quote className="w-3 h-3 text-[#FE9100]/60 flex-shrink-0" />
                               <span className="text-[10px] font-bold tracking-[0.15em] uppercase text-gray-500">Brand Voice</span>
                             </div>
-                            <p className="text-xs text-gray-400 leading-relaxed line-clamp-3">{aiProfile.brandVoice}</p>
+                            <p className="text-xs text-gray-400 leading-relaxed line-clamp-3 break-words" style={{ overflowWrap: 'break-word' }}>{aiProfile.brandVoice}</p>
                           </div>
                         )}
                       </motion.div>
@@ -568,22 +568,22 @@ export default function Space() {
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3 }}
-                        className="rounded-xl p-4 border border-[#e9d7c4]/10 space-y-2"
+                        className="rounded-xl p-4 border border-[#e9d7c4]/10 space-y-2 min-w-0 overflow-hidden"
                         style={{ background: 'rgba(255,255,255,0.014)', boxShadow: '0 16px 52px rgba(0,0,0,0.35)' }}
                       >
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-lg border border-[#e9d7c4]/14 flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                          <div className="w-8 h-8 rounded-lg border border-[#e9d7c4]/14 flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,255,255,0.02)' }}>
                             <Users className="w-4 h-4 text-[#e9d7c4]/90" />
                           </div>
                           <h3 className="text-[10px] font-bold tracking-[0.18em] uppercase text-gray-500">Zielgruppe</h3>
                         </div>
                         {aiProfile?.targetAudience && (
-                          <p className="text-xs text-gray-300 leading-relaxed line-clamp-3">{aiProfile.targetAudience}</p>
+                          <p className="text-xs text-gray-300 leading-relaxed line-clamp-3 break-words" style={{ overflowWrap: 'break-word' }}>{aiProfile.targetAudience}</p>
                         )}
                         {Array.isArray(aiProfile?.targetAudienceSegments) && aiProfile.targetAudienceSegments.length > 0 && (
                           <div className="flex flex-wrap gap-1 pt-1">
                             {aiProfile.targetAudienceSegments.slice(0, 4).map((seg: string, i: number) => (
-                              <span key={i} className="text-[10px] px-2 py-0.5 rounded-full border border-[#FE9100]/15 text-[#FE9100]/80 bg-[#FE9100]/5">{seg}</span>
+                              <span key={i} className="text-[10px] px-2 py-0.5 rounded-full border border-[#FE9100]/15 text-[#FE9100]/80 bg-[#FE9100]/5 truncate max-w-[200px]">{seg}</span>
                             ))}
                           </div>
                         )}
@@ -598,11 +598,11 @@ export default function Space() {
                             initial={{ opacity: 0, y: 12 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.35 }}
-                            className="rounded-xl p-4 border border-[#e9d7c4]/10 space-y-2"
+                            className="rounded-xl p-4 border border-[#e9d7c4]/10 space-y-2 min-w-0 overflow-hidden"
                             style={{ background: 'rgba(255,255,255,0.014)', boxShadow: '0 16px 52px rgba(0,0,0,0.35)' }}
                           >
                             <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-lg border border-[#e9d7c4]/14 flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                              <div className="w-8 h-8 rounded-lg border border-[#e9d7c4]/14 flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,255,255,0.02)' }}>
                                 <Swords className="w-4 h-4 text-[#e9d7c4]/90" />
                               </div>
                               <h3 className="text-[10px] font-bold tracking-[0.18em] uppercase text-gray-500">Wettbewerber</h3>
@@ -621,7 +621,7 @@ export default function Space() {
                     </div>
 
                     {/* ═══ SECOND ROW — Products, Services, USPs ═══ */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 overflow-hidden">
 
                       {/* 📦 PRODUCTS */}
                       {(() => {
@@ -632,11 +632,11 @@ export default function Space() {
                             initial={{ opacity: 0, y: 12 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.4 }}
-                            className="rounded-xl p-4 border border-[#e9d7c4]/10 space-y-2"
+                            className="rounded-xl p-4 border border-[#e9d7c4]/10 space-y-2 min-w-0 overflow-hidden"
                             style={{ background: 'rgba(255,255,255,0.014)', boxShadow: '0 16px 52px rgba(0,0,0,0.35)' }}
                           >
                             <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-lg border border-[#e9d7c4]/14 flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                              <div className="w-8 h-8 rounded-lg border border-[#e9d7c4]/14 flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,255,255,0.02)' }}>
                                 <Sparkles className="w-4 h-4 text-[#e9d7c4]/90" />
                               </div>
                               <h3 className="text-[10px] font-bold tracking-[0.18em] uppercase text-gray-500">Produkte</h3>
@@ -665,11 +665,11 @@ export default function Space() {
                             initial={{ opacity: 0, y: 12 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.45 }}
-                            className="rounded-xl p-4 border border-[#e9d7c4]/10 space-y-2"
+                            className="rounded-xl p-4 border border-[#e9d7c4]/10 space-y-2 min-w-0 overflow-hidden"
                             style={{ background: 'rgba(255,255,255,0.014)', boxShadow: '0 16px 52px rgba(0,0,0,0.35)' }}
                           >
                             <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-lg border border-[#e9d7c4]/14 flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                              <div className="w-8 h-8 rounded-lg border border-[#e9d7c4]/14 flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,255,255,0.02)' }}>
                                 <Shield className="w-4 h-4 text-[#e9d7c4]/90" />
                               </div>
                               <h3 className="text-[10px] font-bold tracking-[0.18em] uppercase text-gray-500">Services</h3>
@@ -697,11 +697,11 @@ export default function Space() {
                             initial={{ opacity: 0, y: 12 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.5 }}
-                            className="rounded-xl p-4 border border-[#FE9100]/15 space-y-2"
+                            className="rounded-xl p-4 border border-[#FE9100]/15 space-y-2 min-w-0 overflow-hidden"
                             style={{ background: 'linear-gradient(135deg, rgba(254,145,0,0.04) 0%, rgba(255,255,255,0.01) 100%)', boxShadow: '0 16px 52px rgba(0,0,0,0.35)' }}
                           >
                             <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-lg border border-[#FE9100]/20 flex items-center justify-center" style={{ background: 'rgba(254,145,0,0.06)' }}>
+                              <div className="w-8 h-8 rounded-lg border border-[#FE9100]/20 flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(254,145,0,0.06)' }}>
                                 <TrendingUp className="w-4 h-4 text-[#FE9100]" />
                               </div>
                               <h3 className="text-[10px] font-bold tracking-[0.18em] uppercase text-[#FE9100]/70">USPs</h3>
@@ -720,7 +720,7 @@ export default function Space() {
                     </div>
 
                     {/* ═══ THIRD ROW — Keywords + Call Angles ═══ */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 overflow-hidden">
 
                       {/* 🔑 KEYWORDS */}
                       {Array.isArray(aiProfile?.effectiveKeywords) && aiProfile.effectiveKeywords.length > 0 && (
@@ -728,11 +728,11 @@ export default function Space() {
                           initial={{ opacity: 0, y: 12 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: 0.55 }}
-                          className="rounded-xl p-4 border border-[#e9d7c4]/10 space-y-2.5"
+                          className="rounded-xl p-4 border border-[#e9d7c4]/10 space-y-2.5 min-w-0 overflow-hidden"
                           style={{ background: 'rgba(255,255,255,0.014)', boxShadow: '0 16px 52px rgba(0,0,0,0.35)' }}
                         >
                           <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg border border-[#e9d7c4]/14 flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                            <div className="w-8 h-8 rounded-lg border border-[#e9d7c4]/14 flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,255,255,0.02)' }}>
                               <Key className="w-4 h-4 text-[#e9d7c4]/90" />
                             </div>
                             <h3 className="text-[10px] font-bold tracking-[0.18em] uppercase text-gray-500">Top Keywords</h3>
@@ -757,11 +757,11 @@ export default function Space() {
                             initial={{ opacity: 0, y: 12 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.6 }}
-                            className="rounded-xl p-4 border border-[#e9d7c4]/10 space-y-2"
+                            className="rounded-xl p-4 border border-[#e9d7c4]/10 space-y-2 min-w-0 overflow-hidden"
                             style={{ background: 'rgba(255,255,255,0.014)', boxShadow: '0 16px 52px rgba(0,0,0,0.35)' }}
                           >
                             <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-lg border border-[#e9d7c4]/14 flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.02)' }}>
+                              <div className="w-8 h-8 rounded-lg border border-[#e9d7c4]/14 flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,255,255,0.02)' }}>
                                 <Phone className="w-4 h-4 text-[#e9d7c4]/90" />
                               </div>
                               <h3 className="text-[10px] font-bold tracking-[0.18em] uppercase text-gray-500">Call Angles</h3>
@@ -791,6 +791,9 @@ export default function Space() {
                   animate={{ width: "0%" }}
                   transition={{ duration: 20, ease: "linear" }}
                 />
+
+                {/* Keyframes for briefing header shimmer */}
+                <style>{`@keyframes briefingSheen{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}`}</style>
               </motion.div>
             )}
           </AnimatePresence>

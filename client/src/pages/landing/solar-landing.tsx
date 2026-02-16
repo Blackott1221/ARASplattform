@@ -34,6 +34,7 @@ interface RegisterFields {
   password: string;
   phone: string;
   company: string;
+  website: string;
 }
 
 interface LoginFields { username: string; password: string; }
@@ -115,7 +116,7 @@ export default function SolarLandingPage() {
   const [companyName, setCompanyName] = useState("");
 
   // ── Register fields ──
-  const [reg, setReg] = useState<RegisterFields>({ firstName: "", lastName: "", email: "", password: "", phone: "", company: "" });
+  const [reg, setReg] = useState<RegisterFields>({ firstName: "", lastName: "", email: "", password: "", phone: "", company: "", website: "" });
   const [login, setLogin] = useState<LoginFields>({ username: "", password: "" });
 
   // ── Analysis / Briefing state (mirrors /auth exactly) ──
@@ -205,7 +206,7 @@ export default function SolarLandingPage() {
       const username = data.email.split("@")[0] + "_" + Math.random().toString(36).substring(2, 6);
       const res = await fetch("/api/register", {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
-        body: JSON.stringify({ username, password: data.password, email: data.email, firstName: data.firstName, lastName: data.lastName, phone: data.phone, company: data.company, industry: "Solar / Erneuerbare Energien", role: "", language: "de", primaryGoal: "lead_generation" }),
+        body: JSON.stringify({ username, password: data.password, email: data.email, firstName: data.firstName, lastName: data.lastName, phone: data.phone, company: data.company, website: data.website || undefined, industry: "Solar / Erneuerbare Energien", role: "", language: "de", primaryGoal: "lead_generation" }),
       });
       if (!res.ok) { const b = await res.json().catch(() => ({ message: "Registration failed" })); const e = new Error(b.message || "Registration failed"); (e as any).status = res.status; throw e; }
       return res.json();
@@ -415,9 +416,20 @@ export default function SolarLandingPage() {
           </motion.div>
         )}
 
-        {/* Polling indicator */}
+        {/* Polling progress bar */}
         {briefingData?.status === "polling" && (
-          <div className="text-center pt-4"><p className="text-[11px]" style={{ color: "rgba(245,245,247,0.25)" }}>{briefingPollCount}/20</p></div>
+          <div className="pt-6 px-2">
+            <div className="h-[3px] w-full rounded-full overflow-hidden" style={{ background: "rgba(233,215,196,0.06)" }}>
+              <motion.div
+                className="h-full rounded-full"
+                style={{ background: `linear-gradient(90deg, ${CI.orange}, ${CI.goldDark}, ${CI.orange})`, backgroundSize: "200% 100%" }}
+                initial={{ width: "2%" }}
+                animate={{ width: `${Math.min(Math.max((briefingPollCount / 30) * 100, 5), 95)}%`, backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
+                transition={{ width: { duration: 1.2, ease: CI.ease }, backgroundPosition: { duration: 2.4, repeat: Infinity, ease: "linear" } }}
+              />
+            </div>
+            <p className="text-[10px] text-center mt-2" style={{ color: "rgba(245,245,247,0.22)" }}>Analyse läuft…</p>
+          </div>
         )}
       </div>
     </div>
@@ -514,6 +526,7 @@ export default function SolarLandingPage() {
                   </SolarField>
                   <SolarField label="Telefon" id="r-ph" required><input id="r-ph" type="tel" autoComplete="tel" value={reg.phone} onChange={e => setReg(p => ({ ...p, phone: e.target.value }))} placeholder="+49 170 1234567" disabled={isPending} className="s-input" /></SolarField>
                   <SolarField label="Firma" id="r-co"><input id="r-co" type="text" autoComplete="organization" value={reg.company} onChange={e => setReg(p => ({ ...p, company: e.target.value }))} placeholder="SolarTech GmbH" disabled={isPending} className="s-input" /></SolarField>
+                  <SolarField label="Website" id="r-ws"><input id="r-ws" type="text" autoComplete="url" value={reg.website} onChange={e => setReg(p => ({ ...p, website: e.target.value }))} placeholder="www.solartech.de" disabled={isPending} className="s-input" /></SolarField>
                   {/* Honeypot */}
                   <div aria-hidden="true" style={{ position: "absolute", left: -9999, top: -9999, opacity: 0, height: 0, overflow: "hidden" }}><input tabIndex={-1} autoComplete="off" value={honeypot} onChange={e => setHoneypot(e.target.value)} /></div>
                   <motion.button type="submit" disabled={isPending} whileHover={isPending ? {} : { y: -2, boxShadow: `0 22px 72px rgba(254,145,0,0.18)` }} whileTap={isPending ? {} : { y: 0, scale: 0.99 }} className="mt-1 w-full h-12 rounded-full font-extrabold text-sm uppercase flex items-center justify-center gap-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-0" style={{ fontFamily: "Orbitron, sans-serif", letterSpacing: "0.06em", background: `linear-gradient(180deg, rgba(254,145,0,0.20), rgba(255,255,255,0.03))`, border: "1px solid rgba(254,145,0,0.35)", color: isPending ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.96)", boxShadow: "0 14px 52px rgba(254,145,0,0.10)", cursor: isPending ? "not-allowed" : "pointer", opacity: isPending ? 0.6 : 1 }}>
