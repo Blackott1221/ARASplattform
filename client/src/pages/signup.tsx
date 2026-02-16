@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { GradientText } from "@/components/ui/gradient-text";
 import { GlowButton } from "@/components/ui/glow-button";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { motion } from "framer-motion";
 import { Bot, Users, Phone, ArrowRight, Eye, EyeOff, Check } from "lucide-react";
 import { Link, useLocation } from "wouter";
@@ -17,12 +18,14 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [phone, setPhone] = useState("");
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const { registerMutation } = useAuth();
+  const isLoading = registerMutation.isPending;
 
   const features = [
     {
@@ -70,48 +73,53 @@ export default function Signup() {
       return;
     }
 
-    setIsLoading(true);
-    
+    // Phone validation (required by backend, min 8 chars)
+    if (!phone.trim() || phone.trim().length < 8) {
+      toast({
+        title: "Telefonnummer fehlt",
+        description: "Bitte gib eine gültige Telefonnummer ein (mind. 8 Zeichen).",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      // Create username from email
       const username = email.split('@')[0] + '_' + Math.random().toString(36).substr(2, 4);
       
-      const response = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          username,
-          password,
-          email,
-          firstName,
-          lastName
-        })
+      await registerMutation.mutateAsync({
+        username,
+        password,
+        email,
+        firstName,
+        lastName,
+        phone,
+        language: 'de',
       });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || 'Registration failed');
-      }
-      
-      const user = await response.json();
       
       toast({
-        title: "Account Created! 🎉",
-        description: "Welcome to ARAS AI! Your account has been created successfully.",
+        title: "Account erstellt!",
+        description: "Willkommen bei ARAS AI! Dein Account wurde erfolgreich erstellt.",
       });
       
-      // Redirect directly to space after successful signup
       setLocation("/space");
     } catch (error: any) {
       console.error('Signup error:', error);
+      const msg = error.message || '';
+      let description = "Etwas ist schiefgelaufen. Bitte erneut versuchen.";
+      if (msg.includes('E-Mail') || msg.includes('email')) {
+        description = "Diese E-Mail ist bereits registriert. Bitte einloggen.";
+      } else if (msg.includes('Benutzername') || msg.includes('username')) {
+        description = "Benutzername vergeben. Bitte erneut versuchen.";
+      } else if (msg.includes('Telefon') || msg.includes('phone')) {
+        description = "Bitte gib eine gültige Telefonnummer ein.";
+      } else if (msg) {
+        description = msg;
+      }
       toast({
-        title: "Signup Failed",
-        description: error.message || "An error occurred during signup. Please try again.",
+        title: "Registrierung fehlgeschlagen",
+        description,
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -271,6 +279,18 @@ export default function Signup() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Ihre geschäftliche E-Mail-Adresse"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="phone">Telefon</Label>
+                  <Input 
+                    id="phone" 
+                    type="tel" 
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+49 170 1234567"
                     required
                   />
                 </div>

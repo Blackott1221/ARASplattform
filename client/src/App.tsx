@@ -41,6 +41,7 @@ import BlogPost from "@/pages/blog-post";
 import FoundingMemberPass from "@/pages/founding-member-pass";
 import FoundingMemberSuccess from "@/pages/founding-member-success";
 import AdminFoundingClaims from "@/pages/admin-founding-claims";
+import SolarLandingPage from "@/pages/landing/solar-landing";
 
 // Investor Pages (hidden, not in menu)
 import InvestorSchwabPage from "@/pages/app/investor/schwab";
@@ -163,6 +164,8 @@ function Router() {
     <PageTransition>
       <Switch>
         {/* Public routes - always accessible */}
+        <Route path="/lp/solar" component={SolarLandingPage} />
+        <Route path="/lp/solar-energie" component={SolarLandingPage} />
         <Route path="/terms" component={Terms} />
         <Route path="/privacy" component={Privacy} />
         <Route path="/demo" component={Demo} />

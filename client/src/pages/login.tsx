@@ -7,18 +7,20 @@ import { Card, CardContent } from "@/components/ui/card";
 import { GradientText } from "@/components/ui/gradient-text";
 import { GlowButton } from "@/components/ui/glow-button";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bot, Users, Phone, ArrowRight, Eye, EyeOff, Zap, Target, TrendingUp, Sparkles } from "lucide-react";
 import { Link, useLocation } from "wouter";
 
 export default function Login() {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const { loginMutation } = useAuth();
+  const isLoading = loginMutation.isPending;
 
   const [currentFeatureIndex, setCurrentFeatureIndex] = useState(0);
   const [currentTaglineIndex, setCurrentTaglineIndex] = useState(0);
@@ -75,16 +77,23 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    
-    // Simulate login process for wireframe
-    setTimeout(() => {
+    try {
+      await loginMutation.mutateAsync({ username, password });
       toast({
-        title: "Login Successful",
-        description: "Welcome back to ARAS AI!",
+        title: "Login erfolgreich",
+        description: "Willkommen zurück bei ARAS AI!",
       });
-      setLocation("/app"); // Redirect to main app
-    }, 1500);
+      setLocation("/space");
+    } catch (error: any) {
+      const msg = error?.code === "ACCOUNT_DISABLED"
+        ? "Dein Account wurde deaktiviert. Bitte kontaktiere den Support."
+        : "Ungültige Anmeldedaten. Bitte überprüfe Benutzername und Passwort.";
+      toast({
+        title: "Login fehlgeschlagen",
+        description: msg,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleForgotPassword = () => {
@@ -250,13 +259,13 @@ export default function Login() {
               
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <Label htmlFor="email">E-Mail</Label>
+                  <Label htmlFor="username">Benutzername</Label>
                   <Input 
-                    id="email" 
-                    type="email" 
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Ihre E-Mail-Adresse"
+                    id="username" 
+                    type="text" 
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Dein Benutzername"
                     required
                     className="mt-1"
                   />
