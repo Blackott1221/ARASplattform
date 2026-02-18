@@ -50,6 +50,7 @@ import InvestorsV2Page from "@/pages/investors-v2";
 // VC Pitch Deck Pages (hidden, direct link only)
 import FlyVenturesPage from "@/pages/vc/fly-ventures";
 import B2VenturePage from "@/pages/vc/b2venture";
+import CapitalQPage from "@/pages/vc/capital-q";
 
 // NDA Gate + Data Room
 import NdaPage from "@/pages/nda";
@@ -189,6 +190,7 @@ function Router() {
         {/* 🎯 VC PITCH DECK PAGES - Public but hidden (direct link only) */}
         <Route path="/vc/fly-ventures" component={FlyVenturesPage} />
         <Route path="/vc/b2venture" component={B2VenturePage} />
+        <Route path="/vc/capital-q" component={CapitalQPage} />
         
         {/* 🔒 NDA Gate + Data Room */}
         <Route path="/nda" component={NdaPage} />
