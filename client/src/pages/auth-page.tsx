@@ -11,7 +11,8 @@ import { trackLogin, trackSignup, captureUTMParameters } from "@/lib/analytics";
 import { queryClient } from "@/lib/queryClient";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { T } from "@/lib/auto-translate";
-import PlattformBild from "@/assets/Plattform_bild.png";
+import { IndustryAtlas } from "@/components/landing/IndustryAtlas";
+
 
 // 🔥 HOTFIX: ErrorBoundary to prevent black screen crashes
 interface ErrorBoundaryState {
@@ -399,149 +400,116 @@ function LiveCallWindow() {
 function PricingSection() {
   const plans = [
     {
-      name: "STARTER",
-      role: "ARAS Pro",
-      alphaPrice: "€59",
-      standardPrice: "€1.990",
-      savings: "€1.931",
-      features: ["100 Outbound Calls pro Monat", "500 Chatnachrichten", "ARAS Konsole (Basic)", "Automatische Zusammenfassungen", "E-Mail Support"],
-      isPopular: false
+      label: 'STARTER',
+      name: 'ARAS Pro',
+      price: '€59',
+      bestFor: 'Für erste Outbound-Strecken & Termin-Qualifizierung.',
+      features: ['100 Outbound Calls / Monat', '500 Chatnachrichten', 'ARAS Konsole (Basic)', 'Automatische Zusammenfassungen', 'E-Mail Support'],
+      featured: false
     },
     {
-      name: "PRO",
-      role: "ARAS Ultra",
-      alphaPrice: "€249",
-      standardPrice: "€4.990",
-      savings: "€4.741",
-      features: ["1.000 Outbound Calls pro Monat", "10.000 Chatnachrichten", "ARAS Voice Model (erweitert)", "Mehrbenutzerzugang", "Erweiterte Analysen", "Priorisierter Support"],
-      isPopular: true
+      label: 'PRO',
+      name: 'ARAS Ultra',
+      price: '€249',
+      bestFor: 'Für Teams, die Outbound skalieren und Ergebnisse täglich sehen wollen.',
+      features: ['1.000 Outbound Calls / Monat', '10.000 Chatnachrichten', 'ARAS Voice Model (erweitert)', 'Mehrbenutzerzugang', 'Erweiterte Analysen', 'Priorisierter Support'],
+      featured: true
     },
     {
-      name: "ENTERPRISE",
-      role: "ARAS Ultimate",
-      alphaPrice: "€1990",
-      standardPrice: "€19.990",
-      savings: "€18.000",
-      features: ["10.000 Outbound Calls pro Monat", "Unbegrenzte Chatnachrichten", "Dediziertes ARAS Enterprise-LLM", "API & CRM Integrationen", "Swiss Hosting", "24/7 Support", "Early Access zu neuen Modulen"],
-      isPopular: false
-    },
-    {
-      name: "ARAS Free",
-      role: "Kostenlos – dauerhaft",
-      alphaPrice: "€0",
-      standardPrice: "€0",
-      savings: "€0",
-      features: ["2 Outbound Calls", "10 Chatnachrichten", "Zugriff auf ARAS Basic Console", "Kostenlos starten"],
-      isPopular: false,
-      isFree: true
+      label: 'ENTERPRISE',
+      name: 'ARAS Ultimate',
+      price: '€1.990',
+      bestFor: 'Für Enterprise-Outbound mit dedizierter Infrastruktur & Integrationen.',
+      features: ['10.000 Outbound Calls / Monat', 'Unbegrenzte Chatnachrichten', 'Dediziertes ARAS Enterprise-LLM', 'API & CRM Integrationen', 'Swiss Hosting', '24/7 Support', 'Early Access zu neuen Modulen'],
+      featured: false
     }
   ];
 
   return (
-    <section className="relative py-20 px-4 md:px-8">
-      <div className="max-w-[1400px] mx-auto">
-        {/* Header */}
-        <motion.div 
+    <section className="pricing-section">
+      <div className="pricing-inner">
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-16"
+          transition={{ duration: 0.6 }}
+          className="text-center mb-10"
         >
-          <h2 className="text-4xl md:text-5xl font-black mb-6 bg-clip-text text-transparent bg-gradient-to-r from-[#e9d7c4] via-[#FE9100] to-[#a34e00]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-            Die ARAS Alpha-Vorteile
-          </h2>
-          <div className="space-y-2 text-lg md:text-xl font-light text-white/80">
-            <p className="text-[#FE9100] font-bold uppercase tracking-wider text-sm mb-4">Die Alpha-Phase ist streng limitiert</p>
-            <p>Alle Nutzer, die heute testen, behalten ihre aktuellen Preise – <span className="text-[#FE9100] font-bold">dauerhaft</span>.</p>
-            <p className="text-white/50 text-base">Die zukünftigen Enterprise-Preise werden am 01.01.2026 aktiviert.</p>
-            <p className="text-green-400 font-bold flex items-center justify-center gap-2">
-              <ShieldCheck className="w-5 h-5" />
-              Ihr Zugang bleibt geschützt.
-            </p>
-          </div>
+          <h2 className="pricing-headline">ARAS Alpha Access</h2>
+          <p className="pricing-subline">Frühe Nutzer behalten ihren Preis dauerhaft.</p>
         </motion.div>
 
-        {/* Pricing Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="pricing-trust-strip">
+          {[
+            { icon: <ShieldCheck className="w-3.5 h-3.5" />, text: 'Preis bleibt geschützt' },
+            { icon: <Check className="w-3.5 h-3.5" />, text: 'Ohne Kreditkarte starten' },
+            { icon: <Check className="w-3.5 h-3.5" />, text: 'Jederzeit kündbar' },
+            { icon: <Shield className="w-3.5 h-3.5" />, text: 'Enterprise-ready' }
+          ].map((pill, i) => (
+            <div key={i} className="pricing-trust-pill">
+              {pill.icon}
+              {pill.text}
+            </div>
+          ))}
+        </div>
+
+        <div className="pricing-grid">
           {plans.map((plan, i) => (
             <motion.div
               key={i}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 14 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
-              className={`relative rounded-2xl p-6 flex flex-col h-full ${
-                plan.isPopular 
-                  ? 'bg-gradient-to-b from-[#FE9100]/10 to-black border-[#FE9100] shadow-[0_0_30px_rgba(254,145,0,0.15)]' 
-                  : 'bg-[#111] border-white/10'
-              } border`}
+              transition={{ delay: i * 0.08, duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
+              className={`plan-card${plan.featured ? ' plan-card--featured' : ''}`}
             >
-              {plan.isPopular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#FE9100] text-black text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                  ⭐ Beliebteste Wahl
-                </div>
-              )}
-
-              {/* Header */}
-              <div className="mb-6">
-                <div className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">{plan.name}</div>
-                <h3 className="text-2xl font-bold text-white mb-4" style={{ fontFamily: 'Orbitron, sans-serif' }}>{plan.role}</h3>
-                
-                {!plan.isFree && (
-                  <div className="space-y-4 bg-white/5 p-4 rounded-xl border border-white/5">
-                    <div>
-                      <div className="text-[10px] text-[#FE9100] font-bold uppercase">Alpha-Preis (Jetzt)</div>
-                      <div className="text-2xl font-bold text-white">{plan.alphaPrice}<span className="text-sm font-normal text-gray-500">/ Monat</span></div>
-                      <div className="text-[10px] text-green-400">Preisgarantie aktiv</div>
-                    </div>
-                    
-                    <div className="pt-3 border-t border-white/10">
-                      <div className="text-[10px] text-gray-500 uppercase">Standard ab 01.01.2026</div>
-                      <div className="text-lg font-bold text-gray-500 line-through Decoration-red-500">{plan.standardPrice}</div>
-                    </div>
-
-                    <div className="bg-[#FE9100]/10 p-2 rounded text-center border border-[#FE9100]/20">
-                      <div className="text-[10px] text-white/70">Ihre Ersparnis</div>
-                      <div className="text-[#FE9100] font-bold">{plan.savings}</div>
-                      <div className="text-[10px] text-white/50">monatlich</div>
-                    </div>
-                  </div>
-                )}
-
-                {plan.isFree && (
-                  <div className="bg-white/5 p-4 rounded-xl border border-white/5 min-h-[180px] flex flex-col justify-center">
-                    <div className="text-2xl font-bold text-white mb-2">Kostenlos</div>
-                    <p className="text-sm text-gray-400">Für alle Nutzer, die ARAS in kleinem Rahmen testen wollen.</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Features */}
-              <div className="space-y-3 mb-8 flex-grow">
-                <div className="text-[10px] font-bold text-gray-500 uppercase mb-2">Enthalten</div>
-                {plan.features.map((feature, idx) => (
-                  <div key={idx} className="flex items-start gap-2 text-sm text-gray-300">
-                    <Check className="w-4 h-4 text-[#FE9100] shrink-0 mt-0.5" />
-                    <span className="text-xs">{feature}</span>
-                  </div>
+              {plan.featured && <div className="plan-badge">Beliebteste Wahl</div>}
+              <div className="plan-label">{plan.label}</div>
+              <h3 className="plan-name">{plan.name}</h3>
+              <div className="plan-price">{plan.price}<span className="plan-price-period"> / Monat</span></div>
+              <p className="plan-best-for">{plan.bestFor}</p>
+              <div className="plan-divider" />
+              <ul className="plan-bullets">
+                {plan.features.map((f, idx) => (
+                  <li key={idx}>
+                    <Check className="plan-bullet-icon" />
+                    <span>{f}</span>
+                  </li>
                 ))}
-              </div>
-
-              {/* CTA */}
-              <button 
-                className={`w-full py-3 rounded-lg font-bold text-sm transition-all ${
-                  plan.isPopular 
-                    ? 'bg-[#FE9100] text-black hover:bg-[#ffaa33] shadow-[0_0_15px_rgba(254,145,0,0.3)]' 
-                    : plan.isFree
-                      ? 'bg-white/10 text-white hover:bg-white/20'
-                      : 'bg-white text-black hover:bg-gray-200'
-                }`}
-              >
-                {plan.isFree ? 'Kostenlos starten' : 'Plan wählen'}
+              </ul>
+              <button className={`plan-cta ${plan.featured ? 'plan-cta--primary' : 'plan-cta--secondary'}`}>
+                Plan wählen
               </button>
             </motion.div>
           ))}
         </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.32, duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
+          className="plan-card--free"
+        >
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div>
+              <div className="plan-label">KOSTENLOS</div>
+              <h3 className="plan-name" style={{ marginBottom: 8 }}>ARAS Free</h3>
+              <p className="plan-best-for" style={{ marginBottom: 12 }}>Zum Testen im kleinen Rahmen – ohne Kreditkarte.</p>
+              <ul className="plan-bullets" style={{ marginBottom: 0 }}>
+                {['2 Outbound Calls', '10 Chatnachrichten', 'Zugriff auf ARAS Basic Console'].map((f, i) => (
+                  <li key={i}>
+                    <Check className="plan-bullet-icon" />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <button className="plan-cta plan-cta--ghost" style={{ maxWidth: 200 }}>
+              Kostenlos starten
+            </button>
+          </div>
+        </motion.div>
       </div>
     </section>
   );
@@ -898,7 +866,7 @@ function PremiumFooter() {
           {/* EBENE 4: Copyright */}
           <div className="border-t border-white/10 pt-8">
             <p className="text-center text-sm text-white/40">
-              © 2025 ARAS AI – KI-gestützte Vertriebsautomatisierung by Schwarzott Capital Partners AG, Zürich.
+              © 2026 ARAS AI – KI-gestützte Vertriebsautomatisierung by Schwarzott Capital Partners AG, Zürich.
               <br />
               Eigenes LLM • 500+ parallele Anrufe • DSGVO-konform • Swiss Made
             </p>
@@ -1082,7 +1050,7 @@ In der Alpha sind die Werte kontrolliert limitiert, um Qualität sicherzustellen
       question: "Wie werden die Preise in der Alpha garantiert?",
       answer: `Jeder Nutzer, der sich in der Alpha registriert, erhält einen unveränderbaren Preisanker.
 
-Auch wenn die Enterprise-Preise ab dem 01.01.2026 aktiviert werden, bleibt Ihr Tarif stabil.`
+Ihr Tarif bleibt dauerhaft stabil – unabhängig von zukünftigen Preisanpassungen.`
     },
     {
       id: 10,
@@ -1121,7 +1089,7 @@ Alpha-Nutzer erhalten bevorzugten Support und individuelle Erklärung der ersten
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="flex flex-col gap-4">
       {faqs.map((faq, index) => (
         <motion.div
           key={faq.id}
@@ -1227,46 +1195,43 @@ function PricingCards() {
   const plans = [
     {
       id: 'starter',
-      name: 'STARTER',
-      subtitle: 'ARAS Pro',
-      alphaPrice: 59,
-      futurePrice: 1990,
-      savings: 1931,
+      label: 'STARTER',
+      name: 'ARAS Pro',
+      price: 59,
+      bestFor: 'Für erste Outbound-Strecken & Termin-Qualifizierung.',
       features: [
-        '100 Outbound Calls pro Monat',
+        '100 Outbound Calls / Monat',
         '500 Chatnachrichten',
         'ARAS Konsole (Basic)',
         'Automatische Zusammenfassungen',
         'E-Mail Support'
       ],
-      popular: false
+      featured: false
     },
     {
       id: 'pro',
-      name: 'PRO',
-      subtitle: 'ARAS Ultra',
-      alphaPrice: 249,
-      futurePrice: 4990,
-      savings: 4741,
+      label: 'PRO',
+      name: 'ARAS Ultra',
+      price: 249,
+      bestFor: 'Für Teams, die Outbound skalieren und Ergebnisse täglich sehen wollen.',
       features: [
-        '1.000 Outbound Calls pro Monat',
+        '1.000 Outbound Calls / Monat',
         '10.000 Chatnachrichten',
         'ARAS Voice Model (erweitert)',
         'Mehrbenutzerzugang',
         'Erweiterte Analysen',
         'Priorisierter Support'
       ],
-      popular: true
+      featured: true
     },
     {
       id: 'enterprise',
-      name: 'ENTERPRISE',
-      subtitle: 'ARAS Ultimate',
-      alphaPrice: 1990,
-      futurePrice: 19990,
-      savings: 18000,
+      label: 'ENTERPRISE',
+      name: 'ARAS Ultimate',
+      price: 1990,
+      bestFor: 'Für Enterprise-Outbound mit dedizierter Infrastruktur & Integrationen.',
       features: [
-        '10.000 Outbound Calls pro Monat',
+        '10.000 Outbound Calls / Monat',
         'Unbegrenzte Chatnachrichten',
         'Dediziertes ARAS Enterprise-LLM',
         'API & CRM Integrationen',
@@ -1274,258 +1239,73 @@ function PricingCards() {
         '24/7 Support',
         'Early Access zu neuen Modulen'
       ],
-      popular: false
+      featured: false
     }
   ];
 
   return (
     <>
-      {/* Main Pricing Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+      <div className="pricing-grid">
         {plans.map((plan, index) => (
           <motion.div
             key={plan.id}
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 14 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ 
-              duration: 0.6, 
-              delay: index * 0.12,
-              ease: [0.25, 0.8, 0.25, 1]
-            }}
-            whileHover={{ scale: 1.02 }}
+            transition={{ delay: index * 0.08, duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
             onClick={() => setSelectedPlan(plan.id)}
-            className="cursor-pointer relative group"
+            className={`plan-card cursor-pointer${plan.featured ? ' plan-card--featured' : ''}`}
           >
-            {/* Popular Badge */}
-            {plan.popular && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-10"
-              >
-                <div
-                  className="px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wider"
-                  style={{
-                    fontFamily: 'Orbitron, sans-serif',
-                    background: 'linear-gradient(135deg, #FE9100, #ffd700)',
-                    color: '#000'
-                  }}
-                >
-                  ⭐ Beliebteste Wahl
-                </div>
-              </motion.div>
-            )}
-
-            {/* Animated Border */}
-            <motion.div
-              className="absolute inset-0 rounded-2xl"
-              style={{
-                background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00, #e9d7c4)',
-                backgroundSize: '300% 100%',
-                padding: '1.5px'
-              }}
-              animate={{
-                backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
-              }}
-              transition={{
-                duration: 14,
-                repeat: Infinity,
-                ease: 'linear'
-              }}
-            >
-              <div className="w-full h-full rounded-2xl" style={{ background: '#151515' }} />
-            </motion.div>
-
-            {/* Card Content */}
-            <div className="relative rounded-2xl" style={{ 
-              background: '#151515',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
-              padding: '48px 36px'
-            }}>
-              {/* Plan Name */}
-              <h3
-                className="text-2xl font-black mb-1"
-                style={{
-                  fontFamily: 'Orbitron, sans-serif',
-                  color: '#e9d7c4'
-                }}
-              >
-                {plan.name}
-              </h3>
-              <p className="text-sm text-[#FE9100]/70 mb-8">
-                {plan.subtitle}
-              </p>
-
-              {/* Alpha Price */}
-              <div className="mb-6">
-                <div className="text-xs text-white/50 uppercase tracking-wider mb-2">
-                  Alpha-Preis (jetzt)
-                </div>
-                <motion.div
-                  animate={{
-                    textShadow: [
-                      '0 0 0px rgba(254, 145, 0, 0)',
-                      '0 0 8px rgba(254, 145, 0, 0.3)',
-                      '0 0 0px rgba(254, 145, 0, 0)'
-                    ]
-                  }}
-                  transition={{ duration: 3, repeat: Infinity }}
-                  className="flex items-baseline gap-2"
-                >
-                  <span
-                    className="text-5xl font-black"
-                    style={{
-                      fontFamily: 'Orbitron, sans-serif',
-                      color: '#e9d7c4'
-                    }}
-                  >
-                    €{plan.alphaPrice}
-                  </span>
-                  <span className="text-white/50">/ Monat</span>
-                </motion.div>
-                <p className="text-xs text-white/50 mt-2">
-                  Ihre Preisgarantie bleibt bestehen.
-                </p>
-              </div>
-
-              {/* Future Price */}
-              <motion.div
-                initial={{ opacity: 0, y: 5 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.3 }}
-                className="mb-6 p-4 rounded-xl"
-                style={{
-                  background: 'rgba(254, 145, 0, 0.05)',
-                  border: '1px solid rgba(254, 145, 0, 0.2)'
-                }}
-              >
-                <div className="text-xs text-white/50 uppercase tracking-wider mb-1">
-                  Standardpreis ab 01.01.2026
-                </div>
-                <div className="text-2xl font-bold text-white/40 line-through">
-                  €{plan.futurePrice.toLocaleString()}
-                </div>
-              </motion.div>
-
-              {/* Savings */}
-              <div className="mb-8 p-4 rounded-xl" style={{
-                background: 'linear-gradient(135deg, rgba(254, 145, 0, 0.1), rgba(255, 215, 0, 0.1))',
-                border: '1px solid rgba(254, 145, 0, 0.3)'
-              }}>
-                <div className="text-xs text-[#FE9100] font-bold uppercase tracking-wider mb-1">
-                  Ihre Ersparnis
-                </div>
-                <div
-                  className="text-xl font-black"
-                  style={{
-                    fontFamily: 'Orbitron, sans-serif',
-                    background: 'linear-gradient(135deg, #FE9100, #ffd700)',
-                    backgroundClip: 'text',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent'
-                  }}
-                >
-                  €{plan.savings.toLocaleString()} monatlich
-                </div>
-                <p className="text-xs text-white/60 mt-1">
-                  dauerhaft geschützt
-                </p>
-              </div>
-
-              {/* Features */}
-              <div className="mb-8">
-                <div className="text-xs text-white/50 uppercase tracking-wider mb-4">
-                  Enthalten
-                </div>
-                <ul className="space-y-3">
-                  {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-[#FE9100] mt-0.5" />
-                      <span className="text-[15px] text-white/70">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* CTA */}
-              <motion.button
-                whileHover={{ scale: 1.05, y: -2 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full py-4 rounded-xl font-bold text-sm uppercase tracking-wider"
-                style={{
-                  fontFamily: 'Orbitron, sans-serif',
-                  background: 'linear-gradient(135deg, #FE9100, #ffd700)',
-                  color: '#000',
-                  boxShadow: '0 4px 16px rgba(254, 145, 0, 0.3)'
-                }}
-              >
-                Plan wählen
-              </motion.button>
-            </div>
+            {plan.featured && <div className="plan-badge">Beliebteste Wahl</div>}
+            <div className="plan-label">{plan.label}</div>
+            <h3 className="plan-name">{plan.name}</h3>
+            <div className="plan-price">€{plan.price.toLocaleString()}<span className="plan-price-period"> / Monat</span></div>
+            <p className="plan-best-for">{plan.bestFor}</p>
+            <div className="plan-divider" />
+            <ul className="plan-bullets">
+              {plan.features.map((f, i) => (
+                <li key={i}>
+                  <Check className="plan-bullet-icon" />
+                  <span>{f}</span>
+                </li>
+              ))}
+            </ul>
+            <button className={`plan-cta ${plan.featured ? 'plan-cta--primary' : 'plan-cta--secondary'}`}>
+              Plan wählen
+            </button>
           </motion.div>
         ))}
       </div>
 
-      {/* ARAS Free Card */}
+      {/* Free Card */}
       <motion.div
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 14 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
-        transition={{ duration: 0.6, delay: 0.4 }}
-        className="max-w-3xl mx-auto"
+        transition={{ delay: 0.32, duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
+        className="plan-card--free mt-6"
       >
-        <div
-          className="rounded-2xl p-8 border"
-          style={{
-            background: 'rgba(21, 21, 21, 0.5)',
-            borderColor: 'rgba(254, 145, 0, 0.2)'
-          }}
-        >
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex-1">
-              <h3
-                className="text-xl font-black mb-2"
-                style={{
-                  fontFamily: 'Orbitron, sans-serif',
-                  color: '#e9d7c4'
-                }}
-              >
-                ARAS Free
-              </h3>
-              <p className="text-white/60 mb-4">
-                Kostenlos – dauerhaft
-              </p>
-              <p className="text-sm text-white/50 mb-4">
-                Für alle Nutzer, die ARAS in kleinem Rahmen testen wollen.
-              </p>
-              <ul className="space-y-2">
-                {['2 Outbound Calls', '10 Chatnachrichten', 'Zugriff auf ARAS Basic Console'].map((feature, i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm text-white/60">
-                    <CheckCircle2 className="w-4 h-4 text-[#FE9100]" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="px-8 py-3 rounded-lg border font-semibold text-sm"
-              style={{
-                fontFamily: 'Orbitron, sans-serif',
-                borderColor: '#FE9100',
-                color: '#FE9100'
-              }}
-            >
-              Kostenlos starten
-            </motion.button>
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div>
+            <div className="plan-label">KOSTENLOS</div>
+            <h3 className="plan-name" style={{ marginBottom: 8 }}>ARAS Free</h3>
+            <p className="plan-best-for" style={{ marginBottom: 12 }}>Zum Testen im kleinen Rahmen – ohne Kreditkarte.</p>
+            <ul className="plan-bullets" style={{ marginBottom: 0 }}>
+              {['2 Outbound Calls', '10 Chatnachrichten', 'Zugriff auf ARAS Basic Console'].map((f, i) => (
+                <li key={i}>
+                  <Check className="plan-bullet-icon" />
+                  <span>{f}</span>
+                </li>
+              ))}
+            </ul>
           </div>
+          <button className="plan-cta plan-cta--ghost" style={{ maxWidth: 200 }}>
+            Kostenlos starten
+          </button>
         </div>
       </motion.div>
 
-      {/* Upgrade Panel */}
+      {/* Plan Detail Panel */}
       <AnimatePresence>
         {selectedPlan && (
           <motion.div
@@ -1536,42 +1316,34 @@ function PricingCards() {
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           >
             <motion.div
-              initial={{ opacity: 0, x: 300 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 300 }}
-              transition={{ duration: 0.4, ease: [0.25, 0.8, 0.25, 1] }}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
               onClick={(e) => e.stopPropagation()}
-              className="max-w-md w-full rounded-2xl border-t-4 p-8"
+              className="max-w-md w-full rounded-2xl p-8"
               style={{
-                background: 'rgba(15, 15, 15, 0.65)',
-                backdropFilter: 'blur(12px)',
-                borderColor: '#FE9100'
+                background: 'rgba(15, 15, 15, 0.95)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(254, 145, 0, 0.25)'
               }}
             >
               <h3
-                className="text-2xl font-black mb-4"
-                style={{
-                  fontFamily: 'Orbitron, sans-serif',
-                  color: '#e9d7c4'
-                }}
+                className="text-2xl font-black mb-3"
+                style={{ fontFamily: 'Orbitron, sans-serif', color: '#e9d7c4' }}
               >
-                Plan wechseln zu {plans.find(p => p.id === selectedPlan)?.subtitle}
+                {plans.find(p => p.id === selectedPlan)?.name}
               </h3>
-              <p className="text-white/70 mb-6 leading-relaxed">
-                Ihr Alpha-Preis von €{plans.find(p => p.id === selectedPlan)?.alphaPrice} bleibt dauerhaft erhalten.
+              <p className="text-white/70 mb-2 leading-relaxed">
+                €{plans.find(p => p.id === selectedPlan)?.price.toLocaleString()} / Monat
               </p>
-              <p className="text-sm text-white/60 mb-8">
-                Sie sparen <span className="text-[#FE9100] font-bold">€{plans.find(p => p.id === selectedPlan)?.savings.toLocaleString()}</span> monatlich im Vergleich zum Standardpreis ab 2026.
+              <p className="text-sm text-white/50 mb-8">
+                Dein Alpha-Preis bleibt dauerhaft erhalten.
               </p>
               <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="w-full py-4 rounded-xl font-bold uppercase tracking-wider"
-                style={{
-                  fontFamily: 'Orbitron, sans-serif',
-                  background: 'linear-gradient(135deg, #FE9100, #ffd700)',
-                  color: '#000'
-                }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="plan-cta plan-cta--primary"
               >
                 Zugang aktivieren
               </motion.button>
@@ -1942,7 +1714,7 @@ export default function AuthPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Countdown to 01.01.2026
+  // Alpha status timer (unused, kept for compatibility)
   useEffect(() => {
     const targetDate = new Date('2026-01-01T00:00:00').getTime();
     const interval = setInterval(() => {
@@ -2611,16 +2383,8 @@ export default function AuthPage() {
       
       {/* Simple Dark Background with Subtle Glow */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        {/* Plattform Background Image */}
-        <div 
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `url(${PlattformBild})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-          }}
-        />
+        {/* Dark base background */}
+        <div className="absolute inset-0" style={{ background: '#0f0f0f' }} />
 
         {/* Film Grain Texture for Premium Look */}
         <div 
@@ -2841,7 +2605,7 @@ export default function AuthPage() {
                 </div>
               </motion.div>
 
-              {/* Card 3 - Launch Countdown */}
+              {/* Card 3 - Alpha Status */}
               <motion.div
                 whileHover={{ scale: 1.05, y: -5 }}
                 transition={{ type: 'spring', stiffness: 300 }}
@@ -2854,7 +2618,7 @@ export default function AuthPage() {
               >
                 <div className="relative h-full flex flex-col justify-center">
                   <div className="mb-2">
-                    <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">OFFICIAL LAUNCH</span>
+                    <span className="text-[10px] uppercase tracking-wider text-gray-500 font-bold">STATUS</span>
                   </div>
                   
                   <div className="flex items-baseline gap-1 mb-1">
@@ -2862,14 +2626,12 @@ export default function AuthPage() {
                       className="text-xl font-bold text-[#FE9100]"
                       style={{ fontFamily: 'Orbitron, sans-serif' }}
                     >
-                      01.01.26
+                      ALPHA
                     </span>
                   </div>
                   
-                  <div className="flex gap-2 text-xs text-gray-400 font-mono">
-                    <span>{timeLeft.days}d</span>
-                    <span>{timeLeft.hours}h</span>
-                    <span>{timeLeft.minutes}m</span>
+                  <div className="text-xs text-gray-400">
+                    <span>Preis dauerhaft geschützt</span>
                   </div>
                 </div>
               </motion.div>
@@ -4551,7 +4313,7 @@ export default function AuthPage() {
             >
               <div className="px-6 py-3 rounded-full border border-white/20 bg-transparent">
                 <p className="text-sm text-white/80">
-                  <T>Aktuell in der streng limitierten Alpha-Phase – mit dauerhaft gesicherten Early-Access-Preisen</T>
+                  <T>Alpha-Phase – Ihr Preis bleibt dauerhaft geschützt</T>
                 </p>
               </div>
             </motion.div>
@@ -4813,166 +4575,8 @@ export default function AuthPage() {
         </section>
         
         
-        {/* ⭐ SECTION 3 - WARUM ARAS? - Ultra Clean Redesign */}
-        <section className="relative py-32" style={{ background: 'transparent' }}>
-          <div className="max-w-7xl mx-auto">
-            {/* Header with Typing Animation */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-center mb-16"
-            >
-              {/* Animated Gradient Headline */}
-              <motion.h2 
-                className="text-5xl md:text-6xl font-black mb-8"
-                style={{ 
-                  fontFamily: 'Orbitron, sans-serif',
-                  background: 'linear-gradient(90deg, #ffffff, #e9d7c4, #FE9100, #ff8c00, #FE9100, #e9d7c4, #ffffff)',
-                  backgroundSize: '300% 100%',
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent'
-                }}
-                animate={{
-                  backgroundPosition: ['0% 50%', '50% 50%', '100% 50%', '50% 50%', '0% 50%']
-                }}
-                transition={{
-                  duration: 15,
-                  repeat: Infinity,
-                  ease: 'easeInOut'
-                }}
-              >
-                <T>Warum Unternehmen ARAS AI einsetzen</T>
-              </motion.h2>
-              
-              {/* Typing Subtitle */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.5 }}
-                className="text-xl md:text-2xl text-white/80 max-w-4xl mx-auto leading-relaxed"
-              >
-                <p className="mb-4">
-                  <T>ARAS AI ist nicht experimentelle KI-Telefonie.</T>
-                </p>
-                <motion.p
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.8 }}
-                  className="text-white/60"
-                >
-                  <T>Es ist eine präzise, stabile, Schweizer Plattform für echte Geschäftsprozesse.</T>
-                </motion.p>
-              </motion.div>
-            </motion.div>
-            
-            {/* Transparent Cards Grid */}
-            <div className="grid md:grid-cols-3 gap-8">
-              {[
-                {
-                  icon: <Mic className="w-10 h-10" />,
-                  title: 'Natürlich klingende Stimme',
-                  subtitle: 'ohne Übertreibung',
-                  desc: 'Die Stimme wirkt ruhig, strukturiert und authentisch – ohne Roboterklang.'
-                },
-                {
-                  icon: <TrendingUp className="w-10 h-10" />,
-                  title: 'Skalierung ohne Personalabhängigkeit',
-                  subtitle: null,
-                  desc: 'Von einzelnen Anrufen bis zu hunderten parallelen Gesprächen, 24/7, konstant.'
-                },
-                {
-                  icon: <Shield className="w-10 h-10" />,
-                  title: 'Schweizer Datensicherheit',
-                  subtitle: null,
-                  desc: 'Alle Daten bleiben in Europa. Keine US-Clouds. Keine Risikoarchitektur. Bereit für interne Audits & Compliance-Abteilungen.'
-                }
-              ].map((item, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.15, type: 'spring', stiffness: 100 }}
-                  whileHover={{ scale: 1.02, y: -5 }}
-                  className="group relative"
-                >
-                  {/* Animated Border Container */}
-                  <div className="relative p-[2px] rounded-2xl overflow-hidden">
-                    {/* Animated Gradient Border */}
-                    <motion.div
-                      className="absolute inset-0"
-                      style={{
-                        background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00, #e9d7c4)',
-                        backgroundSize: '300% 300%'
-                      }}
-                      animate={{
-                        backgroundPosition: ['0% 50%', '100% 50%', '0% 50%']
-                      }}
-                      transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
-                    />
-                    
-                    {/* Transparent Card Content */}
-                    <div 
-                      className="relative rounded-2xl p-8"
-                      style={{ background: 'rgba(0, 0, 0, 0.9)' }}
-                    >
-                      {/* Icon with Gradient */}
-                      <motion.div 
-                        className="mb-6 text-white"
-                        whileHover={{ scale: 1.1, rotate: 5 }}
-                        transition={{ type: 'spring', stiffness: 300 }}
-                      >
-                        {item.icon}
-                      </motion.div>
-                      
-                      {/* Title with Gradient on Hover */}
-                      <h3 
-                        className="text-2xl font-bold mb-3 text-white transition-all duration-300"
-                        style={{ fontFamily: 'Orbitron, sans-serif' }}
-                      >
-                        <T>{item.title}</T>
-                      </h3>
-                      
-                      {/* Subtitle */}
-                      {item.subtitle && (
-                        <motion.p 
-                          className="text-sm mb-4 font-semibold"
-                          style={{
-                            background: 'linear-gradient(90deg, #e9d7c4, #FE9100)',
-                            backgroundClip: 'text',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent'
-                          }}
-                        >
-                          <T>{item.subtitle}</T>
-                        </motion.p>
-                      )}
-                      
-                      {/* Description */}
-                      <p className="text-white/70 leading-relaxed text-base">
-                        <T>{item.desc}</T>
-                      </p>
-                      
-                      {/* Subtle Glow on Hover */}
-                      <motion.div
-                        className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 pointer-events-none"
-                        style={{
-                          background: 'radial-gradient(circle at 50% 50%, rgba(254, 145, 0, 0.1), transparent 70%)',
-                          filter: 'blur(20px)'
-                        }}
-                        transition={{ duration: 0.5 }}
-                      />
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
+        {/* ⭐ INDUSTRY ATLAS — 28+ Branchen */}
+        <IndustryAtlas />
 
         {/* 🎯 FEATURES SECTION - Was ARAS AI heute tut */}
         <section className="relative py-32 px-8 border-t-4 border-[#FE9100]" style={{ background: 'rgba(0, 0, 0, 0.8)' }}>
@@ -5214,43 +4818,38 @@ export default function AuthPage() {
         </section>
 
         {/* 💎 PRICING & ALPHA ADVANTAGES SECTION */}
-        <section className="relative px-8" style={{ background: 'transparent', paddingTop: '160px', paddingBottom: '160px' }}>
-          <div className="max-w-[1400px] mx-auto">
+        <section className="pricing-section" style={{ background: 'transparent', paddingTop: '160px', paddingBottom: '160px' }}>
+          <div className="pricing-inner" style={{ maxWidth: 1400 }}>
             {/* Section Header */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.8 }}
-              className="text-center mb-24"
+              className="text-center mb-16"
             >
-              <h2
-                className="text-5xl md:text-6xl font-black mb-6"
-                style={{
-                  fontFamily: 'Orbitron, sans-serif',
-                  background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #ffd700)',
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent'
-                }}
-              >
-                Die ARAS Alpha-Vorteile
+              <h2 className="pricing-headline" style={{ fontSize: 'clamp(2.5rem, 5vw, 3.75rem)' }}>
+                ARAS Alpha Access
               </h2>
-              <div className="text-xl text-white/70 max-w-4xl mx-auto leading-relaxed space-y-3">
-                <p className="font-semibold text-white/80">
-                  Die Alpha-Phase ist streng limitiert.
-                </p>
-                <p>
-                  Alle Nutzer, die heute testen, behalten ihre aktuellen Preise – dauerhaft.
-                </p>
-                <p>
-                  Die zukünftigen Enterprise-Preise werden am 01.01.2026 aktiviert.
-                </p>
-                <p className="text-[#FE9100] font-bold">
-                  Ihr Zugang bleibt geschützt.
-                </p>
-              </div>
+              <p className="pricing-subline" style={{ maxWidth: 520 }}>
+                Frühe Nutzer behalten ihren Preis dauerhaft.
+              </p>
             </motion.div>
+
+            {/* Trust Strip */}
+            <div className="pricing-trust-strip" style={{ marginBottom: 48 }}>
+              {[
+                { icon: <ShieldCheck className="w-3.5 h-3.5" />, text: 'Preis bleibt geschützt' },
+                { icon: <Check className="w-3.5 h-3.5" />, text: 'Ohne Kreditkarte starten' },
+                { icon: <Check className="w-3.5 h-3.5" />, text: 'Jederzeit kündbar' },
+                { icon: <Shield className="w-3.5 h-3.5" />, text: 'Enterprise-ready' }
+              ].map((pill, i) => (
+                <div key={i} className="pricing-trust-pill">
+                  {pill.icon}
+                  {pill.text}
+                </div>
+              ))}
+            </div>
 
             {/* Pricing Cards */}
             <PricingCards />
@@ -5261,79 +4860,66 @@ export default function AuthPage() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.8, delay: 0.6 }}
-              className="mt-32 text-center"
+              className="mt-20 text-center"
             >
-              <h3
-                className="text-2xl font-black mb-4"
-                style={{
-                  fontFamily: 'Orbitron, sans-serif',
-                  color: '#e9d7c4'
-                }}
-              >
-                Alpha ist begrenzt. Preise sind es auch.
-              </h3>
-              <p className="text-lg text-white/70 max-w-3xl mx-auto leading-relaxed">
-                Alle registrierten Nutzer behalten ihre Alpha-Preise – selbst wenn ARAS 2026 auf Enterprise-Niveau skaliert.
-                <br />
-                <span className="text-white/80 font-semibold">
-                  Das ist unsere Zusage an alle, die uns jetzt unterstützen.
-                </span>
+              <p className="text-lg text-white/50 max-w-3xl mx-auto leading-relaxed">
+                Neue Tarife können später eingeführt werden – Alpha-Nutzer bleiben geschützt.
               </p>
             </motion.div>
           </div>
         </section>
 
-        {/* 📋 FAQ SECTION */}
-        <section className="relative px-8" style={{ background: 'transparent', paddingTop: '160px', paddingBottom: '160px' }}>
-          <div className="max-w-[1200px] mx-auto">
-            {/* Section Header */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8 }}
-              className="text-center mb-24"
-            >
-              <h2
-                className="text-5xl md:text-6xl font-black mb-6"
-                style={{
-                  fontFamily: 'Orbitron, sans-serif',
-                  background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #ffd700)',
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent'
-                }}
+        {/* 📋 FAQ SECTION — Premium 2-Column Layout */}
+        <section className="relative px-8" style={{ background: 'transparent', paddingTop: '120px', paddingBottom: '120px', borderTop: '1px solid rgba(233,215,196,.08)' }}>
+          <div className="max-w-[1280px] mx-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-16 lg:gap-20 items-start">
+              {/* Left — Title + Trust */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6 }}
+                className="lg:sticky lg:top-32"
               >
-                Häufige Fragen – klar und transparent beantwortet
-              </h2>
-              <p className="text-xl text-white/70 max-w-4xl mx-auto leading-relaxed">
-                Die wichtigsten Fragen rund um ARAS AI, Sicherheit, Telefonie, Preise und technische Funktionsweise.
-                <br />
-                <span className="text-white/80 font-semibold">Ohne Marketing – nur Fakten.</span>
-              </p>
-            </motion.div>
+                <h2
+                  className="text-4xl md:text-5xl font-black mb-5"
+                  style={{
+                    fontFamily: 'Orbitron, sans-serif',
+                    background: 'linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00)',
+                    backgroundSize: '200% 200%',
+                    backgroundClip: 'text',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    animation: 'pricing-gradient-shift 8s ease infinite'
+                  }}
+                >
+                  Häufige Fragen
+                </h2>
+                <p className="text-[16px] text-white/56 leading-relaxed mb-8" style={{ maxWidth: '36ch' }}>
+                  Sicherheit, Telefonie, Preise, technische Funktionsweise.
+                  <br />
+                  <span className="text-white/72 font-semibold">Ohne Marketing – nur Fakten.</span>
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {['Enterprise-ready', 'EU/CH Datenfokus', 'Schnelles Onboarding'].map((pill, i) => (
+                    <div key={i} className="pricing-trust-pill" style={{ fontSize: 12 }}>
+                      <ShieldCheck className="w-3 h-3" />
+                      {pill}
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-10 hidden lg:block">
+                  <p className="text-sm text-white/36">
+                    Weitere Fragen? <a href="mailto:support@aras-plattform.ai" className="text-[#FE9100]/70 hover:text-[#FE9100] transition-colors">support@aras-plattform.ai</a>
+                  </p>
+                </div>
+              </motion.div>
 
-            {/* FAQ Accordion */}
-            <FAQAccordion />
-
-            {/* Section Footer */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8, delay: 0.6 }}
-              className="mt-32 text-center"
-            >
-              <h3
-                className="text-2xl font-black"
-                style={{
-                  fontFamily: 'Orbitron, sans-serif',
-                  color: '#e9d7c4'
-                }}
-              >
-                Weitere Fragen? Wir sind für Sie da.
-              </h3>
-            </motion.div>
+              {/* Right — Accordion */}
+              <div>
+                <FAQAccordion />
+              </div>
+            </div>
           </div>
         </section>
 
@@ -5397,7 +4983,7 @@ function ArasLandingContent() {
                   transition={{ duration: 2, repeat: Infinity }}
                 />
                 <span className="text-sm font-bold text-[#ff6a00]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                  ALPHA-PHASE • BEGRENZTE PLÄTZE • LEBENSLANGE PREISE
+                  ALPHA-PHASE • PREIS DAUERHAFT GESCHÜTZT
                 </span>
               </div>
 
@@ -5456,64 +5042,8 @@ function ArasLandingContent() {
         </div>
       </section>
 
-      {/* Section 2 - Warum ARAS */}
-      <section className="relative w-full py-32" style={{ background: 'transparent' }}>
-        <div className="max-w-7xl mx-auto px-8">
-          <motion.h2 
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-5xl font-black mb-20 text-center"
-            style={{ fontFamily: 'Orbitron, sans-serif' }}
-          >
-            Warum Unternehmen ARAS AI einsetzen
-          </motion.h2>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                icon: <Sparkles className="w-8 h-8" />,
-                title: "Menschliche Gesprächsqualität",
-                subtitle: "ohne Übertreibung",
-                desc: "ARAS AI führt natürliche, kontextbezogene Dialoge. Keine Roboter-Floskeln, keine starren Skripte."
-              },
-              {
-                icon: <Phone className="w-8 h-8" />,
-                title: "Skalierbare Telefonie",
-                subtitle: "24/7 einsatzbereit",
-                desc: "Von Einzelanrufen bis zu parallelen Outbound-Kampagnen. Eine Plattform, die mit deinem Unternehmen mitwächst."
-              },
-              {
-                icon: <Globe className="w-8 h-8" />,
-                title: "Schweizer Datensicherheit",
-                subtitle: "DSGVO-Konformität",
-                desc: "Hosting in zertifizierten EU-Rechenzentren + Schweizer Rechtsrahmen. Keine US-Datenübertragung."
-              }
-            ].map((item, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.2 }}
-                whileHover={{ scale: 1.03, y: -5 }}
-                className="p-8 rounded-2xl"
-                style={{
-                  background: '#000',
-                  border: '2px solid #ff6a00',
-                  boxShadow: '0 4px 20px rgba(255, 106, 0, 0.1)'
-                }}
-              >
-                <div className="mb-6 text-[#ff6a00]">{item.icon}</div>
-                <h3 className="text-2xl font-bold mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                  {item.title}
-                </h3>
-                <p className="text-sm text-white/70">{item.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Section 2 - Industry Atlas */}
+      <IndustryAtlas />
 
       {/* Section 3 - Alpha Features */}
       <section className="relative w-full py-32" style={{ background: '#0A0A0C' }}>
@@ -5604,62 +5134,58 @@ function ArasLandingContent() {
       </section>
 
       {/* Section 4 - Pricing */}
-      <section className="relative w-full py-32" style={{ background: '#070709' }}>
-        <div className="max-w-7xl mx-auto px-8">
+      <section className="pricing-section" style={{ background: '#070709' }}>
+        <div className="pricing-inner" style={{ maxWidth: '72rem' }}>
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-20"
+            className="text-center mb-16"
           >
-            <h2 className="text-5xl font-black mb-6" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-              Alpha-Phase: Du behältst deine Preise
-            </h2>
-            <p className="text-xl text-white/70">
-              auch wenn wir 2026 erhöhen.
-            </p>
+            <h2 className="pricing-headline">ARAS Alpha Access</h2>
+            <p className="pricing-subline">Frühe Nutzer behalten ihren Preis dauerhaft.</p>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-8 mb-16">
+          <div className="pricing-trust-strip">
+            {['Preis bleibt geschützt', 'Jederzeit kündbar', 'Enterprise-ready'].map((text, i) => (
+              <div key={i} className="pricing-trust-pill">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                {text}
+              </div>
+            ))}
+          </div>
+
+          <div className="pricing-grid">
             {[
-              { name: "Starter", finalPrice: "€1.990", alphaPrice: "€59", calls: "1.000", features: ["Zusammenfassungen", "Voller Plattformzugang"] },
-              { name: "Pro", finalPrice: "€4.990", alphaPrice: "€249", calls: "2.500", features: ["200 parallel", "CRM-Integration", "Individuelle Stimme"] },
-              { name: "Enterprise", finalPrice: "€19.990", alphaPrice: "€1.990", calls: "30.000", features: ["500 parallel", "Eigene Instanz", "24/7 Onboarding"] }
+              { label: 'Starter', name: 'ARAS Pro', price: '€59', desc: '100 Calls / Monat', features: ['Zusammenfassungen', 'Voller Plattformzugang'] },
+              { label: 'Pro', name: 'ARAS Ultra', price: '€249', desc: '1.000 Calls / Monat', features: ['Parallele Calls', 'CRM-Integration', 'Individuelle Stimme'], featured: true },
+              { label: 'Enterprise', name: 'ARAS Ultimate', price: '€1.990', desc: '10.000 Calls / Monat', features: ['Eigene Instanz', '24/7 Onboarding', 'Dediziertes LLM'] }
             ].map((plan, i) => (
               <motion.div
                 key={i}
-                initial={{ opacity: 0, y: 30 }}
+                initial={{ opacity: 0, y: 14 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                whileHover={{ scale: 1.02, y: -5 }}
-                className="relative p-8 rounded-2xl"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(255, 106, 0, 0.05), rgba(0, 0, 0, 0.8))',
-                  border: '2px solid #ff6a00',
-                  boxShadow: '0 10px 40px rgba(255, 106, 0, 0.15)'
-                }}
+                transition={{ delay: i * 0.08, duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
+                className={`plan-card${plan.featured ? ' plan-card--featured' : ''}`}
               >
-                <div className="inline-block px-4 py-1 rounded-full bg-[#ff6a00] text-xs font-bold mb-6">
-                  FINALER PREIS 2026
-                </div>
-                <h3 className="text-3xl font-black mb-4" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                  {plan.name}
-                </h3>
-                <p className="text-4xl font-black text-white/40 line-through mb-2">{plan.finalPrice}</p>
-                <div className="flex items-baseline gap-2 mb-6">
-                  <p className="text-5xl font-black text-[#ff6a00]">{plan.alphaPrice}</p>
-                  <CheckCircle2 className="w-6 h-6 text-green-500" />
-                </div>
-                <p className="text-sm text-white/60 mb-6">{plan.calls} Anrufe pro Monat</p>
-                <div className="space-y-3">
+                {plan.featured && <div className="plan-badge">Beliebteste Wahl</div>}
+                <div className="plan-label">{plan.label}</div>
+                <h3 className="plan-name">{plan.name}</h3>
+                <div className="plan-price">{plan.price}<span className="plan-price-period"> / Monat</span></div>
+                <p className="plan-best-for">{plan.desc}</p>
+                <div className="plan-divider" />
+                <ul className="plan-bullets">
                   {plan.features.map((f, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
-                      <div className="w-1 h-1 rounded-full bg-[#ff6a00]" />
-                      <p className="text-sm text-white/70">{f}</p>
-                    </div>
+                    <li key={idx}>
+                      <Check className="plan-bullet-icon" />
+                      <span>{f}</span>
+                    </li>
                   ))}
-                </div>
+                </ul>
+                <button className={`plan-cta ${plan.featured ? 'plan-cta--primary' : 'plan-cta--secondary'}`}>
+                  Plan wählen
+                </button>
               </motion.div>
             ))}
           </div>
@@ -5668,17 +5194,10 @@ function ArasLandingContent() {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center p-10 rounded-2xl"
-            style={{
-              background: 'linear-gradient(135deg, rgba(255, 106, 0, 0.1), transparent)',
-              border: '1px solid rgba(255, 106, 0, 0.3)'
-            }}
+            className="text-center mt-12"
           >
-            <p className="text-2xl font-bold mb-4" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-              Warum?
-            </p>
-            <p className="text-xl text-white/80">
-              Wir suchen ehrliches Feedback, keine kurzfristigen Einnahmen.
+            <p className="text-lg text-white/50 max-w-3xl mx-auto leading-relaxed">
+              Neue Tarife können später eingeführt werden – Alpha-Nutzer bleiben geschützt.
             </p>
           </motion.div>
         </div>
@@ -5886,7 +5405,7 @@ function ArasLandingContent() {
               Teste ARAS AI jetzt in der Alpha
             </h2>
             <p className="text-2xl text-white/80 max-w-3xl mx-auto leading-relaxed">
-              Sichere dir lebenslange Early-Access-Preise.
+              Dein Alpha-Preis bleibt dauerhaft geschützt.
             </p>
             <p className="text-xl text-white/60 max-w-2xl mx-auto">
               Echte Technologie, reale Telefonate, sofort einsetzbar.
@@ -5906,7 +5425,7 @@ function ArasLandingContent() {
             </motion.button>
 
             <p className="text-sm text-white/40 mt-8">
-              Begrenzte Plätze • Lebenslange Preise • Keine Vertragsbindung
+              Alpha-Phase • Keine Vertragsbindung • Jederzeit kündbar
             </p>
           </motion.div>
         </div>
@@ -6132,7 +5651,7 @@ export function ArasHeroSection() {
                     transition={{ duration: 2, repeat: Infinity }}
                   />
                   <span className="text-sm font-bold text-[#FE9100]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
-                    ALPHA PHASE • LEBENSLANGE BESTPREISE
+                    ALPHA PHASE • PREIS DAUERHAFT GESCHÜTZT
                   </span>
                 </motion.div>
 
