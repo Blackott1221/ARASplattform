@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, Component, ReactNode } from 'react';
+import '@/styles/power-ui.css';
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -944,8 +945,8 @@ function PowerContent() {
   // RENDER - 2026 Control Room Layout
   // ─────────────────────────────────────────────────────────────
   return (
-    <div className="h-full flex-1 min-h-0 overflow-y-auto">
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-8 space-y-6">
+    <div className="power-root h-full flex-1 min-h-0 overflow-y-auto pw-scrollbar">
+      <div className="max-w-[1360px] mx-auto px-6 sm:px-8 py-8 space-y-6">
 
         {/* TOP HEADER - Ultra Clean with Animated Underline */}
         <motion.div 
@@ -1063,10 +1064,9 @@ Time: ${persistentError.timestamp}`}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: ANIM.duration, ease: ANIM.easing, delay: 0.15 }}
-              className="rounded-[20px] p-5"
-              style={{ background: DT.panelBg, border: `1px solid ${DT.panelBorder}` }}
+              className="pw-card"
             >
-              <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] mb-4" style={{ color: DT.gold }}>
+              <h3 className="pw-section-title">
                 Systemprüfung
               </h3>
               {isLoading && preflightChecks.length === 0 ? (
@@ -1089,30 +1089,25 @@ Time: ${persistentError.timestamp}`}
             </motion.div>
 
             {/* Input Form - Ultra Clean */}
-            <div 
-              className="rounded-[20px] p-5 space-y-5"
-              style={{ background: DT.panelBg, border: `1px solid ${DT.panelBorder}` }}
-            >
-              <h3 className="text-[11px] font-bold uppercase tracking-[0.15em]" style={{ color: DT.gold }}>
+            <div className="pw-card space-y-5">
+              <h3 className="pw-section-title">
                 Anruf konfigurieren
               </h3>
 
               {/* Contact Name */}
               <div>
-                <label className="block text-[11px] font-medium text-neutral-500 mb-2 uppercase tracking-wide">Kontaktname</label>
+                <label className="pw-label">Kontaktname</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={contactName}
                     onChange={e => setContactName(e.target.value)}
                     placeholder="z.B. Firma GmbH"
-                    className="flex-1 px-4 py-3 rounded-[14px] text-sm focus:outline-none focus:ring-1 focus:ring-orange-500/30 transition-all"
-                    style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${DT.panelBorder}`, color: DT.gold }}
+                    className="pw-input flex-1"
                   />
                   <button
                     onClick={() => setShowContactPicker(true)}
-                    className="px-4 py-3 rounded-[14px] text-xs font-medium hover:bg-white/[0.06] transition-colors"
-                    style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${DT.panelBorder}`, color: DT.gold }}
+                    className="pw-btn-ghost"
                   >
                     Kontakte
                   </button>
@@ -1121,76 +1116,41 @@ Time: ${persistentError.timestamp}`}
 
               {/* Phone Number */}
               <div>
-                <label className="block text-[11px] font-medium text-neutral-500 mb-2 uppercase tracking-wide">Telefonnummer *</label>
+                <label className="pw-label">Telefonnummer *</label>
                 <input
                   type="tel"
                   value={phoneNumber}
                   onChange={e => setPhoneNumber(e.target.value.replace(/[^\d+]/g, ''))}
                   placeholder="+49 123 4567890"
-                  className="w-full px-4 py-3 rounded-[14px] text-sm focus:outline-none focus:ring-1 focus:ring-orange-500/30 transition-all"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${DT.panelBorder}`, color: DT.gold }}
+                  className="pw-input"
                 />
               </div>
 
               {/* Message */}
               <div>
-                <label className="block text-[11px] font-medium text-neutral-500 mb-2 uppercase tracking-wide">Nachricht / Anweisung *</label>
+                <label className="pw-label">Nachricht / Anweisung *</label>
                 <textarea
                   value={message}
                   onChange={e => setMessage(e.target.value)}
                   placeholder="z.B. Frag nach dem aktuellen Stand des Projekts..."
                   rows={4}
-                  className="w-full px-4 py-3 rounded-[14px] text-sm resize-none focus:outline-none focus:ring-1 focus:ring-orange-500/30 transition-all"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${DT.panelBorder}`, color: DT.gold, minHeight: '120px' }}
+                  className="pw-input"
                 />
               </div>
 
-              {/* Start Button - 2026 Transparent CTA with Animated Border */}
-              <div className="flex justify-end sm:justify-end justify-stretch">
+              {/* Start Button */}
+              <div className="flex justify-end">
                 <button
                   onClick={handleStartCallProcess}
                   disabled={!canStart || isLoading || callStatus === 'ringing' || callStatus === 'connected'}
-                  className="relative overflow-hidden w-full sm:w-auto h-11 px-6 rounded-2xl text-[13px] font-medium tracking-wide uppercase transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
-                  style={{
-                    background: 'rgba(0,0,0,0.25)',
-                    backdropFilter: 'blur(12px)',
-                    color: canStart ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)',
-                  }}
+                  className="pw-btn-primary w-full sm:w-auto"
                 >
-                  {/* Border overlay */}
-                  <span 
-                    className="absolute inset-0 rounded-2xl pointer-events-none"
-                    style={{ border: '1px solid rgba(255,255,255,0.1)' }}
-                  />
-                  {/* Animated border glow (only when enabled) */}
-                  {canStart && !isLoading && (
-                    <span 
-                      className="absolute inset-0 rounded-2xl pointer-events-none opacity-60 group-hover:opacity-100 transition-opacity"
-                      style={{ 
-                        background: 'conic-gradient(from 180deg, rgba(255,106,0,0), rgba(255,106,0,0.35), rgba(233,215,196,0.18), rgba(255,106,0,0))',
-                        mask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-                        maskComposite: 'exclude',
-                        WebkitMaskComposite: 'xor',
-                        padding: '1px',
-                        animation: 'spin 4s linear infinite'
-                      }}
-                    />
-                  )}
-                  {/* Button text */}
-                  <span className="relative z-10">
-                    {isLoading ? 'Wird gestartet...' : 
-                     callStatus === 'ringing' ? 'Verbindet...' : 
-                     'Jetzt anrufen lassen'}
-                  </span>
+                  {isLoading && <span className="pw-spinner" />}
+                  {isLoading ? 'Wird gestartet...' : 
+                   callStatus === 'ringing' ? 'Verbindet...' : 
+                   'Jetzt anrufen lassen'}
                 </button>
               </div>
-              {/* CSS Keyframe for border animation */}
-              <style>{`
-                @keyframes spin {
-                  from { transform: rotate(0deg); }
-                  to { transform: rotate(360deg); }
-                }
-              `}</style>
             </div>
           </div>
 
@@ -1199,10 +1159,7 @@ Time: ${persistentError.timestamp}`}
 
             {/* Chat Flow */}
             {showChatFlow && validationResult?.questions && (
-              <div 
-                className="rounded-[20px] p-5"
-                style={{ background: DT.panelBg, border: `1px solid ${DT.panelBorder}` }}
-              >
+              <div className="pw-card">
                 <ClarificationChat
                   questions={validationResult.questions}
                   initialMessage={message}
@@ -1213,35 +1170,33 @@ Time: ${persistentError.timestamp}`}
               </div>
             )}
 
-            {/* Review Modal - No Icons */}
+            {/* Review Modal */}
             {showReview && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.97 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="rounded-[20px] p-5"
-                style={{ background: 'rgba(0,0,0,0.5)', border: `1px solid rgba(255,106,0,0.25)` }}
+                className="pw-card"
+                style={{ borderColor: 'rgba(255,106,0,0.25)' }}
               >
-                <h3 className="text-sm font-bold mb-4 uppercase tracking-wide" style={{ color: DT.orange }}>
+                <h3 className="pw-section-title" style={{ color: DT.orange }}>
                   Anruf bestätigen
                 </h3>
                 <div className="space-y-3 text-sm" style={{ color: DT.gold }}>
-                  <p><span className="text-neutral-500">Kontakt:</span> {contactName || 'Unbekannt'}</p>
-                  <p><span className="text-neutral-500">Telefon:</span> {phoneNumber}</p>
-                  <p className="text-neutral-500">Nachricht:</p>
+                  <p><span style={{ color: 'var(--pw-muted)' }}>Kontakt:</span> {contactName || 'Unbekannt'}</p>
+                  <p><span style={{ color: 'var(--pw-muted)' }}>Telefon:</span> {phoneNumber}</p>
+                  <p style={{ color: 'var(--pw-muted)' }}>Nachricht:</p>
                   <div className="p-3 rounded-[12px] bg-black/40 text-xs whitespace-pre-wrap leading-relaxed">{enhancedPrompt}</div>
                 </div>
                 <div className="flex gap-3 mt-5">
                   <button
                     onClick={handleConfirmCall}
-                    className="flex-1 py-3 rounded-[14px] font-bold text-sm transition-all hover:translate-y-[-1px]"
-                    style={{ background: `linear-gradient(135deg, ${DT.orange}, ${DT.goldDark})`, color: '#000' }}
+                    className="pw-btn-primary flex-1"
                   >
                     Jetzt anrufen
                   </button>
                   <button
                     onClick={() => setShowReview(false)}
-                    className="px-5 py-3 rounded-[14px] font-bold text-sm hover:bg-white/[0.06] transition-colors"
-                    style={{ background: 'rgba(255,255,255,0.1)', color: CI.goldLight }}
+                    className="pw-btn-ghost"
                   >
                     Abbrechen
                   </button>
@@ -1328,13 +1283,10 @@ Time: ${persistentError.timestamp}`}
               </motion.div>
             )}
 
-            {/* Call History - Clean, Clickable, No Icons */}
+            {/* Call History */}
             {callHistory.length > 0 && (
-              <div 
-                className="rounded-[20px] p-5"
-                style={{ background: DT.panelBg, border: `1px solid ${DT.panelBorder}` }}
-              >
-                <h3 className="text-[11px] font-bold uppercase tracking-[0.15em] mb-4" style={{ color: DT.gold }}>
+              <div className="pw-card">
+                <h3 className="pw-section-title">
                   Letzte Anrufe
                 </h3>
                 <div className="space-y-1">
@@ -1545,26 +1497,19 @@ Time: ${persistentError.timestamp}`}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.25 }}
-              className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end"
-              style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)' }}
+              className="pw-drawer-overlay"
               onClick={handleCloseDrawer}
             >
               <motion.div
-                initial={{ x: '100%', opacity: 0.5 }}
+                initial={{ x: 18, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
-                exit={{ x: '100%', opacity: 0.5 }}
-                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                className="w-full sm:w-[460px] sm:max-w-[90vw] h-[85vh] sm:h-full sm:max-h-screen overflow-hidden rounded-t-[24px] sm:rounded-none flex flex-col"
-                style={{ background: 'rgba(8,8,8,0.98)', borderLeft: `1px solid ${DT.panelBorder}` }}
+                exit={{ x: 18, opacity: 0 }}
+                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                className="pw-drawer pw-scrollbar"
                 onClick={e => e.stopPropagation()}
               >
-                {/* Drawer Header - Premium Gradient Title */}
-                <motion.div 
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1, duration: 0.2 }}
-                  className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]"
-                >
+                {/* Drawer Header */}
+                <div className="pw-drawer-header">
                   <h3 
                     className="text-base font-bold uppercase tracking-wide"
                     style={{ 
@@ -1576,30 +1521,24 @@ Time: ${persistentError.timestamp}`}
                     Anrufdetails
                   </h3>
                   <div className="flex items-center gap-2">
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                    <button
                       onClick={handleRefreshDrawerDetails}
                       disabled={loadingCallDetails}
-                      className="text-xs font-medium px-3 py-1.5 rounded-[10px] hover:bg-white/[0.06] transition-colors disabled:opacity-50"
-                      style={{ color: DT.gold }}
+                      className="pw-btn-ghost"
                     >
-                      {loadingCallDetails ? 'Lädt...' : 'Aktualisieren'}
-                    </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                      {loadingCallDetails ? <><span className="pw-spinner" /> Lädt...</> : 'Aktualisieren'}
+                    </button>
+                    <button
                       onClick={handleCloseDrawer}
-                      className="text-xs font-medium px-3 py-1.5 rounded-[10px] hover:bg-white/[0.06] transition-colors"
-                      style={{ color: '#888' }}
+                      className="pw-btn-ghost"
                     >
                       Schließen
-                    </motion.button>
+                    </button>
                   </div>
-                </motion.div>
+                </div>
                 
                 {/* Drawer Content with smooth scroll */}
-                <div className="flex-1 min-h-0 overflow-y-auto p-5">
+                <div className="pw-drawer-body pw-scrollbar">
                   <AnimatePresence mode="wait">
                     {loadingCallDetails ? (
                       <motion.div 
@@ -1669,6 +1608,125 @@ Time: ${persistentError.timestamp}`}
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* ═══════════════════════════════════════════════════════ */}
+        {/* STIMMWECHSEL — Premium Voice Selection (ULTRA gated)  */}
+        {/* ═══════════════════════════════════════════════════════ */}
+        {(() => {
+          const isUltra = (user as any)?.subscriptionPlan === 'ultra' || (user as any)?.subscriptionPlan === 'ultimate';
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
+              className="pw-voice-card"
+            >
+              {/* Shimmer line */}
+              {!isUltra && <div className="pw-voice-shimmer" aria-hidden="true" />}
+
+              {/* Locked overlay */}
+              {!isUltra && (
+                <div className="pw-voice-locked-overlay">
+                  <div className="text-center px-6">
+                    <div
+                      className="pw-pill mx-auto mb-4"
+                      style={{ borderColor: 'rgba(254,145,0,.25)', color: DT.gold }}
+                    >
+                      ULTRA erforderlich
+                    </div>
+                    <a
+                      href="/app/billing"
+                      className="pw-btn-primary inline-flex"
+                      style={{ fontSize: 12, height: 38, padding: '0 20px' }}
+                    >
+                      Ultra aktivieren
+                    </a>
+                    <p className="text-xs mt-3" style={{ color: 'var(--pw-muted)' }}>
+                      Freischaltung erfolgt automatisch nach Upgrade.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Content */}
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8 items-start">
+                {/* Left — Info */}
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div
+                      className="w-1 h-8 rounded-full"
+                      style={{ background: `linear-gradient(180deg, ${DT.orange}, ${DT.goldDark})` }}
+                    />
+                    <h3
+                      className="text-lg font-black tracking-wide"
+                      style={{ fontFamily: 'var(--aras-font-display)', color: DT.gold }}
+                    >
+                      Stimmwechsel
+                    </h3>
+                  </div>
+                  <p className="text-sm leading-relaxed mb-6" style={{ color: 'var(--pw-muted)' }}>
+                    Jede Stimme wurde von Synchronsprechern eingesprochen, präzise gemastert
+                    und für natürliche Telefonie optimiert.
+                  </p>
+                  <ul className="space-y-3">
+                    {[
+                      'Stimmenbibliothek (Synchronsprecher)',
+                      'Kontextabhängiger Wechsel pro Gespräch',
+                      'Ton & Pace fein steuerbar',
+                    ].map((item, i) => (
+                      <li key={i} className="flex items-center gap-3 text-sm" style={{ color: 'var(--pw-text)' }}>
+                        <span
+                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                          style={{ background: DT.orange }}
+                        />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Right — Voice selector (unlocked) or placeholder */}
+                <div style={{ opacity: isUltra ? 1 : 0.35, pointerEvents: isUltra ? 'auto' : 'none' }}>
+                  <label className="pw-label">Stimme auswählen</label>
+                  <select
+                    className="pw-input"
+                    style={{ height: 44, appearance: 'none', cursor: 'pointer' }}
+                    defaultValue="studio-a"
+                    disabled={!isUltra}
+                  >
+                    <option value="studio-a">Studio A</option>
+                    <option value="studio-b">Studio B</option>
+                    <option value="warm">Warm</option>
+                    <option value="neutral">Neutral</option>
+                    <option value="executive">Executive</option>
+                  </select>
+
+                  <div className="flex items-center justify-between mt-4 px-1">
+                    <span className="text-xs font-medium" style={{ color: 'var(--pw-muted)' }}>
+                      Stimme automatisch wechseln
+                    </span>
+                    <button
+                      className="w-10 h-5 rounded-full relative transition-colors"
+                      style={{ background: 'rgba(255,255,255,.08)', border: '1px solid var(--pw-stroke)' }}
+                      disabled={!isUltra}
+                      aria-label="Stimme automatisch wechseln"
+                    >
+                      <span
+                        className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full transition-transform"
+                        style={{ background: 'var(--pw-muted)' }}
+                      />
+                    </button>
+                  </div>
+
+                  <p className="text-[11px] mt-4" style={{ color: 'var(--pw-soft)' }}>
+                    Feature wird schrittweise ausgerollt.
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          );
+        })()}
 
       </div>
     </div>
