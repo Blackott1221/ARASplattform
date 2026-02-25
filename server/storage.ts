@@ -61,6 +61,12 @@ export interface IStorage {
   updateUserProfile(userId: string, profileData: any): Promise<User>;
   updateUserThread(userId: string, threadId: string): Promise<User>;
   
+  // Password Reset operations
+  setPasswordResetToken(userId: string, tokenHash: string, expiresAt: Date): Promise<void>;
+  getUserByPasswordResetTokenHash(tokenHash: string): Promise<User | undefined>;
+  clearPasswordResetToken(userId: string): Promise<void>;
+  markPasswordResetUsed(userId: string): Promise<void>;
+  
   // Subscription operations
   getSubscriptionStatus(userId: string): Promise<any>;
   getSubscriptionPlan(planId: string): Promise<any>;
@@ -812,6 +818,49 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return user;
+  }
+
+  // Password Reset operations
+  async setPasswordResetToken(userId: string, tokenHash: string, expiresAt: Date): Promise<void> {
+    await db
+      .update(users)
+      .set({
+        passwordResetTokenHash: tokenHash,
+        passwordResetExpiresAt: expiresAt,
+        passwordResetUsedAt: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async getUserByPasswordResetTokenHash(tokenHash: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.passwordResetTokenHash, tokenHash));
+    return user;
+  }
+
+  async clearPasswordResetToken(userId: string): Promise<void> {
+    await db
+      .update(users)
+      .set({
+        passwordResetTokenHash: null,
+        passwordResetExpiresAt: null,
+        passwordResetUsedAt: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async markPasswordResetUsed(userId: string): Promise<void> {
+    await db
+      .update(users)
+      .set({
+        passwordResetUsedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
   }
 
   async updateUserSubscription(userId: string, subscriptionData: any): Promise<void> {
@@ -1617,6 +1666,39 @@ export class MemStorage implements IStorage {
     this.users.set(userId, updatedUser);
     this.usersByUsername.set(user.username, updatedUser);
     return updatedUser;
+  }
+
+  // Password Reset operations (MemStorage stubs)
+  async setPasswordResetToken(userId: string, tokenHash: string, expiresAt: Date): Promise<void> {
+    const user = this.users.get(userId);
+    if (!user) return;
+    const updated = { ...user, passwordResetTokenHash: tokenHash, passwordResetExpiresAt: expiresAt, passwordResetUsedAt: null, updatedAt: new Date() };
+    this.users.set(userId, updated);
+    this.usersByUsername.set(user.username, updated);
+  }
+
+  async getUserByPasswordResetTokenHash(tokenHash: string): Promise<User | undefined> {
+    const allUsers = Array.from(this.users.values());
+    for (let i = 0; i < allUsers.length; i++) {
+      if (allUsers[i].passwordResetTokenHash === tokenHash) return allUsers[i];
+    }
+    return undefined;
+  }
+
+  async clearPasswordResetToken(userId: string): Promise<void> {
+    const user = this.users.get(userId);
+    if (!user) return;
+    const updated = { ...user, passwordResetTokenHash: null, passwordResetExpiresAt: null, passwordResetUsedAt: null, updatedAt: new Date() };
+    this.users.set(userId, updated);
+    this.usersByUsername.set(user.username, updated);
+  }
+
+  async markPasswordResetUsed(userId: string): Promise<void> {
+    const user = this.users.get(userId);
+    if (!user) return;
+    const updated = { ...user, passwordResetUsedAt: new Date(), updatedAt: new Date() };
+    this.users.set(userId, updated);
+    this.usersByUsername.set(user.username, updated);
   }
 
   // Subscription operations

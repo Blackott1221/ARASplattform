@@ -1,248 +1,234 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
-import { GradientText } from "@/components/ui/gradient-text";
-import { GlowButton } from "@/components/ui/glow-button";
-import { useToast } from "@/hooks/use-toast";
-import { motion } from "framer-motion";
-import { Bot, Users, Phone, ArrowRight, ArrowLeft, Mail } from "lucide-react";
-import { Link, useLocation } from "wouter";
+import { useState, useEffect, useCallback } from "react";
+import { useLocation } from "wouter";
+import { ArrowLeft, Mail } from "lucide-react";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
-  const { toast } = useToast();
+  const [cooldown, setCooldown] = useState(0);
   const [, setLocation] = useLocation();
 
-  const features = [
-    {
-      icon: <Bot className="w-5 h-5" />,
-      title: "AI-Powered Voice Agents",
-      delay: 0,
-    },
-    {
-      icon: <Users className="w-5 h-5" />,
-      title: "Smart Lead Generation",
-      delay: 0.2,
-    },
-    {
-      icon: <Phone className="w-5 h-5" />,
-      title: "Automated Campaigns",
-      delay: 0.4,
-    },
-  ];
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading || cooldown > 0) return;
     setIsLoading(true);
-    
-    // Simulate password reset process for wireframe
-    setTimeout(() => {
+    try {
+      await fetch("/api/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+    } catch {
+      // Always show success (no enumeration)
+    } finally {
+      setIsLoading(false);
       setEmailSent(true);
-      setIsLoading(false);
-      toast({
-        title: "Reset Email Sent",
-        description: "Check your email for password reset instructions.",
-      });
-    }, 1500);
-  };
+      setCooldown(20);
+    }
+  }, [email, isLoading, cooldown]);
 
-  const handleResendEmail = () => {
+  const handleResend = useCallback(async () => {
+    if (isLoading || cooldown > 0) return;
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      toast({
-        title: "Email Resent",
-        description: "Password reset email has been sent again.",
+    try {
+      await fetch("/api/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
       });
-    }, 1000);
-  };
+    } catch {
+      // silent
+    } finally {
+      setIsLoading(false);
+      setCooldown(20);
+    }
+  }, [email, isLoading, cooldown]);
+
+  const headlineStyle = {
+    fontFamily: "Orbitron, sans-serif",
+    fontWeight: 700,
+    background: "linear-gradient(135deg, #e9d7c4, #FE9100, #a34e00)",
+    WebkitBackgroundClip: "text",
+    WebkitTextFillColor: "transparent",
+    backgroundClip: "text",
+  } as const;
 
   return (
-    <div className="min-h-screen flex bg-background">
-      {/* Left Panel - Dynamic Content */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-background via-card to-background"></div>
-        <div className="relative z-10 p-12 flex flex-col justify-center">
-          <div className="space-y-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="text-4xl font-orbitron font-bold"
-            >
-              <GradientText>ARAS AI</GradientText>
-            </motion.div>
-            
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-lg text-muted-foreground"
-            >
-              The future of AI-powered sales automation
-            </motion.div>
-            
-            <div className="space-y-4 mt-8">
-              {features.map((feature, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -50 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: feature.delay }}
-                  className="bg-card/50 p-4 rounded-lg border border-border"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse-glow"></div>
-                    <span className="text-muted-foreground">{feature.title}</span>
-                  </div>
-                </motion.div>
-              ))}
+    <div
+      className="min-h-screen flex items-center justify-center px-4 py-12"
+      style={{ background: "linear-gradient(to bottom, #0f0f0f, #141414)" }}
+    >
+      <div
+        className="w-full p-8 sm:p-10 rounded-2xl"
+        style={{
+          maxWidth: 460,
+          background: "rgba(10,10,10,0.6)",
+          backdropFilter: "blur(20px) saturate(150%)",
+          WebkitBackdropFilter: "blur(20px) saturate(150%)",
+          border: "1px solid rgba(254,145,0,0.22)",
+        }}
+      >
+        {/* Back to login */}
+        <button
+          type="button"
+          onClick={() => setLocation("/auth")}
+          className="flex items-center gap-1.5 text-[13px] mb-6 transition-colors duration-200"
+          style={{ color: "rgba(233,215,196,.72)", fontFamily: "Inter, system-ui, sans-serif" }}
+          onMouseEnter={(e) => { (e.target as HTMLElement).style.color = "#FE9100"; }}
+          onMouseLeave={(e) => { (e.target as HTMLElement).style.color = "rgba(233,215,196,.72)"; }}
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Zurück zur Anmeldung
+        </button>
+
+        {!emailSent ? (
+          <>
+            <div className="text-center mb-6">
+              <h1 className="text-[22px] sm:text-[26px] font-bold mb-2" style={headlineStyle}>
+                Reset Link anfordern
+              </h1>
+              <p className="text-[14px] leading-relaxed" style={{ color: "rgba(245,245,247,.56)" }}>
+                Wenn ein Konto existiert, senden wir dir einen Link.
+                <br />
+                <span style={{ color: "rgba(245,245,247,.40)" }}>(gültig 60 Minuten)</span>
+              </p>
             </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.8 }}
-              className="mt-8 pt-8 border-t border-border"
-            >
-              <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                <Link href="/app" className="hover:text-primary transition-colors">
-                  <span className="flex items-center space-x-1">
-                    <span>Try Demo</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </span>
-                </Link>
-                <span>•</span>
-                <span>No credit card required</span>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Right Panel - Forgot Password Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6 }}
-          className="w-full max-w-md"
-        >
-          <Card>
-            <CardContent className="p-8">
-              {/* Back Button */}
-              <div className="mb-6">
-                <Button
-                  variant="ghost"
-                  onClick={() => setLocation("/login")}
-                  className="p-0 h-auto text-muted-foreground hover:text-primary"
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label
+                  htmlFor="forgot-email"
+                  className="block text-xs font-bold mb-1.5"
+                  style={{ color: "rgba(245,245,247,.56)" }}
                 >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to login
-                </Button>
+                  E-Mail-Adresse
+                </label>
+                <input
+                  id="forgot-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="max@firma.de"
+                  required
+                  autoComplete="email"
+                  aria-required="true"
+                  className="w-full h-11 px-4 rounded-xl text-sm text-white/90 placeholder:text-white/30 transition-all duration-200 focus:outline-none focus:ring-2"
+                  style={{
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    fontFamily: "Inter, system-ui, sans-serif",
+                    boxShadow: "inset 0 2px 8px rgba(0,0,0,0.6)",
+                  }}
+                  onFocus={(e) => { e.target.style.borderColor = "rgba(254,145,0,0.55)"; e.target.style.boxShadow = "0 0 0 2px rgba(254,145,0,0.25), inset 0 2px 8px rgba(0,0,0,0.6)"; }}
+                  onBlur={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.08)"; e.target.style.boxShadow = "inset 0 2px 8px rgba(0,0,0,0.6)"; }}
+                />
               </div>
 
-              {!emailSent ? (
-                <>
-                  <div className="text-center mb-8">
-                    <h1 className="text-3xl font-orbitron font-bold mb-2">
-                      <GradientText>Reset Password</GradientText>
-                    </h1>
-                    <p className="text-muted-foreground">
-                      Enter your email address and we'll send you a link to reset your password.
-                    </p>
-                  </div>
-                  
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    <div>
-                      <Label htmlFor="email">Email</Label>
-                      <Input 
-                        id="email" 
-                        type="email" 
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="Enter your email"
-                        required
-                      />
-                    </div>
-                    
-                    <GlowButton type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? (
-                        <div className="flex items-center space-x-2">
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          <span>Sending reset email...</span>
-                        </div>
-                      ) : (
-                        "Send Reset Email"
-                      )}
-                    </GlowButton>
-                  </form>
-                </>
-              ) : (
-                <div className="text-center space-y-6">
-                  <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-                    <Mail className="w-8 h-8 text-primary" />
-                  </div>
-                  
-                  <div>
-                    <h1 className="text-3xl font-orbitron font-bold mb-2">
-                      <GradientText>Check Your Email</GradientText>
-                    </h1>
-                    <p className="text-muted-foreground">
-                      We've sent a password reset link to{" "}
-                      <span className="text-primary">{email}</span>
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      Didn't receive the email? Check your spam folder or try again.
-                    </p>
-                    
-                    <Button
-                      variant="outline"
-                      onClick={handleResendEmail}
-                      disabled={isLoading}
-                      className="w-full"
-                    >
-                      {isLoading ? (
-                        <div className="flex items-center space-x-2">
-                          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                          <span>Resending...</span>
-                        </div>
-                      ) : (
-                        "Resend Email"
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              )}
-              
-              <div className="mt-6 text-center">
-                <p className="text-muted-foreground">
-                  Remember your password?{" "}
-                  <Link href="/login" className="text-primary hover:text-primary/80 transition-colors">
-                    Sign in
-                  </Link>
-                </p>
-              </div>
-
-              {/* Mobile Demo Link */}
-              <div className="lg:hidden mt-6 pt-6 border-t border-border text-center">
-                <Link href="/app" className="text-sm text-primary hover:text-primary/80 transition-colors">
-                  <span className="flex items-center justify-center space-x-1">
-                    <span>Try Demo</span>
-                    <ArrowRight className="w-3 h-3" />
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full h-11 rounded-full text-sm font-semibold transition-all duration-200"
+                style={{
+                  fontFamily: "Inter, system-ui, sans-serif",
+                  background: "linear-gradient(180deg, rgba(254,145,0,0.16), rgba(255,255,255,0.02))",
+                  border: "1px solid rgba(254,145,0,0.30)",
+                  color: "#FE9100",
+                  cursor: isLoading ? "wait" : "pointer",
+                }}
+                onMouseEnter={(e) => { if (!isLoading) { (e.target as HTMLElement).style.transform = "translateY(-2px)"; (e.target as HTMLElement).style.boxShadow = "0 22px 74px rgba(0,0,0,0.60)"; } }}
+                onMouseLeave={(e) => { (e.target as HTMLElement).style.transform = "translateY(0)"; (e.target as HTMLElement).style.boxShadow = "none"; }}
+              >
+                {isLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-[#FE9100]/60 border-t-transparent rounded-full animate-spin" />
+                    Wird gesendet…
                   </span>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+                ) : (
+                  "Reset Link senden"
+                )}
+              </button>
+            </form>
+          </>
+        ) : (
+          <div className="text-center space-y-5" role="status" aria-live="polite">
+            <div
+              className="w-14 h-14 rounded-full flex items-center justify-center mx-auto"
+              style={{ background: "rgba(254,145,0,.12)" }}
+            >
+              <Mail className="w-7 h-7" style={{ color: "#FE9100" }} />
+            </div>
+
+            <div>
+              <h1 className="text-[22px] sm:text-[26px] font-bold mb-2" style={headlineStyle}>
+                E-Mail prüfen
+              </h1>
+              <p className="text-[14px]" style={{ color: "rgba(245,245,247,.56)" }}>
+                Falls ein Konto mit{" "}
+                <span style={{ color: "#FE9100" }}>{email}</span>{" "}
+                existiert, haben wir einen Link gesendet.
+              </p>
+            </div>
+
+            <div
+              className="rounded-xl p-4 text-left text-[13px] leading-relaxed"
+              style={{
+                background: "rgba(254,145,0,.06)",
+                border: "1px solid rgba(254,145,0,.18)",
+                color: "rgba(245,245,247,.56)",
+              }}
+            >
+              Prüfe auch deinen Spam-Ordner. Der Link ist 60 Minuten gültig und kann nur einmal verwendet werden.
+            </div>
+
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={isLoading || cooldown > 0}
+              className="w-full h-11 rounded-full text-sm font-semibold transition-all duration-200"
+              style={{
+                fontFamily: "Inter, system-ui, sans-serif",
+                background: "linear-gradient(180deg, rgba(254,145,0,0.08), rgba(255,255,255,0.01))",
+                border: "1px solid rgba(254,145,0,0.20)",
+                color: cooldown > 0 ? "rgba(254,145,0,0.4)" : "#FE9100",
+                cursor: cooldown > 0 ? "not-allowed" : "pointer",
+              }}
+            >
+              {isLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 border-2 border-[#FE9100]/40 border-t-transparent rounded-full animate-spin" />
+                  Wird gesendet…
+                </span>
+              ) : cooldown > 0 ? (
+                `Erneut senden (${cooldown}s)`
+              ) : (
+                "Erneut senden"
+              )}
+            </button>
+          </div>
+        )}
+
+        <div className="mt-6 text-center">
+          <p className="text-[13px]" style={{ color: "rgba(245,245,247,.45)" }}>
+            Passwort doch bekannt?{" "}
+            <a
+              href="/auth"
+              onClick={(e) => { e.preventDefault(); setLocation("/auth"); }}
+              className="transition-colors duration-200"
+              style={{ color: "#FE9100" }}
+              onMouseEnter={(e) => { (e.target as HTMLElement).style.color = "#e9d7c4"; }}
+              onMouseLeave={(e) => { (e.target as HTMLElement).style.color = "#FE9100"; }}
+            >
+              Anmelden
+            </a>
+          </p>
+        </div>
       </div>
     </div>
   );

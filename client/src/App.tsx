@@ -15,6 +15,7 @@ import Landing from "@/pages/landing";
 import Login from "@/pages/login";
 import Signup from "@/pages/signup";
 import ForgotPassword from "@/pages/forgot-password";
+import ResetPassword from "@/pages/reset-password";
 import Welcome from "@/pages/welcome";
 import Terms from "@/pages/terms";
 import Privacy from "@/pages/privacy";
@@ -176,6 +177,7 @@ function Router() {
         <Route path="/signup" component={Signup} />
         <Route path="/auth" component={AuthPage} />
         <Route path="/forgot-password" component={ForgotPassword} />
+        <Route path="/reset-password" component={ResetPassword} />
         <Route path="/welcome" component={Welcome} />
         <Route path="/blog" component={Blog} />
         <Route path="/blog/:slug" component={BlogPost} />

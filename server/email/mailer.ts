@@ -31,7 +31,7 @@ export interface SendEmailResult {
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const EMAIL_FROM = process.env.EMAIL_FROM || 'ARAS AI <no-reply@aras-ai.com>';
 const EMAIL_REPLY_TO = process.env.EMAIL_REPLY_TO;
-const APP_BASE_URL = process.env.APP_BASE_URL || 'https://arasai.onrender.com';
+const APP_BASE_URL = process.env.APP_URL || process.env.APP_BASE_URL || 'https://www.plattform-aras.ai';
 
 // Check if email is enabled
 const EMAIL_ENABLED = !!RESEND_API_KEY;

@@ -2,7 +2,7 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Express } from "express";
 import session from "express-session";
-import { scrypt, randomBytes, timingSafeEqual } from "crypto";
+import { scrypt, randomBytes, timingSafeEqual, createHash } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import type { User } from "@shared/schema";
@@ -10,6 +10,7 @@ import { sanitizeUser, type EnrichmentStatus, type EnrichmentErrorCode } from "@
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
 import { sendWelcomeEmail } from "./email";
+import { sendPasswordResetEmail, sendPasswordChangedEmail } from "./email-service";
 import { triggerEnrichmentAsync, type EnrichmentInput } from "./services/enrichment.service";
 
 declare global {
@@ -473,6 +474,127 @@ export function setupSimpleAuth(app: Express) {
     
     console.log('[AUTH-DEBUG] Returning user data');
     res.json(sanitizeUser(req.user as User));
+  });
+
+  // ============================================================================
+  // PASSWORD RESET ENDPOINTS (user-facing)
+  // ============================================================================
+
+  function hashToken(rawToken: string): string {
+    return createHash('sha256').update(rawToken).digest('hex');
+  }
+
+  // POST /api/forgot-password — always 200 (no user enumeration)
+  app.post("/api/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email || typeof email !== 'string') {
+        return res.status(200).json({ ok: true });
+      }
+
+      const trimmedEmail = email.trim().toLowerCase();
+      console.log('[PASSWORD-RESET] Reset requested (no PII logged)');
+
+      const user = await storage.getUserByEmail(trimmedEmail);
+
+      if (user && user.email) {
+        const rawToken = randomBytes(32).toString('hex');
+        const tokenHash = hashToken(rawToken);
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 60 min
+
+        await storage.setPasswordResetToken(user.id, tokenHash, expiresAt);
+
+        const userName = user.firstName || user.username || 'Nutzer';
+        sendPasswordResetEmail(user.email, userName, rawToken).catch(() => {
+          console.error('[PASSWORD-RESET] Email send failed (non-fatal)');
+        });
+
+        console.log('[PASSWORD-RESET] Token generated and email queued');
+      } else {
+        console.log('[PASSWORD-RESET] No matching user (generic 200 returned)');
+      }
+
+      return res.status(200).json({ ok: true });
+    } catch (error) {
+      console.error('[PASSWORD-RESET] Error in forgot-password:', error instanceof Error ? error.message : 'Unknown');
+      return res.status(200).json({ ok: true });
+    }
+  });
+
+  // GET /api/verify-reset-token?token=...
+  app.get("/api/verify-reset-token", async (req, res) => {
+    try {
+      const rawToken = req.query.token as string;
+      if (!rawToken || typeof rawToken !== 'string') {
+        return res.status(200).json({ valid: false, message: 'Kein Token vorhanden' });
+      }
+
+      const tokenHash = hashToken(rawToken);
+      const user = await storage.getUserByPasswordResetTokenHash(tokenHash);
+
+      if (!user) {
+        return res.status(200).json({ valid: false, message: 'Ung\u00fcltiger oder abgelaufener Link' });
+      }
+
+      if (!user.passwordResetExpiresAt || new Date() > new Date(user.passwordResetExpiresAt)) {
+        return res.status(200).json({ valid: false, message: 'Dieser Link ist abgelaufen' });
+      }
+
+      if (user.passwordResetUsedAt) {
+        return res.status(200).json({ valid: false, message: 'Dieser Link wurde bereits verwendet' });
+      }
+
+      return res.status(200).json({ valid: true });
+    } catch (error) {
+      console.error('[PASSWORD-RESET] Error verifying token:', error instanceof Error ? error.message : 'Unknown');
+      return res.status(200).json({ valid: false, message: 'Fehler bei der \u00dcberpr\u00fcfung' });
+    }
+  });
+
+  // POST /api/reset-password
+  app.post("/api/reset-password", async (req, res) => {
+    try {
+      const { token, newPassword } = req.body;
+
+      if (!token || typeof token !== 'string') {
+        return res.status(400).json({ ok: false, error: 'invalid_or_expired' });
+      }
+
+      if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6) {
+        return res.status(400).json({ ok: false, error: 'password_too_short' });
+      }
+
+      const tokenHash = hashToken(token);
+      const user = await storage.getUserByPasswordResetTokenHash(tokenHash);
+
+      if (!user) {
+        return res.status(400).json({ ok: false, error: 'invalid_or_expired' });
+      }
+
+      if (!user.passwordResetExpiresAt || new Date() > new Date(user.passwordResetExpiresAt)) {
+        return res.status(400).json({ ok: false, error: 'invalid_or_expired' });
+      }
+
+      if (user.passwordResetUsedAt) {
+        return res.status(400).json({ ok: false, error: 'invalid_or_expired' });
+      }
+
+      const hashedPassword = await hashPassword(newPassword);
+      await storage.updateUserProfile(user.id, { password: hashedPassword });
+      await storage.markPasswordResetUsed(user.id);
+
+      console.log('[PASSWORD-RESET] Password successfully reset');
+
+      if (user.email) {
+        const userName = user.firstName || user.username || 'Nutzer';
+        sendPasswordChangedEmail(user.email, userName).catch(() => {});
+      }
+
+      return res.status(200).json({ ok: true, success: true });
+    } catch (error) {
+      console.error('[PASSWORD-RESET] Error resetting password:', error instanceof Error ? error.message : 'Unknown');
+      return res.status(500).json({ ok: false, error: 'server_error' });
+    }
   });
 }
 

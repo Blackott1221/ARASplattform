@@ -3640,6 +3640,22 @@ export default function AuthPage() {
                               {showPassword ? <EyeOff className="h-4 w-4 text-gray-500" /> : <Eye className="h-4 w-4 text-gray-500" />}
                             </Button>
                           </div>
+                          <div className="flex justify-end mt-1.5">
+                            <a
+                              href="/forgot-password"
+                              onClick={(e) => { e.preventDefault(); setLocation('/forgot-password'); }}
+                              className="text-[13px] transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px]"
+                              style={{
+                                color: 'rgba(233,215,196,.86)',
+                                fontFamily: 'Inter, system-ui, sans-serif',
+                                outlineColor: 'rgba(254,145,0,.55)',
+                              }}
+                              onMouseEnter={(e) => { (e.target as HTMLElement).style.color = '#FE9100'; (e.target as HTMLElement).style.textDecoration = 'underline'; }}
+                              onMouseLeave={(e) => { (e.target as HTMLElement).style.color = 'rgba(233,215,196,.86)'; (e.target as HTMLElement).style.textDecoration = 'none'; }}
+                            >
+                              Passwort vergessen?
+                            </a>
+                          </div>
                         </div>
 
                         {/* 🔥 STEP 7D: PREMIUM SUBMIT BUTTON */}

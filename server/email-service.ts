@@ -5,7 +5,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Email-Absender (muss deine verifizierte Domain sein)
 const FROM_EMAIL = process.env.FROM_EMAIL || 'ARAS AI <noreply@arasai.com>';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://arasai.onrender.com';
+const FRONTEND_URL = process.env.APP_URL || process.env.FRONTEND_URL || 'https://www.plattform-aras.ai';
 
 // ============================================
 // 1. WILLKOMMENS-EMAIL bei Registrierung
