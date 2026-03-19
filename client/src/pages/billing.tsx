@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { CreditCard, Sparkles } from "lucide-react";
 import type { User, SubscriptionResponse } from "@shared/schema";
@@ -19,6 +19,14 @@ export default function Billing() {
   const [showPaymentSetup, setShowPaymentSetup] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [hasOffer, setHasOffer] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('offer') === 'calls15') {
+      setHasOffer(true);
+    }
+  }, []);
 
   const { data: userSubscription, refetch: refetchSubscription } = useQuery<SubscriptionResponse>({
     queryKey: ["/api/user/subscription"],
@@ -295,6 +303,49 @@ export default function Billing() {
                 Verwalten Sie Ihr ARAS AI Abonnement und wählen Sie den perfekten Plan
               </p>
             </motion.div>
+
+            {/* Offer Banner */}
+            {hasOffer && (
+              <motion.div
+                initial={{ opacity: 0, y: -12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                className="mb-8 rounded-2xl relative overflow-hidden"
+                style={{
+                  padding: '14px 16px',
+                  background: 'rgba(254,145,0,0.08)',
+                  border: '1px solid rgba(254,145,0,0.18)',
+                }}
+              >
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background: 'radial-gradient(400px 100px at 20% 50%, rgba(254,145,0,0.06), transparent 60%)',
+                  }}
+                />
+                <div className="relative flex items-center gap-3">
+                  <div
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{
+                      background: 'linear-gradient(180deg, #FE9100, #a34e00)',
+                      boxShadow: '0 0 10px rgba(254,145,0,0.6)',
+                      animation: 'pulse 2s ease-in-out infinite',
+                    }}
+                  />
+                  <p
+                    className="text-sm"
+                    style={{
+                      fontFamily: 'Inter, sans-serif',
+                      color: 'rgba(233,215,196,0.9)',
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    <span style={{ fontWeight: 600, color: '#E9D7C4' }}>Dein ARAS Upgrade-Vorteil ist aktiv:</span>{' '}
+                    15&nbsp;% auf alle Pläne bis 01.04.2026.
+                  </p>
+                </div>
+              </motion.div>
+            )}
 
             {/* Current Plan */}
             <CurrentPlan user={user} subscription={subscriptionData} />

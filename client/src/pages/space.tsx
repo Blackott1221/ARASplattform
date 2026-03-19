@@ -4,6 +4,7 @@ import { TopBar } from "@/components/layout/topbar";
 import { ChatInterface } from "@/components/chat/chat-interface";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ArasCore20Overlay } from "@/components/overlays/aras-core20-overlay";
+import { SpaceUpgradeOfferOverlay } from "@/components/overlays/space-upgrade-offer-overlay";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -204,6 +205,12 @@ export default function Space() {
     <div className="flex h-screen overflow-hidden">
       {/* 🔥 ARAS CORE 2.0 PRO — SYSTEM UPDATE OVERLAY */}
       <ArasCore20Overlay userId={String((user as any)?.id || '')} />
+
+      {/* 🔥 DELAYED UPGRADE OFFER OVERLAY — appears after 30-50s */}
+      <SpaceUpgradeOfferOverlay
+        isSpaceVisible={!isPageLoading}
+        hasBlockingOverlay={showCinematicIntro}
+      />
 
       {/* 🔥 CINEMATIC INTRO OVERLAY */}
       <AnimatePresence>
