@@ -233,16 +233,15 @@ export default function Billing() {
   };
 
   return (
-    <div className="flex h-screen relative overflow-hidden">
-      {/* Premium Background */}
-      <div className="absolute inset-0 opacity-20">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#FE9100]/10 via-transparent to-[#a34e00]/10" />
-        <div className="absolute inset-0" style={{
-          backgroundImage: `radial-gradient(circle at 25% 25%, rgba(254, 145, 0, 0.08) 0%, transparent 50%),
-                            radial-gradient(circle at 75% 75%, rgba(163, 78, 0, 0.06) 0%, transparent 50%),
-                            radial-gradient(circle at 50% 50%, rgba(233, 215, 196, 0.04) 0%, transparent 70%)`
-        }} />
-      </div>
+    <div className="flex h-screen relative overflow-hidden" style={{ background: '#0a0a0a' }}>
+      {/* Premium CI Background — quiet radial auras */}
+      <div className="absolute inset-0 pointer-events-none" style={{
+        background: 'radial-gradient(1200px 500px at 18% 10%, rgba(254,145,0,0.08), transparent 62%), radial-gradient(800px 400px at 86% 18%, rgba(233,215,196,0.05), transparent 64%), radial-gradient(600px 300px at 50% 90%, rgba(163,78,0,0.06), transparent 70%)'
+      }} />
+      {/* Noise texture */}
+      <div className="absolute inset-0 pointer-events-none opacity-[0.02]" style={{
+        backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`
+      }} />
 
       <Sidebar 
         activeSection="billing" 
@@ -259,87 +258,97 @@ export default function Billing() {
           isVisible={true}
         />
 
-        <div className="flex-1 overflow-y-auto premium-scroll">
-          <div className="max-w-7xl mx-auto px-6 py-12">
-            {/* Page Header */}
+        <div className="flex-1 overflow-y-auto billing-scroll">
+          <div className="max-w-[1200px] mx-auto px-5 sm:px-8 py-10 sm:py-14 space-y-8">
+
+            {/* ── PAGE HEADER ── */}
             <motion.div
-              initial={{ opacity: 0, y: -30 }}
+              initial={{ opacity: 0, y: -16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, ease: [0.25, 0.8, 0.25, 1] }}
-              className="text-center mb-16"
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              className="text-center mb-4"
             >
               <motion.div
-                className="inline-flex items-center gap-3 mb-4"
-                animate={{
-                  boxShadow: [
-                    '0 0 20px rgba(254, 145, 0, 0.2)',
-                    '0 0 30px rgba(254, 145, 0, 0.4)',
-                    '0 0 20px rgba(254, 145, 0, 0.2)'
-                  ]
-                }}
-                transition={{ duration: 3, repeat: Infinity }}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                className="inline-flex items-center gap-2.5 px-3.5 py-[6px] rounded-full mb-5"
                 style={{
-                  padding: '12px 24px',
-                  borderRadius: '16px',
-                  background: 'rgba(254, 145, 0, 0.1)',
-                  border: '1px solid rgba(254, 145, 0, 0.2)'
+                  background: 'rgba(255,255,255,0.02)',
+                  border: '1px solid rgba(233,215,196,0.1)',
                 }}
               >
-                <CreditCard className="w-6 h-6 text-[#FE9100]" />
-                <h1 
-                  className="text-4xl font-black tracking-tight"
-                  style={{
-                    fontFamily: 'Orbitron, sans-serif',
-                    background: 'linear-gradient(90deg, #e9d7c4, #FE9100, #a34e00)',
-                    backgroundClip: 'text',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent'
-                  }}
-                >
-                  ABONNEMENT
-                </h1>
+                <div className="w-[5px] h-[5px] rounded-full flex-shrink-0" style={{
+                  background: '#FE9100',
+                  boxShadow: '0 0 8px rgba(254,145,0,0.7)',
+                  animation: 'billingPulse 2s ease-in-out infinite',
+                }} />
+                <span style={{
+                  fontFamily: 'Orbitron, sans-serif',
+                  fontSize: 9,
+                  fontWeight: 700,
+                  letterSpacing: '0.22em',
+                  color: 'rgba(233,215,196,0.8)',
+                  textTransform: 'uppercase',
+                }}>Abonnement</span>
               </motion.div>
-              <p className="text-gray-400 text-lg">
-                Verwalten Sie Ihr ARAS AI Abonnement und wählen Sie den perfekten Plan
+
+              <h1 style={{
+                fontFamily: 'Orbitron, sans-serif',
+                fontWeight: 900,
+                fontSize: 'clamp(24px, 5vw, 32px)',
+                lineHeight: 1.15,
+                letterSpacing: '0.02em',
+                background: 'linear-gradient(90deg, #E9D7C4, #FE9100, #A34E00, #FE9100, #E9D7C4)',
+                backgroundSize: '300% auto',
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                animation: 'billingSheen 6s linear infinite',
+                marginBottom: 12,
+              }}>
+                Wähle deinen ARAS Modus
+              </h1>
+              <p style={{
+                fontFamily: 'Inter, sans-serif',
+                fontSize: 'clamp(14px, 3vw, 16px)',
+                color: 'rgba(233,215,196,0.5)',
+                lineHeight: 1.5,
+                maxWidth: 480,
+                margin: '0 auto',
+              }}>
+                Skaliere deine Outbound-Prozesse mit maximaler Effizienz und Kontrolle.
               </p>
             </motion.div>
 
-            {/* Offer Banner */}
+            {/* ── OFFER BANNER ── */}
             {hasOffer && (
               <motion.div
-                initial={{ opacity: 0, y: -12 }}
+                initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                className="mb-8 rounded-2xl relative overflow-hidden"
+                className="rounded-[16px] relative overflow-hidden"
                 style={{
-                  padding: '14px 16px',
-                  background: 'rgba(254,145,0,0.08)',
-                  border: '1px solid rgba(254,145,0,0.18)',
+                  padding: '14px 18px',
+                  background: 'rgba(254,145,0,0.06)',
+                  border: '1px solid rgba(254,145,0,0.16)',
                 }}
               >
-                <div
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    background: 'radial-gradient(400px 100px at 20% 50%, rgba(254,145,0,0.06), transparent 60%)',
-                  }}
-                />
+                <div className="absolute inset-0 pointer-events-none" style={{
+                  background: 'radial-gradient(400px 100px at 15% 50%, rgba(254,145,0,0.05), transparent 60%)',
+                }} />
                 <div className="relative flex items-center gap-3">
-                  <div
-                    className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{
-                      background: 'linear-gradient(180deg, #FE9100, #a34e00)',
-                      boxShadow: '0 0 10px rgba(254,145,0,0.6)',
-                      animation: 'pulse 2s ease-in-out infinite',
-                    }}
-                  />
-                  <p
-                    className="text-sm"
-                    style={{
-                      fontFamily: 'Inter, sans-serif',
-                      color: 'rgba(233,215,196,0.9)',
-                      lineHeight: 1.5,
-                    }}
-                  >
+                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{
+                    background: 'linear-gradient(180deg, #FE9100, #a34e00)',
+                    boxShadow: '0 0 10px rgba(254,145,0,0.5)',
+                    animation: 'billingPulse 2s ease-in-out infinite',
+                  }} />
+                  <p style={{
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: 13,
+                    color: 'rgba(233,215,196,0.8)',
+                    lineHeight: 1.5,
+                  }}>
                     <span style={{ fontWeight: 600, color: '#E9D7C4' }}>Dein ARAS Upgrade-Vorteil ist aktiv:</span>{' '}
                     15&nbsp;% auf alle Pläne bis 01.04.2026.
                   </p>
@@ -347,36 +356,15 @@ export default function Billing() {
               </motion.div>
             )}
 
-            {/* Current Plan */}
+            {/* ── CURRENT PLAN STATUS ── */}
             <CurrentPlan user={user} subscription={subscriptionData} />
 
-            {/* Pricing Section */}
+            {/* ── PRICING SECTION ── */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.8 }}
+              transition={{ delay: 0.2, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             >
-              <div className="mb-8">
-                <div className="flex items-center gap-3 mb-6">
-                  <Sparkles className="w-6 h-6 text-[#FE9100]" />
-                  <h2 
-                    className="text-3xl font-black tracking-tight"
-                    style={{
-                      fontFamily: 'Orbitron, sans-serif',
-                      background: 'linear-gradient(90deg, #e9d7c4, #FE9100)',
-                      backgroundClip: 'text',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent'
-                    }}
-                  >
-                    Verfügbare Pläne
-                  </h2>
-                </div>
-                <p className="text-gray-400 mb-8">
-                  Wählen Sie den Plan, der am besten zu Ihren Anforderungen passt
-                </p>
-              </div>
-
               <PricingCards 
                 subscription={subscriptionData}
                 onPaymentSetup={handlePaymentSetup}
@@ -384,37 +372,50 @@ export default function Billing() {
               />
             </motion.div>
 
-            {/* Trust Badges */}
+            {/* ── TRUST ROW ── */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
-              className="mt-16 text-center"
+              transition={{ delay: 0.5, duration: 0.5 }}
+              className="flex flex-wrap items-center justify-center gap-3 pt-6 pb-4"
             >
-              <div 
-                className="inline-flex items-center gap-6 px-8 py-4 rounded-2xl"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  backdropFilter: 'blur(20px)'
-                }}
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-green-500" />
-                  <span className="text-sm text-gray-400">DSGVO-konform</span>
+              {[
+                { label: 'DSGVO-konform', dot: '#FE9100' },
+                { label: 'Swiss Hosting', dot: '#E9D7C4' },
+                { label: '24/7 Support', dot: '#A34E00' },
+              ].map((item, i) => (
+                <div key={i} className="inline-flex items-center gap-2 px-3.5 py-[6px] rounded-full" style={{
+                  background: 'rgba(255,255,255,0.02)',
+                  border: '1px solid rgba(233,215,196,0.08)',
+                }}>
+                  <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: item.dot, opacity: 0.7 }} />
+                  <span style={{
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: 11,
+                    fontWeight: 500,
+                    color: 'rgba(233,215,196,0.5)',
+                    letterSpacing: '0.02em',
+                  }}>{item.label}</span>
                 </div>
-                <div className="w-px h-4 bg-white/20" />
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-blue-500" />
-                  <span className="text-sm text-gray-400">Swiss Hosting</span>
-                </div>
-                <div className="w-px h-4 bg-white/20" />
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-purple-500" />
-                  <span className="text-sm text-gray-400">24/7 Support</span>
-                </div>
-              </div>
+              ))}
             </motion.div>
+
+            {/* ── MICRO COPY ── */}
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+              className="text-center pb-8"
+              style={{
+                fontFamily: 'Inter, sans-serif',
+                fontSize: 12,
+                color: 'rgba(233,215,196,0.3)',
+                letterSpacing: '0.04em',
+              }}
+            >
+              Jederzeit kündbar&ensp;•&ensp;Sofort aktiv&ensp;•&ensp;Keine versteckten Kosten
+            </motion.p>
+
           </div>
         </div>
 
@@ -429,27 +430,14 @@ export default function Billing() {
         />
       </div>
 
-      {/* ARAS Font */}
-      <link 
-        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&display=swap" 
-        rel="stylesheet" 
-      />
-
-      {/* Premium Scrollbar */}
+      {/* Billing Page Styles */}
       <style>{`
-        .premium-scroll::-webkit-scrollbar {
-          width: 6px;
-        }
-        .premium-scroll::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .premium-scroll::-webkit-scrollbar-thumb {
-          background: rgba(254, 145, 0, 0.3);
-          border-radius: 10px;
-        }
-        .premium-scroll::-webkit-scrollbar-thumb:hover {
-          background: rgba(254, 145, 0, 0.5);
-        }
+        @keyframes billingSheen{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+        @keyframes billingPulse{0%,100%{opacity:1;box-shadow:0 0 8px rgba(254,145,0,0.7)}50%{opacity:0.35;box-shadow:0 0 3px rgba(254,145,0,0.25)}}
+        .billing-scroll::-webkit-scrollbar{width:5px}
+        .billing-scroll::-webkit-scrollbar-track{background:transparent}
+        .billing-scroll::-webkit-scrollbar-thumb{background:rgba(254,145,0,0.2);border-radius:10px}
+        .billing-scroll::-webkit-scrollbar-thumb:hover{background:rgba(254,145,0,0.35)}
       `}</style>
     </div>
   );

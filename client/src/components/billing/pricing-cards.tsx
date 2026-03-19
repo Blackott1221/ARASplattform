@@ -207,162 +207,329 @@ export function PricingCards({ subscription, onPaymentSetup, onPlanUpgrade }: Pr
     }
   };
 
+  const isCurrentPlan = (planId: string) =>
+    subscription?.plan === planId && subscription?.status === 'active';
+
+  const orbitron = 'Orbitron, sans-serif';
+  const inter = 'Inter, sans-serif';
+
   if (plansLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         {[1,2,3,4].map(i => (
-          <Card key={i} className="animate-pulse">
-            <CardHeader>
-              <div className="h-6 bg-muted rounded w-3/4 mb-2" />
-              <div className="h-8 bg-muted rounded w-1/2" />
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {[1,2,3].map(j => <div key={j} className="h-4 bg-muted rounded" />)}
-              </div>
-            </CardContent>
-          </Card>
+          <div key={i} className="rounded-[20px] p-6 animate-pulse" style={{
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01))',
+            border: '1px solid rgba(233,215,196,0.08)',
+          }}>
+            <div className="h-4 rounded-full w-2/3 mb-4" style={{ background: 'rgba(233,215,196,0.06)' }} />
+            <div className="h-8 rounded-full w-1/2 mb-6" style={{ background: 'rgba(233,215,196,0.04)' }} />
+            <div className="space-y-3">
+              {[1,2,3].map(j => <div key={j} className="h-3 rounded-full" style={{ background: 'rgba(233,215,196,0.04)' }} />)}
+            </div>
+          </div>
         ))}
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      {plans.map((plan: any, index: number) => (
-        <motion.div
-          key={plan.id}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: index * 0.1 }}
-        >
-          <Card className={`relative ${plan.popular ? "border-primary shadow-lg" : ""} ${subscription?.plan === plan.id && subscription?.status === "active" ? "border-green-500 bg-green-50/5" : ""} ${plan.id === 'free' ? "border-gray-300" : ""}`}>
-            {plan.popular && (
-              <div className="absolute top-0 right-0 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-3 py-1 text-xs font-semibold rounded-bl-lg flex items-center gap-1">
-                <Sparkles className="w-3 h-3" />
-                BELIEBT
-              </div>
-            )}
-            {plan.id === 'free' && (
-              <div className="absolute top-0 right-0 bg-green-600 text-white px-3 py-1 text-xs font-semibold rounded-bl-lg">
-                KOSTENLOS
-              </div>
-            )}
-            {/* Only show CURRENT PLAN badge for PAID users (not trial users) */}
-            {subscription?.plan === plan.id && subscription?.status === "active" && (
-              <div className="absolute top-0 left-0 bg-green-500 text-white px-3 py-1 text-xs font-semibold rounded-br-lg">
-                CURRENT PLAN
-              </div>
-            )}
-            <CardHeader>
-              <CardTitle className="text-lg font-bold">{plan.name}</CardTitle>
-              <div className="text-3xl font-bold">
-                €{plan.price}
-                <span className="text-sm text-muted-foreground font-normal">
-                  {plan.price === 0 ? '' : '/Monat'}
-                </span>
-              </div>
-              {plan.trialAvailable && subscription?.requiresPaymentSetup && (
-                <div className="flex items-center space-x-2 text-orange-500 text-sm">
-                  <Shield className="w-4 h-4" />
-                  <span>Card required for trial</span>
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        {plans.map((plan: any, index: number) => {
+          const isCurrent = isCurrentPlan(plan.id);
+          const isPopular = plan.popular;
+          const isFree = plan.id === 'free';
+
+          return (
+            <motion.div
+              key={plan.id}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, delay: index * 0.05, ease: [0.16, 1, 0.3, 1] }}
+              className="relative group"
+            >
+              {/* Popular glow border */}
+              {isPopular && (
+                <div className="absolute -inset-px rounded-[21px] pointer-events-none" style={{
+                  background: 'linear-gradient(135deg, rgba(254,145,0,0.3), rgba(233,215,196,0.1), rgba(254,145,0,0.2))',
+                  opacity: 0.8,
+                }} />
+              )}
+
+              <div
+                className="relative rounded-[20px] p-6 h-full flex flex-col transition-all duration-200"
+                style={{
+                  background: isPopular
+                    ? 'linear-gradient(135deg, rgba(254,145,0,0.06), rgba(255,255,255,0.015))'
+                    : 'linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,255,255,0.008))',
+                  border: isPopular
+                    ? '1px solid rgba(254,145,0,0.3)'
+                    : isCurrent
+                    ? '1px solid rgba(254,145,0,0.2)'
+                    : '1px solid rgba(233,215,196,0.1)',
+                  boxShadow: isPopular
+                    ? '0 0 0 1px rgba(254,145,0,0.12), 0 20px 60px rgba(0,0,0,0.5)'
+                    : '0 12px 40px rgba(0,0,0,0.25)',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isPopular) {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.borderColor = 'rgba(254,145,0,0.25)';
+                    e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.4)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isPopular) {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.borderColor = isCurrent ? 'rgba(254,145,0,0.2)' : 'rgba(233,215,196,0.1)';
+                    e.currentTarget.style.boxShadow = '0 12px 40px rgba(0,0,0,0.25)';
+                  }
+                }}
+              >
+                {/* Inner radial for popular */}
+                {isPopular && (
+                  <div className="absolute inset-0 rounded-[20px] pointer-events-none" style={{
+                    background: 'radial-gradient(300px 150px at 50% 0%, rgba(254,145,0,0.05), transparent 65%)',
+                  }} />
+                )}
+
+                {/* ── Badges ── */}
+                <div className="relative mb-5">
+                  {isPopular && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-[4px] rounded-full mb-3" style={{
+                      background: 'rgba(254,145,0,0.1)',
+                      border: '1px solid rgba(254,145,0,0.25)',
+                    }}>
+                      <Sparkles className="w-3 h-3" style={{ color: '#FE9100' }} />
+                      <span style={{
+                        fontFamily: orbitron,
+                        fontSize: 8,
+                        fontWeight: 700,
+                        letterSpacing: '0.2em',
+                        color: '#FE9100',
+                        textTransform: 'uppercase',
+                      }}>Empfohlen</span>
+                    </div>
+                  )}
+                  {isCurrent && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-[4px] rounded-full mb-3" style={{
+                      background: 'rgba(254,145,0,0.06)',
+                      border: '1px solid rgba(254,145,0,0.15)',
+                    }}>
+                      <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#FE9100', boxShadow: '0 0 6px rgba(254,145,0,0.6)' }} />
+                      <span style={{
+                        fontFamily: orbitron,
+                        fontSize: 8,
+                        fontWeight: 700,
+                        letterSpacing: '0.18em',
+                        color: 'rgba(254,145,0,0.8)',
+                        textTransform: 'uppercase',
+                      }}>Aktueller Plan</span>
+                    </div>
+                  )}
+
+                  {/* Plan name */}
+                  <h3 className="relative" style={{
+                    fontFamily: orbitron,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    letterSpacing: '0.12em',
+                    color: isPopular ? '#E9D7C4' : 'rgba(233,215,196,0.75)',
+                    textTransform: 'uppercase',
+                  }}>{plan.name}</h3>
                 </div>
-              )}
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2 mb-6">
-                {plan.features.map((feature: string, i: number) => (
-                  <li key={i} className="flex items-center space-x-2">
-                    <Check className="w-4 h-4 text-green-400" />
-                    <span className="text-sm">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              
-              {subscription?.plan === plan.id && subscription?.status === "active" ? (
-                <Button disabled className="w-full" variant="outline">
-                  Aktueller Plan
-                </Button>
-              ) : plan.id === 'free' ? (
-                <Button
-                  onClick={() => handlePlanSelect(plan.id)}
-                  disabled={isLoading === plan.id || subscription?.plan === 'free'}
-                  variant="outline"
-                  className="w-full"
-                >
-                  {isLoading === plan.id ? "Wird geladen..." : 
-                   subscription?.plan === 'free' ? "Aktueller Plan" : "Zu Free wechseln"}
-                </Button>
-              ) : !plan.available ? (
-                <Button
-                  disabled
-                  variant="outline"
-                  className="w-full opacity-60"
-                >
-                  Bald verfügbar
-                </Button>
-              ) : plan.trialAvailable && subscription?.requiresPaymentSetup ? (
-                <Button
-                  onClick={() => handlePlanSelect(plan.id)}
-                  disabled={isLoading === plan.id}
-                  className="w-full bg-blue-600 hover:bg-blue-700"
-                >
-                  {isLoading === plan.id ? (
-                    <div className="flex items-center space-x-2">
-                      <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                      <span>Setting up...</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center space-x-2">
-                      <CreditCard className="w-4 h-4" />
-                      <span>Start Trial (Card Required)</span>
-                    </div>
+
+                {/* ── Price ── */}
+                <div className="relative mb-6">
+                  <div className="flex items-baseline gap-1">
+                    <span style={{
+                      fontFamily: orbitron,
+                      fontSize: 'clamp(28px, 5vw, 36px)',
+                      fontWeight: 900,
+                      color: isPopular ? '#FE9100' : '#E9D7C4',
+                      lineHeight: 1,
+                    }}>
+                      €{plan.price}
+                    </span>
+                    {plan.price > 0 && (
+                      <span style={{
+                        fontFamily: inter,
+                        fontSize: 13,
+                        fontWeight: 400,
+                        color: 'rgba(233,215,196,0.35)',
+                      }}>/ Monat</span>
+                    )}
+                  </div>
+                  {plan.price === 0 && (
+                    <span style={{
+                      fontFamily: inter,
+                      fontSize: 12,
+                      color: 'rgba(233,215,196,0.35)',
+                    }}>Kostenlos</span>
                   )}
-                </Button>
-              ) : plan.popular ? (
-                <GlowButton
-                  onClick={() => handlePlanSelect(plan.id)}
-                  disabled={isLoading === plan.id}
-                  className="w-full"
-                >
-                  {isLoading === plan.id ? (
-                    <div className="flex items-center space-x-2">
-                      <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                      <span>Wird geladen...</span>
-                    </div>
+                </div>
+
+                {/* ── Divider ── */}
+                <div className="mb-5" style={{
+                  height: 1,
+                  background: isPopular
+                    ? 'linear-gradient(90deg, transparent, rgba(254,145,0,0.25), transparent)'
+                    : 'linear-gradient(90deg, transparent, rgba(233,215,196,0.08), transparent)',
+                }} />
+
+                {/* ── Features ── */}
+                <ul className="space-y-[10px] mb-6 flex-1 relative">
+                  {plan.features.map((feature: string, i: number) => (
+                    <li key={i} className="flex items-start gap-2.5">
+                      <div className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 mt-[1px]" style={{
+                        background: isPopular ? 'rgba(254,145,0,0.12)' : 'rgba(233,215,196,0.05)',
+                        border: isPopular ? '1px solid rgba(254,145,0,0.2)' : '1px solid rgba(233,215,196,0.08)',
+                      }}>
+                        <Check className="w-2.5 h-2.5" style={{ color: isPopular ? '#FE9100' : 'rgba(233,215,196,0.5)' }} />
+                      </div>
+                      <span style={{
+                        fontFamily: inter,
+                        fontSize: 13,
+                        lineHeight: '1.45',
+                        color: isPopular ? 'rgba(233,215,196,0.8)' : 'rgba(233,215,196,0.55)',
+                      }}>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* ── CTA Button ── */}
+                <div className="relative mt-auto">
+                  {isCurrent ? (
+                    <button
+                      disabled
+                      className="w-full rounded-[14px] py-3 px-4 cursor-not-allowed"
+                      style={{
+                        fontFamily: inter,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        color: 'rgba(233,215,196,0.35)',
+                        background: 'rgba(255,255,255,0.02)',
+                        border: '1px solid rgba(233,215,196,0.08)',
+                      }}
+                    >
+                      Aktueller Plan
+                    </button>
+                  ) : isFree ? (
+                    <button
+                      onClick={() => handlePlanSelect(plan.id)}
+                      disabled={isLoading === plan.id || subscription?.plan === 'free'}
+                      className="w-full rounded-[14px] py-3 px-4 transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+                      style={{
+                        fontFamily: inter,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        color: 'rgba(233,215,196,0.6)',
+                        background: 'rgba(255,255,255,0.02)',
+                        border: '1px solid rgba(233,215,196,0.1)',
+                      }}
+                    >
+                      {isLoading === plan.id ? 'Wird geladen...' :
+                       subscription?.plan === 'free' ? 'Aktueller Plan' : 'Zu Free wechseln'}
+                    </button>
+                  ) : !plan.available ? (
+                    <button
+                      disabled
+                      className="w-full rounded-[14px] py-3 px-4 cursor-not-allowed"
+                      style={{
+                        fontFamily: inter,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        color: 'rgba(233,215,196,0.25)',
+                        background: 'rgba(255,255,255,0.015)',
+                        border: '1px solid rgba(233,215,196,0.06)',
+                      }}
+                    >
+                      Bald verfügbar
+                    </button>
+                  ) : plan.trialAvailable && subscription?.requiresPaymentSetup ? (
+                    <button
+                      onClick={() => handlePlanSelect(plan.id)}
+                      disabled={isLoading === plan.id}
+                      className="w-full rounded-[14px] py-3 px-4 flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer disabled:opacity-50"
+                      style={{
+                        fontFamily: inter,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        color: '#E9D7C4',
+                        background: 'rgba(254,145,0,0.08)',
+                        border: '1px solid rgba(254,145,0,0.2)',
+                      }}
+                    >
+                      {isLoading === plan.id ? (
+                        <>
+                          <div className="animate-spin w-4 h-4 border-2 border-[#FE9100] border-t-transparent rounded-full" />
+                          <span>Setup...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="w-4 h-4" style={{ color: '#FE9100' }} />
+                          <span>Trial starten</span>
+                        </>
+                      )}
+                    </button>
                   ) : (
-                    <>Jetzt upgraden</>
+                    <button
+                      onClick={() => handlePlanSelect(plan.id)}
+                      disabled={isLoading === plan.id}
+                      className="pricing-cta w-full rounded-[14px] py-3.5 px-4 transition-all duration-200 cursor-pointer disabled:opacity-50 group relative overflow-hidden"
+                      style={{
+                        fontFamily: inter,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                        minHeight: 44,
+                        color: isPopular ? '#0a0a0a' : '#E9D7C4',
+                        background: isPopular
+                          ? 'linear-gradient(135deg, #FE9100, #A34E00)'
+                          : 'rgba(254,145,0,0.06)',
+                        border: isPopular
+                          ? 'none'
+                          : '1px solid rgba(254,145,0,0.18)',
+                        boxShadow: isPopular
+                          ? '0 10px 24px rgba(254,145,0,0.2)'
+                          : 'none',
+                      }}
+                    >
+                      {isPopular && (
+                        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-[14px]" style={{
+                          background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 55%)',
+                        }} />
+                      )}
+                      {isLoading === plan.id ? (
+                        <span className="relative z-10 flex items-center justify-center gap-2">
+                          <div className="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
+                          Wird geladen...
+                        </span>
+                      ) : (
+                        <span className="relative z-10">Jetzt upgraden</span>
+                      )}
+                    </button>
                   )}
-                </GlowButton>
-              ) : plan.id === "ultimate" ? (
-                <Button
-                  onClick={() => handlePlanSelect(plan.id)}
-                  disabled={isLoading === plan.id}
-                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
-                >
-                  {isLoading === plan.id ? "Wird geladen..." : "Jetzt upgraden"}
-                </Button>
-              ) : (
-                <Button
-                  onClick={() => handlePlanSelect(plan.id)}
-                  disabled={isLoading === plan.id}
-                  variant="outline"
-                  className="w-full"
-                >
-                  {isLoading === plan.id ? (
-                    <div className="flex items-center space-x-2">
-                      <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" />
-                      <span>Wird geladen...</span>
-                    </div>
-                  ) : (
-                    <>Jetzt upgraden</>
-                  )}
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-      ))}
-    </div>
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      <style>{`
+        .pricing-cta:hover{transform:translateY(-1px)}
+        .pricing-cta:active{transform:translateY(0)}
+      `}</style>
+    </>
   );
 }
